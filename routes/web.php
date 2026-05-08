@@ -1,23 +1,27 @@
 <?php
 
 use App\Enums\UserRole;
+use App\Http\Controllers\BrandLogoController;
 use App\Http\Controllers\Job\DraftingRequestFormController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Settings\ActivityLogController;
 use App\Http\Controllers\Settings\BuildingTypeController;
-use App\Http\Controllers\Settings\DeliverableController;
 use App\Http\Controllers\Settings\Crm\ArrivalInputFileController;
 use App\Http\Controllers\Settings\Crm\CrmCategoryController;
+use App\Http\Controllers\Settings\DeliverableController;
 use App\Http\Controllers\Settings\ExternalWallConstructionController;
 use App\Http\Controllers\Settings\LevelOfDifficultyController;
 use App\Http\Controllers\Settings\RolePermissionController;
 use App\Http\Controllers\Settings\RoofTypeController;
 use App\Http\Controllers\Settings\ScopeOfWorkController;
 use App\Http\Controllers\Settings\ServiceEngagingController;
-use App\Http\Controllers\Settings\ActivityLogController;
 use App\Http\Controllers\Settings\UserAccountController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+
+Route::get('/brand-logo', [BrandLogoController::class, 'show'])
+    ->name('app.brand-logo');
 
 Route::middleware(['auth', 'permission.route'])->group(function () {
     Route::get('/dashboard', function () {

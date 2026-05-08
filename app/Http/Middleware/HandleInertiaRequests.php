@@ -47,9 +47,8 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Public URL for storage/app/public/logo.* only when the file is also reachable
-     * via public/storage (requires `php artisan storage:link`). Otherwise the browser
-     * gets 404 on /storage/logo.* while PHP still sees the private path — broken img.
+     * Prefer /storage/logo.* (symlink or copied file). If missing, use /brand-logo so
+     * shared hosts without php artisan storage:link still show the image.
      */
     protected function resolveAppLogoUrl(): ?string
     {
@@ -69,11 +68,11 @@ class HandleInertiaRequests extends Middleware
             }
 
             $publicPath = public_path('storage'.DIRECTORY_SEPARATOR.$name);
-            if (! is_file($publicPath)) {
-                continue;
+            if (is_file($publicPath)) {
+                return asset('storage/'.$name);
             }
 
-            return asset('storage/'.$name);
+            return route('app.brand-logo');
         }
 
         return null;
