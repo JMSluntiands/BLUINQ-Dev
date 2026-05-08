@@ -1,3 +1,4 @@
+import AppLogo from '@/Components/AppLogo';
 import Dropdown from '@/Components/Dropdown';
 import UserAvatar from '@/Components/UserAvatar';
 import {
@@ -306,17 +307,16 @@ export default function AuthenticatedLayout({ header, children }) {
                         onClick={closeSidebar}
                         className="flex min-w-0 flex-col items-center justify-center text-center"
                     >
-                        {logoUrl ? (
-                            <img
-                                src={logoUrl}
-                                alt=""
-                                className="mx-auto h-7 w-auto max-w-[9.5rem] object-contain lg:h-8"
-                            />
-                        ) : (
-                            <span className="text-xl font-semibold tracking-tight text-sky-600">
-                                Bluinq
-                            </span>
-                        )}
+                        <AppLogo
+                            logoUrl={logoUrl}
+                            alt=""
+                            className="mx-auto h-7 w-auto max-w-[9.5rem] object-contain lg:h-8"
+                            fallback={
+                                <span className="text-xl font-semibold tracking-tight text-sky-600">
+                                    Bluinq
+                                </span>
+                            }
+                        />
                     </Link>
                     <button
                         type="button"

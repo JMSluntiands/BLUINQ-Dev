@@ -47,7 +47,9 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Public URL for storage/app/public/logo.* if the file exists (requires storage:link).
+     * Public URL for storage/app/public/logo.* only when the file is also reachable
+     * via public/storage (requires `php artisan storage:link`). Otherwise the browser
+     * gets 404 on /storage/logo.* while PHP still sees the private path — broken img.
      */
     protected function resolveAppLogoUrl(): ?string
     {
@@ -61,10 +63,17 @@ class HandleInertiaRequests extends Middleware
         ];
 
         foreach ($names as $name) {
-            $path = $dir.DIRECTORY_SEPARATOR.$name;
-            if (is_file($path)) {
-                return asset('storage/'.$name);
+            $stored = $dir.DIRECTORY_SEPARATOR.$name;
+            if (! is_file($stored)) {
+                continue;
             }
+
+            $publicPath = public_path('storage'.DIRECTORY_SEPARATOR.$name);
+            if (! is_file($publicPath)) {
+                continue;
+            }
+
+            return asset('storage/'.$name);
         }
 
         return null;

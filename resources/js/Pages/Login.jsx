@@ -1,3 +1,4 @@
+import AppLogo from '@/Components/AppLogo';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { Head, useForm, usePage } from '@inertiajs/react';
 
@@ -83,17 +84,16 @@ export default function Login({ status }) {
                 <div className="relative flex min-h-[36vh] flex-col items-center justify-center overflow-hidden bg-white px-8 py-12 lg:min-h-screen lg:py-16">
                     <ArchitectLineBackground />
                     <div className="relative z-10 flex w-full flex-col items-center justify-center">
-                        {logoUrl ? (
-                            <img
-                                src={logoUrl}
-                                alt=""
-                                className="mx-auto block h-auto max-h-24 w-auto max-w-[min(100%,14rem)] object-contain object-center lg:max-h-28"
-                            />
-                        ) : (
-                            <h1 className="w-full text-center text-3xl font-semibold tracking-tight text-slate-800">
-                                Bluinq
-                            </h1>
-                        )}
+                        <AppLogo
+                            logoUrl={logoUrl}
+                            alt=""
+                            className="mx-auto block h-auto max-h-24 w-auto max-w-[min(100%,14rem)] object-contain object-center lg:max-h-28"
+                            fallback={
+                                <h1 className="w-full text-center text-3xl font-semibold tracking-tight text-slate-800">
+                                    Bluinq
+                                </h1>
+                            }
+                        />
                     </div>
                 </div>
 

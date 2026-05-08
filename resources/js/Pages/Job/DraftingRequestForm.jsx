@@ -2,6 +2,7 @@ import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
+import AppLogo from '@/Components/AppLogo';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
@@ -122,13 +123,12 @@ export default function DraftingRequestForm({
                 <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                     <div className="border-b border-slate-200 px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
                         <div className="flex flex-wrap items-start gap-6">
-                            {logoUrl && (
-                                <img
-                                    src={logoUrl}
-                                    alt="Bluinq"
-                                    className="h-12 w-auto object-contain sm:h-14"
-                                />
-                            )}
+                            <AppLogo
+                                logoUrl={logoUrl}
+                                alt="Bluinq"
+                                className="h-12 w-auto object-contain sm:h-14"
+                                fallback={null}
+                            />
                             <div className="min-w-0 flex-1">
                                 <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
                                     Drafting Request Form
