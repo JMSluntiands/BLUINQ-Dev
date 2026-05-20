@@ -3,11 +3,11 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use App\Enums\UserRole;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
@@ -28,7 +28,7 @@ class User extends Authenticatable
         'email',
         'company_name',
         'password',
-        'role',
+        'role_id',
         'profile_image',
         'archived_at',
     ];
@@ -41,6 +41,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'role_id',
     ];
 
     /**
@@ -60,7 +61,6 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'role' => UserRole::class,
             'archived_at' => 'datetime',
         ];
     }
@@ -83,9 +83,17 @@ class User extends Authenticatable
         return $query->whereNotNull('archived_at');
     }
 
+    /**
+     * @return BelongsTo<Role, $this>
+     */
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class);
+    }
+
     public function isAdmin(): bool
     {
-        return $this->role === UserRole::Admin;
+        return $this->role?->slug === 'admin';
     }
 
     /**

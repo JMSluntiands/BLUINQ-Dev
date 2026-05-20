@@ -6,16 +6,22 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDraftingRequestFormRequest;
 use App\Models\BuildingType;
 use App\Models\DraftingRequest;
+use App\Models\DraftingRequestActivity;
+use App\Models\DraftingRequestFile;
 use App\Models\ExternalWallConstruction;
 use App\Models\RoofType;
 use App\Models\ServiceEngaging;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DraftingRequestFormController extends Controller
 {
+    private const PRIVATE_DISK = 'local';
+
     public function create(Request $request): Response
     {
         $user = $request->user();
@@ -51,44 +57,72 @@ class DraftingRequestFormController extends Controller
     public function store(StoreDraftingRequestFormRequest $request): RedirectResponse
     {
         $user = $request->user();
-        $payload = $request->safe()->except(['facade', 'documents']);
+        $validated = $request->safe()->except(['facade', 'documents', 'service_engaging_ids']);
 
-        $draftingRequest = DraftingRequest::query()->create([
-            'user_id' => $user->id,
-            'payload' => $payload,
-        ]);
+        DB::transaction(function () use ($request, $user, $validated) {
+            $draftingRequest = DraftingRequest::query()->create([
+                'user_id' => $user->id,
+                ...$validated,
+            ]);
 
-        $extra = [];
-
-        if ($request->hasFile('facade')) {
-            $extra['facade_path'] = $request->file('facade')->store(
-                'drafting-requests/'.$draftingRequest->id,
-                'public',
+            $draftingRequest->serviceEngagings()->sync(
+                $request->validated('service_engaging_ids'),
             );
-        }
 
-        $documentPaths = [];
-        foreach ($request->file('documents', []) as $file) {
-            if ($file !== null && $file->isValid()) {
-                $documentPaths[] = $file->store(
-                    'drafting-requests/'.$draftingRequest->id,
-                    'public',
+            if ($request->hasFile('facade')) {
+                $this->storeUploadedFile(
+                    $draftingRequest,
+                    $request->file('facade'),
+                    DraftingRequestFile::KIND_FACADE,
+                    'facade',
                 );
             }
-        }
 
-        if ($documentPaths !== []) {
-            $extra['document_paths'] = $documentPaths;
-        }
+            foreach ($request->file('documents', []) as $file) {
+                if ($file instanceof UploadedFile && $file->isValid()) {
+                    $this->storeUploadedFile(
+                        $draftingRequest,
+                        $file,
+                        DraftingRequestFile::KIND_DOCUMENT,
+                        'documents',
+                    );
+                }
+            }
 
-        if ($extra !== []) {
-            $draftingRequest->update([
-                'payload' => array_merge($draftingRequest->payload, $extra),
-            ]);
-        }
+            DraftingRequestActivity::record(
+                $draftingRequest,
+                $user,
+                DraftingRequestActivity::ACTION_REQUEST_SUBMITTED,
+                sprintf(
+                    'Drafting request %s was submitted.',
+                    sprintf('DRF-%05d', $draftingRequest->id),
+                ),
+            );
+        });
 
         return redirect()
             ->route('job.drafting')
             ->with('status', 'drf-submitted');
+    }
+
+    private function storeUploadedFile(
+        DraftingRequest $draftingRequest,
+        UploadedFile $file,
+        string $kind,
+        string $directory,
+    ): void {
+        $path = $file->store(
+            'drafting-requests/'.$draftingRequest->id.'/'.$directory,
+            self::PRIVATE_DISK,
+        );
+
+        $draftingRequest->files()->create([
+            'kind' => $kind,
+            'disk' => self::PRIVATE_DISK,
+            'path' => $path,
+            'original_name' => $file->getClientOriginalName(),
+            'mime_type' => $file->getClientMimeType(),
+            'size' => $file->getSize() ?: 0,
+        ]);
     }
 }

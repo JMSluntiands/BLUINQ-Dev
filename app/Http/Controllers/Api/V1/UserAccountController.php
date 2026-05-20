@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\UserRole;
 use App\Http\Controllers\Api\Concerns\InteractsWithTableFilters;
 use App\Http\Controllers\Controller;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,7 +23,10 @@ class UserAccountController extends Controller
     {
         [$search, $perPage] = $this->tableFilters($request);
 
-        $query = User::query()->active()->orderBy('name');
+        $query = User::query()
+            ->with('role')
+            ->active()
+            ->orderBy('name');
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -38,7 +41,7 @@ class UserAccountController extends Controller
                 'id' => $u->id,
                 'name' => $u->name,
                 'email' => $u->email,
-                'role' => $u->role->value,
+                'role' => $u->role?->slug,
             ])
             ->withQueryString();
 
@@ -51,21 +54,23 @@ class UserAccountController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique(User::class)],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'role' => ['required', Rule::enum(UserRole::class)],
+            'role_id' => ['required', Rule::exists('roles', 'id')],
         ]);
 
         $user = User::query()->create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => $validated['password'],
-            'role' => $validated['role'],
+            'role_id' => (int) $validated['role_id'],
         ]);
+
+        $user->load('role');
 
         return response()->json([
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
-            'role' => $user->role->value,
+            'role' => $user->role?->slug,
         ], 201);
     }
 
@@ -75,11 +80,13 @@ class UserAccountController extends Controller
             return response()->json(['message' => 'Not found.'], 404);
         }
 
+        $user->load('role');
+
         return response()->json([
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
-            'role' => $user->role->value,
+            'role' => $user->role?->slug,
             'roles' => $this->roles(),
         ]);
     }
@@ -89,6 +96,8 @@ class UserAccountController extends Controller
         if ($user->archived_at !== null) {
             return response()->json(['message' => 'Not found.'], 404);
         }
+
+        $user->load('role');
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -100,40 +109,41 @@ class UserAccountController extends Controller
                 Rule::unique(User::class)->ignore($user->id),
             ],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
-            'role' => ['required', Rule::enum(UserRole::class)],
+            'role_id' => ['required', Rule::exists('roles', 'id')],
         ]);
 
-        $newRole = UserRole::from($validated['role']);
+        $newRole = Role::query()->findOrFail((int) $validated['role_id']);
 
-        if ($user->role === UserRole::Admin && $newRole === UserRole::User) {
+        if ($user->isAdmin() && $newRole->slug === 'user') {
             $otherActiveAdmins = User::query()
                 ->active()
-                ->where('role', UserRole::Admin)
+                ->whereHas('role', fn ($q) => $q->where('slug', 'admin'))
                 ->where('id', '!=', $user->id)
                 ->count();
             if ($otherActiveAdmins < 1) {
                 return response()->json([
                     'message' => 'At least one active administrator is required.',
-                    'errors' => ['role' => ['At least one active administrator is required.']],
+                    'errors' => ['role_id' => ['At least one active administrator is required.']],
                 ], 422);
             }
         }
 
         $user->name = $validated['name'];
         $user->email = $validated['email'];
-        $user->role = $newRole;
+        $user->role_id = (int) $validated['role_id'];
 
         if (! empty($validated['password'])) {
             $user->password = $validated['password'];
         }
 
         $user->save();
+        $user->load('role');
 
         return response()->json([
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
-            'role' => $user->role->value,
+            'role' => $user->role?->slug,
         ]);
     }
 
@@ -147,10 +157,12 @@ class UserAccountController extends Controller
             return response()->json(['message' => 'You cannot archive your own account.'], 422);
         }
 
-        if ($user->role === UserRole::Admin) {
+        $user->load('role');
+
+        if ($user->isAdmin()) {
             $otherActiveAdmins = User::query()
                 ->active()
-                ->where('role', UserRole::Admin)
+                ->whereHas('role', fn ($q) => $q->where('slug', 'admin'))
                 ->where('id', '!=', $user->id)
                 ->count();
             if ($otherActiveAdmins < 1) {
@@ -167,7 +179,10 @@ class UserAccountController extends Controller
     {
         [$search, $perPage] = $this->tableFilters($request);
 
-        $query = User::query()->archived()->orderByDesc('archived_at');
+        $query = User::query()
+            ->with('role')
+            ->archived()
+            ->orderByDesc('archived_at');
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -182,7 +197,7 @@ class UserAccountController extends Controller
                 'id' => $u->id,
                 'name' => $u->name,
                 'email' => $u->email,
-                'role' => $u->role->value,
+                'role' => $u->role?->slug,
                 'archived_at' => $u->archived_at?->toIso8601String(),
             ])
             ->withQueryString();
@@ -197,26 +212,31 @@ class UserAccountController extends Controller
         }
 
         $user->forceFill(['archived_at' => null])->save();
+        $user->load('role');
 
         return response()->json([
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
-            'role' => $user->role->value,
+            'role' => $user->role?->slug,
         ]);
     }
 
     /**
-     * @return list<array{value: string, label: string}>
+     * @return list<array{id: int, name: string, slug: string}>
      */
     private function roles(): array
     {
-        return collect(UserRole::cases())->map(fn (UserRole $role) => [
-            'value' => $role->value,
-            'label' => match ($role) {
-                UserRole::Admin => 'Administrator',
-                UserRole::User => 'Member',
-            },
-        ])->values()->all();
+        return Role::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug'])
+            ->map(fn (Role $r) => [
+                'id' => $r->id,
+                'name' => $r->name,
+                'slug' => $r->slug,
+            ])
+            ->values()
+            ->all();
     }
 }

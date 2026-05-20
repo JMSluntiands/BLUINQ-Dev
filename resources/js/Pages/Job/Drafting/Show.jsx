@@ -1,0 +1,485 @@
+import InputError from '@/Components/InputError';
+import PrimaryButton from '@/Components/PrimaryButton';
+import RichTextEditor from '@/Components/RichTextEditor';
+import UserAvatar from '@/Components/UserAvatar';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import {
+    ArrowDownTrayIcon,
+    ChatBubbleLeftRightIcon,
+    ClockIcon,
+    DocumentTextIcon,
+} from '@heroicons/react/24/outline';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { useState } from 'react';
+
+function listQueryString(listFilters = {}) {
+    const p = new URLSearchParams();
+    if (listFilters.search) {
+        p.set('search', listFilters.search);
+    }
+    if (listFilters.per_page) {
+        p.set('per_page', String(listFilters.per_page));
+    }
+    const s = p.toString();
+    return s ? `?${s}` : '';
+}
+
+function DetailRow({ label, value, className = '' }) {
+    const display =
+        value === null || value === undefined || value === '' ? '—' : value;
+
+    return (
+        <div className={`min-w-0 ${className}`}>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-[#676879]">
+                {label}
+            </dt>
+            <dd className="mt-1 whitespace-pre-wrap text-sm text-[#323338]">
+                {display}
+            </dd>
+        </div>
+    );
+}
+
+function Section({ title, children }) {
+    return (
+        <section className="border-b border-[#e6e9ef] px-6 py-6 last:border-b-0 sm:px-8">
+            <h3 className="mb-4 text-sm font-semibold text-[#323338]">{title}</h3>
+            {children}
+        </section>
+    );
+}
+
+export default function DraftingShow({ draftingRequest, listFilters = {} }) {
+    const listQs = listQueryString(listFilters);
+    const facadeFiles = draftingRequest.files.filter((f) => f.kind === 'facade');
+    const documentFiles = draftingRequest.files.filter(
+        (f) => f.kind === 'document',
+    );
+
+    return (
+        <AuthenticatedLayout
+            header={
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                        <h2 className="text-xl font-semibold leading-tight text-[#323338]">
+                            {draftingRequest.reference}
+                        </h2>
+                        <p className="mt-1 text-sm text-[#676879]">
+                            Drafting request details
+                        </p>
+                    </div>
+                    <Link
+                        href={route('job.drafting') + listQs}
+                        className="shrink-0 text-sm font-medium text-[#0073ea] hover:text-[#0060c4]"
+                    >
+                        ← Back to list
+                    </Link>
+                </div>
+            }
+        >
+            <Head title={`${draftingRequest.reference} — Drafting request`} />
+
+            <div className="overflow-hidden rounded-2xl border border-[#e6e9ef] bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)]">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e6e9ef] bg-[#fafbfc] px-6 py-4 sm:px-8">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <span className="inline-flex rounded-md bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/80">
+                            {draftingRequest.status_label}
+                        </span>
+                        <span className="text-sm text-[#676879]">
+                            Requested {draftingRequest.requested_at}
+                        </span>
+                    </div>
+                    {draftingRequest.submitted_by ? (
+                        <p className="text-sm text-[#676879]">
+                            Submitted by{' '}
+                            <span className="font-medium text-[#323338]">
+                                {draftingRequest.submitted_by}
+                            </span>
+                            {draftingRequest.submitted_at
+                                ? ` · ${draftingRequest.submitted_at}`
+                                : null}
+                        </p>
+                    ) : null}
+                </div>
+
+                <Section title="Applicant">
+                    <dl className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                        <DetailRow
+                            label="Date"
+                            value={draftingRequest.requested_at}
+                        />
+                        <DetailRow
+                            label="Your name"
+                            value={draftingRequest.your_name}
+                        />
+                        <DetailRow
+                            label="Company name"
+                            value={draftingRequest.company_name}
+                        />
+                        <DetailRow
+                            label="Email"
+                            value={draftingRequest.email}
+                        />
+                    </dl>
+                </Section>
+
+                <Section title="Type of service engaging">
+                    {draftingRequest.service_engagings?.length > 0 ? (
+                        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            {draftingRequest.service_engagings.map((name) => (
+                                <li
+                                    key={name}
+                                    className="rounded-lg border border-[#e6e9ef] bg-[#fafbfc] px-4 py-2.5 text-sm font-medium text-[#323338]"
+                                >
+                                    {name}
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-sm text-[#676879]">—</p>
+                    )}
+                </Section>
+
+                <Section title="Site">
+                    <dl className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                        <DetailRow
+                            label="Site address"
+                            value={draftingRequest.site_address}
+                            className="lg:col-span-2"
+                        />
+                        <DetailRow
+                            label="Site owner name"
+                            value={draftingRequest.site_owner_name}
+                        />
+                        <DetailRow
+                            label="Maximum building area (sqm)"
+                            value={draftingRequest.max_building_area_sqm}
+                        />
+                    </dl>
+                </Section>
+
+                <Section title="Design & building">
+                    <dl className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                        <DetailRow
+                            label="Design requirements"
+                            value={draftingRequest.design_requirements}
+                            className="lg:col-span-2"
+                        />
+                        <DetailRow
+                            label="Building type"
+                            value={draftingRequest.building_type}
+                        />
+                        <DetailRow
+                            label="NDIS / SDA dwelling"
+                            value={
+                                draftingRequest.ndis_sda ? 'Yes' : 'No'
+                            }
+                        />
+                        <DetailRow
+                            label="External wall construction"
+                            value={draftingRequest.external_wall_construction}
+                        />
+                        <DetailRow
+                            label="Roof type"
+                            value={draftingRequest.roof_type}
+                        />
+                        <DetailRow
+                            label="Ceiling heights"
+                            value={draftingRequest.ceiling_heights}
+                        />
+                        <DetailRow
+                            label="First floor slab / construction"
+                            value={draftingRequest.first_floor_slab}
+                        />
+                        <DetailRow
+                            label="Additional inclusions"
+                            value={draftingRequest.additional_inclusions}
+                            className="lg:col-span-2"
+                        />
+                    </dl>
+                </Section>
+
+                <Section title="Files">
+                    <div className="space-y-6">
+                        {facadeFiles.length > 0 ? (
+                            <div>
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#676879]">
+                                    Facade
+                                </p>
+                                <FileList files={facadeFiles} />
+                            </div>
+                        ) : null}
+                        {documentFiles.length > 0 ? (
+                            <div>
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#676879]">
+                                    Documents
+                                </p>
+                                <FileList files={documentFiles} />
+                            </div>
+                        ) : null}
+                        {draftingRequest.files.length === 0 ? (
+                            <p className="text-sm text-[#676879]">
+                                No files uploaded.
+                            </p>
+                        ) : null}
+                    </div>
+                </Section>
+            </div>
+
+            <div className="mt-6 grid grid-cols-12 gap-4">
+                <CommentsSection
+                    draftingRequestId={draftingRequest.id}
+                    listFilters={listFilters}
+                />
+                <ActivityLogsSection />
+            </div>
+        </AuthenticatedLayout>
+    );
+}
+
+const commentCardClass =
+    'overflow-hidden rounded-2xl border border-[#e6e9ef] bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)]';
+
+function CommentsSection({ draftingRequestId, listFilters }) {
+    const { draftingRequest, flash } = usePage().props;
+    const comments = draftingRequest?.comments ?? [];
+    const listQs = listQueryString(listFilters);
+
+    const form = useForm({ body: '' });
+    const [editorKey, setEditorKey] = useState(0);
+
+    const submit = (e) => {
+        e.preventDefault();
+        form.post(
+            route('job.drafting.comments.store', draftingRequestId) + listQs,
+            {
+                preserveScroll: true,
+                preserveState: false,
+                onSuccess: () => {
+                    form.reset('body');
+                    setEditorKey((key) => key + 1);
+                    router.reload({
+                        only: ['draftingRequest'],
+                        preserveScroll: true,
+                    });
+                },
+            },
+        );
+    };
+
+    return (
+        <section className="col-span-12 lg:col-span-6">
+            <div className={commentCardClass}>
+                <div className="border-b border-[#e6e9ef] bg-[#fafbfc] px-6 py-3 sm:px-8">
+                    <h3 className="text-sm font-semibold text-[#323338]">
+                        Comments
+                    </h3>
+                </div>
+
+                {flash?.status === 'comment-added' ? (
+                    <p className="border-b border-emerald-200 bg-emerald-50 px-6 py-2.5 text-sm text-emerald-800 sm:px-8">
+                        Comment added.
+                    </p>
+                ) : null}
+
+                {comments.length === 0 ? (
+                    <p className="flex items-center gap-2 border-b border-[#e6e9ef] px-6 py-5 text-sm text-[#676879] sm:px-8">
+                        <ChatBubbleLeftRightIcon
+                            className="h-5 w-5 shrink-0"
+                            aria-hidden
+                        />
+                        No comments yet. Be the first to add one.
+                    </p>
+                ) : (
+                    <ul className="divide-y divide-[#e6e9ef] border-b border-[#e6e9ef]">
+                        {comments.map((comment) => (
+                            <li key={comment.id} className="px-6 py-5 sm:px-8">
+                                <article className="flex gap-3">
+                                    <UserAvatar
+                                        user={{
+                                            name: comment.author_name,
+                                            profile_image_url:
+                                                comment.author_profile_image_url,
+                                        }}
+                                        className="h-10 w-10 text-sm"
+                                        ringClassName="ring-2 ring-[#e6e9ef]"
+                                    />
+                                    <div className="min-w-0 flex-1">
+                                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                            <p className="text-sm font-semibold text-[#323338]">
+                                                {comment.author_name}
+                                                {comment.is_mine ? (
+                                                    <span className="ml-2 text-xs font-medium text-[#676879]">
+                                                        (you)
+                                                    </span>
+                                                ) : null}
+                                            </p>
+                                            <time
+                                                className="text-xs text-[#676879]"
+                                                dateTime={comment.created_at}
+                                            >
+                                                {comment.created_at}
+                                            </time>
+                                        </div>
+                                        <CommentBody html={comment.body} />
+                                    </div>
+                                </article>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+
+                <form
+                    onSubmit={submit}
+                    className="space-y-3 px-6 py-5 sm:px-8"
+                >
+                    <h4 className="text-sm font-semibold text-[#323338]">
+                        Add a comment
+                    </h4>
+                    <RichTextEditor
+                        key={editorKey}
+                        id="comment-body"
+                        value={form.data.body}
+                        onChange={(html) => form.setData('body', html)}
+                        disabled={form.processing}
+                        placeholder="Write a comment…"
+                    />
+                    <InputError message={form.errors.body} />
+                    <div className="flex justify-end">
+                        <PrimaryButton
+                            type="submit"
+                            loading={form.processing}
+                            disabled={form.processing}
+                            className="!bg-[#0073ea] hover:!bg-[#0060c4] focus:!ring-[#0073ea]"
+                        >
+                            Post comment
+                        </PrimaryButton>
+                    </div>
+                </form>
+            </div>
+        </section>
+    );
+}
+
+function ActivityLogsSection() {
+    const { draftingRequest } = usePage().props;
+    const activities = draftingRequest?.activities ?? [];
+
+    return (
+        <section className="col-span-12 lg:col-span-6">
+            <div className={`${commentCardClass} flex max-h-[calc(100vh-12rem)] flex-col`}>
+                <div className="border-b border-[#e6e9ef] bg-[#fafbfc] px-6 py-3 sm:px-8">
+                    <h3 className="text-sm font-semibold text-[#323338]">
+                        Activity logs
+                    </h3>
+                    <p className="mt-0.5 text-xs text-[#676879]">
+                        Drafting request and comment activity
+                    </p>
+                </div>
+
+                {activities.length === 0 ? (
+                    <p className="flex items-center gap-2 px-6 py-8 text-sm text-[#676879] sm:px-8">
+                        <ClockIcon className="h-5 w-5 shrink-0" aria-hidden />
+                        No activity recorded yet.
+                    </p>
+                ) : (
+                    <ul className="divide-y divide-[#e6e9ef] overflow-y-auto">
+                        {activities.map((activity) => (
+                            <li
+                                key={activity.id}
+                                className="px-6 py-4 sm:px-8"
+                            >
+                                <div className="flex gap-3">
+                                    <UserAvatar
+                                        user={{
+                                            name: activity.user_name,
+                                            profile_image_url:
+                                                activity.user_profile_image_url,
+                                        }}
+                                        className="h-9 w-9 text-xs"
+                                        ringClassName="ring-2 ring-[#e6e9ef]"
+                                    />
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex flex-wrap items-start justify-between gap-2">
+                                            <div>
+                                                <p className="text-sm font-semibold text-[#323338]">
+                                                    {activity.action_label}
+                                                    {activity.is_mine ? (
+                                                        <span className="ml-2 text-xs font-medium text-[#676879]">
+                                                            (you)
+                                                        </span>
+                                                    ) : null}
+                                                </p>
+                                                <p className="text-xs text-[#676879]">
+                                                    {activity.user_name}
+                                                </p>
+                                            </div>
+                                            <time
+                                                className="shrink-0 text-xs text-[#676879]"
+                                                dateTime={activity.created_at}
+                                            >
+                                                {activity.created_at}
+                                            </time>
+                                        </div>
+                                        {activity.description ? (
+                                            <p className="mt-2 text-sm text-[#323338]">
+                                                {activity.description}
+                                            </p>
+                                        ) : null}
+                                    </div>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
+        </section>
+    );
+}
+
+function CommentBody({ html }) {
+    return (
+        <div
+            className="rich-text-content text-sm text-[#323338] [&_a]:text-[#0073ea] [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-[#c5c7d0] [&_blockquote]:pl-3 [&_blockquote]:text-[#676879] [&_h2]:text-base [&_h2]:font-semibold [&_h3]:text-sm [&_h3]:font-semibold [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5"
+            dangerouslySetInnerHTML={{ __html: html }}
+        />
+    );
+}
+
+function FileList({ files }) {
+    return (
+        <ul className="divide-y divide-[#e6e9ef] rounded-lg border border-[#e6e9ef]">
+            {files.map((file) => (
+                <li
+                    key={file.id}
+                    className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                >
+                    <div className="flex min-w-0 items-center gap-3">
+                        <DocumentTextIcon
+                            className="h-5 w-5 shrink-0 text-[#676879]"
+                            aria-hidden
+                        />
+                        <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-[#323338]">
+                                {file.original_name}
+                            </p>
+                            <p className="text-xs text-[#676879]">
+                                {file.size_label}
+                                {file.mime_type
+                                    ? ` · ${file.mime_type}`
+                                    : null}
+                            </p>
+                        </div>
+                    </div>
+                    <a
+                        href={file.download_url}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-[#c5c7d0] bg-white px-3 py-1.5 text-sm font-semibold text-[#323338] shadow-sm transition hover:bg-[#f6f7fb]"
+                    >
+                        <ArrowDownTrayIcon className="h-4 w-4" aria-hidden />
+                        Download
+                    </a>
+                </li>
+            ))}
+        </ul>
+    );
+}

@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Settings;
 
-use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,7 +18,10 @@ class UserAccountController extends Controller
     {
         [$search, $perPage] = $this->resolveListFilters($request);
 
-        $query = User::query()->active()->orderBy('name');
+        $query = User::query()
+            ->with('role')
+            ->active()
+            ->orderBy('name');
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -34,7 +37,8 @@ class UserAccountController extends Controller
                     'id' => $u->id,
                     'name' => $u->name,
                     'email' => $u->email,
-                    'role' => $u->role->value,
+                    'role' => $u->role?->slug,
+                    'role_name' => $u->role?->name,
                 ])
                 ->withQueryString(),
             'filters' => [
@@ -57,14 +61,14 @@ class UserAccountController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class.',email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'role' => ['required', Rule::enum(UserRole::class)],
+            'role_id' => ['required', Rule::exists('roles', 'id')],
         ]);
 
         User::query()->create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => $validated['password'],
-            'role' => $validated['role'],
+            'role_id' => (int) $validated['role_id'],
         ]);
 
         return redirect()
@@ -78,12 +82,15 @@ class UserAccountController extends Controller
             abort(404);
         }
 
+        $user->load('role');
+
         return Inertia::render('Settings/Users/Edit', [
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'role' => $user->role->value,
+                'role' => $user->role?->slug,
+                'role_id' => $user->role_id,
             ],
             'roles' => $this->roleOptions(),
             'listFilters' => $this->redirectQuery($request),
@@ -96,6 +103,8 @@ class UserAccountController extends Controller
             abort(404);
         }
 
+        $user->load('role');
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => [
@@ -106,27 +115,27 @@ class UserAccountController extends Controller
                 Rule::unique(User::class)->ignore($user->id),
             ],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
-            'role' => ['required', Rule::enum(UserRole::class)],
+            'role_id' => ['required', Rule::exists('roles', 'id')],
         ]);
 
-        $newRole = UserRole::from($validated['role']);
+        $newRole = Role::query()->findOrFail((int) $validated['role_id']);
 
-        if ($user->role === UserRole::Admin && $newRole === UserRole::User) {
+        if ($user->isAdmin() && $newRole->slug === 'user') {
             $otherActiveAdmins = User::query()
                 ->active()
-                ->where('role', UserRole::Admin)
+                ->whereHas('role', fn ($q) => $q->where('slug', 'admin'))
                 ->where('id', '!=', $user->id)
                 ->count();
             if ($otherActiveAdmins < 1) {
                 return back()->withErrors([
-                    'role' => 'At least one active administrator is required.',
-                ])->onlyInput('role');
+                    'role_id' => 'At least one active administrator is required.',
+                ])->onlyInput('role_id');
             }
         }
 
         $user->name = $validated['name'];
         $user->email = $validated['email'];
-        $user->role = $newRole;
+        $user->role_id = (int) $validated['role_id'];
 
         if (! empty($validated['password'])) {
             $user->password = $validated['password'];
@@ -153,10 +162,12 @@ class UserAccountController extends Controller
                 ->with('status', 'user-cannot-archive-self');
         }
 
-        if ($user->role === UserRole::Admin) {
+        $user->load('role');
+
+        if ($user->isAdmin()) {
             $otherActiveAdmins = User::query()
                 ->active()
-                ->where('role', UserRole::Admin)
+                ->whereHas('role', fn ($q) => $q->where('slug', 'admin'))
                 ->where('id', '!=', $user->id)
                 ->count();
             if ($otherActiveAdmins < 1) {
@@ -177,7 +188,10 @@ class UserAccountController extends Controller
     {
         [$search, $perPage] = $this->resolveListFilters($request);
 
-        $query = User::query()->archived()->orderByDesc('archived_at');
+        $query = User::query()
+            ->with('role')
+            ->archived()
+            ->orderByDesc('archived_at');
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -193,7 +207,8 @@ class UserAccountController extends Controller
                     'id' => $u->id,
                     'name' => $u->name,
                     'email' => $u->email,
-                    'role' => $u->role->value,
+                    'role' => $u->role?->slug,
+                    'role_name' => $u->role?->name,
                     'archived_at' => $u->archived_at?->toIso8601String(),
                 ])
                 ->withQueryString(),
@@ -220,17 +235,21 @@ class UserAccountController extends Controller
     }
 
     /**
-     * @return list<array{value: string, label: string}>
+     * @return list<array{id: int, name: string, slug: string}>
      */
     private function roleOptions(): array
     {
-        return collect(UserRole::cases())->map(fn (UserRole $role) => [
-            'value' => $role->value,
-            'label' => match ($role) {
-                UserRole::Admin => 'Administrator',
-                UserRole::User => 'Member',
-            },
-        ])->values()->all();
+        return Role::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug'])
+            ->map(fn (Role $r) => [
+                'id' => $r->id,
+                'name' => $r->name,
+                'slug' => $r->slug,
+            ])
+            ->values()
+            ->all();
     }
 
     /**

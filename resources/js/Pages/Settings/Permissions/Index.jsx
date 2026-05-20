@@ -9,6 +9,7 @@ const ADMIN_REQUIRED_SLUGS = [
     'dashboard.view',
     'settings.permissions.manage',
     'settings.user-accounts.manage',
+    'settings.roles.manage',
 ];
 
 function isAdminLocked(roleValue, slug) {
@@ -61,7 +62,7 @@ export default function PermissionsIndex({ permissions, roles, assigned }) {
             <div className="space-y-6">
                 <p className="text-sm text-slate-600">
                     Checkboxes grant route access per role. The Administrator role
-                    must always keep Dashboard, User accounts, and Role
+                    must always keep Dashboard, User accounts, Roles, and Role
                     permissions (those boxes are fixed).
                 </p>
 

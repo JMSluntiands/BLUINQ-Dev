@@ -97,15 +97,16 @@ export default function UsersArchive({ users, filters = {} }) {
                     <span className="text-[#323338]">{getValue()}</span>
                 ),
             }),
-            columnHelper.accessor('role', {
+            columnHelper.accessor('role_name', {
                 header: ({ column }) => (
                     <DataTableSortHeader column={column}>
                         Role
                     </DataTableSortHeader>
                 ),
-                cell: ({ getValue }) => (
+                cell: ({ row }) => (
                     <span className="inline-flex rounded-md bg-[#e6e9ef] px-2.5 py-0.5 text-xs font-semibold text-[#676879]">
-                        {roleLabel(getValue())}
+                        {row.original.role_name ??
+                            roleLabel(row.original.role)}
                     </span>
                 ),
             }),

@@ -3,9 +3,13 @@ import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { router, useForm } from '@inertiajs/react';
 
 /**
- * @param {{ ziggyRouteName: string; filters?: { search?: string; per_page?: number } }} props
+ * @param {{ ziggyRouteName: string; filters?: { search?: string; per_page?: number }; queryParams?: Record<string, string> }} props
  */
-export default function TableSearchToolbar({ ziggyRouteName, filters = {} }) {
+export default function TableSearchToolbar({
+    ziggyRouteName,
+    filters = {},
+    queryParams = {},
+}) {
     const form = useForm({
         search: filters.search ?? '',
         per_page: String(filters.per_page ?? 10),
@@ -17,6 +21,7 @@ export default function TableSearchToolbar({ ziggyRouteName, filters = {} }) {
         router.get(
             route(ziggyRouteName),
             {
+                ...queryParams,
                 ...(search ? { search } : {}),
                 per_page: perPage,
                 page: overrides.page ?? 1,

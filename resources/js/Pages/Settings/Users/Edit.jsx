@@ -23,7 +23,7 @@ export default function UsersEdit({ user, roles = [], listFilters = {} }) {
     const form = useForm({
         name: user.name,
         email: user.email,
-        role: user.role,
+        role_id: user.role_id,
         password: '',
         password_confirmation: '',
     });
@@ -85,22 +85,25 @@ export default function UsersEdit({ user, roles = [], listFilters = {} }) {
                     </div>
 
                     <div>
-                        <InputLabel htmlFor="role" value="Role" />
+                        <InputLabel htmlFor="role_id" value="Role" />
                         <select
-                            id="role"
+                            id="role_id"
                             className="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
-                            value={form.data.role}
+                            value={form.data.role_id}
                             onChange={(e) =>
-                                form.setData('role', e.target.value)
+                                form.setData(
+                                    'role_id',
+                                    Number(e.target.value),
+                                )
                             }
                         >
                             {roles.map((r) => (
-                                <option key={r.value} value={r.value}>
-                                    {r.label}
+                                <option key={r.id} value={r.id}>
+                                    {r.name}
                                 </option>
                             ))}
                         </select>
-                        <InputError className="mt-2" message={form.errors.role} />
+                        <InputError className="mt-2" message={form.errors.role_id} />
                     </div>
 
                     <div className="border-t border-slate-200 pt-4">

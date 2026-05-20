@@ -28,7 +28,6 @@ function formatCount(n) {
 
 export default function Dashboard() {
     const { auth, stats = [] } = usePage().props;
-    const role = auth.user?.role;
 
     return (
         <AuthenticatedLayout
@@ -64,7 +63,8 @@ export default function Dashboard() {
                     <p className="mt-2 text-sm text-slate-600">
                         Role:{' '}
                         <span className="font-semibold text-slate-800">
-                            {roleLabel(role)}
+                            {auth.user?.role_display_name ??
+                                roleLabel(auth.user?.role)}
                         </span>
                     </p>
                 </div>

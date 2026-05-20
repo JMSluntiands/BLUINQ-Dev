@@ -66,8 +66,24 @@ class StoreDraftingRequestFormRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge([
+        $nullableIds = [
+            'external_wall_construction_id',
+            'roof_type_id',
+        ];
+
+        $normalized = [
             'ndis_sda' => filter_var($this->input('ndis_sda'), FILTER_VALIDATE_BOOLEAN),
-        ]);
+        ];
+
+        foreach ($nullableIds as $key) {
+            $value = $this->input($key);
+            $normalized[$key] = $value === '' || $value === null ? null : $value;
+        }
+
+        if ($this->input('max_building_area_sqm') === '') {
+            $normalized['max_building_area_sqm'] = null;
+        }
+
+        $this->merge($normalized);
     }
 }

@@ -1,7 +1,7 @@
 <?php
 
-use App\Enums\UserRole;
 use App\Http\Controllers\BrandLogoController;
+use App\Http\Controllers\Job\DraftingController;
 use App\Http\Controllers\Job\DraftingRequestFormController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Settings\ActivityLogController;
@@ -11,6 +11,7 @@ use App\Http\Controllers\Settings\Crm\CrmCategoryController;
 use App\Http\Controllers\Settings\DeliverableController;
 use App\Http\Controllers\Settings\ExternalWallConstructionController;
 use App\Http\Controllers\Settings\LevelOfDifficultyController;
+use App\Http\Controllers\Settings\RoleController;
 use App\Http\Controllers\Settings\RolePermissionController;
 use App\Http\Controllers\Settings\RoofTypeController;
 use App\Http\Controllers\Settings\ScopeOfWorkController;
@@ -33,11 +34,11 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
                 ],
                 [
                     'label' => 'Administrators',
-                    'value' => User::query()->active()->where('role', UserRole::Admin)->count(),
+                    'value' => User::query()->active()->whereHas('role', fn ($q) => $q->where('slug', 'admin'))->count(),
                 ],
                 [
                     'label' => 'Members',
-                    'value' => User::query()->active()->where('role', UserRole::User)->count(),
+                    'value' => User::query()->active()->whereHas('role', fn ($q) => $q->where('slug', 'user'))->count(),
                 ],
                 [
                     'label' => 'New (7 days)',
@@ -47,9 +48,14 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ]);
     })->name('dashboard');
 
-    Route::get('/job/drafting', function () {
-        return Inertia::render('Job/Drafting');
-    })->name('job.drafting');
+    Route::get('/job/drafting', [DraftingController::class, 'index'])
+        ->name('job.drafting');
+    Route::get('/job/drafting/{draftingRequest}', [DraftingController::class, 'show'])
+        ->name('job.drafting.show');
+    Route::get('/job/drafting/{draftingRequest}/files/{file}', [DraftingController::class, 'downloadFile'])
+        ->name('job.drafting.files.download');
+    Route::post('/job/drafting/{draftingRequest}/comments', [DraftingController::class, 'storeComment'])
+        ->name('job.drafting.comments.store');
 
     Route::get('/job/drafting-request-form', [DraftingRequestFormController::class, 'create'])
         ->name('job.drafting-request-form');
@@ -217,6 +223,15 @@ Route::middleware(['auth', 'admin', 'permission.route'])->group(function () {
         Route::patch('/{user}', [UserAccountController::class, 'update'])->name('update');
         Route::delete('/{user}', [UserAccountController::class, 'destroy'])->name('destroy');
         Route::post('/{user}/restore', [UserAccountController::class, 'restore'])->name('restore');
+    });
+
+    Route::prefix('settings/roles')->name('settings.roles.')->group(function () {
+        Route::get('/', [RoleController::class, 'index'])->name('index');
+        Route::get('/create', [RoleController::class, 'create'])->name('create');
+        Route::post('/', [RoleController::class, 'store'])->name('store');
+        Route::get('/{role}/edit', [RoleController::class, 'edit'])->name('edit');
+        Route::patch('/{role}', [RoleController::class, 'update'])->name('update');
+        Route::delete('/{role}', [RoleController::class, 'destroy'])->name('destroy');
     });
 
     Route::get('/settings/permissions', [RolePermissionController::class, 'edit'])

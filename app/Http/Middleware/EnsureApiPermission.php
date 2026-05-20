@@ -16,7 +16,9 @@ class EnsureApiPermission
             return response()->json(['message' => 'Unauthenticated.'], Response::HTTP_UNAUTHORIZED);
         }
 
-        $slugs = Permission::slugsForRole($user->role->value);
+        $user->loadMissing('role');
+
+        $slugs = Permission::slugsForRole($user->role->slug);
         if (! in_array($permission, $slugs, true)) {
             return response()->json(['message' => 'You do not have permission for this action.'], Response::HTTP_FORBIDDEN);
         }

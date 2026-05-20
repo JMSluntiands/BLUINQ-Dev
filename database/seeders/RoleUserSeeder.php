@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Enums\UserRole;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -15,12 +15,19 @@ class RoleUserSeeder extends Seeder
     {
         $password = 'admin123';
 
+        $adminRoleId = Role::query()->where('slug', 'admin')->value('id');
+        $memberRoleId = Role::query()->where('slug', 'user')->value('id');
+
+        if ($adminRoleId === null || $memberRoleId === null) {
+            return;
+        }
+
         User::query()->updateOrCreate(
             ['email' => 'admin@bluinq.local'],
             [
                 'name' => 'Admin',
                 'password' => $password,
-                'role' => UserRole::Admin->value,
+                'role_id' => $adminRoleId,
                 'email_verified_at' => now(),
             ],
         );
@@ -30,7 +37,7 @@ class RoleUserSeeder extends Seeder
             [
                 'name' => 'User',
                 'password' => $password,
-                'role' => UserRole::User->value,
+                'role_id' => $memberRoleId,
                 'email_verified_at' => now(),
             ],
         );

@@ -14,6 +14,7 @@ class ProfileApiController extends Controller
     public function show(Request $request): JsonResponse
     {
         $user = $request->user();
+        $user->loadMissing('role');
 
         return response()->json([
             'user' => [
@@ -21,7 +22,7 @@ class ProfileApiController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'email_verified_at' => $user->email_verified_at,
-                'role' => $user->role->value,
+                'role' => $user->role?->slug,
                 'profile_image_url' => $user->profile_image_url,
             ],
         ]);

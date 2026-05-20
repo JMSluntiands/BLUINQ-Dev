@@ -28,6 +28,7 @@ class AuthController extends Controller
 
         /** @var User $user */
         $user = User::query()->where('email', $credentials['email'])->firstOrFail();
+        $user->loadMissing('role');
 
         if ($user->archived_at !== null) {
             Auth::logout();
@@ -57,6 +58,7 @@ class AuthController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
+        $user->loadMissing('role');
 
         return response()->json($this->userPayload($user));
     }
@@ -66,13 +68,15 @@ class AuthController extends Controller
      */
     private function userPayload(User $user): array
     {
+        $user->loadMissing('role');
+
         return [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
-            'role' => $user->role->value,
+            'role' => $user->role?->slug,
             'profile_image_url' => $user->profile_image_url,
-            'permissions' => Permission::slugsForRole($user->role->value),
+            'permissions' => Permission::slugsForRole($user->role?->slug ?? ''),
         ];
     }
 }

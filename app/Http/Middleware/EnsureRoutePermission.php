@@ -16,6 +16,8 @@ class EnsureRoutePermission
             return $next($request);
         }
 
+        $user->loadMissing('role');
+
         $routeName = $request->route()?->getName();
         if (! $routeName) {
             return $next($request);
@@ -27,7 +29,7 @@ class EnsureRoutePermission
             return $next($request);
         }
 
-        $slugs = Permission::slugsForRole($user->role->value);
+        $slugs = Permission::slugsForRole($user->role->slug);
         if (! in_array($slug, $slugs, true)) {
             abort(Response::HTTP_FORBIDDEN);
         }

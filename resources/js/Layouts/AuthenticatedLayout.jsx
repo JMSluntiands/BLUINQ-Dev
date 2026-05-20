@@ -15,6 +15,7 @@ import {
     HomeIcon,
     InboxStackIcon,
     Squares2X2Icon,
+    ShieldCheckIcon,
     TagIcon,
     UserGroupIcon,
     UsersIcon,
@@ -108,10 +109,15 @@ export default function AuthenticatedLayout({ header, children }) {
         user?.role === 'admin' && can('settings.permissions.manage');
     const canActivityLogs =
         user?.role === 'admin' && can('settings.activity-logs.view');
+    const canRoles =
+        user?.role === 'admin' &&
+        (can('settings.roles.manage') || can('settings.user-accounts.manage'));
     const canDrafting = can('dashboard.view');
 
     const isDashboard = route().current('dashboard');
-    const isDrafting = route().current('job.drafting');
+    const isDrafting =
+        route().current('job.drafting') ||
+        route().current('job.drafting.show');
     const isDraftingRequestForm = route().current(
         'job.drafting-request-form',
     );
@@ -125,6 +131,11 @@ export default function AuthenticatedLayout({ header, children }) {
         isUsersIndex || isUsersCreate || isUsersEdit || isUsersArchive;
     const isPermissions = route().current('settings.permissions.edit');
     const isActivityLogs = route().current('settings.activity-logs.index');
+    const isRolesIndex = route().current('settings.roles.index');
+    const isRolesCreate = route().current('settings.roles.create');
+    const isRolesEdit = route().current('settings.roles.edit');
+    const isRolesSection =
+        isRolesIndex || isRolesCreate || isRolesEdit;
     const isBtIndex = route().current('settings.building-type.index');
     const isBtCreate = route().current('settings.building-type.create');
     const isBtArchive = route().current('settings.building-type.archive');
@@ -185,7 +196,8 @@ export default function AuthenticatedLayout({ header, children }) {
         canCrmCategories ||
         canUserAccounts ||
         canPermissionsPage ||
-        canActivityLogs;
+        canActivityLogs ||
+        canRoles;
     const showWorkflowSettings =
         canServiceEngaging ||
         canExternalWallConstruction ||
@@ -1115,7 +1127,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                     )}
                             {(canUserAccounts ||
                                 canPermissionsPage ||
-                                canActivityLogs) && (
+                                canActivityLogs ||
+                                canRoles) && (
                                 <>
                                     <p
                                         className={
@@ -1140,6 +1153,21 @@ export default function AuthenticatedLayout({ header, children }) {
                                             }
                                         >
                                             User accounts
+                                        </NavItem>
+                                    )}
+                                    {canRoles && (
+                                        <NavItem
+                                            href={route('settings.roles.index')}
+                                            active={isRolesSection}
+                                            onNavigate={closeSidebar}
+                                            icon={
+                                                <ShieldCheckIcon
+                                                    className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
+                                                    aria-hidden
+                                                />
+                                            }
+                                        >
+                                            Roles
                                         </NavItem>
                                     )}
                                     {canPermissionsPage && (
@@ -1196,9 +1224,10 @@ export default function AuthenticatedLayout({ header, children }) {
                             <p className="truncate text-xs text-slate-500">
                                 {user.email}
                             </p>
-                            {user.role && (
+                            {(user.role || user.role_display_name) && (
                                 <p className="mt-2 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                                    {roleLabel(user.role)}
+                                    {user.role_display_name ??
+                                        roleLabel(user.role)}
                                 </p>
                             )}
                         </div>

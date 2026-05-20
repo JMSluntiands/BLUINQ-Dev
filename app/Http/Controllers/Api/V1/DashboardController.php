@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -19,11 +18,11 @@ class DashboardController extends Controller
                 ],
                 [
                     'label' => 'Administrators',
-                    'value' => User::query()->active()->where('role', UserRole::Admin)->count(),
+                    'value' => User::query()->active()->whereHas('role', fn ($q) => $q->where('slug', 'admin'))->count(),
                 ],
                 [
                     'label' => 'Members',
-                    'value' => User::query()->active()->where('role', UserRole::User)->count(),
+                    'value' => User::query()->active()->whereHas('role', fn ($q) => $q->where('slug', 'user'))->count(),
                 ],
                 [
                     'label' => 'New (7 days)',

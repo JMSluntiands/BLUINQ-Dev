@@ -85,6 +85,7 @@ function cellAlignClass(meta) {
  *   columns: import('@tanstack/react-table').ColumnDef<TData, any>[];
  *   emptyMessage: import('react').ReactNode;
  *   getRowId?: (originalRow: TData, index: number, parent?: unknown) => string;
+ *   onRowClick?: (row: TData) => void;
  * }} props
  */
 export default function DataTable({
@@ -92,6 +93,7 @@ export default function DataTable({
     columns,
     emptyMessage,
     getRowId,
+    onRowClick,
 }) {
     const [sorting, setSorting] = useState([]);
 
@@ -158,7 +160,30 @@ export default function DataTable({
                         {table.getRowModel().rows.map((row) => (
                             <tr
                                 key={row.id}
-                                className="group border-b border-[#f0f1f5] transition-colors last:border-b-0 hover:bg-[#f6f7fb]"
+                                className={
+                                    'group border-b border-[#f0f1f5] transition-colors last:border-b-0 hover:bg-[#f6f7fb] ' +
+                                    (onRowClick ? 'cursor-pointer' : '')
+                                }
+                                onClick={
+                                    onRowClick
+                                        ? () => onRowClick(row.original)
+                                        : undefined
+                                }
+                                onKeyDown={
+                                    onRowClick
+                                        ? (e) => {
+                                              if (
+                                                  e.key === 'Enter' ||
+                                                  e.key === ' '
+                                              ) {
+                                                  e.preventDefault();
+                                                  onRowClick(row.original);
+                                              }
+                                          }
+                                        : undefined
+                                }
+                                tabIndex={onRowClick ? 0 : undefined}
+                                role={onRowClick ? 'button' : undefined}
                             >
                                 {row.getVisibleCells().map((cell) => {
                                     const align = cellAlignClass(

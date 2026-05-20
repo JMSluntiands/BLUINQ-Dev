@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\Permission;
+use App\Models\Role;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -18,17 +18,18 @@ class RolePermissionController extends Controller
             ->orderBy('sort_order')
             ->get(['id', 'slug', 'name', 'status']);
 
-        $roles = collect(UserRole::cases())->map(fn (UserRole $role) => [
-            'value' => $role->value,
-            'label' => match ($role) {
-                UserRole::Admin => 'Administrator',
-                UserRole::User => 'Member',
-            },
-        ]);
+        $roles = Role::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['slug', 'name'])
+            ->map(fn (Role $r) => [
+                'value' => $r->slug,
+                'label' => $r->name,
+            ]);
 
         $assigned = [];
-        foreach (UserRole::cases() as $role) {
-            $assigned[$role->value] = Permission::slugsForRole($role->value);
+        foreach (Role::query()->orderBy('sort_order')->orderBy('name')->get() as $role) {
+            $assigned[$role->slug] = Permission::slugsForRole($role->slug);
         }
 
         return response()->json([
@@ -45,20 +46,34 @@ class RolePermissionController extends Controller
             ->pluck('slug')
             ->all();
 
-        $validated = $request->validate([
-            'roles' => ['required', 'array'],
-            'roles.'.UserRole::Admin->value => ['required', 'array'],
-            'roles.'.UserRole::Admin->value.'.*' => ['string', Rule::in($permissionSlugs)],
-            'roles.'.UserRole::User->value => ['required', 'array'],
-            'roles.'.UserRole::User->value.'.*' => ['string', Rule::in($permissionSlugs)],
-        ]);
+        $roleSlugs = Role::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->pluck('slug')
+            ->all();
 
-        $adminSlugs = $validated['roles'][UserRole::Admin->value];
+        $rules = [
+            'roles' => ['required', 'array'],
+        ];
+
+        foreach ($roleSlugs as $slug) {
+            $rules['roles.'.$slug] = ['required', 'array'];
+            $rules['roles.'.$slug.'.*'] = ['string', Rule::in($permissionSlugs)];
+        }
+
+        $validated = $request->validate($rules);
+
+        $adminSlugs = $validated['roles']['admin'] ?? [];
         $requiredAdmin = [
             'dashboard.view',
             'settings.permissions.manage',
             'settings.user-accounts.manage',
+            'settings.roles.manage',
         ];
+        $requiredAdmin = array_values(array_filter(
+            $requiredAdmin,
+            fn (string $slug) => in_array($slug, $permissionSlugs, true),
+        ));
         foreach ($requiredAdmin as $req) {
             if (! in_array($req, $adminSlugs, true)) {
                 return response()->json([
@@ -68,8 +83,9 @@ class RolePermissionController extends Controller
             }
         }
 
-        Permission::syncSlugsForRole(UserRole::Admin->value, $adminSlugs);
-        Permission::syncSlugsForRole(UserRole::User->value, $validated['roles'][UserRole::User->value]);
+        foreach ($roleSlugs as $slug) {
+            Permission::syncSlugsForRole($slug, $validated['roles'][$slug]);
+        }
 
         return response()->json(['message' => 'Permissions saved.']);
     }

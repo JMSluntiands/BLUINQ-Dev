@@ -31,13 +31,20 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
+        if ($user !== null) {
+            $user->loadMissing('role');
+        }
 
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $user ? array_merge($user->toArray(), [
-                    'permissions' => Permission::slugsForRole($user->role->value),
-                ]) : null,
+                'user' => $user && $user->role
+                    ? array_merge($user->makeHidden(['role'])->toArray(), [
+                        'role' => $user->role->slug,
+                        'role_display_name' => $user->role->name,
+                        'permissions' => Permission::slugsForRole($user->role->slug),
+                    ])
+                    : null,
             ],
             'logo_url' => $this->resolveAppLogoUrl(),
             'flash' => [
