@@ -62,6 +62,7 @@ class DraftingRequestFormController extends Controller
         DB::transaction(function () use ($request, $user, $validated) {
             $draftingRequest = DraftingRequest::query()->create([
                 'user_id' => $user->id,
+                'status' => DraftingRequest::STATUS_ALLOCATED,
                 ...$validated,
             ]);
 

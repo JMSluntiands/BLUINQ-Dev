@@ -7,9 +7,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DraftingRequestComment extends Model
 {
+    public const KIND_COMMENT = 'comment';
+
+    public const KIND_RUN = 'run';
+
     protected $fillable = [
         'drafting_request_id',
         'user_id',
+        'kind',
         'body',
     ];
 

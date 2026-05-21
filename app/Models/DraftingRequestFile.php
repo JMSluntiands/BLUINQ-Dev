@@ -11,6 +11,8 @@ class DraftingRequestFile extends Model
 
     public const KIND_DOCUMENT = 'document';
 
+    public const KIND_TEAM = 'team';
+
     protected $fillable = [
         'drafting_request_id',
         'kind',

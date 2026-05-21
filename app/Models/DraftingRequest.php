@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -9,8 +10,41 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DraftingRequest extends Model
 {
+    public const STATUS_ALLOCATED = 'allocated';
+
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_IN_PROGRESS = 'in_progress';
+
+    public const STATUS_COMPLETED = 'completed';
+
+    public const STATUS_ON_HOLD = 'on_hold';
+
+    /**
+     * @return array<string, string>
+     */
+    public static function statusOptions(): array
+    {
+        return [
+            self::STATUS_ALLOCATED => 'Allocated',
+            self::STATUS_PENDING => 'Pending',
+            self::STATUS_IN_PROGRESS => 'In progress',
+            self::STATUS_COMPLETED => 'Completed',
+            self::STATUS_ON_HOLD => 'On hold',
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function statusValues(): array
+    {
+        return array_keys(self::statusOptions());
+    }
+
     protected $fillable = [
         'user_id',
+        'status',
         'requested_at',
         'your_name',
         'company_name',
@@ -26,6 +60,7 @@ class DraftingRequest extends Model
         'ceiling_heights',
         'first_floor_slab',
         'additional_inclusions',
+        'archived_at',
     ];
 
     /**
@@ -35,9 +70,33 @@ class DraftingRequest extends Model
     {
         return [
             'requested_at' => 'datetime',
+            'archived_at' => 'datetime',
             'max_building_area_sqm' => 'decimal:2',
             'ndis_sda' => 'boolean',
         ];
+    }
+
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->whereNull('archived_at');
+    }
+
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeArchived(Builder $query): Builder
+    {
+        return $query->whereNotNull('archived_at');
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
     }
 
     /**
@@ -102,5 +161,15 @@ class DraftingRequest extends Model
     public function activities(): HasMany
     {
         return $this->hasMany(DraftingRequestActivity::class)->latest();
+    }
+
+    public function statusLabel(): string
+    {
+        if ($this->status === null || $this->status === '') {
+            return self::statusOptions()[self::STATUS_ALLOCATED];
+        }
+
+        return self::statusOptions()[$this->status]
+            ?? ucfirst(str_replace('_', ' ', $this->status));
     }
 }

@@ -50,12 +50,26 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
 
     Route::get('/job/drafting', [DraftingController::class, 'index'])
         ->name('job.drafting');
+    Route::get('/job/drafting/archive', [DraftingController::class, 'archive'])
+        ->name('job.drafting.archive');
+    Route::delete('/job/drafting/{draftingRequest}', [DraftingController::class, 'destroy'])
+        ->name('job.drafting.destroy');
+    Route::post('/job/drafting/{draftingRequest}/restore', [DraftingController::class, 'restore'])
+        ->name('job.drafting.restore');
     Route::get('/job/drafting/{draftingRequest}', [DraftingController::class, 'show'])
         ->name('job.drafting.show');
     Route::get('/job/drafting/{draftingRequest}/files/{file}', [DraftingController::class, 'downloadFile'])
         ->name('job.drafting.files.download');
+    Route::post('/job/drafting/{draftingRequest}/files', [DraftingController::class, 'storeFiles'])
+        ->name('job.drafting.files.store');
+    Route::delete('/job/drafting/{draftingRequest}/files/{file}', [DraftingController::class, 'destroyFile'])
+        ->name('job.drafting.files.destroy');
     Route::post('/job/drafting/{draftingRequest}/comments', [DraftingController::class, 'storeComment'])
         ->name('job.drafting.comments.store');
+    Route::patch('/job/drafting/{draftingRequest}/status', [DraftingController::class, 'updateStatus'])
+        ->name('job.drafting.status.update');
+    Route::patch('/job/drafting/{draftingRequest}', [DraftingController::class, 'update'])
+        ->name('job.drafting.update');
 
     Route::get('/job/drafting-request-form', [DraftingRequestFormController::class, 'create'])
         ->name('job.drafting-request-form');

@@ -11,6 +11,18 @@ class DraftingRequestActivity extends Model
 
     public const ACTION_COMMENT_POSTED = 'comment_posted';
 
+    public const ACTION_RUN_COMMENT_POSTED = 'run_comment_posted';
+
+    public const ACTION_ARCHIVED = 'archived';
+
+    public const ACTION_RESTORED = 'restored';
+
+    public const ACTION_STATUS_CHANGED = 'status_changed';
+
+    public const ACTION_DETAILS_UPDATED = 'details_updated';
+
+    public const ACTION_FILES_UPDATED = 'files_updated';
+
     protected $fillable = [
         'drafting_request_id',
         'user_id',

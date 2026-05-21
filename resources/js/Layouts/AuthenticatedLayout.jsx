@@ -115,13 +115,17 @@ export default function AuthenticatedLayout({ header, children }) {
     const canDrafting = can('dashboard.view');
 
     const isDashboard = route().current('dashboard');
-    const isDrafting =
+    const isDraftingList =
         route().current('job.drafting') ||
         route().current('job.drafting.show');
+    const isDraftingArchive = route().current('job.drafting.archive');
     const isDraftingRequestForm = route().current(
         'job.drafting-request-form',
     );
-    const isArchiTeamSection = isDrafting || isDraftingRequestForm;
+    const isArchiTeamSection =
+        isDraftingList ||
+        isDraftingArchive ||
+        isDraftingRequestForm;
     const isCrm = route().current('crm.index');
     const isUsersIndex = route().current('settings.users.index');
     const isUsersCreate = route().current('settings.users.create');
@@ -408,10 +412,17 @@ export default function AuthenticatedLayout({ header, children }) {
                                         </SidebarSubLink>
                                         <SidebarSubLink
                                             href={route('job.drafting')}
-                                            active={isDrafting}
+                                            active={isDraftingList}
                                             onNavigate={closeSidebar}
                                         >
                                             Archi Project Management
+                                        </SidebarSubLink>
+                                        <SidebarSubLink
+                                            href={route('job.drafting.archive')}
+                                            active={isDraftingArchive}
+                                            onNavigate={closeSidebar}
+                                        >
+                                            Archive
                                         </SidebarSubLink>
                                     </div>
                                 )}

@@ -4,12 +4,20 @@ namespace App\Http\Controllers\Job;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDraftingRequestCommentRequest;
+use App\Http\Requests\StoreDraftingRequestFilesRequest;
+use App\Http\Requests\UpdateDraftingRequestRequest;
+use App\Http\Requests\UpdateDraftingRequestStatusRequest;
+use App\Models\BuildingType;
 use App\Models\DraftingRequest;
+use App\Models\ExternalWallConstruction;
+use App\Models\RoofType;
+use App\Models\ServiceEngaging;
 use App\Models\DraftingRequestActivity;
 use App\Models\DraftingRequestComment;
 use App\Models\DraftingRequestFile;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -18,57 +26,53 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DraftingController extends Controller
 {
+    private const PRIVATE_DISK = 'local';
+
     public function index(Request $request): Response
     {
         [$search, $perPage] = $this->resolveListFilters($request);
-        $user = $request->user();
 
-        $query = DraftingRequest::query()
-            ->with([
-                'buildingType:id,name',
-                'serviceEngagings:id,name',
-            ])
-            ->withCount('files')
-            ->orderByDesc('requested_at')
-            ->orderByDesc('id');
+        $query = $this->baseListQuery($request)
+            ->active();
 
-        if (! $user->isAdmin()) {
-            $query->where('user_id', $user->id);
-        }
-
-        if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->where('your_name', 'like', '%'.$search.'%')
-                    ->orWhere('company_name', 'like', '%'.$search.'%')
-                    ->orWhere('email', 'like', '%'.$search.'%')
-                    ->orWhere('site_address', 'like', '%'.$search.'%')
-                    ->orWhere('site_owner_name', 'like', '%'.$search.'%');
-            });
-        }
+        $this->applySearch($query, $search);
 
         return Inertia::render('Job/Drafting', [
             'draftingRequests' => $query
                 ->paginate($perPage)
+                ->through(fn (DraftingRequest $row) => $this->formatListRow($row))
+                ->withQueryString(),
+            'filters' => [
+                'search' => $search,
+                'per_page' => $perPage,
+            ],
+            'canViewAllRequests' => $request->user()->isAdmin(),
+        ]);
+    }
+
+    public function archive(Request $request): Response
+    {
+        [$search, $perPage] = $this->resolveListFilters($request);
+
+        $query = $this->baseListQuery($request)
+            ->archived()
+            ->orderByDesc('archived_at');
+
+        $this->applySearch($query, $search);
+
+        return Inertia::render('Job/Drafting/Archive', [
+            'draftingRequests' => $query
+                ->paginate($perPage)
                 ->through(fn (DraftingRequest $row) => [
-                    'id' => $row->id,
-                    'reference' => sprintf('DRF-%05d', $row->id),
-                    'requested_at' => $row->requested_at?->timezone(config('app.timezone'))->format('d M Y, h:i A'),
-                    'your_name' => $row->your_name,
-                    'company_name' => $row->company_name,
-                    'site_address' => $row->site_address,
-                    'building_type' => $row->buildingType?->name,
-                    'services' => $row->serviceEngagings->pluck('name')->join(', '),
-                    'files_count' => $row->files_count,
-                    'ndis_sda' => $row->ndis_sda,
-                    'status' => 'pending',
-                    'status_label' => 'Pending',
+                    ...$this->formatListRow($row),
+                    'archived_at' => $row->archived_at?->toIso8601String(),
                 ])
                 ->withQueryString(),
             'filters' => [
                 'search' => $search,
                 'per_page' => $perPage,
             ],
-            'canViewAllRequests' => $user->isAdmin(),
+            'canViewAllRequests' => $request->user()->isAdmin(),
         ]);
     }
 
@@ -89,17 +93,29 @@ class DraftingController extends Controller
         ]);
 
         $tz = config('app.timezone');
+        $listFilters = $this->listFiltersFromRequest($request);
+        $user = $request->user();
 
         return Inertia::render('Job/Drafting/Show', [
             'draftingRequest' => [
                 'id' => $draftingRequest->id,
                 'reference' => sprintf('DRF-%05d', $draftingRequest->id),
-                'status_label' => 'Pending',
+                'status' => $draftingRequest->status,
+                'status_label' => $draftingRequest->statusLabel(),
+                'is_archived' => $draftingRequest->isArchived(),
+                'archived_at' => $draftingRequest->archived_at?->timezone($tz)->format('d M Y, h:i A'),
                 'requested_at' => $draftingRequest->requested_at?->timezone($tz)->format('d M Y, h:i A'),
                 'submitted_at' => $draftingRequest->created_at?->timezone($tz)->format('d M Y, h:i A'),
                 'your_name' => $draftingRequest->your_name,
                 'company_name' => $draftingRequest->company_name,
                 'email' => $draftingRequest->email,
+                'building_type_id' => $draftingRequest->building_type_id,
+                'external_wall_construction_id' => $draftingRequest->external_wall_construction_id,
+                'roof_type_id' => $draftingRequest->roof_type_id,
+                'service_engaging_ids' => $draftingRequest->serviceEngagings
+                    ->pluck('id')
+                    ->values()
+                    ->all(),
                 'site_address' => $draftingRequest->site_address,
                 'site_owner_name' => $draftingRequest->site_owner_name,
                 'max_building_area_sqm' => $draftingRequest->max_building_area_sqm !== null
@@ -121,9 +137,11 @@ class DraftingController extends Controller
                 'files' => $draftingRequest->files->map(fn (DraftingRequestFile $file) => [
                     'id' => $file->id,
                     'kind' => $file->kind,
-                    'kind_label' => $file->kind === DraftingRequestFile::KIND_FACADE
-                        ? 'Facade'
-                        : 'Document',
+                    'kind_label' => match ($file->kind) {
+                        DraftingRequestFile::KIND_FACADE => 'Facade',
+                        DraftingRequestFile::KIND_TEAM => 'Team upload',
+                        default => 'Document',
+                    },
                     'original_name' => $file->original_name,
                     'mime_type' => $file->mime_type,
                     'size' => $file->size,
@@ -133,13 +151,165 @@ class DraftingController extends Controller
                         'file' => $file->id,
                     ]),
                 ])->all(),
-                'comments' => $draftingRequest->comments
-                    ->map(fn (DraftingRequestComment $comment) => $this->formatComment($comment, $tz))
-                    ->all(),
+                'comments' => $this->formatCommentsByKind(
+                    $draftingRequest->comments,
+                    DraftingRequestComment::KIND_COMMENT,
+                    $tz,
+                ),
+                'run_comments' => $user->isAdmin()
+                    ? $this->formatCommentsByKind(
+                        $draftingRequest->comments,
+                        DraftingRequestComment::KIND_RUN,
+                        $tz,
+                    )
+                    : [],
                 'activities' => $this->formatActivities($draftingRequest, $tz),
             ],
-            'listFilters' => $this->listFiltersFromRequest($request),
+            'listFilters' => $listFilters,
+            'canUseRunComments' => $user->isAdmin(),
+            'canEdit' => $user->isAdmin() && ! $draftingRequest->isArchived(),
+            'canEditStatus' => $user->isAdmin() && ! $draftingRequest->isArchived(),
+            'formOptions' => $user->isAdmin() ? [
+                'buildingTypes' => BuildingType::query()->active()->orderBy('name')->get(['id', 'name']),
+                'serviceEngagings' => ServiceEngaging::query()->active()->orderBy('name')->get(['id', 'name']),
+                'externalWallConstructions' => ExternalWallConstruction::query()->active()->orderBy('name')->get(['id', 'name']),
+                'roofTypes' => RoofType::query()->active()->orderBy('name')->get(['id', 'name']),
+            ] : null,
+            'statusOptions' => collect(DraftingRequest::statusOptions())
+                ->map(fn (string $label, string $value) => [
+                    'value' => $value,
+                    'label' => $label,
+                ])
+                ->values()
+                ->all(),
         ]);
+    }
+
+    public function update(
+        UpdateDraftingRequestRequest $request,
+        DraftingRequest $draftingRequest,
+    ): RedirectResponse {
+        $this->authorizeStatusUpdate($request, $draftingRequest);
+
+        $validated = $request->validated();
+        $section = $validated['section'];
+        unset($validated['section']);
+
+        $serviceEngagingIds = $validated['service_engaging_ids'] ?? null;
+        unset($validated['service_engaging_ids']);
+
+        $draftingRequest->update($validated);
+
+        if ($serviceEngagingIds !== null) {
+            $draftingRequest->serviceEngagings()->sync($serviceEngagingIds);
+        }
+
+        DraftingRequestActivity::record(
+            $draftingRequest,
+            $request->user(),
+            DraftingRequestActivity::ACTION_DETAILS_UPDATED,
+            sprintf('Updated %s.', $this->sectionLabel($section)),
+        );
+
+        return redirect()
+            ->route('job.drafting.show', [
+                'draftingRequest' => $draftingRequest->id,
+                ...array_filter($this->listFiltersFromRequest($request)),
+            ])
+            ->with('status', 'drf-updated');
+    }
+
+    public function updateStatus(
+        UpdateDraftingRequestStatusRequest $request,
+        DraftingRequest $draftingRequest,
+    ): RedirectResponse {
+        $this->authorizeStatusUpdate($request, $draftingRequest);
+
+        $newStatus = $request->validated('status');
+        $previousStatus = $draftingRequest->status;
+
+        if ($previousStatus === $newStatus) {
+            return redirect()
+                ->route('job.drafting.show', [
+                    'draftingRequest' => $draftingRequest->id,
+                    ...array_filter($this->listFiltersFromRequest($request)),
+                ]);
+        }
+
+        $draftingRequest->update(['status' => $newStatus]);
+
+        $options = DraftingRequest::statusOptions();
+        $fromLabel = $options[$previousStatus]
+            ?? ($previousStatus ? ucfirst(str_replace('_', ' ', $previousStatus)) : 'Allocated');
+        $toLabel = $options[$newStatus] ?? ucfirst(str_replace('_', ' ', $newStatus));
+
+        DraftingRequestActivity::record(
+            $draftingRequest,
+            $request->user(),
+            DraftingRequestActivity::ACTION_STATUS_CHANGED,
+            sprintf('Status changed from %s to %s.', $fromLabel, $toLabel),
+        );
+
+        return redirect()
+            ->route('job.drafting.show', [
+                'draftingRequest' => $draftingRequest->id,
+                ...array_filter($this->listFiltersFromRequest($request)),
+            ])
+            ->with('status', 'drf-status-updated');
+    }
+
+    public function destroy(Request $request, DraftingRequest $draftingRequest): RedirectResponse
+    {
+        $this->authorizeView($request, $draftingRequest);
+
+        if ($draftingRequest->isArchived()) {
+            return redirect()
+                ->route('job.drafting.archive', $this->redirectQuery($request))
+                ->with('status', 'drf-already-archived');
+        }
+
+        $draftingRequest->forceFill(['archived_at' => now()])->save();
+
+        DraftingRequestActivity::record(
+            $draftingRequest,
+            $request->user(),
+            DraftingRequestActivity::ACTION_ARCHIVED,
+            sprintf(
+                'Drafting request %s was archived.',
+                sprintf('DRF-%05d', $draftingRequest->id),
+            ),
+        );
+
+        return redirect()
+            ->route('job.drafting', $this->redirectQuery($request))
+            ->with('status', 'drf-archived');
+    }
+
+    public function restore(Request $request, DraftingRequest $draftingRequest): RedirectResponse
+    {
+        $this->authorizeView($request, $draftingRequest);
+
+        if (! $draftingRequest->isArchived()) {
+            return redirect()
+                ->route('job.drafting', $this->redirectQuery($request))
+                ->with('status', 'drf-not-archived');
+        }
+
+        $draftingRequest->forceFill(['archived_at' => null])->save();
+
+        DraftingRequestActivity::record(
+            $draftingRequest,
+            $request->user(),
+            DraftingRequestActivity::ACTION_RESTORED,
+            sprintf(
+                'Drafting request %s was restored.',
+                sprintf('DRF-%05d', $draftingRequest->id),
+            ),
+        );
+
+        return redirect()
+            ->route('job.drafting.archive', $this->redirectQuery($request))
+            ->with('status', 'drf-restored');
     }
 
     public function storeComment(
@@ -148,19 +318,34 @@ class DraftingController extends Controller
     ): RedirectResponse {
         $this->authorizeView($request, $draftingRequest);
 
+        if ($draftingRequest->isArchived()) {
+            abort(404);
+        }
+
+        $kind = $request->validated('kind');
+
+        if ($kind === DraftingRequestComment::KIND_RUN) {
+            $this->authorizeRunComments($request, $draftingRequest);
+        }
+
         $body = $request->sanitizedBody();
 
         DraftingRequestComment::query()->create([
             'drafting_request_id' => $draftingRequest->id,
             'user_id' => $request->user()->id,
+            'kind' => $kind,
             'body' => $body,
         ]);
+
+        $isRun = $kind === DraftingRequestComment::KIND_RUN;
 
         DraftingRequestActivity::record(
             $draftingRequest,
             $request->user(),
-            DraftingRequestActivity::ACTION_COMMENT_POSTED,
-            $this->commentActivityDescription($body),
+            $isRun
+                ? DraftingRequestActivity::ACTION_RUN_COMMENT_POSTED
+                : DraftingRequestActivity::ACTION_COMMENT_POSTED,
+            $this->commentActivityDescription($body, $isRun),
         );
 
         return redirect()
@@ -168,7 +353,106 @@ class DraftingController extends Controller
                 'draftingRequest' => $draftingRequest->id,
                 ...array_filter($this->listFiltersFromRequest($request)),
             ])
-            ->with('status', 'comment-added');
+            ->with('status', $isRun ? 'run-comment-added' : 'comment-added');
+    }
+
+    public function storeFiles(
+        StoreDraftingRequestFilesRequest $request,
+        DraftingRequest $draftingRequest,
+    ): RedirectResponse {
+        $this->authorizeStatusUpdate($request, $draftingRequest);
+
+        $uploaded = 0;
+
+        if ($request->hasFile('facade')) {
+            $this->removeFilesByKind($draftingRequest, DraftingRequestFile::KIND_FACADE);
+            $this->storeUploadedFile(
+                $draftingRequest,
+                $request->file('facade'),
+                DraftingRequestFile::KIND_FACADE,
+                'facade',
+            );
+            $uploaded++;
+        }
+
+        foreach ($request->file('documents', []) as $file) {
+            if ($file instanceof UploadedFile && $file->isValid()) {
+                $this->storeUploadedFile(
+                    $draftingRequest,
+                    $file,
+                    DraftingRequestFile::KIND_DOCUMENT,
+                    'documents',
+                );
+                $uploaded++;
+            }
+        }
+
+        foreach ($request->file('team_files', []) as $file) {
+            if ($file instanceof UploadedFile && $file->isValid()) {
+                $this->storeUploadedFile(
+                    $draftingRequest,
+                    $file,
+                    DraftingRequestFile::KIND_TEAM,
+                    'team',
+                );
+                $uploaded++;
+            }
+        }
+
+        if ($uploaded === 0) {
+            return redirect()
+                ->route('job.drafting.show', [
+                    'draftingRequest' => $draftingRequest->id,
+                    ...array_filter($this->listFiltersFromRequest($request)),
+                ]);
+        }
+
+        DraftingRequestActivity::record(
+            $draftingRequest,
+            $request->user(),
+            DraftingRequestActivity::ACTION_FILES_UPDATED,
+            sprintf(
+                'Uploaded %d file%s.',
+                $uploaded,
+                $uploaded === 1 ? '' : 's',
+            ),
+        );
+
+        return redirect()
+            ->route('job.drafting.show', [
+                'draftingRequest' => $draftingRequest->id,
+                ...array_filter($this->listFiltersFromRequest($request)),
+            ])
+            ->with('status', 'drf-files-updated');
+    }
+
+    public function destroyFile(
+        Request $request,
+        DraftingRequest $draftingRequest,
+        DraftingRequestFile $file,
+    ): RedirectResponse {
+        $this->authorizeStatusUpdate($request, $draftingRequest);
+
+        if ($file->drafting_request_id !== $draftingRequest->id) {
+            abort(404);
+        }
+
+        $this->deleteStoredFile($file);
+        $file->delete();
+
+        DraftingRequestActivity::record(
+            $draftingRequest,
+            $request->user(),
+            DraftingRequestActivity::ACTION_FILES_UPDATED,
+            sprintf('Removed file %s.', $file->original_name),
+        );
+
+        return redirect()
+            ->route('job.drafting.show', [
+                'draftingRequest' => $draftingRequest->id,
+                ...array_filter($this->listFiltersFromRequest($request)),
+            ])
+            ->with('status', 'drf-files-updated');
     }
 
     public function downloadFile(
@@ -192,6 +476,68 @@ class DraftingController extends Controller
         );
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Builder<DraftingRequest>
+     */
+    private function baseListQuery(Request $request)
+    {
+        $user = $request->user();
+
+        $query = DraftingRequest::query()
+            ->with([
+                'buildingType:id,name',
+                'serviceEngagings:id,name',
+            ])
+            ->withCount('files')
+            ->orderByDesc('requested_at')
+            ->orderByDesc('id');
+
+        if (! $user->isAdmin()) {
+            $query->where('user_id', $user->id);
+        }
+
+        return $query;
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<DraftingRequest>  $query
+     */
+    private function applySearch($query, string $search): void
+    {
+        if ($search === '') {
+            return;
+        }
+
+        $query->where(function ($q) use ($search) {
+            $q->where('your_name', 'like', '%'.$search.'%')
+                ->orWhere('company_name', 'like', '%'.$search.'%')
+                ->orWhere('email', 'like', '%'.$search.'%')
+                ->orWhere('site_address', 'like', '%'.$search.'%')
+                ->orWhere('site_owner_name', 'like', '%'.$search.'%');
+        });
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formatListRow(DraftingRequest $row): array
+    {
+        return [
+            'id' => $row->id,
+            'reference' => sprintf('DRF-%05d', $row->id),
+            'requested_at' => $row->requested_at?->timezone(config('app.timezone'))->format('d M Y, h:i A'),
+            'your_name' => $row->your_name,
+            'company_name' => $row->company_name,
+            'site_address' => $row->site_address,
+            'building_type' => $row->buildingType?->name,
+            'services' => $row->serviceEngagings->pluck('name')->join(', '),
+            'files_count' => $row->files_count,
+            'ndis_sda' => $row->ndis_sda,
+            'status' => $row->status,
+            'status_label' => $row->statusLabel(),
+        ];
+    }
+
     private function authorizeView(Request $request, DraftingRequest $draftingRequest): void
     {
         $user = $request->user();
@@ -205,8 +551,46 @@ class DraftingController extends Controller
         }
     }
 
+    private function authorizeStatusUpdate(
+        Request $request,
+        DraftingRequest $draftingRequest,
+    ): void {
+        $this->authorizeView($request, $draftingRequest);
+
+        if (! $request->user()->isAdmin()) {
+            abort(403);
+        }
+
+        if ($draftingRequest->isArchived()) {
+            abort(404);
+        }
+    }
+
+    private function authorizeRunComments(
+        Request $request,
+        DraftingRequest $draftingRequest,
+    ): void {
+        $this->authorizeView($request, $draftingRequest);
+
+        if (! $request->user()->isAdmin()) {
+            abort(403);
+        }
+
+        if ($draftingRequest->isArchived()) {
+            abort(404);
+        }
+    }
+
     /**
-     * @return array{search: string, per_page: int|null}
+     * @return array<string, mixed>
+     */
+    private function redirectQuery(Request $request): array
+    {
+        return array_filter($this->listFiltersFromRequest($request));
+    }
+
+    /**
+     * @return array{search: string, per_page: int|null, from: string|null}
      */
     private function listFiltersFromRequest(Request $request): array
     {
@@ -217,6 +601,7 @@ class DraftingController extends Controller
             'per_page' => $perPage !== null && $perPage !== ''
                 ? (int) $perPage
                 : null,
+            'from' => $request->query('from') === 'archive' ? 'archive' : null,
         ];
     }
 
@@ -262,6 +647,12 @@ class DraftingController extends Controller
             'action_label' => match ($activity->action) {
                 DraftingRequestActivity::ACTION_REQUEST_SUBMITTED => 'Submitted drafting request',
                 DraftingRequestActivity::ACTION_COMMENT_POSTED => 'Posted a comment',
+                DraftingRequestActivity::ACTION_RUN_COMMENT_POSTED => 'Posted a run comment',
+                DraftingRequestActivity::ACTION_ARCHIVED => 'Archived drafting request',
+                DraftingRequestActivity::ACTION_RESTORED => 'Restored drafting request',
+                DraftingRequestActivity::ACTION_STATUS_CHANGED => 'Changed status',
+                DraftingRequestActivity::ACTION_DETAILS_UPDATED => 'Updated details',
+                DraftingRequestActivity::ACTION_FILES_UPDATED => 'Updated files',
                 default => 'Activity',
             },
             'description' => $activity->description,
@@ -272,15 +663,32 @@ class DraftingController extends Controller
         ];
     }
 
-    private function commentActivityDescription(string $body): string
+    /**
+     * @param  \Illuminate\Support\Collection<int, DraftingRequestComment>  $comments
+     * @return list<array<string, mixed>>
+     */
+    private function formatCommentsByKind($comments, string $kind, string $tz): array
+    {
+        return $comments
+            ->where('kind', $kind)
+            ->map(fn (DraftingRequestComment $comment) => $this->formatComment($comment, $tz))
+            ->values()
+            ->all();
+    }
+
+    private function commentActivityDescription(string $body, bool $isRun = false): string
     {
         $text = trim(strip_tags($body));
 
         if ($text === '') {
-            return 'Added a comment with rich text only.';
+            return $isRun
+                ? 'Added a run comment with rich text only.'
+                : 'Added a comment with rich text only.';
         }
 
-        return Str::limit($text, 200);
+        $prefix = $isRun ? 'Run comment: ' : '';
+
+        return $prefix.Str::limit($text, 200);
     }
 
     private function formatFileSize(int $bytes): string
@@ -294,6 +702,56 @@ class DraftingController extends Controller
         }
 
         return round($bytes / (1024 * 1024), 1).' MB';
+    }
+
+    private function storeUploadedFile(
+        DraftingRequest $draftingRequest,
+        UploadedFile $file,
+        string $kind,
+        string $directory,
+    ): void {
+        $path = $file->store(
+            'drafting-requests/'.$draftingRequest->id.'/'.$directory,
+            self::PRIVATE_DISK,
+        );
+
+        $draftingRequest->files()->create([
+            'kind' => $kind,
+            'disk' => self::PRIVATE_DISK,
+            'path' => $path,
+            'original_name' => $file->getClientOriginalName(),
+            'mime_type' => $file->getClientMimeType(),
+            'size' => $file->getSize() ?: 0,
+        ]);
+    }
+
+    private function removeFilesByKind(DraftingRequest $draftingRequest, string $kind): void
+    {
+        $draftingRequest->files()
+            ->where('kind', $kind)
+            ->get()
+            ->each(function (DraftingRequestFile $file) {
+                $this->deleteStoredFile($file);
+                $file->delete();
+            });
+    }
+
+    private function deleteStoredFile(DraftingRequestFile $file): void
+    {
+        if (Storage::disk($file->disk)->exists($file->path)) {
+            Storage::disk($file->disk)->delete($file->path);
+        }
+    }
+
+    private function sectionLabel(string $section): string
+    {
+        return match ($section) {
+            'client' => 'client details',
+            'job' => 'job details',
+            'building' => 'building specifications',
+            'notes' => 'notes',
+            default => 'details',
+        };
     }
 
     /**

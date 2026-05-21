@@ -1,5 +1,4 @@
 import DataTable, { DataTableSortHeader } from '@/Components/DataTable';
-import DangerButton from '@/Components/DangerButton';
 import DraftingStatusBadge from '@/Components/DraftingStatusBadge';
 import FlashNoticeModal from '@/Components/FlashNoticeModal';
 import Modal from '@/Components/Modal';
@@ -7,10 +6,7 @@ import Pagination from '@/Components/Pagination';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TableSearchToolbar from '@/Components/TableSearchToolbar';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import {
-    ArchiveBoxArrowDownIcon,
-    PlusIcon,
-} from '@heroicons/react/24/outline';
+import { ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
 import { createColumnHelper } from '@tanstack/react-table';
 import { Head, Link, router } from '@inertiajs/react';
 import { useCallback, useMemo, useState } from 'react';
@@ -23,19 +19,32 @@ function listQueryString(filters = {}) {
     if (filters.per_page) {
         p.set('per_page', String(filters.per_page));
     }
+    p.set('from', 'archive');
     const s = p.toString();
     return s ? `?${s}` : '';
 }
 
+function formatArchivedAt(value) {
+    if (!value) {
+        return '—';
+    }
+    try {
+        return new Date(value).toLocaleString(undefined, {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+        });
+    } catch {
+        return value;
+    }
+}
+
 const columnHelper = createColumnHelper();
 
-const iconBtn =
+const restoreBtn =
     'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#676879] transition-colors hover:bg-[#e6e9ef] hover:text-[#0073ea] focus:outline-none focus:ring-2 focus:ring-[#0073ea] focus:ring-offset-1';
 
 const FLASH_MESSAGES = {
-    'drf-submitted':
-        'Your drafting request was submitted successfully.',
-    'drf-archived': 'Drafting request moved to archive.',
+    'drf-restored': 'Drafting request restored to the list.',
 };
 
 function ApplicantCell({ row }) {
@@ -49,7 +58,7 @@ function ApplicantCell({ row }) {
     );
 }
 
-export default function JobDrafting({
+export default function DraftingArchive({
     draftingRequests,
     filters = {},
     canViewAllRequests = false,
@@ -57,18 +66,19 @@ export default function JobDrafting({
     const rows = draftingRequests?.data ?? [];
     const hasSearch = Boolean((filters.search ?? '').trim());
     const listQs = listQueryString(filters);
-    const [archiveTarget, setArchiveTarget] = useState(null);
+    const [restoreTarget, setRestoreTarget] = useState(null);
 
-    const confirmArchive = useCallback(() => {
-        if (!archiveTarget) {
+    const confirmRestore = useCallback(() => {
+        if (!restoreTarget) {
             return;
         }
-        router.delete(
-            route('job.drafting.destroy', archiveTarget.id) + listQs,
+        router.post(
+            route('job.drafting.restore', restoreTarget.id) + listQs,
+            {},
             { preserveScroll: true },
         );
-        setArchiveTarget(null);
-    }, [archiveTarget, listQs]);
+        setRestoreTarget(null);
+    }, [restoreTarget, listQs]);
 
     const openRequest = useCallback(
         (row) => {
@@ -79,7 +89,7 @@ export default function JobDrafting({
         [listQs],
     );
 
-    const draftingColumns = useMemo(
+    const columns = useMemo(
         () => [
             columnHelper.accessor('reference', {
                 header: ({ column }) => (
@@ -135,44 +145,6 @@ export default function JobDrafting({
                     </span>
                 ),
             }),
-            columnHelper.accessor('building_type', {
-                header: ({ column }) => (
-                    <DataTableSortHeader column={column}>
-                        Building type
-                    </DataTableSortHeader>
-                ),
-                cell: ({ getValue }) => (
-                    <span className="text-[#323338]">{getValue() ?? '—'}</span>
-                ),
-            }),
-            columnHelper.accessor('services', {
-                header: () => (
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-[#676879]">
-                        Services
-                    </span>
-                ),
-                enableSorting: false,
-                cell: ({ getValue }) => (
-                    <span
-                        className="line-clamp-2 max-w-[14rem] text-sm text-[#676879]"
-                        title={getValue()}
-                    >
-                        {getValue() || '—'}
-                    </span>
-                ),
-            }),
-            columnHelper.accessor('files_count', {
-                header: ({ column }) => (
-                    <DataTableSortHeader column={column}>
-                        Files
-                    </DataTableSortHeader>
-                ),
-                cell: ({ getValue }) => (
-                    <span className="tabular-nums text-[#323338]">
-                        {getValue()}
-                    </span>
-                ),
-            }),
             columnHelper.accessor('status_label', {
                 header: () => (
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-[#676879]">
@@ -187,6 +159,18 @@ export default function JobDrafting({
                     />
                 ),
             }),
+            columnHelper.accessor('archived_at', {
+                header: ({ column }) => (
+                    <DataTableSortHeader column={column}>
+                        Archived
+                    </DataTableSortHeader>
+                ),
+                cell: ({ getValue }) => (
+                    <span className="whitespace-nowrap text-[#676879]">
+                        {formatArchivedAt(getValue())}
+                    </span>
+                ),
+            }),
             columnHelper.display({
                 id: 'actions',
                 enableSorting: false,
@@ -196,31 +180,25 @@ export default function JobDrafting({
                     </span>
                 ),
                 meta: { align: 'right' },
-                cell: ({ row }) => {
-                    const r = row.original;
-                    return (
-                        <div className="flex flex-wrap items-center justify-end gap-0.5">
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setArchiveTarget({
-                                        id: r.id,
-                                        reference: r.reference,
-                                    });
-                                }}
-                                className={
-                                    iconBtn +
-                                    ' hover:text-[#e44258] focus:ring-[#e44258]'
-                                }
-                                title="Archive"
-                                aria-label={`Archive ${r.reference}`}
-                            >
-                                <ArchiveBoxArrowDownIcon className="h-5 w-5" />
-                            </button>
-                        </div>
-                    );
-                },
+                cell: ({ row }) => (
+                    <div className="flex justify-end">
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setRestoreTarget({
+                                    id: row.original.id,
+                                    reference: row.original.reference,
+                                });
+                            }}
+                            className={restoreBtn}
+                            title="Restore"
+                            aria-label={`Restore ${row.original.reference}`}
+                        >
+                            <ArrowUturnLeftIcon className="h-5 w-5" />
+                        </button>
+                    </div>
+                ),
             }),
         ],
         [listQs],
@@ -232,58 +210,51 @@ export default function JobDrafting({
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                         <h2 className="text-xl font-semibold leading-tight text-[#323338]">
-                            Archi Team — Drafting requests
+                            Archi Team — Drafting archive
                         </h2>
                         <p className="mt-1 text-sm text-[#676879]">
                             {canViewAllRequests
-                                ? 'All submitted DRF entries for the Archi team.'
-                                : 'Your submitted drafting request forms.'}
+                                ? 'Archived drafting requests. Restore to return them to the active list.'
+                                : 'Your archived drafting requests.'}
                         </p>
                     </div>
-                    <Link
-                        href={route('job.drafting-request-form')}
-                        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#0073ea] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0060c4]"
-                    >
-                        <PlusIcon className="h-4 w-4" aria-hidden />
-                        New request
-                    </Link>
                 </div>
             }
         >
-            <Head title="Archi Team — Drafting requests" />
+            <Head title="Archi Team — Drafting archive" />
 
             <FlashNoticeModal messages={FLASH_MESSAGES} />
 
             <Modal
-                show={archiveTarget != null}
-                onClose={() => setArchiveTarget(null)}
+                show={restoreTarget != null}
+                onClose={() => setRestoreTarget(null)}
                 maxWidth="md"
             >
                 <div className="p-6">
                     <h2 className="text-lg font-semibold text-[#323338]">
-                        Archive drafting request?
+                        Restore drafting request?
                     </h2>
                     <p className="mt-2 text-sm leading-relaxed text-[#676879]">
                         <span className="font-medium text-[#323338]">
-                            {archiveTarget?.reference}
+                            {restoreTarget?.reference}
                         </span>{' '}
-                        will move to the archive and can be restored later.
+                        will return to the main drafting list.
                     </p>
                     <div className="mt-6 flex flex-wrap justify-end gap-2">
                         <SecondaryButton
                             type="button"
-                            onClick={() => setArchiveTarget(null)}
+                            onClick={() => setRestoreTarget(null)}
                             className="rounded-lg normal-case tracking-normal"
                         >
                             Cancel
                         </SecondaryButton>
-                        <DangerButton
+                        <button
                             type="button"
-                            onClick={confirmArchive}
-                            className="rounded-lg normal-case tracking-normal"
+                            onClick={confirmRestore}
+                            className="inline-flex items-center rounded-lg bg-[#0073ea] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0060c4] focus:outline-none focus:ring-2 focus:ring-[#0073ea] focus:ring-offset-1"
                         >
-                            Archive
-                        </DangerButton>
+                            Restore
+                        </button>
                     </div>
                 </div>
             </Modal>
@@ -291,17 +262,17 @@ export default function JobDrafting({
             <div className="overflow-hidden rounded-2xl border border-[#e6e9ef] bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)]">
                 <TableSearchToolbar
                     key={`${filters.search ?? ''}-${filters.per_page}`}
-                    ziggyRouteName="job.drafting"
+                    ziggyRouteName="job.drafting.archive"
                     filters={filters}
                 />
                 <DataTable
                     data={rows}
-                    columns={draftingColumns}
+                    columns={columns}
                     onRowClick={openRequest}
                     emptyMessage={
                         hasSearch
-                            ? 'No drafting requests match your search.'
-                            : 'No drafting requests yet. Submit a new request to start processing.'
+                            ? 'No archived drafting requests match your search.'
+                            : 'No archived drafting requests.'
                     }
                 />
                 <Pagination pagination={draftingRequests} />

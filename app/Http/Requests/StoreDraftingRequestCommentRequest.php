@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Models\DraftingRequestComment;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreDraftingRequestCommentRequest extends FormRequest
 {
@@ -17,6 +19,14 @@ class StoreDraftingRequestCommentRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'kind' => [
+                'required',
+                'string',
+                Rule::in([
+                    DraftingRequestComment::KIND_COMMENT,
+                    DraftingRequestComment::KIND_RUN,
+                ]),
+            ],
             'body' => [
                 'required',
                 'string',
