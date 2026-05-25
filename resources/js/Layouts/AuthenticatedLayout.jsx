@@ -126,7 +126,11 @@ export default function AuthenticatedLayout({ header, children }) {
         isDraftingList ||
         isDraftingArchive ||
         isDraftingRequestForm;
-    const isCrm = route().current('crm.index');
+    const isCrmQuoteForm = route().current('crm.quote-form');
+    const isCrmQuotes =
+        (route().current('crm.quotes') && !route().current('crm.quotes.archive')) ||
+        route().current('crm.quotes.show');
+    const isCrmQuotesArchive = route().current('crm.quotes.archive');
     const isUsersIndex = route().current('settings.users.index');
     const isUsersCreate = route().current('settings.users.create');
     const isUsersEdit = route().current('settings.users.edit');
@@ -186,7 +190,12 @@ export default function AuthenticatedLayout({ header, children }) {
     const isCatArchive = route().current('settings.crm.categories.archive');
     const isCatSection =
         isCatIndex || isCatCreate || isCatEdit || isCatArchive;
-    const isCrmNavSection = isCrm || isAifSection || isCatSection;
+    const isCrmNavSection =
+        isCrmQuoteForm ||
+        isCrmQuotes ||
+        isCrmQuotesArchive ||
+        isAifSection ||
+        isCatSection;
 
     const showSettingsBlock =
         canBuildingType ||
@@ -464,34 +473,26 @@ export default function AuthenticatedLayout({ header, children }) {
                                 {crmMenuOpen && (
                                     <div className="mt-0.5 space-y-0.5 pb-1">
                                         <SidebarSubLink
-                                            href={route('crm.index')}
-                                            active={isCrm}
+                                            href={route('crm.quote-form')}
+                                            active={isCrmQuoteForm}
                                             onNavigate={closeSidebar}
                                         >
-                                            Overview
+                                            Quote Details Form
                                         </SidebarSubLink>
-                                        {canArrivalInputFiles && (
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'settings.crm.arrival-input-files.index',
-                                                )}
-                                                active={isAifSection}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                Arrival input files
-                                            </SidebarSubLink>
-                                        )}
-                                        {canCrmCategories && (
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'settings.crm.categories.index',
-                                                )}
-                                                active={isCatSection}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                Categories
-                                            </SidebarSubLink>
-                                        )}
+                                        <SidebarSubLink
+                                            href={route('crm.quotes')}
+                                            active={isCrmQuotes}
+                                            onNavigate={closeSidebar}
+                                        >
+                                            Quote List
+                                        </SidebarSubLink>
+                                        <SidebarSubLink
+                                            href={route('crm.quotes.archive')}
+                                            active={isCrmQuotesArchive}
+                                            onNavigate={closeSidebar}
+                                        >
+                                            Archive
+                                        </SidebarSubLink>
                                     </div>
                                 )}
                             </div>

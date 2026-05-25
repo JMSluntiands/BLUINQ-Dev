@@ -6,6 +6,8 @@ use App\Http\Controllers\Job\DraftingRequestFormController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Settings\ActivityLogController;
 use App\Http\Controllers\Settings\BuildingTypeController;
+use App\Http\Controllers\Crm\CrmQuoteController;
+use App\Http\Controllers\Crm\CrmQuoteFormController;
 use App\Http\Controllers\Settings\Crm\ArrivalInputFileController;
 use App\Http\Controllers\Settings\Crm\CrmCategoryController;
 use App\Http\Controllers\Settings\DeliverableController;
@@ -76,9 +78,22 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
     Route::post('/job/drafting-request-form', [DraftingRequestFormController::class, 'store'])
         ->name('job.drafting-request-form.store');
 
-    Route::get('/crm', function () {
-        return Inertia::render('Crm/Index');
-    })->name('crm.index');
+    Route::get('/crm/quote-details-form', [CrmQuoteFormController::class, 'create'])
+        ->name('crm.quote-form');
+    Route::post('/crm/quote-details-form', [CrmQuoteFormController::class, 'store'])
+        ->name('crm.quote-form.store');
+    Route::get('/crm/quotes', [CrmQuoteController::class, 'index'])
+        ->name('crm.quotes');
+    Route::get('/crm/quotes/archive', [CrmQuoteController::class, 'archive'])
+        ->name('crm.quotes.archive');
+    Route::get('/crm/quotes/{crmQuote}', [CrmQuoteController::class, 'show'])
+        ->name('crm.quotes.show');
+    Route::post('/crm/quotes/{crmQuote}/comments', [CrmQuoteController::class, 'storeComment'])
+        ->name('crm.quotes.comments.store');
+    Route::delete('/crm/quotes/{crmQuote}', [CrmQuoteController::class, 'destroy'])
+        ->name('crm.quotes.destroy');
+    Route::post('/crm/quotes/{crmQuote}/restore', [CrmQuoteController::class, 'restore'])
+        ->name('crm.quotes.restore');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
