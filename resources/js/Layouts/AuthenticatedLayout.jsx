@@ -1,5 +1,6 @@
 import AppLogo from '@/Components/AppLogo';
 import Dropdown from '@/Components/Dropdown';
+import ThemeToggle from '@/Components/ThemeToggle';
 import UserAvatar from '@/Components/UserAvatar';
 import {
     ArrowDownTrayIcon,
@@ -17,7 +18,6 @@ import {
     Squares2X2Icon,
     ShieldCheckIcon,
     TagIcon,
-    UserGroupIcon,
     UsersIcon,
     WrenchScrewdriverIcon,
     XMarkIcon,
@@ -54,8 +54,8 @@ function NavItem({ href, active, icon, children, onNavigate }) {
             className={
                 'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ' +
                 (active
-                    ? 'bg-sky-50 text-sky-700'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')
+                    ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100')
             }
         >
             {resolvedIcon}
@@ -72,8 +72,8 @@ function SidebarSubLink({ href, active, children, onNavigate }) {
             className={
                 'block rounded-lg py-2 pe-3 ps-10 text-sm font-medium transition ' +
                 (active
-                    ? 'bg-sky-50 text-sky-700'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')
+                    ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100')
             }
         >
             {children}
@@ -105,8 +105,7 @@ export default function AuthenticatedLayout({ header, children }) {
     const canCrmCategories = can('settings.crm.categories.view');
     const canUserAccounts =
         user?.role === 'admin' && can('settings.user-accounts.manage');
-    const canPermissionsPage =
-        user?.role === 'admin' && can('settings.permissions.manage');
+    const canPermissionsPage = can('settings.permissions.manage');
     const canActivityLogs =
         user?.role === 'admin' && can('settings.activity-logs.view');
     const canRoles =
@@ -115,22 +114,18 @@ export default function AuthenticatedLayout({ header, children }) {
     const canDrafting = can('dashboard.view');
 
     const isDashboard = route().current('dashboard');
-    const isDraftingList =
-        route().current('job.drafting') ||
-        route().current('job.drafting.show');
+    const isJobBoard =
+        route().current('job.board') || route().current('job.drafting');
+    const isDraftingList = isJobBoard || route().current('job.drafting.show');
     const isDraftingArchive = route().current('job.drafting.archive');
     const isDraftingRequestForm = route().current(
         'job.drafting-request-form',
     );
     const isArchiTeamSection =
+        isJobBoard ||
         isDraftingList ||
         isDraftingArchive ||
         isDraftingRequestForm;
-    const isCrmQuoteForm = route().current('crm.quote-form');
-    const isCrmQuotes =
-        (route().current('crm.quotes') && !route().current('crm.quotes.archive')) ||
-        route().current('crm.quotes.show');
-    const isCrmQuotesArchive = route().current('crm.quotes.archive');
     const isUsersIndex = route().current('settings.users.index');
     const isUsersCreate = route().current('settings.users.create');
     const isUsersEdit = route().current('settings.users.edit');
@@ -139,6 +134,7 @@ export default function AuthenticatedLayout({ header, children }) {
         isUsersIndex || isUsersCreate || isUsersEdit || isUsersArchive;
     const isPermissions = route().current('settings.permissions.edit');
     const isActivityLogs = route().current('settings.activity-logs.index');
+    const isProfile = route().current('profile.edit');
     const isRolesIndex = route().current('settings.roles.index');
     const isRolesCreate = route().current('settings.roles.create');
     const isRolesEdit = route().current('settings.roles.edit');
@@ -190,12 +186,6 @@ export default function AuthenticatedLayout({ header, children }) {
     const isCatArchive = route().current('settings.crm.categories.archive');
     const isCatSection =
         isCatIndex || isCatCreate || isCatEdit || isCatArchive;
-    const isCrmNavSection =
-        isCrmQuoteForm ||
-        isCrmQuotes ||
-        isCrmQuotesArchive ||
-        isAifSection ||
-        isCatSection;
 
     const showSettingsBlock =
         canBuildingType ||
@@ -233,7 +223,6 @@ export default function AuthenticatedLayout({ header, children }) {
     const [catMenuOpen, setCatMenuOpen] = useState(isCatSection);
     const [archiTeamMenuOpen, setArchiTeamMenuOpen] =
         useState(isArchiTeamSection);
-    const [crmMenuOpen, setCrmMenuOpen] = useState(isCrmNavSection);
 
     useEffect(() => {
         if (isBtSection) {
@@ -295,14 +284,8 @@ export default function AuthenticatedLayout({ header, children }) {
         }
     }, [isArchiTeamSection]);
 
-    useEffect(() => {
-        if (isCrmNavSection) {
-            setCrmMenuOpen(true);
-        }
-    }, [isCrmNavSection]);
-
     return (
-        <div className="min-h-screen bg-slate-100">
+        <div className="min-h-screen bg-slate-100 dark:bg-[#0a0c14]">
             {/* Mobile sidebar backdrop */}
             <div
                 className={
@@ -316,11 +299,11 @@ export default function AuthenticatedLayout({ header, children }) {
             {/* Sidebar */}
             <aside
                 className={
-                    'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white shadow-lg transition-transform duration-200 ease-out lg:translate-x-0 ' +
+                    'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white shadow-lg transition-transform duration-200 ease-out dark:border-slate-800 dark:bg-slate-900 lg:translate-x-0 ' +
                     (sidebarOpen ? 'translate-x-0' : '-translate-x-full')
                 }
             >
-                <div className="relative flex shrink-0 items-center justify-center border-b border-slate-200 px-4 py-4">
+                <div className="relative flex shrink-0 items-center justify-center border-b border-slate-200 px-4 py-4 dark:border-slate-800">
                     <Link
                         href={
                             can('dashboard.view')
@@ -345,7 +328,7 @@ export default function AuthenticatedLayout({ header, children }) {
                     </Link>
                     <button
                         type="button"
-                        className="absolute end-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden"
+                        className="absolute end-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden"
                         onClick={closeSidebar}
                         aria-label="Close sidebar"
                     >
@@ -398,7 +381,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                         aria-hidden
                                     />
                                     <span className="min-w-0 flex-1">
-                                        Archi Team
+                                        Archi Project
                                     </span>
                                     <ChevronRightIcon
                                         className={
@@ -411,6 +394,13 @@ export default function AuthenticatedLayout({ header, children }) {
                                 {archiTeamMenuOpen && (
                                     <div className="mt-0.5 space-y-0.5 pb-1">
                                         <SidebarSubLink
+                                            href={route('job.board')}
+                                            active={isJobBoard}
+                                            onNavigate={closeSidebar}
+                                        >
+                                            Drafting Requests
+                                        </SidebarSubLink>
+                                        <SidebarSubLink
                                             href={route(
                                                 'job.drafting-request-form',
                                             )}
@@ -420,75 +410,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                             Drafting Request Form
                                         </SidebarSubLink>
                                         <SidebarSubLink
-                                            href={route('job.drafting')}
-                                            active={isDraftingList}
-                                            onNavigate={closeSidebar}
-                                        >
-                                            Archi Project Management
-                                        </SidebarSubLink>
-                                        <SidebarSubLink
                                             href={route('job.drafting.archive')}
                                             active={isDraftingArchive}
-                                            onNavigate={closeSidebar}
-                                        >
-                                            Archive
-                                        </SidebarSubLink>
-                                    </div>
-                                )}
-                            </div>
-                            <div>
-                                <button
-                                    type="button"
-                                    aria-expanded={crmMenuOpen}
-                                    onClick={() =>
-                                        setCrmMenuOpen((open) => !open)
-                                    }
-                                    className={
-                                        'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ' +
-                                        (isCrmNavSection
-                                            ? 'bg-sky-50 text-sky-700'
-                                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')
-                                    }
-                                >
-                                    <UserGroupIcon
-                                        className={
-                                            'h-5 w-5 shrink-0 ' +
-                                            (isCrmNavSection
-                                                ? 'text-sky-600'
-                                                : 'text-slate-400 group-hover:text-slate-500')
-                                        }
-                                        aria-hidden
-                                    />
-                                    <span className="min-w-0 flex-1">
-                                        CRM
-                                    </span>
-                                    <ChevronRightIcon
-                                        className={
-                                            'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ' +
-                                            (crmMenuOpen ? 'rotate-90' : '')
-                                        }
-                                        aria-hidden
-                                    />
-                                </button>
-                                {crmMenuOpen && (
-                                    <div className="mt-0.5 space-y-0.5 pb-1">
-                                        <SidebarSubLink
-                                            href={route('crm.quote-form')}
-                                            active={isCrmQuoteForm}
-                                            onNavigate={closeSidebar}
-                                        >
-                                            Quote Details Form
-                                        </SidebarSubLink>
-                                        <SidebarSubLink
-                                            href={route('crm.quotes')}
-                                            active={isCrmQuotes}
-                                            onNavigate={closeSidebar}
-                                        >
-                                            Quote List
-                                        </SidebarSubLink>
-                                        <SidebarSubLink
-                                            href={route('crm.quotes.archive')}
-                                            active={isCrmQuotesArchive}
                                             onNavigate={closeSidebar}
                                         >
                                             Archive
@@ -1222,56 +1145,91 @@ export default function AuthenticatedLayout({ header, children }) {
                     )}
                 </nav>
 
-                <div className="shrink-0 border-t border-slate-200 p-3">
-                    <div className="flex gap-3">
-                        <UserAvatar
-                            user={user}
-                            className="h-10 w-10 text-sm"
-                            ringClassName="ring-2 ring-slate-100"
-                        />
-                        <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs font-medium text-slate-700">
-                                {user.name}
-                            </p>
-                            <p className="truncate text-xs text-slate-500">
-                                {user.email}
-                            </p>
-                            {(user.role || user.role_display_name) && (
-                                <p className="mt-2 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                                    {user.role_display_name ??
-                                        roleLabel(user.role)}
+                <div className="shrink-0 border-t border-slate-200 p-3 dark:border-slate-800">
+                    {can('profile.view') ? (
+                        <Link
+                            href={route('profile.edit')}
+                            onClick={closeSidebar}
+                            className={
+                                'flex gap-3 rounded-lg p-2 transition hover:bg-slate-50 dark:hover:bg-slate-800 ' +
+                                (isProfile
+                                    ? 'bg-sky-50 ring-1 ring-sky-100 dark:bg-sky-950/40 dark:ring-sky-900/50'
+                                    : '')
+                            }
+                            aria-current={isProfile ? 'page' : undefined}
+                        >
+                            <UserAvatar
+                                user={user}
+                                className="h-10 w-10 text-sm"
+                                ringClassName="ring-2 ring-slate-100 dark:ring-slate-700"
+                            />
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-xs font-medium text-slate-700 dark:text-slate-200">
+                                    {user.name}
                                 </p>
-                            )}
+                                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                                    {user.email}
+                                </p>
+                                {(user.role || user.role_display_name) && (
+                                    <p className="mt-2 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                        {user.role_display_name ??
+                                            roleLabel(user.role)}
+                                    </p>
+                                )}
+                            </div>
+                        </Link>
+                    ) : (
+                        <div className="flex gap-3 p-2">
+                            <UserAvatar
+                                user={user}
+                                className="h-10 w-10 text-sm"
+                                ringClassName="ring-2 ring-slate-100 dark:ring-slate-700"
+                            />
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-xs font-medium text-slate-700 dark:text-slate-200">
+                                    {user.name}
+                                </p>
+                                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                                    {user.email}
+                                </p>
+                                {(user.role || user.role_display_name) && (
+                                    <p className="mt-2 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                        {user.role_display_name ??
+                                            roleLabel(user.role)}
+                                    </p>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </aside>
 
             {/* Main: navbar + content */}
             <div className="flex min-h-screen flex-col lg:pl-64">
-                <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b border-slate-200 bg-white px-4 shadow-sm sm:px-6">
+                <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b border-slate-200 bg-white px-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:px-6">
                     <button
                         type="button"
-                        className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
+                        className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 lg:hidden"
                         onClick={() => setSidebarOpen(true)}
                         aria-label="Open sidebar"
                     >
                         <Bars3Icon className="h-6 w-6" aria-hidden />
                     </button>
 
-                    <div className="ml-auto flex items-center">
+                    <div className="ml-auto flex items-center gap-2">
+                        <ThemeToggle />
                         <Dropdown>
                             <Dropdown.Trigger>
                                 <button
                                     type="button"
                                     aria-haspopup="menu"
                                     aria-label={`Account menu, ${user.name}`}
-                                    className="flex max-w-[14rem] items-center gap-2.5 rounded-lg bg-white py-1.5 pl-1.5 pr-2 text-left text-sm font-medium text-slate-800 transition hover:bg-slate-50 sm:pl-2 sm:pr-3"
+                                    className="flex max-w-[14rem] items-center gap-2.5 rounded-lg bg-white py-1.5 pl-1.5 pr-2 text-left text-sm font-medium text-slate-800 transition hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 sm:pl-2 sm:pr-3"
                                 >
                                     <UserAvatar
                                         user={user}
                                         className="h-8 w-8 text-xs"
-                                        ringClassName="ring-2 ring-slate-100"
+                                        ringClassName="ring-2 ring-slate-100 dark:ring-slate-700"
                                     />
                                     <span className="hidden min-w-0 flex-1 truncate sm:inline">
                                         {user.name}
@@ -1302,7 +1260,7 @@ export default function AuthenticatedLayout({ header, children }) {
 
                 <main className="flex-1 p-4 sm:p-6 lg:p-8">
                     {header && (
-                        <div className="mb-6 border-b border-slate-200 pb-4">
+                        <div className="mb-6 border-b border-slate-200 pb-4 dark:border-slate-800">
                             {header}
                         </div>
                     )}

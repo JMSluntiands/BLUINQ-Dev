@@ -23,11 +23,21 @@ function htmlIsEmpty(html) {
 }
 
 function toolbarButtonClass(isActive) {
+    const base =
+        'min-w-[2rem] rounded px-2 py-1 text-sm transition disabled:opacity-50';
+
+    if (isActive) {
+        return [
+            base,
+            'bg-[#cce5ff] font-semibold text-[#0073ea] ring-1 ring-[#0073ea]/25',
+            'dark:bg-[#2563eb]/30 dark:text-[#60a5fa] dark:ring-[#60a5fa]/30',
+        ].join(' ');
+    }
+
     return [
-        'min-w-[2rem] rounded px-2 py-1 text-sm transition disabled:opacity-50',
-        isActive
-            ? 'bg-[#cce5ff] font-semibold text-[#0073ea] ring-1 ring-[#0073ea]/25'
-            : 'text-[#323338] hover:bg-[#e6e9ef]',
+        base,
+        'text-[#323338] hover:bg-[#e6e9ef]',
+        'dark:text-slate-300 dark:hover:bg-[#243044]',
     ].join(' ');
 }
 
@@ -132,12 +142,10 @@ export default function RichTextEditor({
     return (
         <div className={className}>
             <div
-                className={`overflow-hidden rounded-lg border border-[#c5c7d0] bg-white shadow-sm focus-within:border-[#0073ea] focus-within:ring-2 focus-within:ring-[#0073ea]/20 ${
-                    disabled ? 'pointer-events-none opacity-60' : ''
-                }`}
+                className={`overflow-hidden rounded-lg border border-[#c5c7d0] bg-white shadow-sm focus-within:border-[#0073ea] focus-within:ring-2 focus-within:ring-[#0073ea]/20 dark:border-[#3b82f6]/40 dark:bg-[#151622] dark:focus-within:border-[#60a5fa] dark:focus-within:ring-[#60a5fa]/20 ${disabled ? 'pointer-events-none opacity-60' : ''}`}
             >
                 <div
-                    className="flex flex-wrap items-center gap-0.5 border-b border-[#e6e9ef] bg-[#fafbfc] px-2 py-1.5"
+                    className="flex flex-wrap items-center gap-0.5 border-b border-[#e6e9ef] bg-[#fafbfc] px-2 py-1.5 dark:border-[#3b82f6]/30 dark:bg-[#1a2744]"
                     role="toolbar"
                     aria-label="Formatting"
                 >
@@ -164,7 +172,9 @@ export default function RichTextEditor({
                         title="Insert link"
                         disabled={disabled}
                         aria-pressed={activeCommands[LINK_COMMAND] || false}
-                        className={toolbarButtonClass(activeCommands[LINK_COMMAND])}
+                        className={toolbarButtonClass(
+                            activeCommands[LINK_COMMAND],
+                        )}
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={handleLink}
                     >
@@ -174,7 +184,7 @@ export default function RichTextEditor({
                 <div className="relative">
                     {showPlaceholder ? (
                         <p
-                            className="pointer-events-none absolute left-3 top-3 text-sm text-[#676879]"
+                            className="pointer-events-none absolute left-3 top-3 text-sm text-[#676879] dark:text-slate-500"
                             aria-hidden
                         >
                             {placeholder}
@@ -188,7 +198,7 @@ export default function RichTextEditor({
                         role="textbox"
                         aria-multiline="true"
                         aria-placeholder={placeholder}
-                        className="rich-text-editor min-h-[120px] max-h-[320px] overflow-y-auto px-3 py-3 text-sm text-[#323338] outline-none [&_a]:text-[#0073ea] [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-[#c5c7d0] [&_blockquote]:pl-3 [&_blockquote]:text-[#676879] [&_h2]:text-base [&_h2]:font-semibold [&_h3]:text-sm [&_h3]:font-semibold [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5"
+                        className="rich-text-editor min-h-[120px] max-h-[320px] overflow-y-auto bg-white px-3 py-3 text-sm text-[#323338] outline-none dark:bg-[#151622] dark:text-slate-200 [&_a]:text-[#0073ea] [&_a]:underline dark:[&_a]:text-[#60a5fa] [&_blockquote]:border-l-2 [&_blockquote]:border-[#c5c7d0] [&_blockquote]:pl-3 [&_blockquote]:text-[#676879] dark:[&_blockquote]:border-slate-600 dark:[&_blockquote]:text-slate-400 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:text-sm [&_h3]:font-semibold [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5"
                         onInput={syncValue}
                         onBlur={syncValue}
                         onKeyUp={updateActiveState}

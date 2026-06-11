@@ -45,6 +45,7 @@ class DraftingRequest extends Model
     protected $fillable = [
         'user_id',
         'status',
+        'is_priority',
         'requested_at',
         'your_name',
         'company_name',
@@ -73,6 +74,7 @@ class DraftingRequest extends Model
             'archived_at' => 'datetime',
             'max_building_area_sqm' => 'decimal:2',
             'ndis_sda' => 'boolean',
+            'is_priority' => 'boolean',
         ];
     }
 
@@ -161,6 +163,25 @@ class DraftingRequest extends Model
     public function activities(): HasMany
     {
         return $this->hasMany(DraftingRequestActivity::class)->latest();
+    }
+
+    /**
+     * @return HasMany<DraftingRequestRevision, $this>
+     */
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(DraftingRequestRevision::class)
+            ->orderByDesc('log_date')
+            ->orderByDesc('id');
+    }
+
+    /**
+     * @return HasMany<DraftingRequestAccountEntry, $this>
+     */
+    public function accountEntries(): HasMany
+    {
+        return $this->hasMany(DraftingRequestAccountEntry::class)
+            ->orderByDesc('id');
     }
 
     public function statusLabel(): string

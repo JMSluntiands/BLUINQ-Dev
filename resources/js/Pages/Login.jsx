@@ -1,4 +1,5 @@
 import AppLogo from '@/Components/AppLogo';
+import ThemeToggle from '@/Components/ThemeToggle';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { Head, useForm, usePage } from '@inertiajs/react';
 
@@ -79,9 +80,13 @@ export default function Login({ status }) {
     return (
         <>
             <Head title="Login" />
-            <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
+            <div className="relative grid min-h-screen grid-cols-1 lg:grid-cols-2">
+                <div className="absolute end-4 top-4 z-20">
+                    <ThemeToggle className="bg-white/80 shadow-sm dark:bg-slate-900/80" />
+                </div>
+
                 {/* Left: white + architectural lines + logo */}
-                <div className="relative flex min-h-[36vh] flex-col items-center justify-center overflow-hidden bg-white px-8 py-12 lg:min-h-screen lg:py-16">
+                <div className="relative flex min-h-[36vh] flex-col items-center justify-center overflow-hidden bg-white px-8 py-12 dark:bg-slate-900 lg:min-h-screen lg:py-16">
                     <ArchitectLineBackground />
                     <div className="relative z-10 flex w-full flex-col items-center justify-center">
                         <AppLogo
@@ -89,7 +94,7 @@ export default function Login({ status }) {
                             alt=""
                             className="mx-auto block h-auto max-h-24 w-auto max-w-[min(100%,14rem)] object-contain object-center lg:max-h-28"
                             fallback={
-                                <h1 className="w-full text-center text-3xl font-semibold tracking-tight text-slate-800">
+                                <h1 className="w-full text-center text-3xl font-semibold tracking-tight text-slate-800 dark:text-slate-100">
                                     Bluinq
                                 </h1>
                             }

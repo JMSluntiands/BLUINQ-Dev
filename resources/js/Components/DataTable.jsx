@@ -11,8 +11,6 @@ import {
 } from '@tanstack/react-table';
 import { useState } from 'react';
 
-const MONDAY_TEXT = '#676879';
-const MONDAY_TEXT_DARK = '#323338';
 const MONDAY_BLUE = '#0073ea';
 
 /**
@@ -24,8 +22,7 @@ export function DataTableSortHeader({ column, children }) {
     if (!column.getCanSort()) {
         return (
             <span
-                className="text-[11px] font-semibold uppercase tracking-wide"
-                style={{ color: MONDAY_TEXT }}
+                className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-[#94a3b8]"
             >
                 {children}
             </span>
@@ -37,8 +34,7 @@ export function DataTableSortHeader({ column, children }) {
     return (
         <button
             type="button"
-            className="group inline-flex w-full min-w-0 items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left text-[11px] font-semibold uppercase tracking-wide outline-none transition-colors hover:bg-[#e6e9ef]/80 focus-visible:ring-2 focus-visible:ring-[#0073ea] focus-visible:ring-offset-1"
-            style={{ color: MONDAY_TEXT_DARK }}
+            className="group inline-flex w-full min-w-0 items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left text-[11px] font-semibold uppercase tracking-wide text-[#323338] outline-none transition-colors hover:bg-[#e6e9ef]/80 focus-visible:ring-2 focus-visible:ring-[#0073ea] focus-visible:ring-offset-1 dark:text-[#94a3b8] dark:hover:bg-[#243044] dark:focus-visible:ring-offset-[#1a222e]"
             onClick={column.getToggleSortingHandler()}
         >
             <span className="truncate">{children}</span>
@@ -57,7 +53,7 @@ export function DataTableSortHeader({ column, children }) {
                     />
                 ) : (
                     <ArrowsUpDownIcon
-                        className="h-4 w-4 text-[#c5c7d0] group-hover:text-[#676879]"
+                        className="h-4 w-4 text-[#c5c7d0] group-hover:text-[#676879] dark:text-[#4a5568] dark:group-hover:text-[#94a3b8]"
                         aria-hidden
                     />
                 )}
@@ -117,17 +113,17 @@ export default function DataTable({
 
     if (!data.length) {
         return (
-            <div className="border-t border-[#e6e9ef] bg-white px-6 py-12 text-center text-sm text-[#676879]">
+            <div className="border-t border-[#e6e9ef] bg-white px-6 py-12 text-center text-sm text-[#676879] dark:border-[#2a3544] dark:bg-[#1a222e] dark:text-[#94a3b8]">
                 {emptyMessage}
             </div>
         );
     }
 
     return (
-        <div className="relative bg-white">
+        <div className="relative bg-white dark:bg-[#1a222e]">
             <div className="max-h-[min(68vh,40rem)] overflow-auto">
                 <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
-                    <thead className="sticky top-0 z-10 border-b border-[#e6e9ef] bg-[#fafbfc]">
+                    <thead className="sticky top-0 z-10 border-b border-[#e6e9ef] bg-[#fafbfc] dark:border-[#2a3544] dark:bg-[#151b26]">
                         {table.getHeaderGroups().map((headerGroup) => (
                             <tr key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => {
@@ -161,7 +157,7 @@ export default function DataTable({
                             <tr
                                 key={row.id}
                                 className={
-                                    'group border-b border-[#f0f1f5] transition-colors last:border-b-0 hover:bg-[#f6f7fb] ' +
+                                    'group border-b border-[#f0f1f5] transition-colors last:border-b-0 hover:bg-[#f6f7fb] dark:border-[#2a3544] dark:hover:bg-[#243044] ' +
                                     (onRowClick ? 'cursor-pointer' : '')
                                 }
                                 onClick={

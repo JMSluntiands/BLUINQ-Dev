@@ -8,8 +8,8 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import TableSearchToolbar from '@/Components/TableSearchToolbar';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {
-    ArchiveBoxArrowDownIcon,
     PlusIcon,
+    TrashIcon,
 } from '@heroicons/react/24/outline';
 import { createColumnHelper } from '@tanstack/react-table';
 import { Head, Link, router } from '@inertiajs/react';
@@ -30,7 +30,7 @@ function listQueryString(filters = {}) {
 const columnHelper = createColumnHelper();
 
 const iconBtn =
-    'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#676879] transition-colors hover:bg-[#e6e9ef] hover:text-[#0073ea] focus:outline-none focus:ring-2 focus:ring-[#0073ea] focus:ring-offset-1';
+    'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#676879] transition-colors hover:bg-[#e6e9ef] hover:text-[#0073ea] focus:outline-none focus:ring-2 focus:ring-[#0073ea] focus:ring-offset-1 dark:text-[#94a3b8] dark:hover:bg-[#243044] dark:hover:text-white dark:focus:ring-[#1890ff] dark:focus:ring-offset-[#1a222e]';
 
 const FLASH_MESSAGES = {
     'drf-submitted':
@@ -41,8 +41,10 @@ const FLASH_MESSAGES = {
 function ApplicantCell({ row }) {
     return (
         <div className="min-w-0">
-            <p className="font-medium text-[#323338]">{row.your_name}</p>
-            <p className="truncate text-xs text-[#676879]">
+            <p className="font-medium text-[#323338] dark:text-white">
+                {row.your_name}
+            </p>
+            <p className="truncate text-xs text-[#676879] dark:text-[#94a3b8]">
                 {row.company_name}
             </p>
         </div>
@@ -93,7 +95,7 @@ export default function JobDrafting({
                             route('job.drafting.show', row.original.id) +
                             listQs
                         }
-                        className="font-semibold text-[#0073ea] hover:underline"
+                        className="font-semibold text-[#0073ea] hover:underline dark:text-[#1890ff]"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {getValue()}
@@ -107,7 +109,7 @@ export default function JobDrafting({
                     </DataTableSortHeader>
                 ),
                 cell: ({ getValue }) => (
-                    <span className="whitespace-nowrap text-[#323338]">
+                    <span className="whitespace-nowrap text-[#323338] dark:text-white">
                         {getValue()}
                     </span>
                 ),
@@ -128,7 +130,7 @@ export default function JobDrafting({
                 ),
                 cell: ({ getValue }) => (
                     <span
-                        className="line-clamp-2 max-w-xs text-[#323338]"
+                        className="line-clamp-2 max-w-xs text-[#323338] dark:text-white"
                         title={getValue()}
                     >
                         {getValue()}
@@ -142,19 +144,19 @@ export default function JobDrafting({
                     </DataTableSortHeader>
                 ),
                 cell: ({ getValue }) => (
-                    <span className="text-[#323338]">{getValue() ?? '—'}</span>
+                    <span className="text-[#323338] dark:text-white">{getValue() ?? '—'}</span>
                 ),
             }),
             columnHelper.accessor('services', {
                 header: () => (
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-[#676879]">
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-[#94a3b8]">
                         Services
                     </span>
                 ),
                 enableSorting: false,
                 cell: ({ getValue }) => (
                     <span
-                        className="line-clamp-2 max-w-[14rem] text-sm text-[#676879]"
+                        className="line-clamp-2 max-w-[14rem] text-sm text-[#676879] dark:text-[#94a3b8]"
                         title={getValue()}
                     >
                         {getValue() || '—'}
@@ -168,14 +170,14 @@ export default function JobDrafting({
                     </DataTableSortHeader>
                 ),
                 cell: ({ getValue }) => (
-                    <span className="tabular-nums text-[#323338]">
+                    <span className="tabular-nums text-[#323338] dark:text-white">
                         {getValue()}
                     </span>
                 ),
             }),
             columnHelper.accessor('status_label', {
                 header: () => (
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-[#676879]">
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-[#94a3b8]">
                         Status
                     </span>
                 ),
@@ -191,7 +193,7 @@ export default function JobDrafting({
                 id: 'actions',
                 enableSorting: false,
                 header: () => (
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-[#676879]">
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-[#94a3b8]">
                         Actions
                     </span>
                 ),
@@ -211,12 +213,12 @@ export default function JobDrafting({
                                 }}
                                 className={
                                     iconBtn +
-                                    ' hover:text-[#e44258] focus:ring-[#e44258]'
+                                    ' hover:text-[#e44258] focus:ring-[#e44258] dark:hover:text-[#f87171]'
                                 }
                                 title="Archive"
                                 aria-label={`Archive ${r.reference}`}
                             >
-                                <ArchiveBoxArrowDownIcon className="h-5 w-5" />
+                                <TrashIcon className="h-5 w-5" />
                             </button>
                         </div>
                     );
@@ -231,10 +233,10 @@ export default function JobDrafting({
             header={
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
-                        <h2 className="text-xl font-semibold leading-tight text-[#323338]">
+                        <h2 className="text-xl font-semibold leading-tight text-[#323338] dark:text-white">
                             Archi Team — Drafting requests
                         </h2>
-                        <p className="mt-1 text-sm text-[#676879]">
+                        <p className="mt-1 text-sm text-[#676879] dark:text-[#94a3b8]">
                             {canViewAllRequests
                                 ? 'All submitted DRF entries for the Archi team.'
                                 : 'Your submitted drafting request forms.'}
@@ -242,7 +244,7 @@ export default function JobDrafting({
                     </div>
                     <Link
                         href={route('job.drafting-request-form')}
-                        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#0073ea] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0060c4]"
+                        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#0073ea] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0060c4] dark:bg-[#1890ff] dark:hover:bg-[#1478e0]"
                     >
                         <PlusIcon className="h-4 w-4" aria-hidden />
                         New request
@@ -288,7 +290,7 @@ export default function JobDrafting({
                 </div>
             </Modal>
 
-            <div className="overflow-hidden rounded-2xl border border-[#e6e9ef] bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)]">
+            <div className="overflow-hidden rounded-2xl border border-[#e6e9ef] bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] dark:border-[#2a3544] dark:bg-[#1a222e] dark:shadow-none">
                 <TableSearchToolbar
                     key={`${filters.search ?? ''}-${filters.per_page}`}
                     ziggyRouteName="job.drafting"

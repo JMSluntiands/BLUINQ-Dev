@@ -12,7 +12,7 @@ class UpdateDraftingRequestStatusRequest extends FormRequest
     {
         $user = $this->user();
 
-        return $user !== null && $user->isAdmin();
+        return $user !== null && $user->hasPermission('job.drafting.job-details.edit');
     }
 
     /**

@@ -113,7 +113,7 @@ export default function DraftingRequestForm({
             <div className="mx-auto w-full min-w-0 max-w-[1400px] space-y-5 pb-12 sm:space-y-6">
                 <div>
                     <Link
-                        href={route('job.drafting')}
+                        href={route('job.board')}
                         className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
                     >
                         ← Back to Archi Team
@@ -707,7 +707,7 @@ export default function DraftingRequestForm({
                                 Submit request
                             </PrimaryButton>
                             <Link
-                                href={route('job.drafting')}
+                                href={route('job.board')}
                                 className="text-sm font-medium text-slate-600 hover:text-slate-900"
                             >
                                 Cancel

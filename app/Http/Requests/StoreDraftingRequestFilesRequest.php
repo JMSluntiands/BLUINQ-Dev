@@ -10,7 +10,7 @@ class StoreDraftingRequestFilesRequest extends FormRequest
     {
         $user = $this->user();
 
-        return $user !== null && $user->isAdmin();
+        return $user !== null && $user->hasPermission('job.drafting.files.edit');
     }
 
     /**

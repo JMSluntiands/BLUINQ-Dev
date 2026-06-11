@@ -42,8 +42,8 @@ export default function FlashNoticeModal({
     return (
         <Modal show={show} onClose={close} maxWidth="md">
             <div className="p-6">
-                <h2 className="text-lg font-semibold text-[#323338]">{title}</h2>
-                <p className="mt-2 text-sm leading-relaxed text-[#676879]">
+                <h2 className="text-lg font-semibold text-[#323338] dark:text-slate-100">{title}</h2>
+                <p className="mt-2 text-sm leading-relaxed text-[#676879] dark:text-slate-400">
                     {message}
                 </p>
                 <div className="mt-6 flex justify-end">

@@ -102,7 +102,7 @@ class DraftingRequestFormController extends Controller
         });
 
         return redirect()
-            ->route('job.drafting')
+            ->route('job.board')
             ->with('status', 'drf-submitted');
     }
 

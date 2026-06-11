@@ -12,7 +12,30 @@ class UpdateDraftingRequestRequest extends FormRequest
     {
         $user = $this->user();
 
-        return $user !== null && $user->isAdmin();
+        if ($user === null) {
+            return false;
+        }
+
+        /** @var DraftingRequest|null $draftingRequest */
+        $draftingRequest = $this->route('draftingRequest');
+
+        if ($draftingRequest === null || $draftingRequest->isArchived()) {
+            return false;
+        }
+
+        if (! $user->hasPermission('job.drafting.view')) {
+            return false;
+        }
+
+        if (! $user->isAdmin() && $draftingRequest->user_id !== $user->id) {
+            return false;
+        }
+
+        if ($this->input('section') === 'building_area') {
+            return $user->hasPermission('job.drafting.building-area.edit');
+        }
+
+        return $user->hasPermission('job.drafting.job-details.edit');
     }
 
     /**
@@ -75,8 +98,12 @@ class UpdateDraftingRequestRequest extends FormRequest
                 'design_requirements' => ['nullable', 'string', 'max:2000'],
                 'additional_inclusions' => ['nullable', 'string', 'max:2000'],
             ],
+            'building_area' => [
+                'section' => ['required', 'string', 'in:building_area'],
+                'max_building_area_sqm' => ['nullable', 'numeric', 'min:0'],
+            ],
             default => [
-                'section' => ['required', 'string', 'in:client,job,building,notes'],
+                'section' => ['required', 'string', 'in:client,job,building,notes,building_area'],
             ],
         };
     }

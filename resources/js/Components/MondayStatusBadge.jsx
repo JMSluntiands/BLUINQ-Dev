@@ -14,7 +14,7 @@ export default function MondayStatusBadge({ value }) {
 
     if (v === 'inactive') {
         return (
-            <span className="inline-flex items-center rounded-md bg-[#fdab3d] px-2.5 py-0.5 text-xs font-semibold text-[#323338] shadow-sm">
+            <span className="inline-flex items-center rounded-md bg-[#fdab3d] px-2.5 py-0.5 text-xs font-semibold text-[#323338] shadow-sm dark:text-slate-900">
                 Inactive
             </span>
         );

@@ -11,6 +11,8 @@ class Permission extends Model
         'slug',
         'name',
         'status',
+        'group_key',
+        'parent_slug',
         'sort_order',
     ];
 

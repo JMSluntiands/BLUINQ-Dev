@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\BrandLogoController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Job\DraftingController;
 use App\Http\Controllers\Job\DraftingRequestFormController;
+use App\Http\Controllers\Job\JobBoardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Settings\ActivityLogController;
 use App\Http\Controllers\Settings\BuildingTypeController;
@@ -19,7 +21,6 @@ use App\Http\Controllers\Settings\RoofTypeController;
 use App\Http\Controllers\Settings\ScopeOfWorkController;
 use App\Http\Controllers\Settings\ServiceEngagingController;
 use App\Http\Controllers\Settings\UserAccountController;
-use App\Models\User;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -27,30 +28,16 @@ Route::get('/brand-logo', [BrandLogoController::class, 'show'])
     ->name('app.brand-logo');
 
 Route::middleware(['auth', 'permission.route'])->group(function () {
-    Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard', [
-            'stats' => [
-                [
-                    'label' => 'Total users',
-                    'value' => User::query()->active()->count(),
-                ],
-                [
-                    'label' => 'Administrators',
-                    'value' => User::query()->active()->whereHas('role', fn ($q) => $q->where('slug', 'admin'))->count(),
-                ],
-                [
-                    'label' => 'Members',
-                    'value' => User::query()->active()->whereHas('role', fn ($q) => $q->where('slug', 'user'))->count(),
-                ],
-                [
-                    'label' => 'New (7 days)',
-                    'value' => User::query()->active()->where('created_at', '>=', now()->subDays(7))->count(),
-                ],
-            ],
-        ]);
-    })->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->name('dashboard');
+    Route::post('/dashboard/clock-in', [DashboardController::class, 'clockIn'])
+        ->name('dashboard.clock-in');
+    Route::post('/dashboard/clock-out', [DashboardController::class, 'clockOut'])
+        ->name('dashboard.clock-out');
 
-    Route::get('/job/drafting', [DraftingController::class, 'index'])
+    Route::get('/job/board', [JobBoardController::class, 'index'])
+        ->name('job.board');
+    Route::get('/job/drafting', [JobBoardController::class, 'redirectFromLegacyList'])
         ->name('job.drafting');
     Route::get('/job/drafting/archive', [DraftingController::class, 'archive'])
         ->name('job.drafting.archive');
@@ -58,6 +45,8 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('job.drafting.destroy');
     Route::post('/job/drafting/{draftingRequest}/restore', [DraftingController::class, 'restore'])
         ->name('job.drafting.restore');
+    Route::get('/job/drafting/{draftingRequest}/board-comments', [DraftingController::class, 'boardComments'])
+        ->name('job.drafting.board-comments');
     Route::get('/job/drafting/{draftingRequest}', [DraftingController::class, 'show'])
         ->name('job.drafting.show');
     Route::get('/job/drafting/{draftingRequest}/files/{file}', [DraftingController::class, 'downloadFile'])
@@ -70,8 +59,14 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('job.drafting.comments.store');
     Route::patch('/job/drafting/{draftingRequest}/status', [DraftingController::class, 'updateStatus'])
         ->name('job.drafting.status.update');
+    Route::patch('/job/drafting/{draftingRequest}/priority', [JobBoardController::class, 'togglePriority'])
+        ->name('job.drafting.priority.update');
     Route::patch('/job/drafting/{draftingRequest}', [DraftingController::class, 'update'])
         ->name('job.drafting.update');
+    Route::post('/job/drafting/{draftingRequest}/revisions', [DraftingController::class, 'storeRevision'])
+        ->name('job.drafting.revisions.store');
+    Route::post('/job/drafting/{draftingRequest}/accounts', [DraftingController::class, 'storeAccountEntry'])
+        ->name('job.drafting.accounts.store');
 
     Route::get('/job/drafting-request-form', [DraftingRequestFormController::class, 'create'])
         ->name('job.drafting-request-form');

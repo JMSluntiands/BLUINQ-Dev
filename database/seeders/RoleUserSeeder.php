@@ -35,7 +35,7 @@ class RoleUserSeeder extends Seeder
         User::query()->updateOrCreate(
             ['email' => 'user@bluinq.local'],
             [
-                'name' => 'User',
+                'name' => 'Juan Dela Cruz',
                 'password' => $password,
                 'role_id' => $memberRoleId,
                 'email_verified_at' => now(),

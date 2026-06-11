@@ -18,7 +18,7 @@ class RolePermissionController extends Controller
         $permissions = Permission::query()
             ->where('status', 'active')
             ->orderBy('sort_order')
-            ->get(['id', 'slug', 'name', 'status']);
+            ->get(['id', 'slug', 'name', 'status', 'group_key', 'parent_slug']);
 
         $roles = Role::query()
             ->orderBy('sort_order')
@@ -37,6 +37,12 @@ class RolePermissionController extends Controller
 
         return Inertia::render('Settings/Permissions/Index', [
             'permissions' => $permissions,
+            'permissionGroups' => [
+                ['key' => 'general', 'label' => 'General'],
+                ['key' => 'archi-project', 'label' => 'Archi Project'],
+                ['key' => 'workflow-settings', 'label' => 'Workflow settings'],
+                ['key' => 'system', 'label' => 'System settings'],
+            ],
             'roles' => $rolesForInertia,
             'assigned' => $assigned,
         ]);

@@ -28,30 +28,30 @@ export default function Pagination({ pagination }) {
 
     return (
         <nav
-            className="flex flex-col gap-3 border-t border-[#e6e9ef] bg-[#fafbfc] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-3 border-t border-[#e6e9ef] bg-[#fafbfc] px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-[#2a3544] dark:bg-[#1a222e]"
             aria-label="Pagination"
         >
             {hasTotal && (
-                <p className="text-sm text-[#676879]">
+                <p className="text-sm text-[#676879] dark:text-[#94a3b8]">
                     {from != null && to != null ? (
                         <>
                             Showing{' '}
-                            <span className="font-semibold text-[#323338]">
+                            <span className="font-semibold text-[#323338] dark:text-white">
                                 {from}
                             </span>
                             {' to '}
-                            <span className="font-semibold text-[#323338]">
+                            <span className="font-semibold text-[#323338] dark:text-white">
                                 {to}
                             </span>
                             {' of '}
-                            <span className="font-semibold text-[#323338]">
+                            <span className="font-semibold text-[#323338] dark:text-white">
                                 {total}
                             </span>
                             {' entries'}
                         </>
                     ) : (
                         <>
-                            <span className="font-semibold text-[#323338]">
+                            <span className="font-semibold text-[#323338] dark:text-white">
                                 {total}
                             </span>{' '}
                             {total === 1 ? 'entry' : 'entries'}
@@ -72,7 +72,7 @@ export default function Pagination({ pagination }) {
                             return (
                                 <span
                                     key={i}
-                                    className="inline-flex min-h-[2.25rem] min-w-[2.25rem] items-center justify-center rounded-lg border border-transparent bg-[#e6e9ef]/80 px-2 py-1 text-sm text-[#676879]"
+                                    className="inline-flex min-h-[2.25rem] min-w-[2.25rem] items-center justify-center rounded-lg border border-transparent bg-[#e6e9ef]/80 px-2 py-1 text-sm text-[#676879] dark:bg-[#243044] dark:text-[#64748b]"
                                 >
                                     {pageLabel}
                                 </span>
@@ -86,8 +86,8 @@ export default function Pagination({ pagination }) {
                                 className={
                                     'inline-flex min-h-[2.25rem] min-w-[2.25rem] items-center justify-center rounded-lg border px-2 py-1 text-sm font-medium transition ' +
                                     (link.active
-                                        ? 'border-[#0073ea] bg-[#0073ea] text-white shadow-sm'
-                                        : 'border-[#e6e9ef] bg-white text-[#323338] hover:border-[#c5c7d0] hover:bg-[#f6f7fb]')
+                                        ? 'border-[#0073ea] bg-[#0073ea] text-white shadow-sm dark:border-[#1890ff] dark:bg-[#1890ff]'
+                                        : 'border-[#e6e9ef] bg-white text-[#323338] hover:border-[#c5c7d0] hover:bg-[#f6f7fb] dark:border-[#3d4f63] dark:bg-[#0f1419] dark:text-white dark:hover:border-[#4a5568] dark:hover:bg-[#243044]')
                                 }
                             >
                                 {pageLabel}

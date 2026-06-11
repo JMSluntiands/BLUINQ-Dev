@@ -2,6 +2,462 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+    html {
+        @apply bg-slate-100 text-slate-900;
+    }
+
+    html.dark {
+        color-scheme: dark;
+        @apply bg-slate-950 text-slate-100;
+    }
+
+    html.dark body {
+        @apply bg-slate-950 text-slate-100;
+    }
+}
+
+/* Dark mode utility remaps (outside @layer to avoid circular deps) */
+.dark .bg-white {
+    background-color: rgb(15 23 42);
+}
+
+.dark .bg-gray-50,
+.dark .bg-gray-100 {
+    background-color: rgb(15 23 42);
+}
+
+.dark .bg-slate-50 {
+    background-color: rgb(30 41 59 / 0.6);
+}
+
+.dark .bg-slate-100 {
+    background-color: rgb(30 41 59);
+}
+
+.dark .bg-sky-50 {
+    background-color: rgb(8 47 73 / 0.4);
+}
+
+.dark .from-sky-50 {
+    --tw-gradient-from: rgb(8 47 73 / 0.45) var(--tw-gradient-from-position);
+    --tw-gradient-to: rgb(8 47 73 / 0) var(--tw-gradient-to-position);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+.dark .to-white {
+    --tw-gradient-to: rgb(15 23 42) var(--tw-gradient-to-position);
+}
+
+.dark .border-slate-100 {
+    border-color: rgb(30 41 59);
+}
+
+.dark .border-slate-200,
+.dark .border-gray-200 {
+    border-color: rgb(51 65 85);
+}
+
+.dark .border-slate-300,
+.dark .border-gray-300 {
+    border-color: rgb(71 85 105);
+}
+
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-gray-900,
+.dark .text-gray-800 {
+    color: rgb(241 245 249);
+}
+
+.dark .text-slate-700,
+.dark .text-gray-700 {
+    color: rgb(226 232 240);
+}
+
+.dark .text-slate-600,
+.dark .text-gray-600 {
+    color: rgb(203 213 225);
+}
+
+.dark .text-slate-500,
+.dark .text-gray-500 {
+    color: rgb(148 163 184);
+}
+
+.dark .text-slate-400 {
+    color: rgb(100 116 139);
+}
+
+.dark .text-sky-700 {
+    color: rgb(125 211 252);
+}
+
+.dark .text-sky-800 {
+    color: rgb(186 230 253);
+}
+
+.dark .text-sky-600 {
+    color: rgb(56 189 248);
+}
+
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-slate-100:hover,
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover {
+    background-color: rgb(30 41 59);
+}
+
+.dark .hover\:text-slate-900:hover {
+    color: rgb(241 245 249);
+}
+
+.dark .hover\:text-slate-500:hover {
+    color: rgb(203 213 225);
+}
+
+.dark .focus\:bg-gray-100:focus {
+    background-color: rgb(30 41 59);
+}
+
+.dark .ring-slate-100 {
+    --tw-ring-color: rgb(51 65 85);
+}
+
+.dark .ring-black.ring-opacity-5 {
+    --tw-ring-color: rgb(51 65 85);
+    --tw-ring-opacity: 1;
+}
+
+.dark input:not([type='checkbox']):not([type='radio']),
+.dark select,
+.dark textarea {
+    border-color: rgb(71 85 105);
+    background-color: rgb(15 23 42);
+    color: rgb(241 245 249);
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+    color: rgb(100 116 139);
+}
+
+.dark .recharts-legend-item-text {
+    color: rgb(203 213 225) !important;
+}
+
+.recharts-tooltip-wrapper {
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    outline: none !important;
+}
+
+.dark .recharts-tooltip-wrapper {
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    outline: none !important;
+}
+
+.dark .recharts-default-tooltip {
+    background-color: rgb(30 41 59) !important;
+    border-color: rgb(71 85 105) !important;
+}
+
+.dark .recharts-tooltip-label,
+.dark .recharts-tooltip-item {
+    color: rgb(241 245 249) !important;
+}
+
+.dark .border-slate-200\/90 {
+    border-color: rgb(31 41 55);
+}
+
+.dark .border-slate-900 {
+    border-color: rgb(71 85 105);
+}
+
+.dark .bg-slate-50\/50 {
+    background-color: rgb(15 23 41 / 0.6);
+}
+
+/* Monday.com palette — text */
+.dark .text-\[\#323338\] {
+    color: rgb(241 245 249);
+}
+
+.dark .text-\[\#676879\] {
+    color: rgb(148 163 184);
+}
+
+.dark .text-\[\#c5c7d0\] {
+    color: rgb(100 116 139);
+}
+
+.dark .group:hover .group-hover\:text-\[\#676879\] {
+    color: rgb(148 163 184);
+}
+
+.dark .placeholder\:text-\[\#676879\]::placeholder {
+    color: rgb(100 116 139);
+}
+
+/* Monday.com palette — backgrounds */
+.dark .bg-\[\#fafbfc\] {
+    background-color: rgb(30 41 59);
+}
+
+.dark .bg-\[\#f6f7fb\] {
+    background-color: rgb(30 41 59);
+}
+
+.dark .bg-\[\#e6e9ef\] {
+    background-color: rgb(51 65 85);
+}
+
+.dark .bg-\[\#e6e9ef\]\/80 {
+    background-color: rgb(51 65 85 / 0.8);
+}
+
+.dark .bg-\[\#cce5ff\] {
+    background-color: rgb(12 74 110 / 0.45);
+}
+
+/* Monday.com palette — borders & dividers */
+.dark .border-\[\#e6e9ef\] {
+    border-color: rgb(51 65 85);
+}
+
+.dark .border-\[\#f0f1f5\] {
+    border-color: rgb(51 65 85);
+}
+
+.dark .border-\[\#c5c7d0\] {
+    border-color: rgb(71 85 105);
+}
+
+.dark .\!border-\[\#c5c7d0\] {
+    border-color: rgb(71 85 105) !important;
+}
+
+.dark .divide-\[\#e6e9ef\] > :not([hidden]) ~ :not([hidden]) {
+    border-color: rgb(51 65 85);
+}
+
+.dark .ring-\[\#e6e9ef\] {
+    --tw-ring-color: rgb(51 65 85);
+}
+
+/* Monday.com palette — hover & focus states */
+.dark .hover\:bg-\[\#f6f7fb\]:hover {
+    background-color: rgb(30 41 59);
+}
+
+.dark .hover\:bg-\[\#e6e9ef\]:hover,
+.dark .hover\:bg-\[\#e6e9ef\]\/80:hover {
+    background-color: rgb(51 65 85);
+}
+
+.dark .hover\:bg-\[\#fafbfc\]\/80:hover {
+    background-color: rgb(30 41 59 / 0.8);
+}
+
+.dark .hover\:border-\[\#c5c7d0\]:hover {
+    border-color: rgb(100 116 139);
+}
+
+.dark .hover\:text-\[\#0073ea\]:hover {
+    color: rgb(96 165 250);
+}
+
+.dark .hover\:text-\[\#e44258\]:hover {
+    color: rgb(251 113 133);
+}
+
+.dark .focus-within\:border-\[\#0073ea\]:focus-within {
+    border-color: rgb(59 130 246);
+}
+
+.dark .focus-within\:ring-\[\#0073ea\]\/20:focus-within {
+    --tw-ring-color: rgb(59 130 246 / 0.25);
+}
+
+.dark .focus\:border-\[\#0073ea\]:focus,
+.dark .\!focus\:border-\[\#0073ea\]:focus {
+    border-color: rgb(59 130 246);
+}
+
+.dark .focus\:ring-\[\#0073ea\]:focus,
+.dark .\!focus\:ring-\[\#0073ea\]:focus {
+    --tw-ring-color: rgb(59 130 246);
+}
+
+.dark .focus\:ring-\[\#e44258\]:focus {
+    --tw-ring-color: rgb(244 63 94);
+}
+
+.dark .focus-visible\:ring-\[\#0073ea\]:focus-visible {
+    --tw-ring-color: rgb(59 130 246);
+}
+
+.dark .focus-visible\:ring-offset-slate-900:focus-visible {
+    --tw-ring-offset-color: rgb(15 23 42);
+}
+
+/* Additional slate / sky / indigo text */
+.dark .text-slate-400 {
+    color: rgb(148 163 184);
+}
+
+.dark .text-slate-300 {
+    color: rgb(203 213 225);
+}
+
+.dark .text-sky-600 {
+    color: rgb(56 189 248);
+}
+
+.dark .text-indigo-600 {
+    color: rgb(129 140 248);
+}
+
+.dark .hover\:text-indigo-800:hover {
+    color: rgb(165 180 252);
+}
+
+.dark .text-red-600 {
+    color: rgb(248 113 113);
+}
+
+/* Semantic status / alert backgrounds */
+.dark .bg-amber-50,
+.dark .bg-amber-50\/90 {
+    background-color: rgb(245 158 11 / 0.1);
+}
+
+.dark .bg-amber-100,
+.dark .bg-amber-200 {
+    background-color: rgb(245 158 11 / 0.2);
+}
+
+.dark .border-amber-200 {
+    border-color: rgb(245 158 11 / 0.3);
+}
+
+.dark .text-amber-800,
+.dark .text-amber-900 {
+    color: rgb(253 230 138);
+}
+
+.dark .bg-emerald-50,
+.dark .bg-emerald-50\/90 {
+    background-color: rgb(16 185 129 / 0.1);
+}
+
+.dark .bg-emerald-100,
+.dark .bg-emerald-200 {
+    background-color: rgb(16 185 129 / 0.2);
+}
+
+.dark .border-emerald-200 {
+    border-color: rgb(16 185 129 / 0.3);
+}
+
+.dark .text-emerald-800 {
+    color: rgb(167 243 208);
+}
+
+.dark .bg-rose-50,
+.dark .bg-rose-50\/90 {
+    background-color: rgb(244 63 94 / 0.1);
+}
+
+.dark .bg-rose-100,
+.dark .bg-rose-200 {
+    background-color: rgb(244 63 94 / 0.2);
+}
+
+.dark .border-rose-200 {
+    border-color: rgb(244 63 94 / 0.3);
+}
+
+.dark .text-rose-800,
+.dark .text-rose-900 {
+    color: rgb(254 205 211);
+}
+
+.dark .bg-blue-50 {
+    background-color: rgb(59 130 246 / 0.1);
+}
+
+.dark .border-blue-200 {
+    border-color: rgb(59 130 246 / 0.3);
+}
+
+.dark .text-blue-600 {
+    color: rgb(96 165 250);
+}
+
+.dark .text-blue-800 {
+    color: rgb(147 197 253);
+}
+
+.dark .bg-violet-50 {
+    background-color: rgb(139 92 246 / 0.1);
+}
+
+.dark .bg-violet-100 {
+    background-color: rgb(139 92 246 / 0.15);
+}
+
+.dark .border-violet-200 {
+    border-color: rgb(139 92 246 / 0.3);
+}
+
+.dark .text-violet-600,
+.dark .text-violet-700 {
+    color: rgb(196 181 253);
+}
+
+.dark .hover\:bg-red-50:hover {
+    background-color: rgb(244 63 94 / 0.1);
+}
+
+/* Card shadows in dark mode */
+.dark .shadow-\[0_4px_20px_rgba\(0\,0\,0\,0\.06\)\] {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+.dark .shadow-\[0_2px_12px_rgba\(0\,0\,0\,0\.05\)\] {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+/* Rich text editor content */
+.dark .rich-text-editor {
+    color: rgb(241 245 249);
+}
+
+.dark .rich-text-editor a {
+    color: rgb(96 165 250);
+}
+
+.dark .rich-text-editor blockquote {
+    border-color: rgb(71 85 105);
+    color: rgb(148 163 184);
+}
+
+/* Focus ring offset in dark mode */
+.dark .focus\:ring-offset-1:focus {
+    --tw-ring-offset-color: rgb(15 23 42);
+}
+
+.dark .focus\:ring-offset-2:focus {
+    --tw-ring-offset-color: rgb(15 23 42);
+}
+
 @keyframes primary-button-save {
     0%,
     100% {

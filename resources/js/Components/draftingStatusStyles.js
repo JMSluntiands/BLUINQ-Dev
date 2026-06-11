@@ -1,15 +1,20 @@
 /** @type {Record<string, string>} */
 export const DRAFTING_STATUS_PILL_STYLES = {
-    allocated: 'border-blue-200 bg-blue-50 text-blue-800',
-    pending: 'border-amber-200 bg-amber-50 text-amber-800',
-    in_progress: 'border-violet-200 bg-violet-50 text-violet-800',
-    completed: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-    on_hold: 'border-slate-200 bg-slate-50 text-slate-700',
+    allocated:
+        'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-400/60 dark:bg-[#1a222e] dark:text-blue-300',
+    pending:
+        'border-amber-200 bg-amber-50 text-amber-800 dark:border-[#eab308] dark:bg-[#1a222e] dark:text-[#eab308]',
+    in_progress:
+        'border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-400/60 dark:bg-[#1a222e] dark:text-violet-300',
+    completed:
+        'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-400/60 dark:bg-[#1a222e] dark:text-emerald-300',
+    on_hold:
+        'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-500 dark:bg-[#1a222e] dark:text-slate-300',
 };
 
 export function draftingStatusPillClass(status) {
     return (
         DRAFTING_STATUS_PILL_STYLES[status] ??
-        'border-[#c5c7d0] bg-[#f6f7fb] text-[#676879]'
+        'border-[#c5c7d0] bg-[#f6f7fb] text-[#676879] dark:border-[#3d4f63] dark:bg-[#1a222e] dark:text-[#94a3b8]'
     );
 }

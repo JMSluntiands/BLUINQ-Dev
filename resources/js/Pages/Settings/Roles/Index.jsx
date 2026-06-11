@@ -123,7 +123,7 @@ export default function RolesIndex({ roles, filters = {} }) {
                                         Slug
                                     </th>
                                     <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-[#676879]">
-                                        Users
+                                        Number of users
                                     </th>
                                     <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-[#676879]">
                                         Type
