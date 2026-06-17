@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\AnnouncementController;
 use App\Models\User;
 use App\Services\AttendanceService;
 use App\Services\DraftingRequestBoardService;
@@ -23,12 +24,14 @@ class DashboardController extends Controller
         $boardQuery = $this->board->baseQuery($request);
 
         return Inertia::render('Dashboard', [
-            'boardPreviewJobs' => $boardQuery
-                ->limit(5)
-                ->get()
-                ->map(fn ($row) => $this->board->formatBoardRow($row))
-                ->values()
-                ->all(),
+            'boardPreviewJobs' => $user?->hasPermission('job.list.view')
+                ? $boardQuery
+                    ->limit(5)
+                    ->get()
+                    ->map(fn ($row) => $this->board->formatBoardRow($row))
+                    ->values()
+                    ->all()
+                : [],
             'stats' => [
                 [
                     'label' => 'Total users',
@@ -51,6 +54,11 @@ class DashboardController extends Controller
             'clock' => $user
                 ? $this->attendance->clockStateForUser($user)
                 : null,
+            'announcements' => $user?->hasPermission('announcements.view')
+                ? AnnouncementController::latestForDashboard()
+                : [],
+            'canViewAnnouncements' => $user?->hasPermission('announcements.view') ?? false,
+            'canManageAnnouncements' => $user?->hasPermission('announcements.manage') ?? false,
         ]);
     }
 

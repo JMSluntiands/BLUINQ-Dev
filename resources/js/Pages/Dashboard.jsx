@@ -10,49 +10,14 @@ import {
     MegaphoneIcon,
     UserMinusIcon,
 } from '@heroicons/react/24/outline';
-import { Head, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head, Link, usePage } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 
 const STAT_CARD_SOLIDS = [
     'bg-blue-600',
     'bg-emerald-600',
     'bg-violet-600',
     'bg-amber-500',
-];
-
-const SAMPLE_ANNOUNCEMENTS = [
-    {
-        id: 1,
-        title: 'Welcome to the new Bluinq dashboard',
-        date: 'June 8, 2025',
-        author: 'Admin Team',
-        excerpt:
-            'We have refreshed the dashboard to help you stay on top of announcements, attendance, and upcoming holidays. Explore the new layout and let us know if you have feedback. You will find quick links to your most-used tools, a clearer overview of team activity, and space for company updates right on the home screen. If anything looks off or you need help finding a feature, reach out to the admin team through the support channel.',
-    },
-    {
-        id: 2,
-        title: 'Office hours update for June',
-        date: 'June 3, 2025',
-        author: 'HR Department',
-        excerpt:
-            'Starting June 10, core office hours will be 8:00 AM to 5:00 PM, Monday through Friday. Remote work arrangements remain subject to manager approval.',
-    },
-    {
-        id: 3,
-        title: 'System maintenance scheduled',
-        date: 'May 28, 2025',
-        author: 'IT Support',
-        excerpt:
-            'Planned maintenance will run on Saturday, June 14, from 10:00 PM to 2:00 AM. The portal may be briefly unavailable during this window.',
-    },
-    {
-        id: 4,
-        title: 'Q2 team building event',
-        date: 'May 20, 2025',
-        author: 'People Operations',
-        excerpt:
-            'Save the date for our Q2 team building on June 27. More details on venue and activities will be shared next week.',
-    },
 ];
 
 const SAMPLE_ON_LEAVE = [
@@ -278,18 +243,31 @@ export default function Dashboard() {
         attendance = {},
         clock = {},
         boardPreviewJobs = [],
+        announcements = [],
+        canViewAnnouncements = false,
+        canManageAnnouncements = false,
     } = usePage().props;
-    const presentEmployees = attendance.present ?? [];
     const absentEmployees = attendance.absent ?? [];
     const absentAfterNine = Boolean(attendance.absent_after_nine);
     const [selectedAnnouncementId, setSelectedAnnouncementId] = useState(
-        SAMPLE_ANNOUNCEMENTS[0].id,
+        announcements[0]?.id ?? null,
     );
 
+    useEffect(() => {
+        if (
+            announcements.length > 0 &&
+            !announcements.some(
+                (announcement) => announcement.id === selectedAnnouncementId,
+            )
+        ) {
+            setSelectedAnnouncementId(announcements[0].id);
+        }
+    }, [announcements, selectedAnnouncementId]);
+
     const featuredAnnouncement =
-        SAMPLE_ANNOUNCEMENTS.find(
+        announcements.find(
             (announcement) => announcement.id === selectedAnnouncementId,
-        ) ?? SAMPLE_ANNOUNCEMENTS[0];
+        ) ?? announcements[0] ?? null;
 
     return (
         <AuthenticatedLayout
@@ -320,11 +298,27 @@ export default function Dashboard() {
             </div>
 
             <div className="mt-8 grid grid-cols-1 items-stretch gap-5 lg:grid-cols-12 lg:gap-6">
+                {canViewAnnouncements && (
                 <DashboardPanel
                     title="Announcement"
                     icon={MegaphoneIcon}
                     className="lg:col-span-6"
                 >
+                    {announcements.length === 0 ? (
+                        <div className="text-center">
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                                No announcements yet.
+                            </p>
+                            {canManageAnnouncements && (
+                                <Link
+                                    href={route('announcements.create')}
+                                    className="mt-3 inline-block text-sm font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
+                                >
+                                    Post an announcement
+                                </Link>
+                            )}
+                        </div>
+                    ) : (
                     <div className="grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-5 lg:gap-6">
                         <article className="min-w-0 lg:col-span-3">
                             <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-sky-500 via-sky-600 to-blue-700 dark:from-sky-600 dark:via-sky-700 dark:to-slate-800">
@@ -357,6 +351,7 @@ export default function Dashboard() {
                             </h4>
                             <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
                                 {featuredAnnouncement.date} ·{' '}
+                                {featuredAnnouncement.time} ·{' '}
                                 {featuredAnnouncement.author}
                             </p>
                             <AnnouncementExcerpt
@@ -370,7 +365,7 @@ export default function Dashboard() {
                                 Previous
                             </h4>
                             <ul className="mt-3 max-h-72 space-y-1.5 overflow-y-auto pr-1">
-                                {SAMPLE_ANNOUNCEMENTS.map((announcement) => {
+                                {announcements.map((announcement) => {
                                     const isActive =
                                         announcement.id ===
                                         selectedAnnouncementId;
@@ -411,7 +406,9 @@ export default function Dashboard() {
                             </ul>
                         </aside>
                     </div>
+                    )}
                 </DashboardPanel>
+                )}
 
                 <DashboardPanel
                     title="Attendance"
@@ -430,30 +427,6 @@ export default function Dashboard() {
                                         detail={`Until ${employee.until}`}
                                     />
                                 ))}
-                            </ul>
-                        </div>
-
-                        <div>
-                            <SectionLabel color="emerald">Present</SectionLabel>
-                            <ul className="mb-5 space-y-2">
-                                {presentEmployees.length === 0 ? (
-                                    <li className="rounded-xl bg-slate-50/90 px-3 py-2.5 text-sm text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
-                                        No one has clocked in yet.
-                                    </li>
-                                ) : (
-                                    presentEmployees.map((employee) => (
-                                        <AttendanceEmployeeRow
-                                            key={employee.id}
-                                            employee={employee}
-                                            status="present"
-                                            detail={
-                                                employee.clock_in_time
-                                                    ? `Clocked in at ${employee.clock_in_time}`
-                                                    : 'Clocked in'
-                                            }
-                                        />
-                                    ))
-                                )}
                             </ul>
                         </div>
 

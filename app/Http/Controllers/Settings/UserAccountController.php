@@ -21,6 +21,7 @@ class UserAccountController extends Controller
         $query = User::query()
             ->with('role')
             ->active()
+            ->whereHas('role', fn ($q) => $q->where('slug', '!=', 'admin'))
             ->orderBy('name');
 
         if ($search !== '') {
@@ -191,6 +192,7 @@ class UserAccountController extends Controller
         $query = User::query()
             ->with('role')
             ->archived()
+            ->whereHas('role', fn ($q) => $q->where('slug', '!=', 'admin'))
             ->orderByDesc('archived_at');
 
         if ($search !== '') {

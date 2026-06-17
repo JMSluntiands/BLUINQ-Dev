@@ -4,7 +4,7 @@ import Pagination from '@/Components/Pagination';
 import TableSearchToolbar from '@/Components/TableSearchToolbar';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { PlusIcon } from '@heroicons/react/24/outline';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
 const FLASH_MESSAGES = {
@@ -18,6 +18,10 @@ export default function JobBoard({
     filters = {},
     canViewAllRequests = false,
 }) {
+    const { auth } = usePage().props;
+    const canCreateDraftRequest =
+        auth.user?.permissions?.includes('job.drafting-request.view') ??
+        false;
     const rows = jobs?.data ?? [];
     const [liveSearch, setLiveSearch] = useState('');
     const hasSearch = Boolean(liveSearch.trim());
@@ -48,13 +52,15 @@ export default function JobBoard({
                                 : 'Your submitted drafting requests on the project board.'}
                         </p>
                     </div>
-                    <Link
-                        href={route('job.drafting-request-form')}
-                        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#0073ea] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0060c4] dark:bg-[#1890ff] dark:hover:bg-[#1478e0]"
-                    >
-                        <PlusIcon className="h-4 w-4" aria-hidden />
-                        New request
-                    </Link>
+                    {canCreateDraftRequest && (
+                        <Link
+                            href={route('job.drafting-request-form')}
+                            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#0073ea] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0060c4] dark:bg-[#1890ff] dark:hover:bg-[#1478e0]"
+                        >
+                            <PlusIcon className="h-4 w-4" aria-hidden />
+                            New request
+                        </Link>
+                    )}
                 </div>
             }
         >

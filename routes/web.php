@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\BrandLogoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Job\DraftingController;
@@ -21,6 +22,7 @@ use App\Http\Controllers\Settings\RoofTypeController;
 use App\Http\Controllers\Settings\ScopeOfWorkController;
 use App\Http\Controllers\Settings\ServiceEngagingController;
 use App\Http\Controllers\Settings\UserAccountController;
+use App\Http\Controllers\TimesheetController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -34,6 +36,25 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('dashboard.clock-in');
     Route::post('/dashboard/clock-out', [DashboardController::class, 'clockOut'])
         ->name('dashboard.clock-out');
+
+    Route::get('/announcements', [AnnouncementController::class, 'index'])
+        ->name('announcements.index');
+    Route::get('/announcements/create', [AnnouncementController::class, 'create'])
+        ->name('announcements.create');
+    Route::post('/announcements', [AnnouncementController::class, 'store'])
+        ->name('announcements.store');
+    Route::get('/announcements/archive', [AnnouncementController::class, 'archive'])
+        ->name('announcements.archive');
+    Route::get('/announcements/{announcement}/edit', [AnnouncementController::class, 'edit'])
+        ->name('announcements.edit');
+    Route::patch('/announcements/{announcement}', [AnnouncementController::class, 'update'])
+        ->name('announcements.update');
+    Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroy'])
+        ->name('announcements.destroy');
+    Route::post('/announcements/{announcement}/restore', [AnnouncementController::class, 'restore'])
+        ->name('announcements.restore');
+    Route::get('/timesheet', [TimesheetController::class, 'index'])
+        ->name('timesheet.index');
 
     Route::get('/job/board', [JobBoardController::class, 'index'])
         ->name('job.board');

@@ -15,6 +15,7 @@ import {
     KeyIcon,
     HomeIcon,
     InboxStackIcon,
+    MegaphoneIcon,
     Squares2X2Icon,
     ShieldCheckIcon,
     TagIcon,
@@ -111,9 +112,26 @@ export default function AuthenticatedLayout({ header, children }) {
     const canRoles =
         user?.role === 'admin' &&
         (can('settings.roles.manage') || can('settings.user-accounts.manage'));
-    const canDrafting = can('dashboard.view');
+    const canDraftingRequest = can('job.drafting-request.view');
+    const canJobList = can('job.list.view');
+    const canAnnouncements = can('announcements.view');
+    const canAnnouncementsManage = can('announcements.manage');
+    const canTimesheet = can('timesheet.view');
+    const canDraftingArchive = can('job.drafting.archive');
+    const canArchiProject =
+        canJobList ||
+        canDraftingRequest ||
+        canDraftingArchive ||
+        can('job.drafting.view');
 
     const isDashboard = route().current('dashboard');
+    const isAnnouncements =
+        route().current('announcements.index') ||
+        route().current('announcements.create') ||
+        route().current('announcements.edit') ||
+        route().current('announcements.archive');
+    const isJobList = route().current('job.board');
+    const isTimesheet = route().current('timesheet.index');
     const isJobBoard =
         route().current('job.board') || route().current('job.drafting');
     const isDraftingList = isJobBoard || route().current('job.drafting.show');
@@ -352,7 +370,52 @@ export default function AuthenticatedLayout({ header, children }) {
                             Dashboard
                         </NavItem>
                     )}
-                    {canDrafting && (
+                    {canAnnouncements && (
+                        <NavItem
+                            href={route('announcements.index')}
+                            active={isAnnouncements}
+                            onNavigate={closeSidebar}
+                            icon={
+                                <MegaphoneIcon
+                                    className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
+                                    aria-hidden
+                                />
+                            }
+                        >
+                            Announcement
+                        </NavItem>
+                    )}
+                    {canJobList && (
+                        <NavItem
+                            href={route('job.board')}
+                            active={isJobList}
+                            onNavigate={closeSidebar}
+                            icon={
+                                <ClipboardDocumentListIcon
+                                    className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
+                                    aria-hidden
+                                />
+                            }
+                        >
+                            Job list
+                        </NavItem>
+                    )}
+                    {canTimesheet && (
+                        <NavItem
+                            href={route('timesheet.index')}
+                            active={isTimesheet}
+                            onNavigate={closeSidebar}
+                            icon={
+                                <ClockIcon
+                                    className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
+                                    aria-hidden
+                                />
+                            }
+                        >
+                            Timesheet
+                        </NavItem>
+                    )}
+                    {canArchiProject && (
                         <div className="mt-3 space-y-1">
                             <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
                                 Workflow
@@ -393,29 +456,35 @@ export default function AuthenticatedLayout({ header, children }) {
                                 </button>
                                 {archiTeamMenuOpen && (
                                     <div className="mt-0.5 space-y-0.5 pb-1">
-                                        <SidebarSubLink
-                                            href={route('job.board')}
-                                            active={isJobBoard}
-                                            onNavigate={closeSidebar}
-                                        >
-                                            Drafting Requests
-                                        </SidebarSubLink>
-                                        <SidebarSubLink
-                                            href={route(
-                                                'job.drafting-request-form',
-                                            )}
-                                            active={isDraftingRequestForm}
-                                            onNavigate={closeSidebar}
-                                        >
-                                            Drafting Request Form
-                                        </SidebarSubLink>
-                                        <SidebarSubLink
-                                            href={route('job.drafting.archive')}
-                                            active={isDraftingArchive}
-                                            onNavigate={closeSidebar}
-                                        >
-                                            Archive
-                                        </SidebarSubLink>
+                                        {canJobList && (
+                                            <SidebarSubLink
+                                                href={route('job.board')}
+                                                active={isJobBoard}
+                                                onNavigate={closeSidebar}
+                                            >
+                                                Drafting Requests
+                                            </SidebarSubLink>
+                                        )}
+                                        {canDraftingRequest && (
+                                            <SidebarSubLink
+                                                href={route(
+                                                    'job.drafting-request-form',
+                                                )}
+                                                active={isDraftingRequestForm}
+                                                onNavigate={closeSidebar}
+                                            >
+                                                Drafting Request Form
+                                            </SidebarSubLink>
+                                        )}
+                                        {canJobList && (
+                                            <SidebarSubLink
+                                                href={route('job.drafting.archive')}
+                                                active={isDraftingArchive}
+                                                onNavigate={closeSidebar}
+                                            >
+                                                Archive
+                                            </SidebarSubLink>
+                                        )}
                                     </div>
                                 )}
                             </div>
