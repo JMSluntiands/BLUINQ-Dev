@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Permission;
+use App\Services\LeaveService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -50,6 +51,9 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'status' => $request->session()->get('status'),
             ],
+            'pendingLeaveCount' => $user?->hasPermission('leave.manage')
+                ? app(LeaveService::class)->pendingCount()
+                : 0,
         ];
     }
 

@@ -35,6 +35,7 @@ class User extends Authenticatable
         'personal_file_url',
         'claims_excel_url',
         'achievements_milestones',
+        'leave_credits',
         'password',
         'role_id',
         'profile_image',
@@ -71,6 +72,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'archived_at' => 'datetime',
             'birthday' => 'date',
+            'leave_credits' => 'integer',
         ];
     }
 
@@ -143,7 +145,19 @@ class User extends Authenticatable
                 return null;
             }
 
-            return Storage::disk('public')->url($this->profile_image);
+            $relativePath = str_replace('/', DIRECTORY_SEPARATOR, $this->profile_image);
+            $publicPath = public_path('storage'.DIRECTORY_SEPARATOR.$relativePath);
+
+            if (is_file($publicPath)) {
+                return Storage::disk('public')->url($this->profile_image);
+            }
+
+            $storedPath = storage_path('app/public/'.$relativePath);
+            if (is_file($storedPath)) {
+                return route('profile.image', $this->id);
+            }
+
+            return null;
         });
     }
 }

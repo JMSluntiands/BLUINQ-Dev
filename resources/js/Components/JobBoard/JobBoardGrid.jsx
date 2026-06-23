@@ -7,11 +7,10 @@ import {
 import JobBoardCommentsModal, {
     JobBoardCommentButton,
 } from '@/Components/JobBoard/JobBoardCommentsModal';
-import Checkbox from '@/Components/Checkbox';
-import { ChevronRightIcon, FlagIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { ChevronRightIcon, FlagIcon } from '@heroicons/react/24/outline';
 import { FlagIcon as FlagIconSolid } from '@heroicons/react/24/solid';
 import { Link, router } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 const DRAFTING_SLOTS = 3;
 const CHECKING_SLOTS = 2;
@@ -159,76 +158,11 @@ function PriorityFlag({ job, onToggled }) {
     );
 }
 
-function FooterTag({ label, count }) {
-    return (
-        <span className="inline-flex max-w-full items-center gap-1.5 rounded-md bg-[#e6f4ff] px-2 py-1 text-[11px] font-medium text-[#0073ea] dark:bg-[#2c5282] dark:text-blue-100">
-            <span className="truncate">{label}</span>
-            {count > 1 && (
-                <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-[#0073ea]/15 px-1 text-[10px] font-semibold text-[#0073ea] dark:bg-white/15 dark:text-blue-50">
-                    +{count - 1}
-                </span>
-            )}
-        </span>
-    );
-}
-
-function ColumnSumCell({ hours = 0, barClass = 'bg-slate-600' }) {
-    const formatted =
-        hours % 1 === 0
-            ? `${hours} h`
-            : `${Math.round(hours * 10) / 10} h`;
-
-    return (
-        <div className="flex min-w-[3.5rem] flex-col gap-0.5">
-            <div className="flex items-center gap-1.5">
-                <span
-                    className={`h-2 w-7 shrink-0 rounded-sm ${barClass}`}
-                    aria-hidden
-                />
-                <span className="whitespace-nowrap text-[11px] tabular-nums text-[#323338] dark:text-slate-300">
-                    {formatted}
-                </span>
-            </div>
-            <span className="text-[10px] text-[#676879] dark:text-slate-500">sum</span>
-        </div>
-    );
-}
-
-function ProgressSumCell({ percent = 0 }) {
-    return (
-        <div className="flex flex-col gap-0.5">
-            <span className="text-[11px] tabular-nums text-[#323338] dark:text-slate-300">
-                {percent}%
-            </span>
-            <span className="text-[10px] text-[#676879] dark:text-slate-500">sum</span>
-        </div>
-    );
-}
-
-const SUMMARY_BAR_CLASSES = [
-    'bg-gradient-to-r from-violet-500 via-fuchsia-500 to-orange-400',
-    'bg-cyan-500',
-    'bg-gradient-to-r from-orange-400 to-amber-300',
-    'bg-slate-600',
-    'bg-slate-600',
-];
-
 const thClass =
     'whitespace-nowrap border-r border-[#e6e9ef] px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-[#676879] last:border-r-0 dark:border-[#2f3347] dark:text-slate-400';
 
 const tdClass =
     'border-r border-[#e6e9ef] px-2 py-1.5 align-middle text-xs text-[#323338] last:border-r-0 dark:border-[#2a2d42] dark:text-slate-200';
-
-const checkboxClass =
-    'border-[#c5c7d0] bg-white text-[#0073ea] focus:ring-[#0073ea] focus:ring-offset-white dark:border-slate-600 dark:bg-[#1a1b2e] dark:text-[#1890ff] dark:focus:ring-[#1890ff] dark:focus:ring-offset-[#1a1b2e]';
-
-function parseHours(value) {
-    if (!value) {
-        return 0;
-    }
-
-    return parseFloat(String(value).replace(/[^\d.]/g, '')) || 0;
-}
 
 /**
  * @param {{
@@ -238,7 +172,6 @@ function parseHours(value) {
  *   showFilesInTotal?: boolean;
  *   onCommentsUpdated?: () => void;
  *   onPriorityUpdated?: () => void;
- *   showAddJobRow?: boolean;
  * }} props
  */
 export default function JobBoardGrid({
@@ -248,97 +181,8 @@ export default function JobBoardGrid({
     showFilesInTotal = false,
     onCommentsUpdated,
     onPriorityUpdated,
-    showAddJobRow = true,
 }) {
     const [commentJob, setCommentJob] = useState(null);
-    const [selectedIds, setSelectedIds] = useState(() => new Set());
-
-    const allSelected =
-        jobs.length > 0 && jobs.every((job) => selectedIds.has(job.id));
-
-    const toggleAll = () => {
-        if (allSelected) {
-            setSelectedIds(new Set());
-            return;
-        }
-
-        setSelectedIds(new Set(jobs.map((job) => job.id)));
-    };
-
-    const toggleRow = (id) => {
-        setSelectedIds((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) {
-                next.delete(id);
-            } else {
-                next.add(id);
-            }
-            return next;
-        });
-    };
-
-    const footerStats = useMemo(() => {
-        const builders = {};
-        const categories = {};
-        const houseTypes = {};
-        const draftingSlotHours = Array.from(
-            { length: DRAFTING_SLOTS },
-            () => 0,
-        );
-        const checkingSlotHours = Array.from(
-            { length: CHECKING_SLOTS },
-            () => 0,
-        );
-        let progressWeight = 0;
-
-        for (const job of jobs) {
-            builders[job.builder] = (builders[job.builder] ?? 0) + 1;
-            categories[job.category] = (categories[job.category] ?? 0) + 1;
-            houseTypes[job.house_type] = (houseTypes[job.house_type] ?? 0) + 1;
-
-            (job.drafting ?? []).forEach((slot, index) => {
-                if (slot?.hours && index < DRAFTING_SLOTS) {
-                    draftingSlotHours[index] += parseHours(slot.hours);
-                }
-            });
-            (job.checking ?? []).forEach((slot, index) => {
-                if (slot?.hours && index < CHECKING_SLOTS) {
-                    checkingSlotHours[index] += parseHours(slot.hours);
-                }
-            });
-
-            const segments = job.progress_segments ?? [];
-            progressWeight += segments.reduce((sum, seg) => sum + seg.weight, 0);
-        }
-
-        const topBuilder = Object.entries(builders).sort(
-            (a, b) => b[1] - a[1],
-        )[0];
-        const topCategory = Object.entries(categories).sort(
-            (a, b) => b[1] - a[1],
-        )[0];
-        const topHouseType = Object.entries(houseTypes).sort(
-            (a, b) => b[1] - a[1],
-        )[0];
-
-        const progressPercent =
-            jobs.length > 0
-                ? Math.round((progressWeight / (jobs.length * 5)) * 100)
-                : 0;
-
-        const slotHours = [
-            ...draftingSlotHours,
-            ...checkingSlotHours,
-        ];
-
-        return {
-            topBuilder,
-            topCategory,
-            topHouseType,
-            slotHours,
-            progressPercent: Math.min(progressPercent, 100),
-        };
-    }, [jobs]);
 
     if (!jobs.length) {
         return (
@@ -367,14 +211,6 @@ export default function JobBoardGrid({
                     <table className="w-full min-w-[90rem] border-collapse text-left">
                         <thead className="bg-[#fafbfc] dark:bg-[#151622]">
                             <tr>
-                                <th className={thClass + ' w-8'}>
-                                    <Checkbox
-                                        checked={allSelected}
-                                        onChange={toggleAll}
-                                        className={checkboxClass + ' dark:focus:ring-offset-[#151622]'}
-                                        aria-label="Select all jobs"
-                                    />
-                                </th>
                                 <th className={thClass}>Job</th>
                                 <th className={thClass + ' w-10'} />
                                 <th className={thClass}>Job No.</th>
@@ -398,39 +234,6 @@ export default function JobBoardGrid({
                             </tr>
                         </thead>
                         <tbody>
-                            {showAddJobRow && (
-                                <tr className="border-b border-[#e6e9ef] bg-[#fafbfc] dark:border-[#2a2d42] dark:bg-[#1a1b2e]">
-                                    <td
-                                        className={
-                                            tdClass +
-                                            ' relative border-l-[3px] border-l-emerald-500'
-                                        }
-                                    >
-                                        <Checkbox
-                                            checked={false}
-                                            readOnly
-                                            className={checkboxClass}
-                                            aria-hidden
-                                            tabIndex={-1}
-                                        />
-                                    </td>
-                                    <td className={tdClass} colSpan={3}>
-                                        <Link
-                                            href={route(
-                                                'job.drafting-request-form',
-                                            )}
-                                            className="inline-flex items-center gap-1 text-sm font-medium text-[#676879] transition hover:text-[#0073ea] dark:text-slate-400 dark:hover:text-[#1890ff]"
-                                        >
-                                            <PlusIcon
-                                                className="h-4 w-4"
-                                                aria-hidden
-                                            />
-                                            Add job
-                                        </Link>
-                                    </td>
-                                    <td className={tdClass} colSpan={18} />
-                                </tr>
-                            )}
                             {jobs.map((job, rowIndex) => {
                                 const draftingSlots = job.drafting ?? [];
                                 const checkingSlots = job.checking ?? [];
@@ -447,14 +250,6 @@ export default function JobBoardGrid({
                                                   : 'bg-white dark:bg-[#1a1b2e]')
                                         }
                                     >
-                                        <td className={tdClass}>
-                                            <Checkbox
-                                                checked={selectedIds.has(job.id)}
-                                                onChange={() => toggleRow(job.id)}
-                                                className={checkboxClass}
-                                                aria-label={`Select ${job.job}`}
-                                            />
-                                        </td>
                                         <td className={tdClass}>
                                             <div className="flex min-w-[14rem] items-center gap-1.5">
                                                 <ChevronRightIcon
@@ -614,58 +409,6 @@ export default function JobBoardGrid({
                                     </tr>
                                 );
                             })}
-                            <tr className="border-t border-[#e6e9ef] bg-[#fafbfc] dark:border-[#2f3347] dark:bg-[#151622]">
-                                <td className={tdClass} />
-                                <td className={tdClass} colSpan={3} />
-                                <td className={tdClass}>
-                                    {footerStats.topBuilder && (
-                                        <FooterTag
-                                            label={footerStats.topBuilder[0]}
-                                            count={footerStats.topBuilder[1]}
-                                        />
-                                    )}
-                                </td>
-                                <td className={tdClass}>
-                                    {footerStats.topCategory && (
-                                        <FooterTag
-                                            label={footerStats.topCategory[0]}
-                                            count={footerStats.topCategory[1]}
-                                        />
-                                    )}
-                                </td>
-                                <td className={tdClass}>
-                                    {footerStats.topHouseType && (
-                                        <FooterTag
-                                            label={footerStats.topHouseType[0]}
-                                            count={
-                                                footerStats.topHouseType[1]
-                                            }
-                                        />
-                                    )}
-                                </td>
-                                <td className={tdClass} />
-                                <td className={tdClass} />
-                                <td className={tdClass}>
-                                    <ProgressSumCell
-                                        percent={footerStats.progressPercent}
-                                    />
-                                </td>
-                                {footerStats.slotHours.map((hours, index) => (
-                                    <td
-                                        key={`summary-slot-${index}`}
-                                        className={tdClass}
-                                    >
-                                        <ColumnSumCell
-                                            hours={hours}
-                                            barClass={
-                                                SUMMARY_BAR_CLASSES[index] ??
-                                                'bg-slate-600'
-                                            }
-                                        />
-                                    </td>
-                                ))}
-                                <td className={tdClass} colSpan={7} />
-                            </tr>
                         </tbody>
                     </table>
                 </div>

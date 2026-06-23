@@ -6,6 +6,8 @@ use App\Http\Controllers\AnnouncementController;
 use App\Models\User;
 use App\Services\AttendanceService;
 use App\Services\DraftingRequestBoardService;
+use App\Services\LeaveService;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -16,6 +18,7 @@ class DashboardController extends Controller
     public function __construct(
         private AttendanceService $attendance,
         private DraftingRequestBoardService $board,
+        private LeaveService $leave,
     ) {}
 
     public function index(Request $request): Response
@@ -23,9 +26,16 @@ class DashboardController extends Controller
         $user = auth()->user();
         $boardQuery = $this->board->baseQuery($request);
 
+        $calendarMonth = $request->string('calendar_month')->toString();
+        $month = preg_match('/^\d{4}-\d{2}$/', $calendarMonth)
+            ? Carbon::createFromFormat('Y-m', $calendarMonth)->startOfMonth()
+            : Carbon::today()->startOfMonth();
+        [$calendarStart, $calendarEnd] = $this->leave->monthGridRange($month);
+
         return Inertia::render('Dashboard', [
             'boardPreviewJobs' => $user?->hasPermission('job.list.view')
                 ? $boardQuery
+                    ->where('is_priority', true)
                     ->limit(5)
                     ->get()
                     ->map(fn ($row) => $this->board->formatBoardRow($row))
@@ -59,6 +69,15 @@ class DashboardController extends Controller
                 : [],
             'canViewAnnouncements' => $user?->hasPermission('announcements.view') ?? false,
             'canManageAnnouncements' => $user?->hasPermission('announcements.manage') ?? false,
+            'canApplyLeave' => $user?->hasPermission('leave.apply') ?? false,
+            'canManageLeave' => $user?->hasPermission('leave.manage') ?? false,
+            'leaveCalendar' => $user
+                ? $this->leave->calendarPayload($calendarStart, $calendarEnd)
+                : [],
+            'calendarMonth' => $month->format('Y-m'),
+            'onLeaveToday' => $user
+                ? $this->leave->onLeaveToday()
+                : [],
         ]);
     }
 

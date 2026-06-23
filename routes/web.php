@@ -3,10 +3,13 @@
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\BrandLogoController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LeaveRequestController;
+use App\Http\Controllers\LeaveCreditsController;
 use App\Http\Controllers\Job\DraftingController;
 use App\Http\Controllers\Job\DraftingRequestFormController;
 use App\Http\Controllers\Job\JobBoardController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProfileImageController;
 use App\Http\Controllers\Settings\ActivityLogController;
 use App\Http\Controllers\Settings\BuildingTypeController;
 use App\Http\Controllers\Crm\CrmQuoteController;
@@ -22,6 +25,7 @@ use App\Http\Controllers\Settings\RoofTypeController;
 use App\Http\Controllers\Settings\ScopeOfWorkController;
 use App\Http\Controllers\Settings\ServiceEngagingController;
 use App\Http\Controllers\Settings\UserAccountController;
+use App\Http\Controllers\Settings\WorkflowSettingsController;
 use App\Http\Controllers\TimesheetController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -56,6 +60,19 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
     Route::get('/timesheet', [TimesheetController::class, 'index'])
         ->name('timesheet.index');
 
+    Route::post('/leave', [LeaveRequestController::class, 'store'])
+        ->name('leave.store');
+    Route::get('/leave/approvals', [LeaveRequestController::class, 'approvals'])
+        ->name('leave.approvals');
+    Route::post('/leave/{leaveRequest}/approve', [LeaveRequestController::class, 'approve'])
+        ->name('leave.approve');
+    Route::post('/leave/{leaveRequest}/reject', [LeaveRequestController::class, 'reject'])
+        ->name('leave.reject');
+    Route::get('/leave/credits', [LeaveCreditsController::class, 'index'])
+        ->name('leave.credits.index');
+    Route::post('/leave/credits', [LeaveCreditsController::class, 'store'])
+        ->name('leave.credits.store');
+
     Route::get('/job/board', [JobBoardController::class, 'index'])
         ->name('job.board');
     Route::get('/job/drafting', [JobBoardController::class, 'redirectFromLegacyList'])
@@ -70,6 +87,8 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('job.drafting.board-comments');
     Route::get('/job/drafting/{draftingRequest}', [DraftingController::class, 'show'])
         ->name('job.drafting.show');
+    Route::get('/job/drafting/{draftingRequest}/files/{file}/view', [DraftingController::class, 'viewFile'])
+        ->name('job.drafting.files.view');
     Route::get('/job/drafting/{draftingRequest}/files/{file}', [DraftingController::class, 'downloadFile'])
         ->name('job.drafting.files.download');
     Route::post('/job/drafting/{draftingRequest}/files', [DraftingController::class, 'storeFiles'])
@@ -114,6 +133,11 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::get('/profile-images/{user}', [ProfileImageController::class, 'show'])
+        ->name('profile.image');
+
+    Route::get('/settings/workflow', [WorkflowSettingsController::class, 'index'])
+        ->name('settings.workflow');
 
     Route::prefix('settings/building-type')->name('settings.building-type.')->group(function () {
         Route::get('/', [BuildingTypeController::class, 'index'])->name('index');

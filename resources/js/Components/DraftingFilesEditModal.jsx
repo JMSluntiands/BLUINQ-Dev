@@ -1,3 +1,4 @@
+import DraftingFileActions from '@/Components/Drafting/DraftingFileActions';
 import DangerButton from '@/Components/DangerButton';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
@@ -5,10 +6,7 @@ import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import {
-    ArrowDownTrayIcon,
     DocumentTextIcon,
-    EyeIcon,
-    TrashIcon,
 } from '@heroicons/react/24/outline';
 import { router, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
@@ -79,33 +77,11 @@ function FileRow({ file, onRequestDelete, deleting }) {
                     <p className="text-xs text-[#676879]">{file.size_label}</p>
                 </div>
             </div>
-            <div className="flex shrink-0 gap-1">
-                <a
-                    href={file.download_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[#676879] transition hover:bg-[#e6e9ef] hover:text-[#0073ea]"
-                    title="View"
-                >
-                    <EyeIcon className="h-4 w-4" />
-                </a>
-                <a
-                    href={file.download_url}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[#676879] transition hover:bg-[#e6e9ef] hover:text-[#0073ea]"
-                    title="Download"
-                >
-                    <ArrowDownTrayIcon className="h-4 w-4" />
-                </a>
-                <button
-                    type="button"
-                    onClick={() => onRequestDelete(file)}
-                    disabled={deleting}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[#676879] transition hover:bg-red-50 hover:text-[#e44258] disabled:opacity-50"
-                    title="Remove"
-                >
-                    <TrashIcon className="h-4 w-4" />
-                </button>
-            </div>
+            <DraftingFileActions
+                file={file}
+                onRequestDelete={onRequestDelete}
+                deleting={deleting}
+            />
         </li>
     );
 }

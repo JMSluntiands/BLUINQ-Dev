@@ -10,7 +10,7 @@ export default function HighPriorityJobsTable({ boardPreviewJobs = [] }) {
                         Drafting requests
                     </h3>
                     <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-                        Recent requests on the project board
+                        Flagged requests on the project board
                     </p>
                 </div>
                 <Link
@@ -23,12 +23,11 @@ export default function HighPriorityJobsTable({ boardPreviewJobs = [] }) {
             <div className="overflow-hidden rounded-xl border border-[#2a2d3e] dark:border-[#2f3347]">
                 <JobBoardGrid
                     jobs={boardPreviewJobs}
-                    emptyMessage="No drafting requests yet."
+                    emptyMessage="No flagged drafting requests."
                     getJobHref={(row) =>
                         route('job.drafting.show', row.id)
                     }
                     showFilesInTotal
-                    showAddJobRow={false}
                     onCommentsUpdated={() =>
                         router.reload({
                             only: ['boardPreviewJobs'],

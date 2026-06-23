@@ -6,7 +6,7 @@ import MondayStatusBadge from '@/Components/MondayStatusBadge';
 import Pagination from '@/Components/Pagination';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TableSearchToolbar from '@/Components/TableSearchToolbar';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import WorkflowSettingsLayout from '@/Layouts/WorkflowSettingsLayout';
 import {
     ArchiveBoxArrowDownIcon,
     PencilSquareIcon,
@@ -139,7 +139,7 @@ export default function ExternalWallConstructionIndex({
     );
 
     return (
-        <AuthenticatedLayout
+        <WorkflowSettingsLayout moduleKey="external-wall-construction"
             header={
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <h2 className="text-xl font-semibold leading-tight text-[#323338]">
@@ -222,6 +222,6 @@ export default function ExternalWallConstructionIndex({
                     <Pagination pagination={externalWallConstructions} />
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </WorkflowSettingsLayout>
     );
 }

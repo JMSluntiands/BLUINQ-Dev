@@ -2,7 +2,7 @@ import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import WorkflowSettingsLayout from '@/Layouts/WorkflowSettingsLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 
 export default function LevelOfDifficultyCreate() {
@@ -17,7 +17,7 @@ export default function LevelOfDifficultyCreate() {
     };
 
     return (
-        <AuthenticatedLayout
+        <WorkflowSettingsLayout moduleKey="level-of-difficulty"
             header={
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <h2 className="text-xl font-semibold leading-tight text-slate-800">
@@ -77,6 +77,6 @@ export default function LevelOfDifficultyCreate() {
                     </div>
                 </form>
             </div>
-        </AuthenticatedLayout>
+        </WorkflowSettingsLayout>
     );
 }

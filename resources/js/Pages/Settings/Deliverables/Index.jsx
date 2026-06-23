@@ -6,7 +6,7 @@ import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TableSearchToolbar from '@/Components/TableSearchToolbar';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import WorkflowSettingsLayout from '@/Layouts/WorkflowSettingsLayout';
 import {
     ArchiveBoxArrowDownIcon,
     PencilSquareIcon,
@@ -129,7 +129,7 @@ export default function DeliverablesIndex({ deliverables, filters = {} }) {
     );
 
     return (
-        <AuthenticatedLayout
+        <WorkflowSettingsLayout moduleKey="deliverables"
             header={
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <h2 className="text-xl font-semibold leading-tight text-[#323338]">
@@ -212,6 +212,6 @@ export default function DeliverablesIndex({ deliverables, filters = {} }) {
                     <Pagination pagination={deliverables} />
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </WorkflowSettingsLayout>
     );
 }

@@ -2,7 +2,7 @@ import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import WorkflowSettingsLayout from '@/Layouts/WorkflowSettingsLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 
 function filterQueryString(filters) {
@@ -33,7 +33,7 @@ export default function ScopeOfWorkEdit({ scopeOfWork, listFilters = {} }) {
     };
 
     return (
-        <AuthenticatedLayout
+        <WorkflowSettingsLayout moduleKey="scope-of-work"
             header={
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <h2 className="text-xl font-semibold leading-tight text-slate-800">
@@ -95,6 +95,6 @@ export default function ScopeOfWorkEdit({ scopeOfWork, listFilters = {} }) {
                     </div>
                 </form>
             </div>
-        </AuthenticatedLayout>
+        </WorkflowSettingsLayout>
     );
 }

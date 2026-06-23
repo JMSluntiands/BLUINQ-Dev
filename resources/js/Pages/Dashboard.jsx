@@ -1,9 +1,10 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import FlashNoticeModal from '@/Components/FlashNoticeModal';
 import HighPriorityJobsTable from '@/Components/Dashboard/HighPriorityJobsTable';
 import DashboardCharts from '@/Components/Dashboard/DashboardCharts';
 import ClockInOutPanel from '@/Components/Dashboard/ClockInOutPanel';
 import DashboardCalendar from '@/Components/Dashboard/DashboardCalendar';
 import UserAvatar from '@/Components/UserAvatar';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {
     CakeIcon,
     CalendarDaysIcon,
@@ -18,12 +19,6 @@ const STAT_CARD_SOLIDS = [
     'bg-emerald-600',
     'bg-violet-600',
     'bg-amber-500',
-];
-
-const SAMPLE_ON_LEAVE = [
-    { id: 1, name: 'Maria Santos', department: 'HR', until: 'Jun 12' },
-    { id: 2, name: 'James Rivera', department: 'Finance', until: 'Jun 10' },
-    { id: 3, name: 'Anna Lopez', department: 'Operations', until: 'Jun 14' },
 ];
 
 const SAMPLE_UPCOMING_HOLIDAYS = [
@@ -43,6 +38,11 @@ const SAMPLE_UPCOMING_BIRTHDAYS = [
     { id: 2, name: 'Kevin Santos', department: 'Engineering', date: 'Jun 15' },
     { id: 3, name: 'Patricia Cruz', department: 'Admin', date: 'Jun 18' },
 ];
+
+const FLASH_MESSAGES = {
+    'leave-request-submitted':
+        'Leave request submitted. Waiting for admin approval.',
+};
 
 const ANNOUNCEMENT_PREVIEW_LENGTH = 140;
 
@@ -246,6 +246,10 @@ export default function Dashboard() {
         announcements = [],
         canViewAnnouncements = false,
         canManageAnnouncements = false,
+        canApplyLeave = false,
+        leaveCalendar = [],
+        onLeaveToday = [],
+        calendarMonth,
     } = usePage().props;
     const absentEmployees = attendance.absent ?? [];
     const absentAfterNine = Boolean(attendance.absent_after_nine);
@@ -278,6 +282,7 @@ export default function Dashboard() {
             }
         >
             <Head title="Dashboard" />
+            <FlashNoticeModal messages={FLASH_MESSAGES} />
 
             <ClockInOutPanel clock={clock} />
 
@@ -419,14 +424,20 @@ export default function Dashboard() {
                         <div>
                             <SectionLabel color="amber">On leave</SectionLabel>
                             <ul className="space-y-2">
-                                {SAMPLE_ON_LEAVE.map((employee) => (
-                                    <AttendanceEmployeeRow
-                                        key={employee.id}
-                                        employee={employee}
-                                        status="leave"
-                                        detail={`Until ${employee.until}`}
-                                    />
-                                ))}
+                                {onLeaveToday.length === 0 ? (
+                                    <li className="rounded-xl bg-slate-50/90 px-3 py-2.5 text-sm text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+                                        No one on leave today.
+                                    </li>
+                                ) : (
+                                    onLeaveToday.map((employee) => (
+                                        <AttendanceEmployeeRow
+                                            key={employee.id}
+                                            employee={employee}
+                                            status="leave"
+                                            detail={`Until ${employee.until}`}
+                                        />
+                                    ))
+                                )}
                             </ul>
                         </div>
 
@@ -495,11 +506,15 @@ export default function Dashboard() {
                 </DashboardPanel>
             </div>
 
+            <DashboardCalendar
+                users={leaveCalendar}
+                canApplyLeave={canApplyLeave}
+                calendarMonth={calendarMonth}
+            />
+
             <HighPriorityJobsTable boardPreviewJobs={boardPreviewJobs} />
 
             <DashboardCharts />
-
-            <DashboardCalendar />
         </AuthenticatedLayout>
     );
 }

@@ -14,12 +14,10 @@ import UserAvatar from '@/Components/UserAvatar';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {
     ArchiveBoxArrowDownIcon,
-    ArrowDownTrayIcon,
     ArrowUturnLeftIcon,
     ChatBubbleLeftRightIcon,
     ClockIcon,
     DocumentTextIcon,
-    EyeIcon,
     PencilSquareIcon,
 } from '@heroicons/react/24/outline';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
@@ -382,41 +380,19 @@ function FilePanel({ title, files, emptyLabel, canEdit = false, onEdit }) {
                         {files.map((file) => (
                             <li
                                 key={file.id}
-                                className="flex items-center justify-between gap-2 rounded-lg border border-[#e6e9ef] bg-[#fafbfc] px-3 py-2 dark:border-[#3b82f6]/30 dark:bg-[#151622]"
+                                className="flex items-center gap-2 rounded-lg border border-[#e6e9ef] bg-[#fafbfc] px-3 py-2 dark:border-[#3b82f6]/30 dark:bg-[#151622]"
                             >
-                                <div className="flex min-w-0 items-center gap-2">
-                                    <DocumentTextIcon
-                                        className="h-5 w-5 shrink-0 text-[#676879] dark:text-slate-400"
-                                        aria-hidden
-                                    />
-                                    <div className="min-w-0">
-                                        <p className="truncate text-sm font-medium text-[#323338] dark:text-slate-200">
-                                            {file.original_name}
-                                        </p>
-                                        <p className="text-xs text-[#676879] dark:text-slate-400">
-                                            {file.size_label}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="flex shrink-0 gap-1">
-                                    <a
-                                        href={file.download_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[#676879] transition hover:bg-[#e6e9ef] hover:text-[#0073ea] dark:text-slate-400 dark:hover:bg-[#243044] dark:hover:text-[#60a5fa]"
-                                        title="View"
-                                        aria-label={`View ${file.original_name}`}
-                                    >
-                                        <EyeIcon className="h-4 w-4" />
-                                    </a>
-                                    <a
-                                        href={file.download_url}
-                                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[#676879] transition hover:bg-[#e6e9ef] hover:text-[#0073ea] dark:text-slate-400 dark:hover:bg-[#243044] dark:hover:text-[#60a5fa]"
-                                        title="Download"
-                                        aria-label={`Download ${file.original_name}`}
-                                    >
-                                        <ArrowDownTrayIcon className="h-4 w-4" />
-                                    </a>
+                                <DocumentTextIcon
+                                    className="h-5 w-5 shrink-0 text-[#676879] dark:text-slate-400"
+                                    aria-hidden
+                                />
+                                <div className="min-w-0">
+                                    <p className="truncate text-sm font-medium text-[#323338] dark:text-slate-200">
+                                        {file.original_name}
+                                    </p>
+                                    <p className="text-xs text-[#676879] dark:text-slate-400">
+                                        {file.size_label}
+                                    </p>
                                 </div>
                             </li>
                         ))}

@@ -2,23 +2,18 @@ import AppLogo from '@/Components/AppLogo';
 import Dropdown from '@/Components/Dropdown';
 import ThemeToggle from '@/Components/ThemeToggle';
 import UserAvatar from '@/Components/UserAvatar';
+import { isAnyWorkflowRoute } from '@/config/workflowSettingsModules';
 import {
-    ArrowDownTrayIcon,
     Bars3Icon,
-    BuildingOffice2Icon,
     BriefcaseIcon,
-    ChartBarIcon,
+    CalendarDaysIcon,
     ClipboardDocumentListIcon,
     ChevronRightIcon,
     ClockIcon,
-    HomeModernIcon,
     KeyIcon,
-    HomeIcon,
-    InboxStackIcon,
     MegaphoneIcon,
     Squares2X2Icon,
     ShieldCheckIcon,
-    TagIcon,
     UsersIcon,
     WrenchScrewdriverIcon,
     XMarkIcon,
@@ -83,7 +78,7 @@ function SidebarSubLink({ href, active, children, onNavigate }) {
 }
 
 export default function AuthenticatedLayout({ header, children }) {
-    const { auth, logo_url: logoUrl } = usePage().props;
+    const { auth, logo_url: logoUrl, pendingLeaveCount = 0 } = usePage().props;
     const user = auth.user;
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -117,6 +112,8 @@ export default function AuthenticatedLayout({ header, children }) {
     const canAnnouncements = can('announcements.view');
     const canAnnouncementsManage = can('announcements.manage');
     const canTimesheet = can('timesheet.view');
+    const canManageLeave = can('leave.manage');
+    const canManageLeaveCredits = can('leave.credits.manage');
     const canDraftingArchive = can('job.drafting.archive');
     const canArchiProject =
         canJobList ||
@@ -132,6 +129,8 @@ export default function AuthenticatedLayout({ header, children }) {
         route().current('announcements.archive');
     const isJobList = route().current('job.board');
     const isTimesheet = route().current('timesheet.index');
+    const isLeaveApprovals = route().current('leave.approvals');
+    const isLeaveCredits = route().current('leave.credits.index');
     const isJobBoard =
         route().current('job.board') || route().current('job.drafting');
     const isDraftingList = isJobBoard || route().current('job.drafting.show');
@@ -158,52 +157,7 @@ export default function AuthenticatedLayout({ header, children }) {
     const isRolesEdit = route().current('settings.roles.edit');
     const isRolesSection =
         isRolesIndex || isRolesCreate || isRolesEdit;
-    const isBtIndex = route().current('settings.building-type.index');
-    const isBtCreate = route().current('settings.building-type.create');
-    const isBtArchive = route().current('settings.building-type.archive');
-    const isBtSection = isBtIndex || isBtCreate || isBtArchive;
-    const isSeIndex = route().current('settings.service-engaging.index');
-    const isSeCreate = route().current('settings.service-engaging.create');
-    const isSeArchive = route().current('settings.service-engaging.archive');
-    const isSeSection = isSeIndex || isSeCreate || isSeArchive;
-    const isEwcIndex = route().current('settings.external-wall-construction.index');
-    const isEwcCreate = route().current('settings.external-wall-construction.create');
-    const isEwcArchive = route().current('settings.external-wall-construction.archive');
-    const isEwcSection = isEwcIndex || isEwcCreate || isEwcArchive;
-    const isRtIndex = route().current('settings.roof-type.index');
-    const isRtCreate = route().current('settings.roof-type.create');
-    const isRtArchive = route().current('settings.roof-type.archive');
-    const isRtSection = isRtIndex || isRtCreate || isRtArchive;
-    const isSowIndex = route().current('settings.scope-of-work.index');
-    const isSowCreate = route().current('settings.scope-of-work.create');
-    const isSowArchive = route().current('settings.scope-of-work.archive');
-    const isSowSection = isSowIndex || isSowCreate || isSowArchive;
-    const isDelIndex = route().current('settings.deliverables.index');
-    const isDelCreate = route().current('settings.deliverables.create');
-    const isDelArchive = route().current('settings.deliverables.archive');
-    const isDelSection = isDelIndex || isDelCreate || isDelArchive;
-    const isLodIndex = route().current('settings.level-of-difficulty.index');
-    const isLodCreate = route().current('settings.level-of-difficulty.create');
-    const isLodArchive = route().current('settings.level-of-difficulty.archive');
-    const isLodSection = isLodIndex || isLodCreate || isLodArchive;
-    const isAifIndex = route().current(
-        'settings.crm.arrival-input-files.index',
-    );
-    const isAifCreate = route().current(
-        'settings.crm.arrival-input-files.create',
-    );
-    const isAifEdit = route().current('settings.crm.arrival-input-files.edit');
-    const isAifArchive = route().current(
-        'settings.crm.arrival-input-files.archive',
-    );
-    const isAifSection =
-        isAifIndex || isAifCreate || isAifEdit || isAifArchive;
-    const isCatIndex = route().current('settings.crm.categories.index');
-    const isCatCreate = route().current('settings.crm.categories.create');
-    const isCatEdit = route().current('settings.crm.categories.edit');
-    const isCatArchive = route().current('settings.crm.categories.archive');
-    const isCatSection =
-        isCatIndex || isCatCreate || isCatEdit || isCatArchive;
+    const isWorkflowSection = isAnyWorkflowRoute();
 
     const showSettingsBlock =
         canBuildingType ||
@@ -218,7 +172,9 @@ export default function AuthenticatedLayout({ header, children }) {
         canUserAccounts ||
         canPermissionsPage ||
         canActivityLogs ||
-        canRoles;
+        canRoles ||
+        canManageLeave ||
+        canManageLeaveCredits;
     const showWorkflowSettings =
         canServiceEngaging ||
         canExternalWallConstruction ||
@@ -230,71 +186,8 @@ export default function AuthenticatedLayout({ header, children }) {
         canCrmCategories ||
         canLevelOfDifficulty;
 
-    const [btMenuOpen, setBtMenuOpen] = useState(isBtSection);
-    const [seMenuOpen, setSeMenuOpen] = useState(isSeSection);
-    const [ewcMenuOpen, setEwcMenuOpen] = useState(isEwcSection);
-    const [rtMenuOpen, setRtMenuOpen] = useState(isRtSection);
-    const [sowMenuOpen, setSowMenuOpen] = useState(isSowSection);
-    const [delMenuOpen, setDelMenuOpen] = useState(isDelSection);
-    const [lodMenuOpen, setLodMenuOpen] = useState(isLodSection);
-    const [aifMenuOpen, setAifMenuOpen] = useState(isAifSection);
-    const [catMenuOpen, setCatMenuOpen] = useState(isCatSection);
     const [archiTeamMenuOpen, setArchiTeamMenuOpen] =
         useState(isArchiTeamSection);
-
-    useEffect(() => {
-        if (isBtSection) {
-            setBtMenuOpen(true);
-        }
-    }, [isBtSection]);
-
-    useEffect(() => {
-        if (isSeSection) {
-            setSeMenuOpen(true);
-        }
-    }, [isSeSection]);
-
-    useEffect(() => {
-        if (isEwcSection) {
-            setEwcMenuOpen(true);
-        }
-    }, [isEwcSection]);
-
-    useEffect(() => {
-        if (isRtSection) {
-            setRtMenuOpen(true);
-        }
-    }, [isRtSection]);
-
-    useEffect(() => {
-        if (isSowSection) {
-            setSowMenuOpen(true);
-        }
-    }, [isSowSection]);
-
-    useEffect(() => {
-        if (isDelSection) {
-            setDelMenuOpen(true);
-        }
-    }, [isDelSection]);
-
-    useEffect(() => {
-        if (isLodSection) {
-            setLodMenuOpen(true);
-        }
-    }, [isLodSection]);
-
-    useEffect(() => {
-        if (isAifSection) {
-            setAifMenuOpen(true);
-        }
-    }, [isAifSection]);
-
-    useEffect(() => {
-        if (isCatSection) {
-            setCatMenuOpen(true);
-        }
-    }, [isCatSection]);
 
     useEffect(() => {
         if (isArchiTeamSection) {
@@ -493,642 +386,71 @@ export default function AuthenticatedLayout({ header, children }) {
                     {showSettingsBlock && (
                         <div className="mt-3 space-y-1">
                             {showWorkflowSettings && (
-                                <p className="px-3 pt-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                                    Workflow settings
-                                </p>
-                            )}
-                            {canServiceEngaging && (
-                                <div>
-                                    <button
-                                        type="button"
-                                        aria-expanded={seMenuOpen}
-                                        onClick={() =>
-                                            setSeMenuOpen((open) => !open)
-                                        }
-                                        className={
-                                            'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ' +
-                                            (isSeSection
-                                                ? 'bg-sky-50 text-sky-700'
-                                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')
-                                        }
-                                    >
+                                <NavItem
+                                    href={route('settings.workflow')}
+                                    active={isWorkflowSection}
+                                    onNavigate={closeSidebar}
+                                    icon={
                                         <WrenchScrewdriverIcon
-                                            className={
-                                                'h-5 w-5 shrink-0 ' +
-                                                (isSeSection
-                                                    ? 'text-sky-600'
-                                                    : 'text-slate-400 group-hover:text-slate-500')
-                                            }
+                                            className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
                                             aria-hidden
                                         />
-                                        <span className="min-w-0 flex-1">
-                                            Service Engaging
-                                        </span>
-                                        <ChevronRightIcon
-                                            className={
-                                                'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ' +
-                                                (seMenuOpen ? 'rotate-90' : '')
-                                            }
-                                            aria-hidden
-                                        />
-                                    </button>
-                                    {seMenuOpen && (
-                                        <div className="mt-0.5 space-y-0.5 pb-1">
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'settings.service-engaging.create',
-                                                )}
-                                                active={isSeCreate}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                Create
-                                            </SidebarSubLink>
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'settings.service-engaging.index',
-                                                )}
-                                                active={isSeIndex}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                List
-                                            </SidebarSubLink>
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'settings.service-engaging.archive',
-                                                )}
-                                                active={isSeArchive}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                Archive
-                                            </SidebarSubLink>
-                                        </div>
-                                    )}
-                                </div>
+                                    }
+                                >
+                                    Workflow settings
+                                </NavItem>
                             )}
-                            {canExternalWallConstruction && (
-                                <div>
-                                    <button
-                                        type="button"
-                                        aria-expanded={ewcMenuOpen}
-                                        onClick={() =>
-                                            setEwcMenuOpen((open) => !open)
-                                        }
+                            {(canManageLeave || canManageLeaveCredits) && (
+                                <>
+                                    <p
                                         className={
-                                            'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ' +
-                                            (isEwcSection
-                                                ? 'bg-sky-50 text-sky-700'
-                                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')
+                                            'px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 ' +
+                                            (showWorkflowSettings
+                                                ? 'pt-3'
+                                                : 'pt-1')
                                         }
                                     >
-                                        <HomeModernIcon
-                                            className={
-                                                'h-5 w-5 shrink-0 ' +
-                                                (isEwcSection
-                                                    ? 'text-sky-600'
-                                                    : 'text-slate-400 group-hover:text-slate-500')
+                                        Leave
+                                    </p>
+                                    {canManageLeave && (
+                                        <NavItem
+                                            href={route('leave.approvals')}
+                                            active={isLeaveApprovals}
+                                            onNavigate={closeSidebar}
+                                            icon={
+                                                <ClipboardDocumentListIcon
+                                                    className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
+                                                    aria-hidden
+                                                />
                                             }
-                                            aria-hidden
-                                        />
-                                        <span className="min-w-0 flex-1">
-                                            External Wall Construction
-                                        </span>
-                                        <ChevronRightIcon
-                                            className={
-                                                'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ' +
-                                                (ewcMenuOpen ? 'rotate-90' : '')
-                                            }
-                                            aria-hidden
-                                        />
-                                    </button>
-                                    {ewcMenuOpen && (
-                                        <div className="mt-0.5 space-y-0.5 pb-1">
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'settings.external-wall-construction.create',
+                                        >
+                                            <span className="flex flex-1 items-center justify-between gap-2">
+                                                Approvals
+                                                {pendingLeaveCount > 0 && (
+                                                    <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                                        {pendingLeaveCount}
+                                                    </span>
                                                 )}
-                                                active={isEwcCreate}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                Create
-                                            </SidebarSubLink>
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'settings.external-wall-construction.index',
-                                                )}
-                                                active={isEwcIndex}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                List
-                                            </SidebarSubLink>
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'settings.external-wall-construction.archive',
-                                                )}
-                                                active={isEwcArchive}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                Archive
-                                            </SidebarSubLink>
-                                        </div>
+                                            </span>
+                                        </NavItem>
                                     )}
-                                </div>
+                                    {canManageLeaveCredits && (
+                                        <NavItem
+                                            href={route('leave.credits.index')}
+                                            active={isLeaveCredits}
+                                            onNavigate={closeSidebar}
+                                            icon={
+                                                <CalendarDaysIcon
+                                                    className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
+                                                    aria-hidden
+                                                />
+                                            }
+                                        >
+                                            Credits
+                                        </NavItem>
+                                    )}
+                                </>
                             )}
-                            {canRoofType && (
-                                <div>
-                                    <button
-                                        type="button"
-                                        aria-expanded={rtMenuOpen}
-                                        onClick={() =>
-                                            setRtMenuOpen((open) => !open)
-                                        }
-                                        className={
-                                            'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ' +
-                                            (isRtSection
-                                                ? 'bg-sky-50 text-sky-700'
-                                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')
-                                        }
-                                    >
-                                        <HomeIcon
-                                            className={
-                                                'h-5 w-5 shrink-0 ' +
-                                                (isRtSection
-                                                    ? 'text-sky-600'
-                                                    : 'text-slate-400 group-hover:text-slate-500')
-                                            }
-                                            aria-hidden
-                                        />
-                                        <span className="min-w-0 flex-1">
-                                            Roof Type
-                                        </span>
-                                        <ChevronRightIcon
-                                            className={
-                                                'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ' +
-                                                (rtMenuOpen ? 'rotate-90' : '')
-                                            }
-                                            aria-hidden
-                                        />
-                                    </button>
-                                    {rtMenuOpen && (
-                                        <div className="mt-0.5 space-y-0.5 pb-1">
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'settings.roof-type.create',
-                                                )}
-                                                active={isRtCreate}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                Create
-                                            </SidebarSubLink>
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'settings.roof-type.index',
-                                                )}
-                                                active={isRtIndex}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                List
-                                            </SidebarSubLink>
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'settings.roof-type.archive',
-                                                )}
-                                                active={isRtArchive}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                Archive
-                                            </SidebarSubLink>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                            {canScopeOfWork && (
-                                <div>
-                                    <button
-                                        type="button"
-                                        aria-expanded={sowMenuOpen}
-                                        onClick={() =>
-                                            setSowMenuOpen((open) => !open)
-                                        }
-                                        className={
-                                            'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ' +
-                                            (isSowSection
-                                                ? 'bg-sky-50 text-sky-700'
-                                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')
-                                        }
-                                    >
-                                        <ClipboardDocumentListIcon
-                                            className={
-                                                'h-5 w-5 shrink-0 ' +
-                                                (isSowSection
-                                                    ? 'text-sky-600'
-                                                    : 'text-slate-400 group-hover:text-slate-500')
-                                            }
-                                            aria-hidden
-                                        />
-                                        <span className="min-w-0 flex-1">
-                                            Scope of work
-                                        </span>
-                                        <ChevronRightIcon
-                                            className={
-                                                'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ' +
-                                                (sowMenuOpen ? 'rotate-90' : '')
-                                            }
-                                            aria-hidden
-                                        />
-                                    </button>
-                                    {sowMenuOpen && (
-                                        <div className="mt-0.5 space-y-0.5 pb-1">
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'settings.scope-of-work.create',
-                                                )}
-                                                active={isSowCreate}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                Create
-                                            </SidebarSubLink>
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'settings.scope-of-work.index',
-                                                )}
-                                                active={isSowIndex}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                List
-                                            </SidebarSubLink>
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'settings.scope-of-work.archive',
-                                                )}
-                                                active={isSowArchive}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                Archive
-                                            </SidebarSubLink>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                            {canDeliverables && (
-                                <div>
-                                    <button
-                                        type="button"
-                                        aria-expanded={delMenuOpen}
-                                        onClick={() =>
-                                            setDelMenuOpen((open) => !open)
-                                        }
-                                        className={
-                                            'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ' +
-                                            (isDelSection
-                                                ? 'bg-sky-50 text-sky-700'
-                                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')
-                                        }
-                                    >
-                                        <InboxStackIcon
-                                            className={
-                                                'h-5 w-5 shrink-0 ' +
-                                                (isDelSection
-                                                    ? 'text-sky-600'
-                                                    : 'text-slate-400 group-hover:text-slate-500')
-                                            }
-                                            aria-hidden
-                                        />
-                                        <span className="min-w-0 flex-1">
-                                            Deliverables
-                                        </span>
-                                        <ChevronRightIcon
-                                            className={
-                                                'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ' +
-                                                (delMenuOpen ? 'rotate-90' : '')
-                                            }
-                                            aria-hidden
-                                        />
-                                    </button>
-                                    {delMenuOpen && (
-                                        <div className="mt-0.5 space-y-0.5 pb-1">
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'settings.deliverables.create',
-                                                )}
-                                                active={isDelCreate}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                Create
-                                            </SidebarSubLink>
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'settings.deliverables.index',
-                                                )}
-                                                active={isDelIndex}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                List
-                                            </SidebarSubLink>
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'settings.deliverables.archive',
-                                                )}
-                                                active={isDelArchive}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                Archive
-                                            </SidebarSubLink>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                            {canBuildingType && (
-                                        <div>
-                                            <button
-                                                type="button"
-                                                aria-expanded={btMenuOpen}
-                                                onClick={() =>
-                                                    setBtMenuOpen((open) => !open)
-                                                }
-                                                className={
-                                                    'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ' +
-                                                    (isBtSection
-                                                        ? 'bg-sky-50 text-sky-700'
-                                                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')
-                                                }
-                                            >
-                                                <BuildingOffice2Icon
-                                                    className={
-                                                        'h-5 w-5 shrink-0 ' +
-                                                        (isBtSection
-                                                            ? 'text-sky-600'
-                                                            : 'text-slate-400 group-hover:text-slate-500')
-                                                    }
-                                                    aria-hidden
-                                                />
-                                                <span className="min-w-0 flex-1">
-                                                    Building Type
-                                                </span>
-                                                <ChevronRightIcon
-                                                    className={
-                                                        'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ' +
-                                                        (btMenuOpen ? 'rotate-90' : '')
-                                                    }
-                                                    aria-hidden
-                                                />
-                                            </button>
-                                            {btMenuOpen && (
-                                                <div className="mt-0.5 space-y-0.5 pb-1">
-                                                    <SidebarSubLink
-                                                        href={route(
-                                                            'settings.building-type.create',
-                                                        )}
-                                                        active={isBtCreate}
-                                                        onNavigate={closeSidebar}
-                                                    >
-                                                        Create
-                                                    </SidebarSubLink>
-                                                    <SidebarSubLink
-                                                        href={route(
-                                                            'settings.building-type.index',
-                                                        )}
-                                                        active={isBtIndex}
-                                                        onNavigate={closeSidebar}
-                                                    >
-                                                        List
-                                                    </SidebarSubLink>
-                                                    <SidebarSubLink
-                                                        href={route(
-                                                            'settings.building-type.archive',
-                                                        )}
-                                                        active={isBtArchive}
-                                                        onNavigate={closeSidebar}
-                                                    >
-                                                        Archive
-                                                    </SidebarSubLink>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                            {canArrivalInputFiles && (
-                                        <div>
-                                            <button
-                                                type="button"
-                                                aria-expanded={aifMenuOpen}
-                                                onClick={() =>
-                                                    setAifMenuOpen(
-                                                        (open) => !open,
-                                                    )
-                                                }
-                                                className={
-                                                    'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ' +
-                                                    (isAifSection
-                                                        ? 'bg-sky-50 text-sky-700'
-                                                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')
-                                                }
-                                            >
-                                                <ArrowDownTrayIcon
-                                                    className={
-                                                        'h-5 w-5 shrink-0 ' +
-                                                        (isAifSection
-                                                            ? 'text-sky-600'
-                                                            : 'text-slate-400 group-hover:text-slate-500')
-                                                    }
-                                                    aria-hidden
-                                                />
-                                                <span className="min-w-0 flex-1">
-                                                    Arrival input files
-                                                </span>
-                                                <ChevronRightIcon
-                                                    className={
-                                                        'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ' +
-                                                        (aifMenuOpen
-                                                            ? 'rotate-90'
-                                                            : '')
-                                                    }
-                                                    aria-hidden
-                                                />
-                                            </button>
-                                            {aifMenuOpen && (
-                                                <div className="mt-0.5 space-y-0.5 pb-1">
-                                                    <SidebarSubLink
-                                                        href={route(
-                                                            'settings.crm.arrival-input-files.create',
-                                                        )}
-                                                        active={isAifCreate}
-                                                        onNavigate={
-                                                            closeSidebar
-                                                        }
-                                                    >
-                                                        Create
-                                                    </SidebarSubLink>
-                                                    <SidebarSubLink
-                                                        href={route(
-                                                            'settings.crm.arrival-input-files.index',
-                                                        )}
-                                                        active={isAifIndex}
-                                                        onNavigate={
-                                                            closeSidebar
-                                                        }
-                                                    >
-                                                        List
-                                                    </SidebarSubLink>
-                                                    <SidebarSubLink
-                                                        href={route(
-                                                            'settings.crm.arrival-input-files.archive',
-                                                        )}
-                                                        active={isAifArchive}
-                                                        onNavigate={
-                                                            closeSidebar
-                                                        }
-                                                    >
-                                                        Archive
-                                                    </SidebarSubLink>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                            {canCrmCategories && (
-                                        <div>
-                                            <button
-                                                type="button"
-                                                aria-expanded={catMenuOpen}
-                                                onClick={() =>
-                                                    setCatMenuOpen(
-                                                        (open) => !open,
-                                                    )
-                                                }
-                                                className={
-                                                    'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ' +
-                                                    (isCatSection
-                                                        ? 'bg-sky-50 text-sky-700'
-                                                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')
-                                                }
-                                            >
-                                                <TagIcon
-                                                    className={
-                                                        'h-5 w-5 shrink-0 ' +
-                                                        (isCatSection
-                                                            ? 'text-sky-600'
-                                                            : 'text-slate-400 group-hover:text-slate-500')
-                                                    }
-                                                    aria-hidden
-                                                />
-                                                <span className="min-w-0 flex-1">
-                                                    Category
-                                                </span>
-                                                <ChevronRightIcon
-                                                    className={
-                                                        'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ' +
-                                                        (catMenuOpen
-                                                            ? 'rotate-90'
-                                                            : '')
-                                                    }
-                                                    aria-hidden
-                                                />
-                                            </button>
-                                            {catMenuOpen && (
-                                                <div className="mt-0.5 space-y-0.5 pb-1">
-                                                    <SidebarSubLink
-                                                        href={route(
-                                                            'settings.crm.categories.create',
-                                                        )}
-                                                        active={isCatCreate}
-                                                        onNavigate={
-                                                            closeSidebar
-                                                        }
-                                                    >
-                                                        Create
-                                                    </SidebarSubLink>
-                                                    <SidebarSubLink
-                                                        href={route(
-                                                            'settings.crm.categories.index',
-                                                        )}
-                                                        active={isCatIndex}
-                                                        onNavigate={
-                                                            closeSidebar
-                                                        }
-                                                    >
-                                                        List
-                                                    </SidebarSubLink>
-                                                    <SidebarSubLink
-                                                        href={route(
-                                                            'settings.crm.categories.archive',
-                                                        )}
-                                                        active={isCatArchive}
-                                                        onNavigate={
-                                                            closeSidebar
-                                                        }
-                                                    >
-                                                        Archive
-                                                    </SidebarSubLink>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                            {canLevelOfDifficulty && (
-                                        <div>
-                                            <button
-                                                type="button"
-                                                aria-expanded={lodMenuOpen}
-                                                onClick={() =>
-                                                    setLodMenuOpen((open) => !open)
-                                                }
-                                                className={
-                                                    'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ' +
-                                                    (isLodSection
-                                                        ? 'bg-sky-50 text-sky-700'
-                                                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')
-                                                }
-                                            >
-                                                <ChartBarIcon
-                                                    className={
-                                                        'h-5 w-5 shrink-0 ' +
-                                                        (isLodSection
-                                                            ? 'text-sky-600'
-                                                            : 'text-slate-400 group-hover:text-slate-500')
-                                                    }
-                                                    aria-hidden
-                                                />
-                                                <span className="min-w-0 flex-1">
-                                                    Level of difficulty
-                                                </span>
-                                                <ChevronRightIcon
-                                                    className={
-                                                        'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ' +
-                                                        (lodMenuOpen ? 'rotate-90' : '')
-                                                    }
-                                                    aria-hidden
-                                                />
-                                            </button>
-                                            {lodMenuOpen && (
-                                                <div className="mt-0.5 space-y-0.5 pb-1">
-                                                    <SidebarSubLink
-                                                        href={route(
-                                                            'settings.level-of-difficulty.create',
-                                                        )}
-                                                        active={isLodCreate}
-                                                        onNavigate={closeSidebar}
-                                                    >
-                                                        Create
-                                                    </SidebarSubLink>
-                                                    <SidebarSubLink
-                                                        href={route(
-                                                            'settings.level-of-difficulty.index',
-                                                        )}
-                                                        active={isLodIndex}
-                                                        onNavigate={closeSidebar}
-                                                    >
-                                                        List
-                                                    </SidebarSubLink>
-                                                    <SidebarSubLink
-                                                        href={route(
-                                                            'settings.level-of-difficulty.archive',
-                                                        )}
-                                                        active={isLodArchive}
-                                                        onNavigate={closeSidebar}
-                                                    >
-                                                        Archive
-                                                    </SidebarSubLink>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
                             {(canUserAccounts ||
                                 canPermissionsPage ||
                                 canActivityLogs ||
@@ -1137,7 +459,9 @@ export default function AuthenticatedLayout({ header, children }) {
                                     <p
                                         className={
                                             'px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 ' +
-                                            (showWorkflowSettings
+                                            (showWorkflowSettings ||
+                                            canManageLeave ||
+                                            canManageLeaveCredits
                                                 ? 'pt-3'
                                                 : 'pt-1')
                                         }

@@ -165,6 +165,10 @@ class DraftingController extends Controller
                         'draftingRequest' => $draftingRequest->id,
                         'file' => $file->id,
                     ]),
+                    'view_url' => route('job.drafting.files.view', [
+                        'draftingRequest' => $draftingRequest->id,
+                        'file' => $file->id,
+                    ]),
                 ])->all(),
                 'comments' => $this->formatCommentsByKind(
                     $draftingRequest->comments,
@@ -640,6 +644,35 @@ class DraftingController extends Controller
                 ...array_filter($this->listFiltersFromRequest($request)),
             ])
             ->with('status', 'drf-files-updated');
+    }
+
+    public function viewFile(
+        Request $request,
+        DraftingRequest $draftingRequest,
+        DraftingRequestFile $file,
+    ): StreamedResponse {
+        $this->authorizeView($request, $draftingRequest);
+
+        if (! $request->user()->hasPermission('job.drafting.files.view')) {
+            abort(403);
+        }
+
+        if ($file->drafting_request_id !== $draftingRequest->id) {
+            abort(404);
+        }
+
+        if (! Storage::disk($file->disk)->exists($file->path)) {
+            abort(404);
+        }
+
+        return Storage::disk($file->disk)->response(
+            $file->path,
+            $file->original_name,
+            [
+                'Content-Type' => $file->mime_type ?? 'application/octet-stream',
+                'Content-Disposition' => 'inline; filename="'.str_replace('"', '\\"', $file->original_name).'"',
+            ],
+        );
     }
 
     public function downloadFile(

@@ -6,7 +6,7 @@ import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TableSearchToolbar from '@/Components/TableSearchToolbar';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import WorkflowSettingsLayout from '@/Layouts/WorkflowSettingsLayout';
 import {
     ArchiveBoxArrowDownIcon,
     PencilSquareIcon,
@@ -132,7 +132,7 @@ export default function BuildingTypeIndex({ buildingTypes, filters = {} }) {
     );
 
     return (
-        <AuthenticatedLayout
+        <WorkflowSettingsLayout moduleKey="building-type"
             header={
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <h2 className="text-xl font-semibold leading-tight text-[#323338]">
@@ -215,6 +215,6 @@ export default function BuildingTypeIndex({ buildingTypes, filters = {} }) {
                     <Pagination pagination={buildingTypes} />
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </WorkflowSettingsLayout>
     );
 }

@@ -5,7 +5,7 @@ import TableSearchToolbar from '@/Components/TableSearchToolbar';
 import FlashNoticeModal from '@/Components/FlashNoticeModal';
 import Modal from '@/Components/Modal';
 import SecondaryButton from '@/Components/SecondaryButton';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import WorkflowSettingsLayout from '@/Layouts/WorkflowSettingsLayout';
 import { ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
 import { createColumnHelper } from '@tanstack/react-table';
 import { Head, Link, router } from '@inertiajs/react';
@@ -140,7 +140,7 @@ export default function ArrivalInputFilesArchive({
     );
 
     return (
-        <AuthenticatedLayout
+        <WorkflowSettingsLayout moduleKey="arrival-input-files"
             header={
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <h2 className="text-xl font-semibold leading-tight text-[#323338]">
@@ -219,6 +219,6 @@ export default function ArrivalInputFilesArchive({
                     <Pagination pagination={arrivalInputFiles} />
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </WorkflowSettingsLayout>
     );
 }
