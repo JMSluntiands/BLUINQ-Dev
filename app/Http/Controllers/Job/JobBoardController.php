@@ -20,6 +20,16 @@ class JobBoardController extends Controller
 
     public function index(Request $request): Response
     {
+        return $this->renderBoard($request, groupByStatus: false);
+    }
+
+    public function list(Request $request): Response
+    {
+        return $this->renderBoard($request, groupByStatus: true);
+    }
+
+    private function renderBoard(Request $request, bool $groupByStatus): Response
+    {
         $filters = $this->board->resolveListFilters($request);
 
         $query = $this->board->baseQuery($request);
@@ -38,6 +48,10 @@ class JobBoardController extends Controller
             'filters' => $filters,
             'canViewAllRequests' => $request->user()?->isAdmin() ?? false,
             'assignableUsers' => $this->board->assignableUsers(),
+            'groupByStatus' => $groupByStatus,
+            'jobListSections' => $groupByStatus
+                ? $this->board->jobListSectionLabels()
+                : [],
         ]);
     }
 

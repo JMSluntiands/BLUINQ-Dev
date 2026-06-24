@@ -18,6 +18,8 @@ export default function JobBoard({
     filters = {},
     canViewAllRequests = false,
     assignableUsers = [],
+    groupByStatus = false,
+    jobListSections = {},
 }) {
     const { auth } = usePage().props;
     const canCreateDraftRequest =
@@ -26,6 +28,15 @@ export default function JobBoard({
     const rows = jobs?.data ?? [];
     const [liveSearch, setLiveSearch] = useState('');
     const hasSearch = Boolean(liveSearch.trim());
+    const searchRoute = groupByStatus ? 'job.list' : 'job.board';
+    const pageTitle = groupByStatus ? 'Job list' : 'Archi Team — Job board';
+    const pageDescription = groupByStatus
+        ? canViewAllRequests
+            ? 'All jobs on the project board, grouped by status.'
+            : 'Your jobs on the project board, grouped by status.'
+        : canViewAllRequests
+          ? 'All submitted drafting requests in the project board.'
+          : 'Your submitted drafting requests on the project board.';
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -36,8 +47,8 @@ export default function JobBoard({
         params.delete('search');
         params.delete('page');
         const query = Object.fromEntries(params.entries());
-        router.get(route('job.board'), query, { replace: true });
-    }, []);
+        router.get(route(searchRoute), query, { replace: true });
+    }, [searchRoute]);
 
     return (
         <AuthenticatedLayout
@@ -45,12 +56,10 @@ export default function JobBoard({
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                         <h2 className="text-xl font-semibold leading-tight text-[#323338] dark:text-white">
-                            Archi Team — Job board
+                            {pageTitle}
                         </h2>
                         <p className="mt-1 text-sm text-[#676879] dark:text-[#94a3b8]">
-                            {canViewAllRequests
-                                ? 'All submitted drafting requests in the project board.'
-                                : 'Your submitted drafting requests on the project board.'}
+                            {pageDescription}
                         </p>
                     </div>
                     {canCreateDraftRequest && (
@@ -65,20 +74,21 @@ export default function JobBoard({
                 </div>
             }
         >
-            <Head title="Archi Team — Job board" />
+            <Head title={pageTitle} />
 
             <FlashNoticeModal messages={FLASH_MESSAGES} />
 
             <div className="overflow-hidden rounded-xl border border-[#e6e9ef] bg-white shadow-sm dark:border-[#2f3347] dark:bg-[#1a1b2e] dark:shadow-none">
                 <TableSearchToolbar
                     key={String(filters.per_page ?? 10)}
-                    ziggyRouteName="job.board"
+                    ziggyRouteName={searchRoute}
                     filters={filters}
                     liveSearch
                     onLiveSearchChange={setLiveSearch}
                 />
                 <JobBoardGrid
                     jobs={rows}
+                    groupByStatus={groupByStatus}
                     emptyMessage={
                         hasSearch
                             ? 'No drafting requests match your search.'
@@ -107,6 +117,7 @@ export default function JobBoard({
                         })
                     }
                     assignableUsers={assignableUsers}
+                    jobListSections={jobListSections}
                 />
                 <Pagination pagination={jobs} />
             </div>

@@ -28,6 +28,27 @@ export const JOB_STATUS_LABELS = {
     completed: 'Completed',
 };
 
+/** Board column order when jobs are split into status tables. */
+export const JOB_BOARD_STATUS_ORDER = [
+    'new',
+    'wip',
+    'for_checking',
+    'on_hold',
+    'pending',
+    'allocated',
+    'in_progress',
+    'completed',
+];
+
+/** Job list page sections. */
+export const JOB_LIST_SECTIONS = [
+    { key: 'drafting_wip', label: 'Drafting - Work In Progress' },
+    { key: 'design_wip', label: 'Design - Work In Progress' },
+    { key: 'for_quotes', label: 'For Quotes' },
+    { key: 'completed_projects', label: 'Completed Projects' },
+    { key: 'cancelled_jobs', label: 'Cancelled Jobs' },
+];
+
 /** @type {string[]} */
 export const STAFF_BADGE_COLORS = [
     'bg-violet-500',

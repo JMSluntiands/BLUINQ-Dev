@@ -130,6 +130,7 @@ class DraftingRequestBoardService
             'date_out' => '—',
             'status' => $boardStatus,
             'status_label' => $this->boardStatusLabel($boardStatus, $row->statusLabel()),
+            'list_group' => $this->mapJobListGroup($row),
             'is_priority' => (bool) $row->is_priority,
             'vo_hours' => null,
             'comments_count' => $row->comments_count ?? 0,
@@ -197,10 +198,19 @@ class DraftingRequestBoardService
         $monthStart = ($month !== null && preg_match('/^\d{4}-\d{2}$/', $month))
             ? Carbon::createFromFormat('Y-m', $month, $tz)->startOfMonth()
             : Carbon::today($tz)->startOfMonth();
+        $monthEnd = $monthStart->copy()->endOfMonth();
 
         $requestIds = $this->baseQuery($request)->pluck('id');
         $seriesKeys = $this->leaderboardSeriesKeys();
         $byDrafter = [];
+
+        $requestsById = $requestIds->isEmpty()
+            ? collect()
+            : DraftingRequest::query()
+                ->with('serviceEngagings:id,name')
+                ->whereIn('id', $requestIds)
+                ->get()
+                ->keyBy('id');
 
         if ($requestIds->isNotEmpty()) {
             $revisions = DraftingRequestRevision::query()
@@ -208,7 +218,7 @@ class DraftingRequestBoardService
                 ->whereIn('drafting_request_id', $requestIds)
                 ->whereBetween('log_date', [
                     $monthStart->toDateString(),
-                    $monthStart->copy()->endOfMonth()->toDateString(),
+                    $monthEnd->toDateString(),
                 ])
                 ->orderBy('log_date')
                 ->orderBy('id')
@@ -224,12 +234,42 @@ class DraftingRequestBoardService
                     ?? $revision->drafter?->badgeInitials()
                     ?? '?';
 
-                if (! isset($byDrafter[$initials])) {
-                    $byDrafter[$initials] = array_fill_keys($seriesKeys, 0);
-                    $byDrafter[$initials]['drafter'] = $initials;
+                $this->incrementLeaderboardEntry($byDrafter, $initials, $seriesKey, $seriesKeys);
+            }
+
+            $assignments = DraftingRequestAssignment::query()
+                ->with('user:id,name')
+                ->whereIn('drafting_request_id', $requestIds)
+                ->where('role', DraftingRequestAssignment::ROLE_DRAFTING)
+                ->whereBetween('updated_at', [
+                    $monthStart->copy()->utc(),
+                    $monthEnd->copy()->endOfDay()->utc(),
+                ])
+                ->get();
+
+            foreach ($assignments as $assignment) {
+                $draftingRequest = $requestsById->get($assignment->drafting_request_id);
+                if ($draftingRequest === null) {
+                    continue;
                 }
 
-                $byDrafter[$initials][$seriesKey]++;
+                $seriesKey = $this->mapRequestToLeaderboardKey($draftingRequest);
+                if ($seriesKey === null) {
+                    continue;
+                }
+
+                $initials = $assignment->user?->badgeInitials() ?? '?';
+                $weight = $assignment->hours !== null && (float) $assignment->hours > 0
+                    ? max(1, (int) round((float) $assignment->hours))
+                    : 1;
+
+                $this->incrementLeaderboardEntry(
+                    $byDrafter,
+                    $initials,
+                    $seriesKey,
+                    $seriesKeys,
+                    $weight,
+                );
             }
         }
 
@@ -240,6 +280,37 @@ class DraftingRequestBoardService
             'label' => $monthStart->format('F Y'),
             'data' => array_values($byDrafter),
         ];
+    }
+
+    /**
+     * @param  array<string, array<string, int|string>>  $byDrafter
+     * @param  list<string>  $seriesKeys
+     */
+    private function incrementLeaderboardEntry(
+        array &$byDrafter,
+        string $initials,
+        string $seriesKey,
+        array $seriesKeys,
+        int $weight = 1,
+    ): void {
+        if (! isset($byDrafter[$initials])) {
+            $byDrafter[$initials] = array_fill_keys($seriesKeys, 0);
+            $byDrafter[$initials]['drafter'] = $initials;
+        }
+
+        $byDrafter[$initials][$seriesKey] += $weight;
+    }
+
+    public function mapRequestToLeaderboardKey(DraftingRequest $request): ?string
+    {
+        foreach ($request->serviceEngagings as $service) {
+            $seriesKey = $this->mapCategoryToLeaderboardKey($service->name);
+            if ($seriesKey !== null) {
+                return $seriesKey;
+            }
+        }
+
+        return 'working_drawings';
     }
 
     /**
@@ -265,7 +336,20 @@ class DraftingRequestBoardService
             return null;
         }
 
-        return config('drafting.leaderboard_category_keys')[$normalized] ?? null;
+        /** @var array<string, string> $keys */
+        $keys = config('drafting.leaderboard_category_keys', []);
+
+        if (isset($keys[$normalized])) {
+            return $keys[$normalized];
+        }
+
+        foreach ($keys as $label => $key) {
+            if (str_contains($label, $normalized) || str_contains($normalized, $label)) {
+                return $key;
+            }
+        }
+
+        return null;
     }
 
     public function draftingSlotCount(): int
@@ -493,6 +577,59 @@ class DraftingRequestBoardService
             'on_hold' => 'On Hold',
             default => $fallback,
         };
+    }
+
+    public function mapJobListGroup(DraftingRequest $row): string
+    {
+        $status = $row->status ?? DraftingRequest::STATUS_ALLOCATED;
+
+        if ($status === DraftingRequest::STATUS_COMPLETED) {
+            return 'completed_projects';
+        }
+
+        if (in_array($status, [
+            DraftingRequest::STATUS_PENDING,
+            DraftingRequest::STATUS_ALLOCATED,
+        ], true)) {
+            return 'for_quotes';
+        }
+
+        if (in_array($status, [
+            DraftingRequest::STATUS_IN_PROGRESS,
+            DraftingRequest::STATUS_ON_HOLD,
+        ], true)) {
+            return $this->isDesignPhaseRequest($row) ? 'design_wip' : 'drafting_wip';
+        }
+
+        return 'for_quotes';
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function jobListSectionLabels(): array
+    {
+        /** @var array<string, string> $sections */
+        $sections = config('drafting.job_list_sections', []);
+
+        return $sections;
+    }
+
+    private function isDesignPhaseRequest(DraftingRequest $row): bool
+    {
+        $haystack = mb_strtolower($row->serviceEngagings->pluck('name')->join(' '));
+
+        if ($haystack === '') {
+            return false;
+        }
+
+        foreach (config('drafting.design_phase_service_keywords', []) as $keyword) {
+            if (str_contains($haystack, mb_strtolower((string) $keyword))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

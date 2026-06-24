@@ -1,4 +1,5 @@
 import {
+    JOB_LIST_SECTIONS,
     JOB_STATUS_LABELS,
     JOB_STATUS_STYLES,
     TAG_PILL_CLASS,
@@ -8,10 +9,14 @@ import JobBoardAssignmentModal from '@/Components/JobBoard/JobBoardAssignmentMod
 import JobBoardCommentsModal, {
     JobBoardCommentButton,
 } from '@/Components/JobBoard/JobBoardCommentsModal';
-import { ChevronRightIcon, FlagIcon } from '@heroicons/react/24/outline';
+import {
+    ChevronDownIcon,
+    ChevronRightIcon,
+    FlagIcon,
+} from '@heroicons/react/24/outline';
 import { FlagIcon as FlagIconSolid } from '@heroicons/react/24/solid';
 import { Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 const DRAFTING_SLOTS = 2;
 const CHECKING_SLOTS = 2;
@@ -36,6 +41,7 @@ const CHECKING_SLOTS = 2;
  *   date_out?: string | null;
  *   status: keyof typeof JOB_STATUS_LABELS;
  *   status_label?: string;
+ *   list_group?: string;
  *   is_priority?: boolean;
  *   vo_hours?: string | null;
  *   files_count?: number;
@@ -203,38 +209,30 @@ const tdClass =
     'border-r border-[#e6e9ef] px-2 py-1.5 align-middle text-xs text-[#323338] last:border-r-0 dark:border-[#2a2d42] dark:text-slate-200';
 
 /**
- * @param {{
- *   jobs?: JobBoardRow[];
- *   emptyMessage?: string;
- *   getJobHref?: (row: JobBoardRow) => string;
- *   showFilesInTotal?: boolean;
- *   onCommentsUpdated?: () => void;
- *   onPriorityUpdated?: () => void;
- *   onAssignmentsUpdated?: () => void;
- *   assignableUsers?: Array<{ id: number; name: string; initials?: string }>;
- * }} props
+ * @param {JobBoardRow[]} jobs
+ * @param {Record<string, string>} sectionLabels
+ * @returns {Array<{ status: string; label: string; jobs: JobBoardRow[]; listSection: boolean }>}
  */
-export default function JobBoardGrid({
-    jobs = [],
-    emptyMessage = 'No jobs to display.',
-    getJobHref,
-    showFilesInTotal = false,
-    onCommentsUpdated,
-    onPriorityUpdated,
-    onAssignmentsUpdated,
-    assignableUsers = [],
-}) {
-    const [commentJob, setCommentJob] = useState(null);
-    const [assignmentTarget, setAssignmentTarget] = useState(null);
+function groupJobsByListSection(jobs, sectionLabels) {
+    /** @type {Map<string, JobBoardRow[]>} */
+    const buckets = new Map();
 
-    if (!jobs.length) {
-        return (
-            <div className="border-t border-[#e6e9ef] bg-white px-6 py-12 text-center text-sm text-[#676879] dark:border-[#2f3347] dark:bg-[#1a1b2e] dark:text-slate-400">
-                {emptyMessage}
-            </div>
-        );
+    for (const job of jobs) {
+        const key = job.list_group ?? 'for_quotes';
+        const existing = buckets.get(key) ?? [];
+        existing.push(job);
+        buckets.set(key, existing);
     }
 
+    return JOB_LIST_SECTIONS.map(({ key, label }) => ({
+        status: key,
+        label: sectionLabels[key] ?? label,
+        jobs: buckets.get(key) ?? [],
+        listSection: true,
+    }));
+}
+
+function JobBoardTableHead({ showFilesInTotal, hideStatus }) {
     const draftingHeaders = Array.from({ length: DRAFTING_SLOTS }, (_, index) => (
         <th key={`drafting-${index}`} className={thClass}>
             Drafting
@@ -248,245 +246,456 @@ export default function JobBoardGrid({
     ));
 
     return (
-        <>
-            <div className="bg-white dark:bg-[#1a1b2e]">
-                <div className="overflow-x-auto">
-                    <table className="w-full min-w-[90rem] border-collapse text-left">
-                        <thead className="bg-[#fafbfc] dark:bg-[#151622]">
-                            <tr>
-                                <th className={thClass}>Job</th>
-                                <th className={thClass + ' w-10'} />
-                                <th className={thClass}>Job No.</th>
-                                <th className={thClass}>Builder Name</th>
-                                <th className={thClass}>Category</th>
-                                <th className={thClass}>House Type</th>
-                                <th className={thClass}>Date In</th>
-                                <th className={thClass}>ETA</th>
-                                <th className={thClass}>Progress</th>
-                                {draftingHeaders}
-                                {checkingHeaders}
-                                <th className={thClass}>
-                                    {showFilesInTotal ? 'Files' : 'Total'}
-                                </th>
-                                <th className={thClass}>Area</th>
-                                <th className={thClass}>Date Out</th>
-                                <th className={thClass}>Status</th>
-                                <th className={thClass + ' w-10'}>Priority</th>
-                                <th className={thClass}>VO hrs</th>
-                                <th className={thClass}>IN</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {jobs.map((job, rowIndex) => {
-                                const draftingSlots = job.drafting ?? [];
-                                const checkingSlots = job.checking ?? [];
+        <thead className="bg-[#fafbfc] dark:bg-[#151622]">
+            <tr>
+                <th className={thClass}>Job</th>
+                <th className={thClass + ' w-10'} />
+                <th className={thClass}>Job No.</th>
+                <th className={thClass}>Builder Name</th>
+                <th className={thClass}>Category</th>
+                <th className={thClass}>House Type</th>
+                <th className={thClass}>Date In</th>
+                <th className={thClass}>ETA</th>
+                <th className={thClass}>Progress</th>
+                {draftingHeaders}
+                {checkingHeaders}
+                <th className={thClass}>
+                    {showFilesInTotal ? 'Files' : 'Total'}
+                </th>
+                <th className={thClass}>Total hrs</th>
+                <th className={thClass}>Date Out</th>
+                {!hideStatus && <th className={thClass}>Status</th>}
+                <th className={thClass + ' w-10'}>Priority</th>
+                <th className={thClass}>VO hrs</th>
+                <th className={thClass}>IN</th>
+            </tr>
+        </thead>
+    );
+}
+
+/**
+ * @param {{
+ *   jobs?: JobBoardRow[];
+ *   emptyMessage?: string;
+ *   getJobHref?: (row: JobBoardRow) => string;
+ *   showFilesInTotal?: boolean;
+ *   groupByStatus?: boolean;
+ *   onCommentsUpdated?: () => void;
+ *   onPriorityUpdated?: () => void;
+ *   onAssignmentsUpdated?: () => void;
+ *   assignableUsers?: Array<{ id: number; name: string; initials?: string }>;
+ *   commentJob: JobBoardRow | null;
+ *   setCommentJob: (job: JobBoardRow | null) => void;
+ *   setAssignmentTarget: (target: {
+ *     job: JobBoardRow;
+ *     role: 'drafting' | 'checking';
+ *     slot: number;
+ *     assignment: StaffAssignment | null;
+ *   } | null) => void;
+ *   onPriorityUpdated?: () => void;
+ *   hideStatus?: boolean;
+ * }} props
+ */
+function JobBoardTableBody({
+    jobs,
+    getJobHref,
+    showFilesInTotal = false,
+    hideStatus = false,
+    setCommentJob,
+    setAssignmentTarget,
+    onPriorityUpdated,
+}) {
+    return (
+        <tbody>
+            {jobs.map((job, rowIndex) => {
+                const draftingSlots = job.drafting ?? [];
+                const checkingSlots = job.checking ?? [];
+
+                return (
+                    <tr
+                        key={job.id}
+                        className={
+                            'border-b border-[#e6e9ef] transition-colors hover:bg-[#f0f4ff] dark:border-[#2a2d42] dark:hover:bg-[#22243a] ' +
+                            (job.is_priority
+                                ? 'bg-amber-50/70 dark:bg-[#2a1f2e]'
+                                : rowIndex % 2 === 1
+                                  ? 'bg-[#fafbfc] dark:bg-[#1e1f32]'
+                                  : 'bg-white dark:bg-[#1a1b2e]')
+                        }
+                    >
+                        <td className={tdClass}>
+                            <div className="flex min-w-[14rem] items-center gap-1.5">
+                                <ChevronRightIcon
+                                    className="h-3.5 w-3.5 shrink-0 text-[#676879] dark:text-slate-500"
+                                    aria-hidden
+                                />
+                                <span
+                                    className="line-clamp-2 min-w-0 flex-1 font-medium text-[#323338] dark:text-white"
+                                    title={job.job}
+                                >
+                                    {job.job}
+                                </span>
+                            </div>
+                        </td>
+                        <td className={tdClass}>
+                            <JobBoardCommentButton
+                                count={job.comments_count ?? 0}
+                                label={job.job}
+                                onClick={() => setCommentJob(job)}
+                            />
+                        </td>
+                        <td className={tdClass + ' tabular-nums'}>
+                            {getJobHref ? (
+                                <Link
+                                    href={getJobHref(job)}
+                                    className="font-semibold text-[#0073ea] transition hover:text-[#0060c4] hover:underline dark:text-[#1890ff] dark:hover:text-[#1478e0]"
+                                >
+                                    {job.job_no}
+                                </Link>
+                            ) : (
+                                <span className="text-[#0073ea] dark:text-[#1890ff]">
+                                    {job.job_no}
+                                </span>
+                            )}
+                        </td>
+                        <td className={tdClass}>
+                            <TagPill title={job.builder}>
+                                {job.builder}
+                            </TagPill>
+                        </td>
+                        <td className={tdClass}>
+                            <TagPill
+                                title={job.category_full ?? job.category}
+                            >
+                                {job.category}
+                            </TagPill>
+                        </td>
+                        <td className={tdClass}>
+                            <TagPill title={job.house_type}>
+                                {job.house_type}
+                            </TagPill>
+                        </td>
+                        <td
+                            className={
+                                tdClass +
+                                ' whitespace-nowrap tabular-nums'
+                            }
+                        >
+                            {job.date_in}
+                        </td>
+                        <td
+                            className={
+                                tdClass +
+                                ' whitespace-nowrap tabular-nums'
+                            }
+                        >
+                            {job.eta}
+                        </td>
+                        <td className={tdClass}>
+                            <ProgressCell segments={job.progress_segments} />
+                        </td>
+                        {Array.from(
+                            { length: DRAFTING_SLOTS },
+                            (_, index) => {
+                                const slotLabel = `Assign drafting slot ${index + 1} for ${job.job_no}`;
+                                const canAssign = Boolean(job.can_assign);
 
                                 return (
-                                    <tr
-                                        key={job.id}
-                                        className={
-                                            'border-b border-[#e6e9ef] transition-colors hover:bg-[#f0f4ff] dark:border-[#2a2d42] dark:hover:bg-[#22243a] ' +
-                                            (job.is_priority
-                                                ? 'bg-amber-50/70 dark:bg-[#2a1f2e]'
-                                                : rowIndex % 2 === 1
-                                                  ? 'bg-[#fafbfc] dark:bg-[#1e1f32]'
-                                                  : 'bg-white dark:bg-[#1a1b2e]')
-                                        }
+                                    <td
+                                        key={`${job.id}-draft-${index}`}
+                                        className={tdClass}
                                     >
-                                        <td className={tdClass}>
-                                            <div className="flex min-w-[14rem] items-center gap-1.5">
-                                                <ChevronRightIcon
-                                                    className="h-3.5 w-3.5 shrink-0 text-[#676879] dark:text-slate-500"
-                                                    aria-hidden
-                                                />
-                                                <span
-                                                    className="line-clamp-2 min-w-0 flex-1 font-medium text-[#323338] dark:text-white"
-                                                    title={job.job}
-                                                >
-                                                    {job.job}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className={tdClass}>
-                                            <JobBoardCommentButton
-                                                count={job.comments_count ?? 0}
-                                                label={job.job}
-                                                onClick={() =>
-                                                    setCommentJob(job)
-                                                }
-                                            />
-                                        </td>
-                                        <td className={tdClass + ' tabular-nums'}>
-                                            {getJobHref ? (
-                                                <Link
-                                                    href={getJobHref(job)}
-                                                    className="font-semibold text-[#0073ea] transition hover:text-[#0060c4] hover:underline dark:text-[#1890ff] dark:hover:text-[#1478e0]"
-                                                >
-                                                    {job.job_no}
-                                                </Link>
-                                            ) : (
-                                                <span className="text-[#0073ea] dark:text-[#1890ff]">
-                                                    {job.job_no}
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className={tdClass}>
-                                            <TagPill title={job.builder}>
-                                                {job.builder}
-                                            </TagPill>
-                                        </td>
-                                        <td className={tdClass}>
-                                            <TagPill
-                                                title={
-                                                    job.category_full ??
-                                                    job.category
-                                                }
-                                            >
-                                                {job.category}
-                                            </TagPill>
-                                        </td>
-                                        <td className={tdClass}>
-                                            <TagPill title={job.house_type}>
-                                                {job.house_type}
-                                            </TagPill>
-                                        </td>
-                                        <td
-                                            className={
-                                                tdClass +
-                                                ' whitespace-nowrap tabular-nums'
+                                        <StaffSlot
+                                            assignment={draftingSlots[index]}
+                                            interactive={canAssign}
+                                            onClick={() =>
+                                                setAssignmentTarget({
+                                                    job,
+                                                    role: 'drafting',
+                                                    slot: index,
+                                                    assignment:
+                                                        draftingSlots[index],
+                                                })
                                             }
-                                        >
-                                            {job.date_in}
-                                        </td>
-                                        <td
-                                            className={
-                                                tdClass +
-                                                ' whitespace-nowrap tabular-nums'
-                                            }
-                                        >
-                                            {job.eta}
-                                        </td>
-                                        <td className={tdClass}>
-                                            <ProgressCell
-                                                segments={
-                                                    job.progress_segments
-                                                }
-                                            />
-                                        </td>
-                                        {Array.from(
-                                            { length: DRAFTING_SLOTS },
-                                            (_, index) => {
-                                                const slotLabel = `Assign drafting slot ${index + 1} for ${job.job_no}`;
-                                                const canAssign = Boolean(job.can_assign);
-
-                                                return (
-                                                    <td
-                                                        key={`${job.id}-draft-${index}`}
-                                                        className={tdClass}
-                                                    >
-                                                        <StaffSlot
-                                                            assignment={
-                                                                draftingSlots[index]
-                                                            }
-                                                            interactive={canAssign}
-                                                            onClick={() =>
-                                                                setAssignmentTarget({
-                                                                    job,
-                                                                    role: 'drafting',
-                                                                    slot: index,
-                                                                    assignment:
-                                                                        draftingSlots[index],
-                                                                })
-                                                            }
-                                                            label={slotLabel}
-                                                        />
-                                                    </td>
-                                                );
-                                            },
-                                        )}
-                                        {Array.from(
-                                            { length: CHECKING_SLOTS },
-                                            (_, index) => {
-                                                const slotLabel = `Assign checking slot ${index + 1} for ${job.job_no}`;
-                                                const canAssign = Boolean(job.can_assign);
-
-                                                return (
-                                                    <td
-                                                        key={`${job.id}-check-${index}`}
-                                                        className={tdClass}
-                                                    >
-                                                        <StaffSlot
-                                                            assignment={
-                                                                checkingSlots[index]
-                                                            }
-                                                            interactive={canAssign}
-                                                            onClick={() =>
-                                                                setAssignmentTarget({
-                                                                    job,
-                                                                    role: 'checking',
-                                                                    slot: index,
-                                                                    assignment:
-                                                                        checkingSlots[index],
-                                                                })
-                                                            }
-                                                            label={slotLabel}
-                                                        />
-                                                    </td>
-                                                );
-                                            },
-                                        )}
-                                        <td
-                                            className={
-                                                tdClass +
-                                                ' whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400'
-                                            }
-                                        >
-                                            {showFilesInTotal
-                                                ? (job.files_count ?? 0)
-                                                : job.total_hours != null
-                                                  ? `${job.total_hours} h`
-                                                  : '—'}
-                                        </td>
-                                        <td className={tdClass + ' text-[#676879] dark:text-slate-400'}>
-                                            {job.area ?? '—'}
-                                        </td>
-                                        <td
-                                            className={
-                                                tdClass +
-                                                ' whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400'
-                                            }
-                                        >
-                                            {job.date_out ?? '—'}
-                                        </td>
-                                        <td className={tdClass}>
-                                            <StatusPill
-                                                status={job.status}
-                                                label={job.status_label}
-                                            />
-                                        </td>
-                                        <td className={tdClass}>
-                                            <PriorityFlag
-                                                job={job}
-                                                onToggled={onPriorityUpdated}
-                                            />
-                                        </td>
-                                        <td
-                                            className={
-                                                tdClass +
-                                                ' whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400'
-                                            }
-                                        >
-                                            {job.vo_hours ?? '—'}
-                                        </td>
-                                        <td className={tdClass + ' text-[#676879] dark:text-slate-400'}>
-                                            —
-                                        </td>
-                                    </tr>
+                                            label={slotLabel}
+                                        />
+                                    </td>
                                 );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+                            },
+                        )}
+                        {Array.from(
+                            { length: CHECKING_SLOTS },
+                            (_, index) => {
+                                const slotLabel = `Assign checking slot ${index + 1} for ${job.job_no}`;
+                                const canAssign = Boolean(job.can_assign);
+
+                                return (
+                                    <td
+                                        key={`${job.id}-check-${index}`}
+                                        className={tdClass}
+                                    >
+                                        <StaffSlot
+                                            assignment={checkingSlots[index]}
+                                            interactive={canAssign}
+                                            onClick={() =>
+                                                setAssignmentTarget({
+                                                    job,
+                                                    role: 'checking',
+                                                    slot: index,
+                                                    assignment:
+                                                        checkingSlots[index],
+                                                })
+                                            }
+                                            label={slotLabel}
+                                        />
+                                    </td>
+                                );
+                            },
+                        )}
+                        <td
+                            className={
+                                tdClass +
+                                ' whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400'
+                            }
+                        >
+                            {showFilesInTotal
+                                ? (job.files_count ?? 0)
+                                : job.total_hours != null
+                                  ? `${job.total_hours} h`
+                                  : '—'}
+                        </td>
+                        <td
+                            className={
+                                tdClass +
+                                ' whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400'
+                            }
+                        >
+                            {job.total_hours != null
+                                ? `${job.total_hours} h`
+                                : '—'}
+                        </td>
+                        <td
+                            className={
+                                tdClass +
+                                ' whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400'
+                            }
+                        >
+                            {job.date_out ?? '—'}
+                        </td>
+                        {!hideStatus && (
+                            <td className={tdClass}>
+                                <StatusPill
+                                    status={job.status}
+                                    label={job.status_label}
+                                />
+                            </td>
+                        )}
+                        <td className={tdClass}>
+                            <PriorityFlag
+                                job={job}
+                                onToggled={onPriorityUpdated}
+                            />
+                        </td>
+                        <td
+                            className={
+                                tdClass +
+                                ' whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400'
+                            }
+                        >
+                            {job.vo_hours ?? '—'}
+                        </td>
+                        <td className={tdClass + ' text-[#676879] dark:text-slate-400'}>
+                            —
+                        </td>
+                    </tr>
+                );
+            })}
+        </tbody>
+    );
+}
+
+function JobBoardStatusSection({
+    status,
+    label,
+    jobs,
+    collapsed,
+    onToggle,
+    showFilesInTotal,
+    getJobHref,
+    setCommentJob,
+    setAssignmentTarget,
+    onPriorityUpdated,
+    listSection = false,
+}) {
+    const sectionId = `job-board-status-${status}`;
+
+    return (
+        <section className="border-t border-[#e6e9ef] first:border-t-0 dark:border-[#2f3347]">
+            <button
+                type="button"
+                onClick={onToggle}
+                aria-expanded={!collapsed}
+                aria-controls={sectionId}
+                className="flex w-full items-center gap-3 bg-[#fafbfc] px-4 py-2.5 text-left transition hover:bg-[#f0f4ff] dark:bg-[#151622] dark:hover:bg-[#1e2035]"
+            >
+                <ChevronDownIcon
+                    className={
+                        'h-4 w-4 shrink-0 text-[#676879] transition-transform dark:text-slate-400 ' +
+                        (collapsed ? '-rotate-90' : '')
+                    }
+                    aria-hidden
+                />
+                {listSection ? (
+                    <span className="text-sm font-semibold text-[#323338] dark:text-white">
+                        {label}
+                    </span>
+                ) : (
+                    <StatusPill status={status} label={label} />
+                )}
+                <span className="text-xs font-medium text-[#676879] dark:text-slate-400">
+                    {jobs.length} {jobs.length === 1 ? 'job' : 'jobs'}
+                </span>
+                <span className="sr-only">
+                    {collapsed ? 'Show' : 'Hide'} {label} jobs
+                </span>
+            </button>
+
+            {!collapsed &&
+                (jobs.length > 0 ? (
+                    <div id={sectionId} className="overflow-x-auto">
+                        <table className="w-full min-w-[90rem] border-collapse text-left">
+                            <JobBoardTableHead
+                                showFilesInTotal={showFilesInTotal}
+                                hideStatus
+                            />
+                            <JobBoardTableBody
+                                jobs={jobs}
+                                getJobHref={getJobHref}
+                                showFilesInTotal={showFilesInTotal}
+                                hideStatus
+                                setCommentJob={setCommentJob}
+                                setAssignmentTarget={setAssignmentTarget}
+                                onPriorityUpdated={onPriorityUpdated}
+                            />
+                        </table>
+                    </div>
+                ) : (
+                    <div
+                        id={sectionId}
+                        className="border-t border-[#e6e9ef] px-4 py-6 text-center text-sm text-[#676879] dark:border-[#2a2d42] dark:text-slate-400"
+                    >
+                        No jobs in this section.
+                    </div>
+                ))}
+        </section>
+    );
+}
+
+/**
+ * @param {{
+ *   jobs?: JobBoardRow[];
+ *   emptyMessage?: string;
+ *   getJobHref?: (row: JobBoardRow) => string;
+ *   showFilesInTotal?: boolean;
+ *   groupByStatus?: boolean;
+ *   onCommentsUpdated?: () => void;
+ *   onPriorityUpdated?: () => void;
+ *   onAssignmentsUpdated?: () => void;
+ *   assignableUsers?: Array<{ id: number; name: string; initials?: string }>;
+ * }} props
+ */
+export default function JobBoardGrid({
+    jobs = [],
+    emptyMessage = 'No jobs to display.',
+    getJobHref,
+    showFilesInTotal = false,
+    groupByStatus = false,
+    jobListSections = {},
+    onCommentsUpdated,
+    onPriorityUpdated,
+    onAssignmentsUpdated,
+    assignableUsers = [],
+}) {
+    const [commentJob, setCommentJob] = useState(null);
+    const [assignmentTarget, setAssignmentTarget] = useState(null);
+    const [collapsedStatuses, setCollapsedStatuses] = useState(
+        () => new Set(),
+    );
+
+    const useListSections =
+        groupByStatus && Object.keys(jobListSections).length > 0;
+
+    const statusGroups = useMemo(() => {
+        if (!groupByStatus) {
+            return [];
+        }
+
+        if (useListSections) {
+            return groupJobsByListSection(jobs, jobListSections);
+        }
+
+        return [];
+    }, [groupByStatus, useListSections, jobs, jobListSections]);
+
+    const toggleStatusSection = (status) => {
+        setCollapsedStatuses((current) => {
+            const next = new Set(current);
+            if (next.has(status)) {
+                next.delete(status);
+            } else {
+                next.add(status);
+            }
+            return next;
+        });
+    };
+
+    if (!jobs.length && !useListSections) {
+        return (
+            <div className="border-t border-[#e6e9ef] bg-white px-6 py-12 text-center text-sm text-[#676879] dark:border-[#2f3347] dark:bg-[#1a1b2e] dark:text-slate-400">
+                {emptyMessage}
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <div className="bg-white dark:bg-[#1a1b2e]">
+                {groupByStatus ? (
+                    statusGroups.map((group) => (
+                        <JobBoardStatusSection
+                            key={group.status}
+                            status={group.status}
+                            label={group.label}
+                            jobs={group.jobs}
+                            listSection={group.listSection}
+                            collapsed={collapsedStatuses.has(group.status)}
+                            onToggle={() =>
+                                toggleStatusSection(group.status)
+                            }
+                            showFilesInTotal={showFilesInTotal}
+                            getJobHref={getJobHref}
+                            setCommentJob={setCommentJob}
+                            setAssignmentTarget={setAssignmentTarget}
+                            onPriorityUpdated={onPriorityUpdated}
+                        />
+                    ))
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[90rem] border-collapse text-left">
+                            <JobBoardTableHead
+                                showFilesInTotal={showFilesInTotal}
+                            />
+                            <JobBoardTableBody
+                                jobs={jobs}
+                                getJobHref={getJobHref}
+                                showFilesInTotal={showFilesInTotal}
+                                setCommentJob={setCommentJob}
+                                setAssignmentTarget={setAssignmentTarget}
+                                onPriorityUpdated={onPriorityUpdated}
+                            />
+                        </table>
+                    </div>
+                )}
             </div>
 
             <JobBoardCommentsModal

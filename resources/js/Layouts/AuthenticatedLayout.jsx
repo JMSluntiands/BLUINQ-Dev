@@ -129,7 +129,7 @@ export default function AuthenticatedLayout({ header, children }) {
         route().current('announcements.create') ||
         route().current('announcements.edit') ||
         route().current('announcements.archive');
-    const isJobList = route().current('job.board');
+    const isJobList = route().current('job.list');
     const isTimesheet = route().current('timesheet.index');
     const isLeaveApprovals = route().current('leave.approvals');
     const isLeaveCredits = route().current('leave.credits.index');
@@ -284,7 +284,7 @@ export default function AuthenticatedLayout({ header, children }) {
                     )}
                     {canJobList && (
                         <NavItem
-                            href={route('job.board')}
+                            href={route('job.list')}
                             active={isJobList}
                             onNavigate={closeSidebar}
                             icon={

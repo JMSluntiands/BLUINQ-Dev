@@ -49,4 +49,26 @@ return [
         'WD' => 'working_drawings',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Job list section labels (sidebar Job list page)
+    |--------------------------------------------------------------------------
+    */
+
+    'job_list_sections' => [
+        'drafting_wip' => 'Drafting - Work In Progress',
+        'design_wip' => 'Design - Work In Progress',
+        'for_quotes' => 'For Quotes',
+        'completed_projects' => 'Completed Projects',
+        'cancelled_jobs' => 'Cancelled Jobs',
+    ],
+
+    'design_phase_service_keywords' => [
+        'design',
+        'schematic',
+        'siting',
+        'planning',
+        'prestart',
+    ],
+
 ];

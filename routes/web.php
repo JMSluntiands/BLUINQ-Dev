@@ -74,6 +74,8 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
     Route::post('/leave/credits', [LeaveCreditsController::class, 'store'])
         ->name('leave.credits.store');
 
+    Route::get('/job/list', [JobBoardController::class, 'list'])
+        ->name('job.list');
     Route::get('/job/board', [JobBoardController::class, 'index'])
         ->name('job.board');
     Route::get('/job/drafting', [JobBoardController::class, 'redirectFromLegacyList'])

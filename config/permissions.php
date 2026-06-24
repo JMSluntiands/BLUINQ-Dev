@@ -25,6 +25,7 @@ return [
         'leave.reject' => 'leave.manage',
         'leave.credits.index' => 'leave.credits.manage',
         'leave.credits.store' => 'leave.credits.manage',
+        'job.list' => 'job.list.view',
         'job.board' => 'job.list.view',
         'job.drafting' => 'job.list.view',
         'job.drafting.show' => 'job.drafting.view',

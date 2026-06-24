@@ -303,7 +303,7 @@ function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth, jobStatusC
 
             {data.length === 0 ? (
                 <div className="flex h-80 items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                    No drafting revisions for this month yet.
+                    No drafting activity for this month yet.
                 </div>
             ) : (
                 <div className="h-80 w-full">
