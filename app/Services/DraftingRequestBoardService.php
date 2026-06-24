@@ -3,8 +3,13 @@
 namespace App\Services;
 
 use App\Models\DraftingRequest;
+use App\Models\DraftingRequestAssignment;
+use App\Models\DraftingRequestRevision;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class DraftingRequestBoardService
@@ -20,6 +25,10 @@ class DraftingRequestBoardService
             ->with([
                 'buildingType:id,name',
                 'serviceEngagings:id,name',
+                'assignments' => fn ($relation) => $relation
+                    ->with('user:id,name')
+                    ->orderBy('role')
+                    ->orderBy('slot'),
             ])
             ->withCount(['files', 'comments'])
             ->active()
@@ -89,8 +98,17 @@ class DraftingRequestBoardService
         }
 
         $boardStatus = $this->mapBoardStatus($row->status);
-        $drafting = $this->padStaffSlots([], 3);
-        $checking = $this->padStaffSlots([], 2);
+        $drafting = $this->boardAssignmentsForRole(
+            $row->assignments,
+            DraftingRequestAssignment::ROLE_DRAFTING,
+            $this->draftingSlotCount(),
+        );
+        $checking = $this->boardAssignmentsForRole(
+            $row->assignments,
+            DraftingRequestAssignment::ROLE_CHECKING,
+            $this->checkingSlotCount(),
+        );
+        $totalHours = $this->sumAssignmentHours($row->assignments);
 
         return [
             'id' => $row->id,
@@ -106,7 +124,7 @@ class DraftingRequestBoardService
             'progress_segments' => $this->buildProgressSegments($boardStatus, $drafting, $checking),
             'drafting' => $drafting,
             'checking' => $checking,
-            'total_hours' => null,
+            'total_hours' => $totalHours,
             'files_count' => $row->files_count,
             'area' => $area,
             'date_out' => '—',
@@ -116,6 +134,342 @@ class DraftingRequestBoardService
             'vo_hours' => null,
             'comments_count' => $row->comments_count ?? 0,
             'has_comments' => ($row->comments_count ?? 0) > 0,
+        ];
+    }
+
+    /**
+     * @return array{date: string, label: string, data: list<array{status: string, count: int, color: string}>}
+     */
+    public function jobStatusChartPayload(Request $request, ?string $date = null): array
+    {
+        $tz = config('app.timezone');
+        $day = ($date !== null && $date !== '')
+            ? Carbon::parse($date, $tz)->startOfDay()
+            : Carbon::today($tz)->startOfDay();
+
+        $query = $this->baseQuery($request)->select('status');
+
+        $query->whereBetween('requested_at', [
+            $day->copy()->utc(),
+            $day->copy()->endOfDay()->utc(),
+        ]);
+
+        $counts = [
+            'on_hold' => 0,
+            'for_checking' => 0,
+            'new' => 0,
+            'wip' => 0,
+        ];
+
+        foreach ($query->pluck('status') as $status) {
+            $boardStatus = $this->mapBoardStatus($status);
+
+            if (array_key_exists($boardStatus, $counts)) {
+                $counts[$boardStatus]++;
+            }
+        }
+
+        return [
+            'date' => $day->format('Y-m-d'),
+            'label' => $day->timezone($tz)->format('M j, Y'),
+            'data' => $this->formatJobStatusChartData($counts),
+        ];
+    }
+
+    /**
+     * @return array{
+     *     month: string,
+     *     label: string,
+     *     data: list<array{
+     *         drafter: string,
+     *         da_planning: int,
+     *         prestart: int,
+     *         schematic_design: int,
+     *         siting: int,
+     *         variation: int,
+     *         working_drawings: int
+     *     }>
+     * }
+     */
+    public function drafterLeaderboardPayload(Request $request, ?string $month = null): array
+    {
+        $tz = config('app.timezone');
+        $monthStart = ($month !== null && preg_match('/^\d{4}-\d{2}$/', $month))
+            ? Carbon::createFromFormat('Y-m', $month, $tz)->startOfMonth()
+            : Carbon::today($tz)->startOfMonth();
+
+        $requestIds = $this->baseQuery($request)->pluck('id');
+        $seriesKeys = $this->leaderboardSeriesKeys();
+        $byDrafter = [];
+
+        if ($requestIds->isNotEmpty()) {
+            $revisions = DraftingRequestRevision::query()
+                ->with('drafter:id,name')
+                ->whereIn('drafting_request_id', $requestIds)
+                ->whereBetween('log_date', [
+                    $monthStart->toDateString(),
+                    $monthStart->copy()->endOfMonth()->toDateString(),
+                ])
+                ->orderBy('log_date')
+                ->orderBy('id')
+                ->get();
+
+            foreach ($revisions as $revision) {
+                $seriesKey = $this->mapCategoryToLeaderboardKey($revision->category);
+                if ($seriesKey === null) {
+                    continue;
+                }
+
+                $initials = $revision->drafter_initials
+                    ?? $revision->drafter?->badgeInitials()
+                    ?? '?';
+
+                if (! isset($byDrafter[$initials])) {
+                    $byDrafter[$initials] = array_fill_keys($seriesKeys, 0);
+                    $byDrafter[$initials]['drafter'] = $initials;
+                }
+
+                $byDrafter[$initials][$seriesKey]++;
+            }
+        }
+
+        ksort($byDrafter);
+
+        return [
+            'month' => $monthStart->format('Y-m'),
+            'label' => $monthStart->format('F Y'),
+            'data' => array_values($byDrafter),
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function leaderboardSeriesKeys(): array
+    {
+        return [
+            'da_planning',
+            'prestart',
+            'schematic_design',
+            'siting',
+            'variation',
+            'working_drawings',
+        ];
+    }
+
+    public function mapCategoryToLeaderboardKey(?string $category): ?string
+    {
+        $normalized = mb_strtoupper(trim($category ?? ''));
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return config('drafting.leaderboard_category_keys')[$normalized] ?? null;
+    }
+
+    public function draftingSlotCount(): int
+    {
+        return max(1, (int) config('drafting.drafting_slots', 2));
+    }
+
+    public function checkingSlotCount(): int
+    {
+        return max(1, (int) config('drafting.checking_slots', 2));
+    }
+
+    public function canAssignStaff(Request $request, DraftingRequest $row): bool
+    {
+        $user = $request->user();
+
+        if ($user === null || $row->isArchived()) {
+            return false;
+        }
+
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        return $row->user_id === $user->id;
+    }
+
+    /**
+     * @return list<array{id: int, name: string, initials: string}>
+     */
+    public function assignableUsers(): array
+    {
+        return User::query()
+            ->active()
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (User $user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'initials' => $user->badgeInitials(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  Collection<int, DraftingRequestAssignment>  $assignments
+     * @return list<array{id: int, user_id: int, initials: string, name: string, hours?: string|null}|null>
+     */
+    public function boardAssignmentsForRole(Collection $assignments, string $role, int $slots): array
+    {
+        $bySlot = [];
+
+        foreach ($assignments as $assignment) {
+            if ($assignment->role !== $role) {
+                continue;
+            }
+
+            $bySlot[$assignment->slot] = $this->formatBoardAssignment($assignment);
+        }
+
+        $padded = [];
+        for ($index = 0; $index < $slots; $index++) {
+            $padded[] = $bySlot[$index] ?? null;
+        }
+
+        return $padded;
+    }
+
+    /**
+     * @return array{id: int, user_id: int, initials: string, name: string, hours?: string|null}
+     */
+    public function formatBoardAssignment(DraftingRequestAssignment $assignment): array
+    {
+        return [
+            'id' => $assignment->id,
+            'user_id' => $assignment->user_id,
+            'initials' => $assignment->user?->badgeInitials() ?? '?',
+            'name' => $assignment->user?->name ?? '—',
+            'hours' => $this->formatRevisionHours($assignment->hours),
+        ];
+    }
+
+    /**
+     * @param  Collection<int, DraftingRequestAssignment>  $assignments
+     */
+    public function sumAssignmentHours(Collection $assignments): ?string
+    {
+        $total = $assignments->reduce(
+            static fn (float $carry, DraftingRequestAssignment $assignment) => $carry + (float) ($assignment->hours ?? 0),
+            0.0,
+        );
+
+        if ($total <= 0) {
+            return null;
+        }
+
+        return rtrim(rtrim(number_format($total, 2, '.', ''), '0'), '.');
+    }
+
+    public function maxSlotForRole(string $role): int
+    {
+        $slots = $role === DraftingRequestAssignment::ROLE_DRAFTING
+            ? $this->draftingSlotCount()
+            : $this->checkingSlotCount();
+
+        return max(0, $slots - 1);
+    }
+
+    /**
+     * @param  Collection<int, DraftingRequestRevision>  $revisions
+     * @param  list<string>  $categories
+     * @return list<array{initials: string, hours?: string|null}|null>
+     */
+    public function staffAssignmentsFromRevisions(Collection $revisions, array $categories, int $slots): array
+    {
+        $allowed = array_map(
+            static fn (string $category) => mb_strtoupper(trim($category)),
+            $categories,
+        );
+        $assignments = [];
+        $seenInitials = [];
+
+        foreach ($revisions as $revision) {
+            $category = mb_strtoupper(trim($revision->category ?? ''));
+            if (! in_array($category, $allowed, true)) {
+                continue;
+            }
+
+            $initials = $revision->drafter_initials
+                ?? $revision->drafter?->badgeInitials();
+            if ($initials === null || $initials === '' || isset($seenInitials[$initials])) {
+                continue;
+            }
+
+            $seenInitials[$initials] = true;
+            $assignments[] = [
+                'initials' => $initials,
+                'hours' => $this->formatRevisionHours($revision->hours),
+            ];
+
+            if (count($assignments) >= $slots) {
+                break;
+            }
+        }
+
+        return $this->padStaffSlots($assignments, $slots);
+    }
+
+    /**
+     * @param  Collection<int, DraftingRequestRevision>  $revisions
+     */
+    public function sumRevisionHours(Collection $revisions): ?string
+    {
+        $total = $revisions->reduce(
+            static fn (float $carry, DraftingRequestRevision $revision) => $carry + (float) ($revision->hours ?? 0),
+            0.0,
+        );
+
+        if ($total <= 0) {
+            return null;
+        }
+
+        return rtrim(rtrim(number_format($total, 2, '.', ''), '0'), '.');
+    }
+
+    public function formatRevisionHours(mixed $hours): ?string
+    {
+        if ($hours === null || $hours === '') {
+            return null;
+        }
+
+        $formatted = rtrim(rtrim((string) $hours, '0'), '.');
+
+        return $formatted === '' ? null : $formatted.' h';
+    }
+
+    /**
+     * @param  array<string, int>  $counts
+     * @return list<array{status: string, count: int, color: string}>
+     */
+    public function formatJobStatusChartData(array $counts): array
+    {
+        return [
+            [
+                'status' => 'On Hold',
+                'count' => $counts['on_hold'],
+                'color' => '#8b5cf6',
+            ],
+            [
+                'status' => 'For Checking',
+                'count' => $counts['for_checking'],
+                'color' => '#3b82f6',
+            ],
+            [
+                'status' => 'New',
+                'count' => $counts['new'],
+                'color' => '#94a3b8',
+            ],
+            [
+                'status' => 'WIP',
+                'count' => $counts['wip'],
+                'color' => '#f87171',
+            ],
         ];
     }
 

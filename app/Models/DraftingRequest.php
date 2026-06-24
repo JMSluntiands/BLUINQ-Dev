@@ -176,6 +176,16 @@ class DraftingRequest extends Model
     }
 
     /**
+     * @return HasMany<DraftingRequestAssignment, $this>
+     */
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(DraftingRequestAssignment::class)
+            ->orderBy('role')
+            ->orderBy('slot');
+    }
+
+    /**
      * @return HasMany<DraftingRequestAccountEntry, $this>
      */
     public function accountEntries(): HasMany

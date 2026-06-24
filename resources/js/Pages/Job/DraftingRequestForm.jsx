@@ -53,9 +53,9 @@ export default function DraftingRequestForm({
 
     const { data, setData, post, processing, errors, transform } = useForm({
         requested_at: applicant.requested_at,
-        your_name: applicant.your_name,
-        company_name: applicant.company_name,
-        email: applicant.email,
+        your_name: '',
+        company_name: '',
+        email: '',
         service_engaging_ids: [],
         site_address: '',
         site_owner_name: '',

@@ -116,6 +116,11 @@ class User extends Authenticatable
         return in_array($slug, Permission::slugsForRole($this->role->slug), true);
     }
 
+    public function canManageDraftingMemoTags(): bool
+    {
+        return $this->isAdmin() || $this->role?->slug === 'project-manager';
+    }
+
     public function badgeInitials(): string
     {
         $name = trim($this->name);

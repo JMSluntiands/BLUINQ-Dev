@@ -9,6 +9,7 @@ const TOOLBAR_BUTTONS = [
 ];
 
 const LINK_COMMAND = 'createLink';
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 function exec(command, value = null) {
     document.execCommand(command, false, value);
@@ -17,6 +18,10 @@ function exec(command, value = null) {
 function htmlIsEmpty(html) {
     if (!html || html === '<br>') {
         return true;
+    }
+
+    if (/<img\b/i.test(html)) {
+        return false;
     }
 
     return html.replace(/<[^>]*>/g, '').trim() === '';
@@ -47,9 +52,11 @@ export default function RichTextEditor({
     onChange,
     placeholder = 'Write a comment…',
     disabled = false,
+    allowImages = false,
     className = '',
 }) {
     const editorRef = useRef(null);
+    const imageInputRef = useRef(null);
     const isInternalChange = useRef(false);
     const [activeCommands, setActiveCommands] = useState({});
     const [showPlaceholder, setShowPlaceholder] = useState(true);
@@ -139,6 +146,85 @@ export default function RichTextEditor({
         editorRef.current?.focus();
     };
 
+    const insertImageAtCursor = useCallback(
+        (src) => {
+            if (!editorRef.current || !src) {
+                return;
+            }
+
+            editorRef.current.focus();
+
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = 'Image';
+
+            const selection = document.getSelection();
+            if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                if (editorRef.current.contains(range.commonAncestorContainer)) {
+                    range.deleteContents();
+                    range.insertNode(img);
+                    range.setStartAfter(img);
+                    range.collapse(true);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    syncValue();
+                    return;
+                }
+            }
+
+            editorRef.current.appendChild(img);
+            syncValue();
+        },
+        [syncValue],
+    );
+
+    const insertImageFile = useCallback(
+        (file) => {
+            if (!file?.type?.startsWith('image/')) {
+                return;
+            }
+
+            if (file.size > MAX_IMAGE_BYTES) {
+                window.alert('Image is too large. Maximum size is 5 MB.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                if (typeof reader.result === 'string') {
+                    insertImageAtCursor(reader.result);
+                }
+            };
+            reader.readAsDataURL(file);
+        },
+        [insertImageAtCursor],
+    );
+
+    const handlePaste = (event) => {
+        if (!allowImages || disabled) {
+            return;
+        }
+
+        const items = event.clipboardData?.items;
+        if (!items) {
+            return;
+        }
+
+        for (const item of items) {
+            if (!item.type.startsWith('image/')) {
+                continue;
+            }
+
+            event.preventDefault();
+            const file = item.getAsFile();
+            if (file) {
+                insertImageFile(file);
+            }
+            return;
+        }
+    };
+
     return (
         <div className={className}>
             <div
@@ -180,6 +266,34 @@ export default function RichTextEditor({
                     >
                         Link
                     </button>
+                    {allowImages ? (
+                        <>
+                            <input
+                                ref={imageInputRef}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                disabled={disabled}
+                                onChange={(event) => {
+                                    const file = event.target.files?.[0];
+                                    if (file) {
+                                        insertImageFile(file);
+                                    }
+                                    event.target.value = '';
+                                }}
+                            />
+                            <button
+                                type="button"
+                                title="Insert image"
+                                disabled={disabled}
+                                className={toolbarButtonClass(false)}
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => imageInputRef.current?.click()}
+                            >
+                                Image
+                            </button>
+                        </>
+                    ) : null}
                 </div>
                 <div className="relative">
                     {showPlaceholder ? (
@@ -198,8 +312,9 @@ export default function RichTextEditor({
                         role="textbox"
                         aria-multiline="true"
                         aria-placeholder={placeholder}
-                        className="rich-text-editor min-h-[120px] max-h-[320px] overflow-y-auto bg-white px-3 py-3 text-sm text-[#323338] outline-none dark:bg-[#151622] dark:text-slate-200 [&_a]:text-[#0073ea] [&_a]:underline dark:[&_a]:text-[#60a5fa] [&_blockquote]:border-l-2 [&_blockquote]:border-[#c5c7d0] [&_blockquote]:pl-3 [&_blockquote]:text-[#676879] dark:[&_blockquote]:border-slate-600 dark:[&_blockquote]:text-slate-400 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:text-sm [&_h3]:font-semibold [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5"
+                        className="rich-text-editor min-h-[120px] max-h-[320px] overflow-y-auto bg-white px-3 py-3 text-sm text-[#323338] outline-none dark:bg-[#151622] dark:text-slate-200 [&_a]:text-[#0073ea] [&_a]:underline dark:[&_a]:text-[#60a5fa] [&_blockquote]:border-l-2 [&_blockquote]:border-[#c5c7d0] [&_blockquote]:pl-3 [&_blockquote]:text-[#676879] dark:[&_blockquote]:border-slate-600 dark:[&_blockquote]:text-slate-400 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:text-sm [&_h3]:font-semibold [&_img]:my-2 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-md [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5"
                         onInput={syncValue}
+                        onPaste={handlePaste}
                         onBlur={syncValue}
                         onKeyUp={updateActiveState}
                         onMouseUp={updateActiveState}

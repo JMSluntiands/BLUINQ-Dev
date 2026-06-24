@@ -24,16 +24,11 @@ class DraftingRequestFormController extends Controller
 
     public function create(Request $request): Response
     {
-        $user = $request->user();
-
         $requestedAt = now(config('app.timezone'))->seconds(0)->format('Y-m-d\TH:i');
 
         return Inertia::render('Job/DraftingRequestForm', [
             'applicant' => [
                 'requested_at' => $requestedAt,
-                'your_name' => $user->name,
-                'company_name' => $user->company_name ?? '',
-                'email' => $user->email,
             ],
             'serviceEngagings' => ServiceEngaging::query()
                 ->active()

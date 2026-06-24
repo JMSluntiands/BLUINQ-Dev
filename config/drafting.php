@@ -18,4 +18,35 @@ return [
 
     'xero_invoice_base_url' => env('DRAFTING_XERO_INVOICE_BASE_URL', ''),
 
+    'drafting_slots' => 2,
+
+    'checking_slots' => 2,
+
+    'board_drafting_categories' => ['DRAFTING'],
+
+    'board_checking_categories' => ['CHECKING'],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Drafter leaderboard category mapping
+    |--------------------------------------------------------------------------
+    |
+    | Maps revision category values to dashboard chart series keys.
+    |
+    */
+
+    'leaderboard_category_keys' => [
+        'DA/PLANNING' => 'da_planning',
+        'DA PLANNING' => 'da_planning',
+        'DA-PLANNING' => 'da_planning',
+        'PRESTART' => 'prestart',
+        'SCHEMATIC DESIGN' => 'schematic_design',
+        'SCHEMATIC' => 'schematic_design',
+        'SITING' => 'siting',
+        'VARIATION' => 'variation',
+        'WORKING DRAWINGS' => 'working_drawings',
+        'WORKING DRAWING' => 'working_drawings',
+        'WD' => 'working_drawings',
+    ],
+
 ];

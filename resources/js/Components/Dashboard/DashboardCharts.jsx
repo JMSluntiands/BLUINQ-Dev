@@ -6,6 +6,7 @@ import {
     FunnelIcon,
     TrophyIcon,
 } from '@heroicons/react/24/outline';
+import { router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import {
     Bar,
@@ -28,270 +29,74 @@ const DRAFTER_SERIES = [
     { key: 'working_drawings', label: 'Working Drawings', color: '#38bdf8' },
 ];
 
-const LEADERBOARD_LAST_MONTH = [
-    {
-        drafter: 'JV',
-        da_planning: 2,
-        prestart: 1,
-        schematic_design: 0,
-        siting: 1,
-        variation: 0,
-        working_drawings: 3,
-    },
-    {
-        drafter: 'RP',
-        da_planning: 1,
-        prestart: 2,
-        schematic_design: 1,
-        siting: 0,
-        variation: 1,
-        working_drawings: 2,
-    },
-    {
-        drafter: 'SR',
-        da_planning: 3,
-        prestart: 0,
-        schematic_design: 2,
-        siting: 1,
-        variation: 0,
-        working_drawings: 1,
-    },
-    {
-        drafter: 'VA',
-        da_planning: 0,
-        prestart: 1,
-        schematic_design: 1,
-        siting: 2,
-        variation: 1,
-        working_drawings: 2,
-    },
-    {
-        drafter: 'HS',
-        da_planning: 2,
-        prestart: 1,
-        schematic_design: 0,
-        siting: 0,
-        variation: 2,
-        working_drawings: 1,
-    },
-    {
-        drafter: 'CP',
-        da_planning: 1,
-        prestart: 0,
-        schematic_design: 3,
-        siting: 1,
-        variation: 0,
-        working_drawings: 0,
-    },
-    {
-        drafter: 'VE',
-        da_planning: 0,
-        prestart: 2,
-        schematic_design: 1,
-        siting: 0,
-        variation: 1,
-        working_drawings: 3,
-    },
-    {
-        drafter: 'JD',
-        da_planning: 1,
-        prestart: 1,
-        schematic_design: 1,
-        siting: 1,
-        variation: 0,
-        working_drawings: 1,
-    },
-    {
-        drafter: 'AG',
-        da_planning: 2,
-        prestart: 0,
-        schematic_design: 0,
-        siting: 2,
-        variation: 1,
-        working_drawings: 2,
-    },
-    {
-        drafter: 'AM',
-        da_planning: 0,
-        prestart: 1,
-        schematic_design: 2,
-        siting: 1,
-        variation: 0,
-        working_drawings: 1,
-    },
-    {
-        drafter: 'DBO',
-        da_planning: 1,
-        prestart: 2,
-        schematic_design: 0,
-        siting: 0,
-        variation: 1,
-        working_drawings: 2,
-    },
-    {
-        drafter: 'LM',
-        da_planning: 0,
-        prestart: 0,
-        schematic_design: 1,
-        siting: 2,
-        variation: 2,
-        working_drawings: 1,
-    },
-    {
-        drafter: 'FV',
-        da_planning: 1,
-        prestart: 1,
-        schematic_design: 1,
-        siting: 0,
-        variation: 0,
-        working_drawings: 2,
-    },
-    {
-        drafter: 'DB',
-        da_planning: 2,
-        prestart: 0,
-        schematic_design: 1,
-        siting: 1,
-        variation: 1,
-        working_drawings: 0,
-    },
+const EMPTY_JOB_STATUS_DATA = [
+    { status: 'On Hold', count: 0, color: '#8b5cf6' },
+    { status: 'For Checking', count: 0, color: '#3b82f6' },
+    { status: 'New', count: 0, color: '#94a3b8' },
+    { status: 'WIP', count: 0, color: '#f87171' },
 ];
 
-const LEADERBOARD_CURRENT_MONTH = [
-    {
-        drafter: 'JV',
-        da_planning: 1,
-        prestart: 2,
-        schematic_design: 1,
-        siting: 0,
-        variation: 1,
-        working_drawings: 2,
-    },
-    {
-        drafter: 'RP',
-        da_planning: 2,
-        prestart: 1,
-        schematic_design: 0,
-        siting: 2,
-        variation: 0,
-        working_drawings: 3,
-    },
-    {
-        drafter: 'SR',
-        da_planning: 0,
-        prestart: 1,
-        schematic_design: 3,
-        siting: 1,
-        variation: 1,
-        working_drawings: 1,
-    },
-    {
-        drafter: 'VA',
-        da_planning: 1,
-        prestart: 0,
-        schematic_design: 1,
-        siting: 1,
-        variation: 0,
-        working_drawings: 2,
-    },
-    {
-        drafter: 'HS',
-        da_planning: 3,
-        prestart: 1,
-        schematic_design: 1,
-        siting: 0,
-        variation: 1,
-        working_drawings: 2,
-    },
-    {
-        drafter: 'CP',
-        da_planning: 0,
-        prestart: 2,
-        schematic_design: 2,
-        siting: 1,
-        variation: 0,
-        working_drawings: 1,
-    },
-    {
-        drafter: 'VE',
-        da_planning: 1,
-        prestart: 1,
-        schematic_design: 0,
-        siting: 2,
-        variation: 2,
-        working_drawings: 0,
-    },
-    {
-        drafter: 'JD',
-        da_planning: 2,
-        prestart: 0,
-        schematic_design: 1,
-        siting: 0,
-        variation: 1,
-        working_drawings: 2,
-    },
-    {
-        drafter: 'AG',
-        da_planning: 1,
-        prestart: 2,
-        schematic_design: 0,
-        siting: 1,
-        variation: 0,
-        working_drawings: 3,
-    },
-    {
-        drafter: 'AM',
-        da_planning: 0,
-        prestart: 1,
-        schematic_design: 2,
-        siting: 2,
-        variation: 1,
-        working_drawings: 0,
-    },
-    {
-        drafter: 'DBO',
-        da_planning: 2,
-        prestart: 0,
-        schematic_design: 1,
-        siting: 1,
-        variation: 0,
-        working_drawings: 2,
-    },
-    {
-        drafter: 'LM',
-        da_planning: 1,
-        prestart: 1,
-        schematic_design: 0,
-        siting: 0,
-        variation: 2,
-        working_drawings: 1,
-    },
-    {
-        drafter: 'FV',
-        da_planning: 0,
-        prestart: 2,
-        schematic_design: 2,
-        siting: 1,
-        variation: 0,
-        working_drawings: 1,
-    },
-    {
-        drafter: 'DB',
-        da_planning: 1,
-        prestart: 0,
-        schematic_design: 1,
-        siting: 2,
-        variation: 1,
-        working_drawings: 1,
-    },
-];
+function parseChartDate(value) {
+    const [year, month, day] = (value || '').split('-').map(Number);
+    if (!year || !month || !day) {
+        return new Date();
+    }
 
-const JOB_STATUS_DATA = [
-    { status: 'On Hold', count: 1, color: '#8b5cf6' },
-    { status: 'For Checking', count: 4, color: '#3b82f6' },
-    { status: 'New', count: 4, color: '#94a3b8' },
-    { status: 'WIP', count: 5, color: '#f87171' },
-];
+    return new Date(year, month - 1, day);
+}
+
+function formatChartDate(value) {
+    return parseChartDate(value).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
+}
+
+function toDateKey(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
+
+function shiftChartDate(value, direction) {
+    const date = parseChartDate(value);
+    date.setDate(date.getDate() + direction);
+
+    return toDateKey(date);
+}
+
+function parseLeaderboardMonth(value) {
+    const [year, month] = (value || '').split('-').map(Number);
+    if (!year || !month) {
+        return new Date();
+    }
+
+    return new Date(year, month - 1, 1);
+}
+
+function formatLeaderboardMonth(value) {
+    return parseLeaderboardMonth(value).toLocaleDateString(undefined, {
+        month: 'long',
+        year: 'numeric',
+    });
+}
+
+function toMonthKey(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+
+    return `${year}-${month}`;
+}
+
+function shiftLeaderboardMonth(value, direction) {
+    const date = parseLeaderboardMonth(value);
+    date.setMonth(date.getMonth() + direction);
+
+    return toMonthKey(date);
+}
 
 function useChartColors() {
     const { isDark } = useTheme();
@@ -431,17 +236,27 @@ function ChartPanel({ title, icon: Icon, iconClassName, children, toolbar }) {
     );
 }
 
-function DrafterLeaderboardChart() {
-    const [monthView, setMonthView] = useState('last');
+function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth, jobStatusChart }) {
     const chartColors = useChartColors();
+    const data = drafterLeaderboard?.data ?? [];
+    const selectedMonth = drafterLeaderboard?.month ?? toMonthKey(new Date());
+    const monthLabel = drafterLeaderboard?.label ?? formatLeaderboardMonth(selectedMonth);
 
-    const data =
-        monthView === 'last'
-            ? LEADERBOARD_LAST_MONTH
-            : LEADERBOARD_CURRENT_MONTH;
-
-    const monthLabel =
-        monthView === 'last' ? "Last Month's Leaderboard" : "Current Month's Leaderboard";
+    const reloadLeaderboard = (nextMonth) => {
+        router.get(
+            route('dashboard', {
+                leaderboard_month: nextMonth,
+                calendar_month: calendarMonth,
+                job_status_date: jobStatusChart?.date,
+            }),
+            {},
+            {
+                preserveState: true,
+                preserveScroll: true,
+                only: ['drafterLeaderboard'],
+            },
+        );
+    };
 
     return (
         <ChartPanel
@@ -452,18 +267,18 @@ function DrafterLeaderboardChart() {
                 <div className="flex items-center gap-2">
                     <button
                         type="button"
-                        onClick={() => setMonthView('last')}
-                        disabled={monthView === 'last'}
-                        className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-sky-600 transition hover:bg-sky-50 disabled:cursor-default disabled:opacity-40 dark:text-sky-400 dark:hover:bg-sky-500/10"
+                        onClick={() => reloadLeaderboard(shiftLeaderboardMonth(selectedMonth, -1))}
+                        className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-sky-600 transition hover:bg-sky-50 dark:text-sky-400 dark:hover:bg-sky-500/10"
+                        aria-label="Previous month"
                     >
                         <ChevronLeftIcon className="h-3.5 w-3.5" aria-hidden />
                         Prev
                     </button>
                     <button
                         type="button"
-                        onClick={() => setMonthView('current')}
-                        disabled={monthView === 'current'}
-                        className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-sky-600 transition hover:bg-sky-50 disabled:cursor-default disabled:opacity-40 dark:text-sky-400 dark:hover:bg-sky-500/10"
+                        onClick={() => reloadLeaderboard(shiftLeaderboardMonth(selectedMonth, 1))}
+                        className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-sky-600 transition hover:bg-sky-50 dark:text-sky-400 dark:hover:bg-sky-500/10"
+                        aria-label="Next month"
                     >
                         Next
                         <ChevronRightIcon className="h-3.5 w-3.5" aria-hidden />
@@ -477,25 +292,26 @@ function DrafterLeaderboardChart() {
                 </p>
                 <button
                     type="button"
-                    onClick={() =>
-                        setMonthView((current) =>
-                            current === 'last' ? 'current' : 'last',
-                        )
-                    }
+                    onClick={() => reloadLeaderboard(toMonthKey(new Date()))}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
                     aria-label="Filter leaderboard month"
                 >
                     <FunnelIcon className="h-3.5 w-3.5" aria-hidden />
-                    {monthView === 'last' ? 'Last month' : 'Current month'}
+                    This month
                 </button>
             </div>
 
-            <div className="h-80 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                        data={data}
-                        margin={{ top: 8, right: 8, left: 0, bottom: 4 }}
-                    >
+            {data.length === 0 ? (
+                <div className="flex h-80 items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                    No drafting revisions for this month yet.
+                </div>
+            ) : (
+                <div className="h-80 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                            data={data}
+                            margin={{ top: 8, right: 8, left: 0, bottom: 4 }}
+                        >
                         <CartesianGrid
                             strokeDasharray="3 3"
                             stroke={chartColors.grid}
@@ -549,12 +365,34 @@ function DrafterLeaderboardChart() {
                     </BarChart>
                 </ResponsiveContainer>
             </div>
+            )}
         </ChartPanel>
     );
 }
 
-function JobStatusChart() {
+function JobStatusChart({ jobStatusChart, calendarMonth }) {
     const chartColors = useChartColors();
+    const [showDateFilter, setShowDateFilter] = useState(false);
+    const chartData = jobStatusChart?.data?.length
+        ? jobStatusChart.data
+        : EMPTY_JOB_STATUS_DATA;
+    const selectedDate = jobStatusChart?.date ?? toDateKey(new Date());
+    const dateLabel = jobStatusChart?.label ?? formatChartDate(selectedDate);
+
+    const reloadChart = (nextDate) => {
+        router.get(
+            route('dashboard', {
+                job_status_date: nextDate,
+                calendar_month: calendarMonth,
+            }),
+            {},
+            {
+                preserveState: true,
+                preserveScroll: true,
+                only: ['jobStatusChart'],
+            },
+        );
+    };
 
     return (
         <ChartPanel
@@ -562,24 +400,71 @@ function JobStatusChart() {
             icon={ChartBarIcon}
             iconClassName="bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400"
             toolbar={
-                <button
-                    type="button"
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
-                    aria-label="Filter job status chart"
-                >
-                    <FunnelIcon className="h-3.5 w-3.5" aria-hidden />
-                    Filter
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => reloadChart(shiftChartDate(selectedDate, -1))}
+                        className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-sky-600 transition hover:bg-sky-50 dark:text-sky-400 dark:hover:bg-sky-500/10"
+                        aria-label="Previous day"
+                    >
+                        <ChevronLeftIcon className="h-3.5 w-3.5" aria-hidden />
+                        Prev
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => reloadChart(shiftChartDate(selectedDate, 1))}
+                        className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-sky-600 transition hover:bg-sky-50 dark:text-sky-400 dark:hover:bg-sky-500/10"
+                        aria-label="Next day"
+                    >
+                        Next
+                        <ChevronRightIcon className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setShowDateFilter((current) => !current)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                        aria-label="Filter job status chart by date"
+                        aria-expanded={showDateFilter}
+                    >
+                        <FunnelIcon className="h-3.5 w-3.5" aria-hidden />
+                        {dateLabel}
+                    </button>
+                </div>
             }
         >
+            {showDateFilter && (
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                    <label
+                        htmlFor="job-status-date"
+                        className="text-xs font-medium text-slate-600 dark:text-slate-300"
+                    >
+                        Daily date
+                    </label>
+                    <input
+                        id="job-status-date"
+                        type="date"
+                        value={selectedDate}
+                        onChange={(event) => reloadChart(event.target.value)}
+                        className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                    />
+                    <button
+                        type="button"
+                        onClick={() => reloadChart(toDateKey(new Date()))}
+                        className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                    >
+                        Today
+                    </button>
+                </div>
+            )}
+
             <p className="mb-4 text-sm font-medium text-slate-700 dark:text-slate-200">
-                Chart by Status
+                Chart by Status — {dateLabel}
             </p>
 
             <div className="h-80 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                        data={JOB_STATUS_DATA}
+                        data={chartData}
                         margin={{ top: 8, right: 8, left: 0, bottom: 4 }}
                     >
                         <CartesianGrid
@@ -628,7 +513,7 @@ function JobStatusChart() {
                                 fontSize: 11,
                             }}
                         >
-                            {JOB_STATUS_DATA.map((entry) => (
+                            {chartData.map((entry) => (
                                 <Cell
                                     key={entry.status}
                                     fill={entry.color}
@@ -642,11 +527,22 @@ function JobStatusChart() {
     );
 }
 
-export default function DashboardCharts() {
+export default function DashboardCharts({
+    jobStatusChart,
+    drafterLeaderboard,
+    calendarMonth,
+}) {
     return (
         <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <DrafterLeaderboardChart />
-            <JobStatusChart />
+            <DrafterLeaderboardChart
+                drafterLeaderboard={drafterLeaderboard}
+                calendarMonth={calendarMonth}
+                jobStatusChart={jobStatusChart}
+            />
+            <JobStatusChart
+                jobStatusChart={jobStatusChart}
+                calendarMonth={calendarMonth}
+            />
         </div>
     );
 }

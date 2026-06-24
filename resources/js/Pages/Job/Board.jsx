@@ -17,6 +17,7 @@ export default function JobBoard({
     jobs,
     filters = {},
     canViewAllRequests = false,
+    assignableUsers = [],
 }) {
     const { auth } = usePage().props;
     const canCreateDraftRequest =
@@ -99,6 +100,13 @@ export default function JobBoard({
                             preserveScroll: true,
                         })
                     }
+                    onAssignmentsUpdated={() =>
+                        router.reload({
+                            only: ['jobs'],
+                            preserveScroll: true,
+                        })
+                    }
+                    assignableUsers={assignableUsers}
                 />
                 <Pagination pagination={jobs} />
             </div>

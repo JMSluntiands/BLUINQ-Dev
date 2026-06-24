@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Job;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\UpdateDraftingRequestAssignmentRequest;
 use App\Models\DraftingRequest;
+use App\Models\DraftingRequestAssignment;
 use App\Services\DraftingRequestBoardService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,10 +28,16 @@ class JobBoardController extends Controller
         return Inertia::render('Job/Board', [
             'jobs' => $query
                 ->paginate($filters['per_page'])
-                ->through(fn (DraftingRequest $row) => $this->board->formatBoardRow($row))
+                ->through(function (DraftingRequest $row) use ($request) {
+                    $formatted = $this->board->formatBoardRow($row);
+                    $formatted['can_assign'] = $this->board->canAssignStaff($request, $row);
+
+                    return $formatted;
+                })
                 ->withQueryString(),
             'filters' => $filters,
             'canViewAllRequests' => $request->user()?->isAdmin() ?? false,
+            'assignableUsers' => $this->board->assignableUsers(),
         ]);
     }
 
@@ -49,6 +57,49 @@ class JobBoardController extends Controller
         $draftingRequest->update([
             'is_priority' => ! $draftingRequest->is_priority,
         ]);
+
+        return back();
+    }
+
+    public function updateAssignment(
+        UpdateDraftingRequestAssignmentRequest $request,
+        DraftingRequest $draftingRequest,
+    ): RedirectResponse {
+        if (! $this->board->canAssignStaff($request, $draftingRequest)) {
+            abort(403);
+        }
+
+        if ($draftingRequest->isArchived()) {
+            abort(404);
+        }
+
+        $validated = $request->validated();
+        $role = $validated['role'];
+        $slot = (int) $validated['slot'];
+
+        if ($slot > $this->board->maxSlotForRole($role)) {
+            abort(422);
+        }
+
+        if ($validated['user_id'] === null) {
+            DraftingRequestAssignment::query()
+                ->where('drafting_request_id', $draftingRequest->id)
+                ->where('role', $role)
+                ->where('slot', $slot)
+                ->delete();
+        } else {
+            DraftingRequestAssignment::query()->updateOrCreate(
+                [
+                    'drafting_request_id' => $draftingRequest->id,
+                    'role' => $role,
+                    'slot' => $slot,
+                ],
+                [
+                    'user_id' => $validated['user_id'],
+                    'hours' => $validated['hours'] ?? null,
+                ],
+            );
+        }
 
         return back();
     }

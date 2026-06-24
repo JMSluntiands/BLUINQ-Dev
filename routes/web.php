@@ -5,6 +5,7 @@ use App\Http\Controllers\BrandLogoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LeaveRequestController;
 use App\Http\Controllers\LeaveCreditsController;
+use App\Http\Controllers\Job\DraftingMemoController;
 use App\Http\Controllers\Job\DraftingController;
 use App\Http\Controllers\Job\DraftingRequestFormController;
 use App\Http\Controllers\Job\JobBoardController;
@@ -101,6 +102,21 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('job.drafting.status.update');
     Route::patch('/job/drafting/{draftingRequest}/priority', [JobBoardController::class, 'togglePriority'])
         ->name('job.drafting.priority.update');
+    Route::patch('/job/drafting/{draftingRequest}/assignments', [JobBoardController::class, 'updateAssignment'])
+        ->name('job.drafting.assignments.update');
+
+    Route::get('/drafting-memos', [DraftingMemoController::class, 'index'])
+        ->name('drafting-memos.index');
+    Route::post('/drafting-memos', [DraftingMemoController::class, 'store'])
+        ->name('drafting-memos.store');
+    Route::patch('/drafting-memos/{draftingMemo}', [DraftingMemoController::class, 'update'])
+        ->name('drafting-memos.update');
+    Route::delete('/drafting-memos/{draftingMemo}', [DraftingMemoController::class, 'destroy'])
+        ->name('drafting-memos.destroy');
+    Route::get('/drafting-memos/{draftingMemo}/attachment', [DraftingMemoController::class, 'downloadAttachment'])
+        ->name('drafting-memos.attachment');
+    Route::post('/drafting-memos/tags', [DraftingMemoController::class, 'storeTag'])
+        ->name('drafting-memos.tags.store');
     Route::patch('/job/drafting/{draftingRequest}', [DraftingController::class, 'update'])
         ->name('job.drafting.update');
     Route::post('/job/drafting/{draftingRequest}/revisions', [DraftingController::class, 'storeRevision'])

@@ -250,6 +250,8 @@ export default function Dashboard() {
         leaveCalendar = [],
         onLeaveToday = [],
         calendarMonth,
+        jobStatusChart = null,
+        drafterLeaderboard = null,
     } = usePage().props;
     const absentEmployees = attendance.absent ?? [];
     const absentAfterNine = Boolean(attendance.absent_after_nine);
@@ -514,7 +516,11 @@ export default function Dashboard() {
 
             <HighPriorityJobsTable boardPreviewJobs={boardPreviewJobs} />
 
-            <DashboardCharts />
+            <DashboardCharts
+                jobStatusChart={jobStatusChart}
+                drafterLeaderboard={drafterLeaderboard}
+                calendarMonth={calendarMonth}
+            />
         </AuthenticatedLayout>
     );
 }

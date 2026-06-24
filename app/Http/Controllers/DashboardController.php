@@ -32,13 +32,28 @@ class DashboardController extends Controller
             : Carbon::today()->startOfMonth();
         [$calendarStart, $calendarEnd] = $this->leave->monthGridRange($month);
 
+        $jobStatusDate = $request->string('job_status_date')->toString();
+        $jobStatusDate = preg_match('/^\d{4}-\d{2}-\d{2}$/', $jobStatusDate)
+            ? $jobStatusDate
+            : Carbon::today(config('app.timezone'))->format('Y-m-d');
+
+        $leaderboardMonth = $request->string('leaderboard_month')->toString();
+        $leaderboardMonth = preg_match('/^\d{4}-\d{2}$/', $leaderboardMonth)
+            ? $leaderboardMonth
+            : Carbon::today(config('app.timezone'))->format('Y-m');
+
         return Inertia::render('Dashboard', [
             'boardPreviewJobs' => $user?->hasPermission('job.list.view')
                 ? $boardQuery
                     ->where('is_priority', true)
                     ->limit(5)
                     ->get()
-                    ->map(fn ($row) => $this->board->formatBoardRow($row))
+                    ->map(function ($row) use ($request) {
+                        $formatted = $this->board->formatBoardRow($row);
+                        $formatted['can_assign'] = $this->board->canAssignStaff($request, $row);
+
+                        return $formatted;
+                    })
                     ->values()
                     ->all()
                 : [],
@@ -78,6 +93,12 @@ class DashboardController extends Controller
             'onLeaveToday' => $user
                 ? $this->leave->onLeaveToday()
                 : [],
+            'jobStatusChart' => $user?->hasPermission('job.list.view')
+                ? $this->board->jobStatusChartPayload($request, $jobStatusDate)
+                : null,
+            'drafterLeaderboard' => $user?->hasPermission('job.list.view')
+                ? $this->board->drafterLeaderboardPayload($request, $leaderboardMonth)
+                : null,
         ]);
     }
 

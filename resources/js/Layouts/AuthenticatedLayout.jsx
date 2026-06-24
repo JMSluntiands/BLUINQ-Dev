@@ -12,6 +12,7 @@ import {
     ClockIcon,
     KeyIcon,
     MegaphoneIcon,
+    DocumentTextIcon,
     Squares2X2Icon,
     ShieldCheckIcon,
     UsersIcon,
@@ -114,6 +115,7 @@ export default function AuthenticatedLayout({ header, children }) {
     const canTimesheet = can('timesheet.view');
     const canManageLeave = can('leave.manage');
     const canManageLeaveCredits = can('leave.credits.manage');
+    const canDraftingMemos = can('drafting-memos.view');
     const canDraftingArchive = can('job.drafting.archive');
     const canArchiProject =
         canJobList ||
@@ -134,6 +136,8 @@ export default function AuthenticatedLayout({ header, children }) {
     const isJobBoard =
         route().current('job.board') || route().current('job.drafting');
     const isDraftingList = isJobBoard || route().current('job.drafting.show');
+    const isDraftingMemos =
+        route().current('drafting-memos.index');
     const isDraftingArchive = route().current('job.drafting.archive');
     const isDraftingRequestForm = route().current(
         'job.drafting-request-form',
@@ -306,6 +310,21 @@ export default function AuthenticatedLayout({ header, children }) {
                             }
                         >
                             Timesheet
+                        </NavItem>
+                    )}
+                    {canDraftingMemos && (
+                        <NavItem
+                            href={route('drafting-memos.index')}
+                            active={isDraftingMemos}
+                            onNavigate={closeSidebar}
+                            icon={
+                                <DocumentTextIcon
+                                    className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
+                                    aria-hidden
+                                />
+                            }
+                        >
+                            Drafting Memos
                         </NavItem>
                     )}
                     {canArchiProject && (

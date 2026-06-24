@@ -4,6 +4,7 @@ import {
     TAG_PILL_CLASS,
     staffBadgeColor,
 } from '@/Components/JobBoard/jobBoardStyles';
+import JobBoardAssignmentModal from '@/Components/JobBoard/JobBoardAssignmentModal';
 import JobBoardCommentsModal, {
     JobBoardCommentButton,
 } from '@/Components/JobBoard/JobBoardCommentsModal';
@@ -12,11 +13,11 @@ import { FlagIcon as FlagIconSolid } from '@heroicons/react/24/solid';
 import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 
-const DRAFTING_SLOTS = 3;
+const DRAFTING_SLOTS = 2;
 const CHECKING_SLOTS = 2;
 
 /**
- * @typedef {{ initials: string; hours?: string | null }} StaffAssignment
+ * @typedef {{ id?: number; user_id?: number; initials: string; name?: string; hours?: string | null }} StaffAssignment
  * @typedef {{ color: string; weight: number }} ProgressSegment
  * @typedef {{
  *   id: number;
@@ -40,6 +41,7 @@ const CHECKING_SLOTS = 2;
  *   files_count?: number;
  *   comments_count?: number;
  *   has_comments?: boolean;
+ *   can_assign?: boolean;
  * }} JobBoardRow
  */
 
@@ -64,25 +66,45 @@ function StatusPill({ status, label }) {
     );
 }
 
-function EmptyStaffSlot() {
+function EmptyStaffSlot({ interactive = false, onClick, label }) {
+    if (interactive) {
+        return (
+            <button
+                type="button"
+                onClick={onClick}
+                className="inline-flex h-6 w-6 items-center justify-center rounded border border-dashed border-[#c5c7d0] bg-[#f5f6f8] text-[10px] font-semibold text-[#676879] transition hover:border-[#0073ea] hover:text-[#0073ea] dark:border-[#3a3f55] dark:bg-[#252838] dark:text-slate-400 dark:hover:border-[#1890ff] dark:hover:text-[#1890ff]"
+                aria-label={label}
+                title={label}
+            >
+                +
+            </button>
+        );
+    }
+
     return (
         <span className="inline-block h-6 w-6 rounded bg-[#e6e9ef] dark:bg-[#252838]" />
     );
 }
 
-function StaffSlot({ assignment }) {
+function StaffSlot({ assignment, interactive = false, onClick, label }) {
     if (!assignment) {
-        return <EmptyStaffSlot />;
+        return (
+            <EmptyStaffSlot
+                interactive={interactive}
+                onClick={onClick}
+                label={label}
+            />
+        );
     }
 
-    return (
+    const content = (
         <div className="flex items-center gap-1">
             <span
                 className={
                     'flex h-6 w-6 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white ' +
                     staffBadgeColor(assignment.initials)
                 }
-                title={assignment.initials}
+                title={assignment.name ?? assignment.initials}
             >
                 {assignment.initials}
             </span>
@@ -92,6 +114,22 @@ function StaffSlot({ assignment }) {
                 </span>
             )}
         </div>
+    );
+
+    if (!interactive) {
+        return content;
+    }
+
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="rounded-md transition hover:bg-[#f0f4ff] dark:hover:bg-[#243044]"
+            aria-label={label}
+            title={label}
+        >
+            {content}
+        </button>
     );
 }
 
@@ -172,6 +210,8 @@ const tdClass =
  *   showFilesInTotal?: boolean;
  *   onCommentsUpdated?: () => void;
  *   onPriorityUpdated?: () => void;
+ *   onAssignmentsUpdated?: () => void;
+ *   assignableUsers?: Array<{ id: number; name: string; initials?: string }>;
  * }} props
  */
 export default function JobBoardGrid({
@@ -181,8 +221,11 @@ export default function JobBoardGrid({
     showFilesInTotal = false,
     onCommentsUpdated,
     onPriorityUpdated,
+    onAssignmentsUpdated,
+    assignableUsers = [],
 }) {
     const [commentJob, setCommentJob] = useState(null);
+    const [assignmentTarget, setAssignmentTarget] = useState(null);
 
     if (!jobs.length) {
         return (
@@ -332,33 +375,65 @@ export default function JobBoardGrid({
                                         </td>
                                         {Array.from(
                                             { length: DRAFTING_SLOTS },
-                                            (_, index) => (
-                                                <td
-                                                    key={`${job.id}-draft-${index}`}
-                                                    className={tdClass}
-                                                >
-                                                    <StaffSlot
-                                                        assignment={
-                                                            draftingSlots[index]
-                                                        }
-                                                    />
-                                                </td>
-                                            ),
+                                            (_, index) => {
+                                                const slotLabel = `Assign drafting slot ${index + 1} for ${job.job_no}`;
+                                                const canAssign = Boolean(job.can_assign);
+
+                                                return (
+                                                    <td
+                                                        key={`${job.id}-draft-${index}`}
+                                                        className={tdClass}
+                                                    >
+                                                        <StaffSlot
+                                                            assignment={
+                                                                draftingSlots[index]
+                                                            }
+                                                            interactive={canAssign}
+                                                            onClick={() =>
+                                                                setAssignmentTarget({
+                                                                    job,
+                                                                    role: 'drafting',
+                                                                    slot: index,
+                                                                    assignment:
+                                                                        draftingSlots[index],
+                                                                })
+                                                            }
+                                                            label={slotLabel}
+                                                        />
+                                                    </td>
+                                                );
+                                            },
                                         )}
                                         {Array.from(
                                             { length: CHECKING_SLOTS },
-                                            (_, index) => (
-                                                <td
-                                                    key={`${job.id}-check-${index}`}
-                                                    className={tdClass}
-                                                >
-                                                    <StaffSlot
-                                                        assignment={
-                                                            checkingSlots[index]
-                                                        }
-                                                    />
-                                                </td>
-                                            ),
+                                            (_, index) => {
+                                                const slotLabel = `Assign checking slot ${index + 1} for ${job.job_no}`;
+                                                const canAssign = Boolean(job.can_assign);
+
+                                                return (
+                                                    <td
+                                                        key={`${job.id}-check-${index}`}
+                                                        className={tdClass}
+                                                    >
+                                                        <StaffSlot
+                                                            assignment={
+                                                                checkingSlots[index]
+                                                            }
+                                                            interactive={canAssign}
+                                                            onClick={() =>
+                                                                setAssignmentTarget({
+                                                                    job,
+                                                                    role: 'checking',
+                                                                    slot: index,
+                                                                    assignment:
+                                                                        checkingSlots[index],
+                                                                })
+                                                            }
+                                                            label={slotLabel}
+                                                        />
+                                                    </td>
+                                                );
+                                            },
                                         )}
                                         <td
                                             className={
@@ -419,6 +494,17 @@ export default function JobBoardGrid({
                 job={commentJob}
                 onClose={() => setCommentJob(null)}
                 onCommentsUpdated={onCommentsUpdated}
+            />
+
+            <JobBoardAssignmentModal
+                show={assignmentTarget != null}
+                job={assignmentTarget?.job ?? null}
+                role={assignmentTarget?.role ?? 'drafting'}
+                slot={assignmentTarget?.slot ?? 0}
+                assignment={assignmentTarget?.assignment ?? null}
+                assignableUsers={assignableUsers}
+                onClose={() => setAssignmentTarget(null)}
+                onSaved={onAssignmentsUpdated}
             />
         </>
     );
