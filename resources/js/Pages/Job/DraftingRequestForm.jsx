@@ -4,6 +4,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import AppLogo from '@/Components/AppLogo';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import PublicFormLayout from '@/Layouts/PublicFormLayout';
 import { ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { useCallback } from 'react';
@@ -48,8 +49,14 @@ export default function DraftingRequestForm({
     buildingTypes = [],
     externalWallConstructions = [],
     roofTypes = [],
+    standalone = false,
+    submitted = false,
 }) {
     const { logo_url: logoUrl } = usePage().props;
+    const Layout = standalone ? PublicFormLayout : AuthenticatedLayout;
+    const storeRoute = standalone
+        ? route('public.drafting-request-form.store')
+        : route('job.drafting-request-form.store');
 
     const { data, setData, post, processing, errors, transform } = useForm({
         requested_at: applicant.requested_at,
@@ -98,7 +105,7 @@ export default function DraftingRequestForm({
 
     const submit = (e) => {
         e.preventDefault();
-        post(route('job.drafting-request-form.store'), {
+        post(storeRoute, {
             forceFormData: true,
         });
     };
@@ -107,28 +114,43 @@ export default function DraftingRequestForm({
     const addIncLen = data.additional_inclusions?.length ?? 0;
 
     return (
-        <AuthenticatedLayout>
-            <Head title="Drafting Request Form" />
+        <Layout title="Drafting Request Form">
+            {!standalone && <Head title="Drafting Request Form" />}
 
             <div className="mx-auto w-full min-w-0 max-w-[1400px] space-y-5 pb-12 sm:space-y-6">
-                <div>
-                    <Link
-                        href={route('job.board')}
-                        className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
-                    >
-                        ← Back to Archi Team
-                    </Link>
-                </div>
+                {!standalone && (
+                    <div>
+                        <Link
+                            href={route('job.board')}
+                            className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                        >
+                            ← Back to Archi Team
+                        </Link>
+                    </div>
+                )}
 
+                {standalone && submitted ? (
+                    <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm sm:px-10">
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                            Thank you!
+                        </h1>
+                        <p className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-slate-600 sm:text-base">
+                            Your drafting request has been submitted successfully.
+                            Our team will review it shortly.
+                        </p>
+                    </div>
+                ) : (
                 <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                     <div className="border-b border-slate-200 px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
                         <div className="flex flex-wrap items-start gap-6">
-                            <AppLogo
-                                logoUrl={logoUrl}
-                                alt="Bluinq"
-                                className="h-12 w-auto object-contain sm:h-14"
-                                fallback={null}
-                            />
+                            {!standalone && (
+                                <AppLogo
+                                    logoUrl={logoUrl}
+                                    alt="Bluinq"
+                                    className="h-12 w-auto object-contain sm:h-14"
+                                    fallback={null}
+                                />
+                            )}
                             <div className="min-w-0 flex-1">
                                 <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
                                     Drafting Request Form
@@ -706,16 +728,19 @@ export default function DraftingRequestForm({
                             <PrimaryButton type="submit" loading={processing}>
                                 Submit request
                             </PrimaryButton>
-                            <Link
-                                href={route('job.board')}
-                                className="text-sm font-medium text-slate-600 hover:text-slate-900"
-                            >
-                                Cancel
-                            </Link>
+                            {!standalone && (
+                                <Link
+                                    href={route('job.board')}
+                                    className="text-sm font-medium text-slate-600 hover:text-slate-900"
+                                >
+                                    Cancel
+                                </Link>
+                            )}
                         </div>
                     </form>
                 </div>
+                )}
             </div>
-        </AuthenticatedLayout>
+        </Layout>
     );
 }

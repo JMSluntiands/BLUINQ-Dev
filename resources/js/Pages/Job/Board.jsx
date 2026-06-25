@@ -1,4 +1,5 @@
 import JobBoardGrid from '@/Components/JobBoard/JobBoardGrid';
+import JobBoardPendingRequests from '@/Components/JobBoard/JobBoardPendingRequests';
 import FlashNoticeModal from '@/Components/FlashNoticeModal';
 import Pagination from '@/Components/Pagination';
 import TableSearchToolbar from '@/Components/TableSearchToolbar';
@@ -11,6 +12,8 @@ const FLASH_MESSAGES = {
     'drf-submitted':
         'Your drafting request was submitted successfully.',
     'drf-archived': 'Drafting request moved to archive.',
+    'drf-accepted': 'Drafting request accepted and added to the job board.',
+    'drf-already-reviewed': 'This request was already reviewed.',
 };
 
 export default function JobBoard({
@@ -20,6 +23,8 @@ export default function JobBoard({
     assignableUsers = [],
     groupByStatus = false,
     jobListSections = {},
+    canReviewPublicRequests = false,
+    pendingRequests = [],
 }) {
     const { auth } = usePage().props;
     const canCreateDraftRequest =
@@ -121,6 +126,10 @@ export default function JobBoard({
                 />
                 <Pagination pagination={jobs} />
             </div>
+
+            {canReviewPublicRequests && (
+                <JobBoardPendingRequests requests={pendingRequests} />
+            )}
         </AuthenticatedLayout>
     );
 }

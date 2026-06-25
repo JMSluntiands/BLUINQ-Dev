@@ -52,6 +52,8 @@ return [
         'job.drafting.accounts.store' => 'job.drafting.accounts.add',
         'job.drafting-request-form' => 'job.drafting-request.view',
         'job.drafting-request-form.store' => 'job.drafting-request.view',
+        'job.drafting-requests.pending' => 'job.drafting-request.review',
+        'job.drafting-requests.accept' => 'job.drafting-request.review',
         'crm.quote-form' => 'dashboard.view',
         'crm.quote-form.store' => 'dashboard.view',
         'crm.quotes' => 'dashboard.view',

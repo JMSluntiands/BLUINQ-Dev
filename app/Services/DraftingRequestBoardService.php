@@ -32,6 +32,7 @@ class DraftingRequestBoardService
             ])
             ->withCount(['files', 'comments'])
             ->active()
+            ->reviewAccepted()
             ->orderByDesc('is_priority')
             ->orderByDesc('requested_at')
             ->orderByDesc('id');

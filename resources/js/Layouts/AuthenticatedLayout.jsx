@@ -79,7 +79,7 @@ function SidebarSubLink({ href, active, children, onNavigate }) {
 }
 
 export default function AuthenticatedLayout({ header, children }) {
-    const { auth, logo_url: logoUrl, pendingLeaveCount = 0 } = usePage().props;
+    const { auth, logo_url: logoUrl, pendingLeaveCount = 0, pendingDraftingRequestCount = 0 } = usePage().props;
     const user = auth.user;
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -109,6 +109,7 @@ export default function AuthenticatedLayout({ header, children }) {
         user?.role === 'admin' &&
         (can('settings.roles.manage') || can('settings.user-accounts.manage'));
     const canDraftingRequest = can('job.drafting-request.view');
+    const canReviewDraftingRequests = can('job.drafting-request.review');
     const canJobList = can('job.list.view');
     const canAnnouncements = can('announcements.view');
     const canAnnouncementsManage = can('announcements.manage');
@@ -120,6 +121,7 @@ export default function AuthenticatedLayout({ header, children }) {
     const canArchiProject =
         canJobList ||
         canDraftingRequest ||
+        canReviewDraftingRequests ||
         canDraftingArchive ||
         can('job.drafting.view');
 
@@ -368,15 +370,6 @@ export default function AuthenticatedLayout({ header, children }) {
                                 </button>
                                 {archiTeamMenuOpen && (
                                     <div className="mt-0.5 space-y-0.5 pb-1">
-                                        {canJobList && (
-                                            <SidebarSubLink
-                                                href={route('job.board')}
-                                                active={isJobBoard}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                Drafting Requests
-                                            </SidebarSubLink>
-                                        )}
                                         {canDraftingRequest && (
                                             <SidebarSubLink
                                                 href={route(
@@ -386,6 +379,25 @@ export default function AuthenticatedLayout({ header, children }) {
                                                 onNavigate={closeSidebar}
                                             >
                                                 Drafting Request Form
+                                            </SidebarSubLink>
+                                        )}
+                                        {canJobList && (
+                                            <SidebarSubLink
+                                                href={route('job.board')}
+                                                active={isJobBoard}
+                                                onNavigate={closeSidebar}
+                                            >
+                                                <span className="flex flex-1 items-center justify-between gap-2">
+                                                    Drafting Requests
+                                                    {canReviewDraftingRequests &&
+                                                        pendingDraftingRequestCount > 0 && (
+                                                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold leading-none text-white">
+                                                                {
+                                                                    pendingDraftingRequestCount
+                                                                }
+                                                            </span>
+                                                        )}
+                                                </span>
                                             </SidebarSubLink>
                                         )}
                                         {canJobList && (
@@ -446,7 +458,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                             <span className="flex flex-1 items-center justify-between gap-2">
                                                 Approvals
                                                 {pendingLeaveCount > 0 && (
-                                                    <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold leading-none text-white">
                                                         {pendingLeaveCount}
                                                     </span>
                                                 )}

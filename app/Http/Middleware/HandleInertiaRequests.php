@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Permission;
+use App\Services\DraftingRequestReviewService;
 use App\Services\LeaveService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -53,6 +54,9 @@ class HandleInertiaRequests extends Middleware
             ],
             'pendingLeaveCount' => $user?->hasPermission('leave.manage')
                 ? app(LeaveService::class)->pendingCount()
+                : 0,
+            'pendingDraftingRequestCount' => $user?->hasPermission('job.drafting-request.review')
+                ? app(DraftingRequestReviewService::class)->pendingCount()
                 : 0,
         ];
     }

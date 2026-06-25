@@ -20,6 +20,12 @@ class DraftingRequest extends Model
 
     public const STATUS_ON_HOLD = 'on_hold';
 
+    public const REVIEW_PENDING = 'pending';
+
+    public const REVIEW_ACCEPTED = 'accepted';
+
+    public const REVIEW_REJECTED = 'rejected';
+
     /**
      * @return array<string, string>
      */
@@ -62,6 +68,9 @@ class DraftingRequest extends Model
         'first_floor_slab',
         'additional_inclusions',
         'archived_at',
+        'review_status',
+        'reviewed_by',
+        'reviewed_at',
     ];
 
     /**
@@ -75,7 +84,17 @@ class DraftingRequest extends Model
             'max_building_area_sqm' => 'decimal:2',
             'ndis_sda' => 'boolean',
             'is_priority' => 'boolean',
+            'reviewed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeReviewAccepted(Builder $query): Builder
+    {
+        return $query->where('review_status', self::REVIEW_ACCEPTED);
     }
 
     /**
@@ -107,6 +126,14 @@ class DraftingRequest extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 
     /**

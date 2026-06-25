@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateDraftingRequestAssignmentRequest;
 use App\Models\DraftingRequest;
 use App\Models\DraftingRequestAssignment;
 use App\Services\DraftingRequestBoardService;
+use App\Services\DraftingRequestReviewService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -16,6 +17,7 @@ class JobBoardController extends Controller
 {
     public function __construct(
         private DraftingRequestBoardService $board,
+        private DraftingRequestReviewService $review,
     ) {}
 
     public function index(Request $request): Response
@@ -35,6 +37,9 @@ class JobBoardController extends Controller
         $query = $this->board->baseQuery($request);
         $this->board->applySearch($query, $filters['search']);
 
+        $user = $request->user();
+        $canReviewPublicRequests = $user?->hasPermission('job.drafting-request.review') ?? false;
+
         return Inertia::render('Job/Board', [
             'jobs' => $query
                 ->paginate($filters['per_page'])
@@ -46,7 +51,16 @@ class JobBoardController extends Controller
                 })
                 ->withQueryString(),
             'filters' => $filters,
-            'canViewAllRequests' => $request->user()?->isAdmin() ?? false,
+            'canViewAllRequests' => $user?->isAdmin() ?? false,
+            'canReviewPublicRequests' => $canReviewPublicRequests,
+            'pendingRequests' => $canReviewPublicRequests
+                ? $this->review->pendingQuery()
+                    ->limit(50)
+                    ->get()
+                    ->map(fn (DraftingRequest $row) => $this->review->formatPendingRow($row))
+                    ->values()
+                    ->all()
+                : [],
             'assignableUsers' => $this->board->assignableUsers(),
             'groupByStatus' => $groupByStatus,
             'jobListSections' => $groupByStatus

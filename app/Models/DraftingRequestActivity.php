@@ -9,6 +9,8 @@ class DraftingRequestActivity extends Model
 {
     public const ACTION_REQUEST_SUBMITTED = 'request_submitted';
 
+    public const ACTION_REQUEST_ACCEPTED = 'request_accepted';
+
     public const ACTION_COMMENT_POSTED = 'comment_posted';
 
     public const ACTION_RUN_COMMENT_POSTED = 'run_comment_posted';
@@ -54,13 +56,13 @@ class DraftingRequestActivity extends Model
 
     public static function record(
         DraftingRequest $draftingRequest,
-        User $user,
+        ?User $user,
         string $action,
         ?string $description = null,
     ): self {
         return self::query()->create([
             'drafting_request_id' => $draftingRequest->id,
-            'user_id' => $user->id,
+            'user_id' => $user?->id,
             'action' => $action,
             'description' => $description,
         ]);

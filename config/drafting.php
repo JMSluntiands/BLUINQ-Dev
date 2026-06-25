@@ -71,4 +71,20 @@ return [
         'prestart',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Public drafting request form URL
+    |--------------------------------------------------------------------------
+    |
+    | Production: set PUBLIC_FORM_DOMAIN=bluinqform.yourdomain.com so the form
+    | is served at the subdomain root (https://bluinqform.yourdomain.com/).
+    |
+    | Local: leave PUBLIC_FORM_DOMAIN empty — the form is at /bluinqform on APP_URL.
+    |
+    */
+
+    'public_form_domain' => env('PUBLIC_FORM_DOMAIN', ''),
+
+    'public_form_path' => env('PUBLIC_FORM_PATH', 'bluinqform'),
+
 ];

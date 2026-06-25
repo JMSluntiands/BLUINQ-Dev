@@ -9,8 +9,10 @@ use App\Http\Controllers\Job\DraftingMemoController;
 use App\Http\Controllers\Job\DraftingController;
 use App\Http\Controllers\Job\DraftingRequestFormController;
 use App\Http\Controllers\Job\JobBoardController;
+use App\Http\Controllers\Job\PendingDraftingRequestController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileImageController;
+use App\Http\Controllers\Public\PublicDraftingRequestFormController;
 use App\Http\Controllers\Settings\ActivityLogController;
 use App\Http\Controllers\Settings\BuildingTypeController;
 use App\Http\Controllers\Crm\CrmQuoteController;
@@ -28,11 +30,37 @@ use App\Http\Controllers\Settings\ServiceEngagingController;
 use App\Http\Controllers\Settings\UserAccountController;
 use App\Http\Controllers\Settings\WorkflowSettingsController;
 use App\Http\Controllers\TimesheetController;
+use App\Support\PublicDraftingFormUrl;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/brand-logo', [BrandLogoController::class, 'show'])
     ->name('app.brand-logo');
+
+$publicFormDomain = trim((string) config('drafting.public_form_domain'));
+$publicFormPath = trim((string) config('drafting.public_form_path', 'bluinqform'), '/');
+
+Route::middleware('throttle:10,1')->group(function () use ($publicFormDomain, $publicFormPath) {
+    if ($publicFormDomain !== '') {
+        Route::domain($publicFormDomain)->group(function () {
+            Route::get('/', [PublicDraftingRequestFormController::class, 'create'])
+                ->name('public.drafting-request-form');
+            Route::post('/', [PublicDraftingRequestFormController::class, 'store'])
+                ->name('public.drafting-request-form.store');
+        });
+    } else {
+        Route::get('/'.$publicFormPath, [PublicDraftingRequestFormController::class, 'create'])
+            ->name('public.drafting-request-form');
+        Route::post('/'.$publicFormPath, [PublicDraftingRequestFormController::class, 'store'])
+            ->name('public.drafting-request-form.store');
+    }
+
+    Route::get('/public/drafting-request', function () {
+        return redirect()->away(PublicDraftingFormUrl::base(), 301);
+    });
+
+    Route::post('/public/drafting-request', [PublicDraftingRequestFormController::class, 'store']);
+});
 
 Route::middleware(['auth', 'permission.route'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
@@ -130,6 +158,11 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('job.drafting-request-form');
     Route::post('/job/drafting-request-form', [DraftingRequestFormController::class, 'store'])
         ->name('job.drafting-request-form.store');
+
+    Route::get('/job/drafting-requests/pending', [PendingDraftingRequestController::class, 'index'])
+        ->name('job.drafting-requests.pending');
+    Route::post('/job/drafting-requests/{draftingRequest}/accept', [PendingDraftingRequestController::class, 'accept'])
+        ->name('job.drafting-requests.accept');
 
     Route::get('/crm/quote-details-form', [CrmQuoteFormController::class, 'create'])
         ->name('crm.quote-form');
