@@ -18,7 +18,7 @@ function FieldBlock({ label, hint, children, error, className = '' }) {
     return (
         <div className={`min-w-0 space-y-2 ${className}`}>
             {label}
-            <p className="min-h-[1rem] text-xs leading-snug text-slate-500">
+            <p className="min-h-[1rem] text-xs leading-snug text-slate-500 dark:text-slate-400">
                 {hint ? hint : <span className="invisible">.</span>}
             </p>
             <div className="space-y-2">
@@ -39,7 +39,19 @@ function FormRow({ children }) {
 }
 
 const inputClass =
-    'block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500';
+    'block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400';
+
+const uploadZoneClass =
+    'flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center transition hover:border-indigo-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:hover:border-indigo-500 dark:hover:bg-slate-700';
+
+const choiceLabelClass =
+    'flex h-full min-h-[3rem] cursor-pointer items-start gap-3 rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 transition hover:border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 dark:hover:bg-slate-700';
+
+const choiceTextClass = 'text-sm font-medium text-slate-800 dark:text-slate-200';
+
+const mutedTextClass = 'text-sm text-slate-600 dark:text-slate-300';
+
+const counterClass = 'text-right text-xs text-slate-500 dark:text-slate-400';
 const selectClass = inputClass;
 const textareaClass = inputClass + ' min-h-[120px]';
 
@@ -133,18 +145,18 @@ export default function DraftingRequestForm({
                 )}
 
                 {standalone && submitted ? (
-                    <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm sm:px-10">
-                        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                    <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:px-10">
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
                             Thank you!
                         </h1>
-                        <p className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-slate-600 sm:text-base">
+                        <p className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-slate-600 dark:text-slate-300 sm:text-base">
                             Your drafting request has been submitted successfully.
                             Our team will review it shortly.
                         </p>
                     </div>
                 ) : (
-                <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                    <div className="border-b border-slate-200 px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
+                <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                    <div className="border-b border-slate-200 px-4 py-6 dark:border-slate-700 sm:px-6 sm:py-8 lg:px-10">
                         <div className="flex flex-wrap items-start gap-6">
                             {!standalone && (
                                 <AppLogo
@@ -155,10 +167,10 @@ export default function DraftingRequestForm({
                                 />
                             )}
                             <div className="min-w-0 flex-1">
-                                <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                                <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
                                     Drafting Request Form
                                 </h1>
-                                <p className="mt-2 max-w-[85ch] text-sm leading-relaxed text-slate-600 sm:text-base">
+                                <p className="mt-2 max-w-[85ch] text-sm leading-relaxed text-slate-600 dark:text-slate-300 sm:text-base">
                                     Thank you for using BLUINQ for your
                                     architectural documentation. Please complete
                                     the form below.
@@ -287,7 +299,7 @@ export default function DraftingRequestForm({
                                 <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
                                     {serviceEngagings.map((row) => (
                                         <li key={row.id} className="min-w-0">
-                                            <label className="flex h-full min-h-[3rem] cursor-pointer items-start gap-3 rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 transition hover:border-slate-200 hover:bg-slate-100">
+                                            <label className={choiceLabelClass}>
                                                 <input
                                                     type="checkbox"
                                                     className="mt-1 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
@@ -300,7 +312,7 @@ export default function DraftingRequestForm({
                                                         )
                                                     }
                                                 />
-                                                <span className="text-sm font-medium text-slate-800">
+                                                <span className={choiceTextClass}>
                                                     {row.name}
                                                 </span>
                                             </label>
@@ -308,7 +320,7 @@ export default function DraftingRequestForm({
                                     ))}
                                 </ul>
                                 {serviceEngagings.length === 0 ? (
-                                    <p className="text-sm text-amber-800">
+                                    <p className="text-sm text-amber-800 dark:text-amber-200">
                                         No service types are configured yet. Ask
                                         an administrator to add entries under
                                         Workflow settings → Service Engaging.
@@ -413,7 +425,7 @@ export default function DraftingRequestForm({
                                         )
                                     }
                                 />
-                                <p className="text-right text-xs text-slate-500">
+                                <p className={counterClass}>
                                     {designLen}/2000
                                 </p>
                             </FieldBlock>
@@ -448,7 +460,7 @@ export default function DraftingRequestForm({
                                     ))}
                                 </select>
                                 {buildingTypes.length === 0 ? (
-                                    <p className="text-sm text-amber-800">
+                                    <p className="text-sm text-amber-800 dark:text-amber-200">
                                         No building types configured. Add them
                                         under Workflow settings → Building type.
                                     </p>
@@ -466,13 +478,13 @@ export default function DraftingRequestForm({
                             hint="Please share the photo/image of the facade type."
                             error={errors.facade}
                         >
-                            <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center transition hover:border-indigo-400 hover:bg-slate-100">
+                            <label className={uploadZoneClass}>
                                 <ArrowUpTrayIcon
                                     className="mb-2 h-10 w-10 text-slate-400"
                                     aria-hidden
                                 />
-                                <span className="text-sm text-slate-700">
-                                    <span className="font-semibold text-indigo-600">
+                                <span className={`${mutedTextClass} text-sm`}>
+                                    <span className="font-semibold text-indigo-600 dark:text-indigo-400">
                                         Choose a file to upload
                                     </span>{' '}
                                     or drag and drop here.
@@ -491,7 +503,7 @@ export default function DraftingRequestForm({
                                 />
                             </label>
                             {data.facade ? (
-                                <p className="text-sm text-slate-600">
+                                <p className={mutedTextClass}>
                                     Selected: {data.facade.name}
                                 </p>
                             ) : null}
@@ -506,7 +518,7 @@ export default function DraftingRequestForm({
                             hint="Please mark tick if this is an NDIS requirement dwelling."
                             error={errors.ndis_sda}
                         >
-                            <label className="inline-flex min-h-[3rem] w-full max-w-xl items-center gap-3 rounded-lg bg-slate-50 px-4 py-3">
+                            <label className="inline-flex min-h-[3rem] w-full max-w-xl items-center gap-3 rounded-lg bg-slate-50 px-4 py-3 dark:bg-slate-800">
                                 <input
                                     id="ndis_sda"
                                     type="checkbox"
@@ -516,7 +528,7 @@ export default function DraftingRequestForm({
                                         setData('ndis_sda', e.target.checked)
                                     }
                                 />
-                                <span className="text-sm font-medium text-slate-800">
+                                <span className={choiceTextClass}>
                                     NDIS / SDA dwelling
                                 </span>
                             </label>
@@ -651,7 +663,7 @@ export default function DraftingRequestForm({
                                     )
                                 }
                             />
-                            <p className="text-right text-xs text-slate-500">
+                            <p className={counterClass}>
                                 {addIncLen}/2000
                             </p>
                         </FieldBlock>
@@ -691,13 +703,13 @@ export default function DraftingRequestForm({
                                 errors.documents ?? errors['documents.0']
                             }
                         >
-                            <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center transition hover:border-indigo-400 hover:bg-slate-100">
+                            <label className={uploadZoneClass}>
                                 <ArrowUpTrayIcon
                                     className="mb-2 h-10 w-10 text-slate-400"
                                     aria-hidden
                                 />
-                                <span className="text-sm text-slate-700">
-                                    <span className="font-semibold text-indigo-600">
+                                <span className={`${mutedTextClass} text-sm`}>
+                                    <span className="font-semibold text-indigo-600 dark:text-indigo-400">
                                         Choose files to upload
                                     </span>{' '}
                                     or drag and drop here (multiple files
@@ -719,7 +731,7 @@ export default function DraftingRequestForm({
                                 />
                             </label>
                             {data.documents?.length > 0 ? (
-                                <ul className="mt-2 text-sm text-slate-600">
+                                <ul className={`mt-2 ${mutedTextClass}`}>
                                     {data.documents.map((f, i) => (
                                         <li key={i}>{f.name}</li>
                                     ))}
@@ -727,14 +739,14 @@ export default function DraftingRequestForm({
                             ) : null}
                         </FieldBlock>
 
-                        <div className="flex flex-wrap items-center gap-4 border-t border-slate-200 pt-8">
+                        <div className="flex flex-wrap items-center gap-4 border-t border-slate-200 pt-8 dark:border-slate-700">
                             <PrimaryButton type="submit" loading={processing}>
                                 Submit request
                             </PrimaryButton>
                             {!standalone && (
                                 <Link
                                     href={route('job.board')}
-                                    className="text-sm font-medium text-slate-600 hover:text-slate-900"
+                                    className="text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
                                 >
                                     Cancel
                                 </Link>
