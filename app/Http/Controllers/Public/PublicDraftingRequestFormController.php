@@ -25,7 +25,7 @@ class PublicDraftingRequestFormController extends Controller
     {
         $requestedAt = now(config('app.timezone'))->seconds(0)->format('Y-m-d\TH:i');
 
-        return Inertia::render('Public/DraftingRequestForm', [
+        return Inertia::render('Job/DraftingRequestForm', [
             'standalone' => true,
             'submitted' => session('status') === 'public-drf-submitted',
             'applicant' => [
