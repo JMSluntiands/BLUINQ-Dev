@@ -37,30 +37,40 @@ use Inertia\Inertia;
 Route::get('/brand-logo', [BrandLogoController::class, 'show'])
     ->name('app.brand-logo');
 
-$publicFormDomain = trim((string) config('drafting.public_form_domain'));
-$publicFormPath = trim((string) config('drafting.public_form_path', 'bluinqform'), '/');
+$publicFormPath = PublicDraftingFormUrl::pathSegment();
+$publicFormDomain = PublicDraftingFormUrl::configuredDomain();
 
-Route::middleware('throttle:10,1')->group(function () use ($publicFormDomain, $publicFormPath) {
-    if ($publicFormDomain !== '') {
-        Route::domain($publicFormDomain)->group(function () {
-            Route::get('/', [PublicDraftingRequestFormController::class, 'create'])
-                ->name('public.drafting-request-form');
-            Route::post('/', [PublicDraftingRequestFormController::class, 'store'])
-                ->name('public.drafting-request-form.store');
-        });
-    } else {
-        Route::get('/'.$publicFormPath, [PublicDraftingRequestFormController::class, 'create'])
+if ($publicFormDomain === '') {
+    Route::get('/'.$publicFormPath, [PublicDraftingRequestFormController::class, 'create'])
+        ->name('public.drafting-request-form');
+    Route::post('/'.$publicFormPath, [PublicDraftingRequestFormController::class, 'store'])
+        ->name('public.drafting-request-form.store');
+} else {
+    Route::get('/'.$publicFormPath, [PublicDraftingRequestFormController::class, 'create'])
+        ->name('public.drafting-request-form.path');
+    Route::post('/'.$publicFormPath, [PublicDraftingRequestFormController::class, 'store'])
+        ->name('public.drafting-request-form.store.path');
+
+    Route::domain($publicFormDomain)->group(function () {
+        Route::get('/', [PublicDraftingRequestFormController::class, 'create'])
             ->name('public.drafting-request-form');
-        Route::post('/'.$publicFormPath, [PublicDraftingRequestFormController::class, 'store'])
+        Route::post('/', [PublicDraftingRequestFormController::class, 'store'])
             ->name('public.drafting-request-form.store');
-    }
-
-    Route::get('/public/drafting-request', function () {
-        return redirect()->away(PublicDraftingFormUrl::base(), 301);
+        Route::get('/ping', fn () => response('ok', 200));
     });
 
-    Route::post('/public/drafting-request', [PublicDraftingRequestFormController::class, 'store']);
+    Route::domain('www.'.$publicFormDomain)->group(function () {
+        Route::get('/', [PublicDraftingRequestFormController::class, 'create']);
+        Route::post('/', [PublicDraftingRequestFormController::class, 'store']);
+        Route::get('/ping', fn () => response('ok', 200));
+    });
+}
+
+Route::get('/public/drafting-request', function () {
+    return redirect()->away(PublicDraftingFormUrl::base(request()), 301);
 });
+
+Route::post('/public/drafting-request', [PublicDraftingRequestFormController::class, 'store']);
 
 Route::middleware(['auth', 'permission.route'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])

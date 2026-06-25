@@ -51,12 +51,15 @@ export default function DraftingRequestForm({
     roofTypes = [],
     standalone = false,
     submitted = false,
+    submitUrl = null,
 }) {
     const { logo_url: logoUrl } = usePage().props;
     const Layout = standalone ? PublicFormLayout : AuthenticatedLayout;
-    const storeRoute = standalone
-        ? route('public.drafting-request-form.store')
-        : route('job.drafting-request-form.store');
+    const storeRoute =
+        submitUrl ??
+        (standalone
+            ? route('public.drafting-request-form.store')
+            : route('job.drafting-request-form.store'));
 
     const { data, setData, post, processing, errors, transform } = useForm({
         requested_at: applicant.requested_at,

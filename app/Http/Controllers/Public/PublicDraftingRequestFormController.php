@@ -12,6 +12,7 @@ use App\Models\ServiceEngaging;
 use App\Services\DraftingRequestSubmissionService;
 use App\Support\PublicDraftingFormUrl;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -21,13 +22,15 @@ class PublicDraftingRequestFormController extends Controller
         private DraftingRequestSubmissionService $submission,
     ) {}
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
-        $requestedAt = now(config('app.timezone'))->seconds(0)->format('Y-m-d\TH:i');
+        $timezone = config('app.timezone') ?: 'UTC';
+        $requestedAt = now($timezone)->seconds(0)->format('Y-m-d\TH:i');
 
         return Inertia::render('Job/DraftingRequestForm', [
             'standalone' => true,
             'submitted' => session('status') === 'public-drf-submitted',
+            'submitUrl' => PublicDraftingFormUrl::submitUrl($request),
             'applicant' => [
                 'requested_at' => $requestedAt,
             ],
@@ -59,7 +62,7 @@ class PublicDraftingRequestFormController extends Controller
         );
 
         return redirect()
-            ->to(PublicDraftingFormUrl::base())
+            ->to(PublicDraftingFormUrl::submitUrl($request))
             ->with('status', 'public-drf-submitted');
     }
 }
