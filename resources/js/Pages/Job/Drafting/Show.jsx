@@ -44,8 +44,11 @@ const FLASH_MESSAGES = {
     'drf-updated': 'Details saved.',
     'drf-files-updated': 'Files updated.',
     'drf-revision-added': 'Revision added.',
+    'drf-revision-updated': 'Revision updated.',
     'drf-quote-added': 'Quote added.',
     'drf-invoice-added': 'Invoice added.',
+    'drf-quote-updated': 'Quote updated.',
+    'drf-invoice-updated': 'Invoice updated.',
 };
 
 const cardClass =
@@ -60,6 +63,7 @@ export default function DraftingShow({
     listFilters = {},
     capabilities = {},
     statusOptions = [],
+    categoryOptions = [],
     formOptions = {},
     drafterUsers = [],
 }) {
@@ -90,8 +94,11 @@ export default function DraftingShow({
     const [editSection, setEditSection] = useState(null);
     const [filesEditPanel, setFilesEditPanel] = useState(null);
     const [revisionModalOpen, setRevisionModalOpen] = useState(false);
+    const [editingRevision, setEditingRevision] = useState(null);
     const [quoteModalOpen, setQuoteModalOpen] = useState(false);
     const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+    const [editingQuote, setEditingQuote] = useState(null);
+    const [editingInvoice, setEditingInvoice] = useState(null);
 
     const confirmArchive = useCallback(() => {
         router.delete(
@@ -167,27 +174,44 @@ export default function DraftingShow({
                 />
 
                 <DraftingRevisionAddModal
-                    show={revisionModalOpen}
-                    onClose={() => setRevisionModalOpen(false)}
+                    show={revisionModalOpen || editingRevision != null}
+                    onClose={() => {
+                        setRevisionModalOpen(false);
+                        setEditingRevision(null);
+                    }}
                     draftingRequestId={draftingRequest.id}
                     listFilters={listFilters}
                     drafterUsers={drafterUsers}
+                    entry={editingRevision}
+                    jobNumber={draftingRequest.reference}
+                    revisions={revisions}
+                    statusOptions={statusOptions}
+                    categoryOptions={categoryOptions}
+                    defaultJobStatus={draftingRequest.status ?? 'new'}
                 />
 
                 <DraftingAccountAddModal
-                    show={quoteModalOpen}
-                    onClose={() => setQuoteModalOpen(false)}
+                    show={quoteModalOpen || editingQuote != null}
+                    onClose={() => {
+                        setQuoteModalOpen(false);
+                        setEditingQuote(null);
+                    }}
                     draftingRequestId={draftingRequest.id}
                     listFilters={listFilters}
                     accountKind="quote"
+                    entry={editingQuote}
                 />
 
                 <DraftingAccountAddModal
-                    show={invoiceModalOpen}
-                    onClose={() => setInvoiceModalOpen(false)}
+                    show={invoiceModalOpen || editingInvoice != null}
+                    onClose={() => {
+                        setInvoiceModalOpen(false);
+                        setEditingInvoice(null);
+                    }}
                     draftingRequestId={draftingRequest.id}
                     listFilters={listFilters}
                     accountKind="invoice"
+                    entry={editingInvoice}
                 />
 
                 <DraftingFilesEditModal
@@ -213,9 +237,12 @@ export default function DraftingShow({
                     canAddAccount={addAccount}
                     onAddQuote={() => setQuoteModalOpen(true)}
                     onAddInvoice={() => setInvoiceModalOpen(true)}
+                    onEditQuote={(row) => setEditingQuote(row)}
+                    onEditInvoice={(row) => setEditingInvoice(row)}
                     canViewRevision={viewRevision}
                     canAddRevision={addRevision}
                     onAddRevision={() => setRevisionModalOpen(true)}
+                    onEditRevision={(row) => setEditingRevision(row)}
                     updateUrl={updateUrl}
                     onEditJobDetails={() => setEditSection('job')}
                     backHref={backHref}

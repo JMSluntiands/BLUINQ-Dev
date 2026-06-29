@@ -6,10 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDraftingRequestCommentRequest;
 use App\Http\Requests\StoreDraftingRequestFilesRequest;
 use App\Http\Requests\StoreDraftingRequestAccountEntryRequest;
+use App\Http\Requests\UpdateDraftingRequestAccountEntryRequest;
 use App\Http\Requests\StoreDraftingRequestRevisionRequest;
+use App\Http\Requests\UpdateDraftingRequestRevisionRequest;
 use App\Http\Requests\UpdateDraftingRequestRequest;
 use App\Http\Requests\UpdateDraftingRequestStatusRequest;
 use App\Models\BuildingType;
+use App\Models\CrmCategory;
 use App\Models\DraftingRequest;
 use App\Models\ExternalWallConstruction;
 use App\Models\RoofType;
@@ -21,6 +24,7 @@ use App\Models\DraftingRequestAccountEntry;
 use App\Models\DraftingRequestRevision;
 use App\Models\User;
 use App\Services\DraftingJobShowService;
+use App\Services\DraftingRequestBoardService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -37,6 +41,7 @@ class DraftingController extends Controller
 
     public function __construct(
         private DraftingJobShowService $jobShow,
+        private DraftingRequestBoardService $board,
     ) {}
 
     public function index(Request $request): Response
@@ -114,7 +119,7 @@ class DraftingController extends Controller
         return Inertia::render('Job/Drafting/Show', [
             'draftingRequest' => [
                 'id' => $draftingRequest->id,
-                'reference' => sprintf('DRF-%05d', $draftingRequest->id),
+                'reference' => $draftingRequest->jobNumber(),
                 'status' => $draftingRequest->status,
                 'status_label' => $draftingRequest->statusLabel(),
                 'is_archived' => $draftingRequest->isArchived(),
@@ -183,7 +188,7 @@ class DraftingController extends Controller
                     )
                     : [],
                 'activities' => $this->formatActivities($draftingRequest, $tz),
-                'zoning' => null,
+                'zoning' => $draftingRequest->zoning,
                 'building_area_label' => $this->jobShow->formattedBuildingArea($draftingRequest),
                 'services_label' => $this->jobShow->formattedServices($draftingRequest),
                 'building_specifications' => $this->jobShow->buildingSpecifications($draftingRequest),
@@ -223,6 +228,13 @@ class DraftingController extends Controller
                     'name' => $u->name,
                     'initials' => $u->badgeInitials(),
                 ])
+                ->values()
+                ->all(),
+            'categoryOptions' => CrmCategory::query()
+                ->active()
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'name'])
                 ->values()
                 ->all(),
         ]);
@@ -297,7 +309,7 @@ class DraftingController extends Controller
 
         $options = DraftingRequest::statusOptions();
         $fromLabel = $options[$previousStatus]
-            ?? ($previousStatus ? ucfirst(str_replace('_', ' ', $previousStatus)) : 'Allocated');
+            ?? ($previousStatus ? ucfirst(str_replace('_', ' ', $previousStatus)) : 'New');
         $toLabel = $options[$newStatus] ?? ucfirst(str_replace('_', ' ', $newStatus));
 
         DraftingRequestActivity::record(
@@ -333,7 +345,7 @@ class DraftingController extends Controller
             DraftingRequestActivity::ACTION_ARCHIVED,
             sprintf(
                 'Drafting request %s was archived.',
-                sprintf('DRF-%05d', $draftingRequest->id),
+                $draftingRequest->jobNumber(),
             ),
         );
 
@@ -360,7 +372,7 @@ class DraftingController extends Controller
             DraftingRequestActivity::ACTION_RESTORED,
             sprintf(
                 'Drafting request %s was restored.',
-                sprintf('DRF-%05d', $draftingRequest->id),
+                $draftingRequest->jobNumber(),
             ),
         );
 
@@ -390,16 +402,22 @@ class DraftingController extends Controller
             'user_id' => $request->user()->id,
             'code' => trim($validated['code']),
             'log_date' => $validated['log_date'],
-            'category' => mb_strtoupper(trim($validated['category'])),
+            'category' => trim($validated['category']),
             'drafter_user_id' => $drafter->id,
             'drafter_initials' => $drafter->badgeInitials(),
-            'hours' => $validated['hours'] ?? null,
+            'drafting_hours' => $validated['drafting_hours'] ?? null,
+            'checking_hours' => $validated['checking_hours'] ?? null,
+            'status' => $validated['status'],
+            'area_size' => isset($validated['area_size']) && $validated['area_size'] !== ''
+                ? trim($validated['area_size'])
+                : null,
             'submitted_date' => $validated['submitted_date'] ?? null,
         ]);
 
-        $hoursLabel = $revision->hours !== null
-            ? rtrim(rtrim((string) $revision->hours, '0'), '.').' hrs'
-            : null;
+        $hoursLabel = $this->formatRevisionHoursLabel(
+            $revision->drafting_hours,
+            $revision->checking_hours,
+        );
 
         $description = sprintf(
             'Added revision %s (%s, %s%s).',
@@ -416,12 +434,82 @@ class DraftingController extends Controller
             $description,
         );
 
+        $this->syncJobStatusFromRevision(
+            $draftingRequest,
+            $request->user(),
+            $validated['status'],
+        );
+
+        $this->board->syncRevisionHoursToAssignments($draftingRequest, $revision);
+
         return redirect()
             ->route('job.drafting.show', [
                 'draftingRequest' => $draftingRequest->id,
                 ...array_filter($this->listFiltersFromRequest($request)),
             ])
             ->with('status', 'drf-revision-added');
+    }
+
+    public function updateRevision(
+        UpdateDraftingRequestRevisionRequest $request,
+        DraftingRequest $draftingRequest,
+        DraftingRequestRevision $revision,
+    ): RedirectResponse {
+        $validated = $request->validated();
+
+        $drafter = User::query()
+            ->active()
+            ->findOrFail($validated['drafter_user_id']);
+
+        $revision->update([
+            'code' => trim($validated['code']),
+            'log_date' => $validated['log_date'],
+            'category' => trim($validated['category']),
+            'drafter_user_id' => $drafter->id,
+            'drafter_initials' => $drafter->badgeInitials(),
+            'drafting_hours' => $validated['drafting_hours'] ?? null,
+            'checking_hours' => $validated['checking_hours'] ?? null,
+            'status' => $validated['status'],
+            'area_size' => isset($validated['area_size']) && $validated['area_size'] !== ''
+                ? trim($validated['area_size'])
+                : null,
+            'submitted_date' => $validated['submitted_date'] ?? null,
+        ]);
+
+        $hoursLabel = $this->formatRevisionHoursLabel(
+            $revision->drafting_hours,
+            $revision->checking_hours,
+        );
+
+        $description = sprintf(
+            'Updated revision %s (%s, %s%s).',
+            $revision->code,
+            $revision->category,
+            $drafter->name,
+            $hoursLabel ? ', '.$hoursLabel : '',
+        );
+
+        DraftingRequestActivity::record(
+            $draftingRequest,
+            $request->user(),
+            DraftingRequestActivity::ACTION_REVISION_UPDATED,
+            $description,
+        );
+
+        $this->syncJobStatusFromRevision(
+            $draftingRequest,
+            $request->user(),
+            $validated['status'],
+        );
+
+        $this->board->syncRevisionHoursToAssignments($draftingRequest, $revision->fresh());
+
+        return redirect()
+            ->route('job.drafting.show', [
+                'draftingRequest' => $draftingRequest->id,
+                ...array_filter($this->listFiltersFromRequest($request)),
+            ])
+            ->with('status', 'drf-revision-updated');
     }
 
     public function storeAccountEntry(
@@ -476,6 +564,51 @@ class DraftingController extends Controller
                 ...array_filter($this->listFiltersFromRequest($request)),
             ])
             ->with('status', $isQuote ? 'drf-quote-added' : 'drf-invoice-added');
+    }
+
+    public function updateAccountEntry(
+        UpdateDraftingRequestAccountEntryRequest $request,
+        DraftingRequest $draftingRequest,
+        DraftingRequestAccountEntry $accountEntry,
+    ): RedirectResponse {
+        $validated = $request->validated();
+
+        $accountEntry->update([
+            'number' => trim($validated['number']),
+            'category' => mb_strtoupper(trim($validated['category'])),
+            'rate' => isset($validated['rate']) && $validated['rate'] !== ''
+                ? trim($validated['rate'])
+                : null,
+            'status' => mb_strtoupper(trim($validated['status'])),
+        ]);
+
+        $isQuote = $accountEntry->kind === DraftingRequestAccountEntry::KIND_QUOTE;
+        $label = $isQuote ? 'quote' : 'invoice';
+
+        $description = sprintf(
+            'Updated %s %s (%s, %s%s).',
+            $label,
+            $accountEntry->number,
+            $accountEntry->category,
+            $accountEntry->status,
+            $accountEntry->rate ? ', '.$accountEntry->rate : '',
+        );
+
+        DraftingRequestActivity::record(
+            $draftingRequest,
+            $request->user(),
+            $isQuote
+                ? DraftingRequestActivity::ACTION_QUOTE_UPDATED
+                : DraftingRequestActivity::ACTION_INVOICE_UPDATED,
+            $description,
+        );
+
+        return redirect()
+            ->route('job.drafting.show', [
+                'draftingRequest' => $draftingRequest->id,
+                ...array_filter($this->listFiltersFromRequest($request)),
+            ])
+            ->with('status', $isQuote ? 'drf-quote-updated' : 'drf-invoice-updated');
     }
 
     public function storeComment(
@@ -536,7 +669,7 @@ class DraftingController extends Controller
         return response()->json([
             'job' => [
                 'id' => $draftingRequest->id,
-                'reference' => sprintf('DRF-%05d', $draftingRequest->id),
+                'reference' => $draftingRequest->jobNumber(),
                 'site_address' => $draftingRequest->site_address,
             ],
             'comments' => $this->formatCommentsByKind(
@@ -748,7 +881,7 @@ class DraftingController extends Controller
     {
         return [
             'id' => $row->id,
-            'reference' => sprintf('DRF-%05d', $row->id),
+            'reference' => $row->jobNumber(),
             'requested_at' => $row->requested_at?->timezone(config('app.timezone'))->format('d M Y, h:i A'),
             'your_name' => $row->your_name,
             'company_name' => $row->company_name,
@@ -760,6 +893,54 @@ class DraftingController extends Controller
             'status' => $row->status,
             'status_label' => $row->statusLabel(),
         ];
+    }
+
+    private function formatRevisionHoursLabel(
+        mixed $draftingHours,
+        mixed $checkingHours,
+    ): ?string {
+        $parts = [];
+
+        if ($draftingHours !== null && $draftingHours !== '') {
+            $parts[] = rtrim(rtrim((string) $draftingHours, '0'), '.').' drafting hrs';
+        }
+
+        if ($checkingHours !== null && $checkingHours !== '') {
+            $parts[] = rtrim(rtrim((string) $checkingHours, '0'), '.').' checking hrs';
+        }
+
+        return $parts === [] ? null : implode(', ', $parts);
+    }
+
+    private function syncJobStatusFromRevision(
+        DraftingRequest $draftingRequest,
+        User $user,
+        string $revisionStatus,
+    ): void {
+        if (! in_array($revisionStatus, DraftingRequest::statusValues(), true)) {
+            return;
+        }
+
+        $previousStatus = $draftingRequest->status;
+
+        if ($previousStatus === $revisionStatus) {
+            return;
+        }
+
+        $draftingRequest->update(['status' => $revisionStatus]);
+
+        $options = DraftingRequest::statusOptions();
+        $fromLabel = $options[$previousStatus]
+            ?? ($previousStatus ? ucfirst(str_replace('_', ' ', $previousStatus)) : 'New');
+        $toLabel = $options[$revisionStatus]
+            ?? ucfirst(str_replace('_', ' ', $revisionStatus));
+
+        DraftingRequestActivity::record(
+            $draftingRequest,
+            $user,
+            DraftingRequestActivity::ACTION_STATUS_CHANGED,
+            sprintf('Status changed from %s to %s.', $fromLabel, $toLabel),
+        );
     }
 
     private function authorizeView(Request $request, DraftingRequest $draftingRequest): void
@@ -947,8 +1128,11 @@ class DraftingController extends Controller
                 DraftingRequestActivity::ACTION_DETAILS_UPDATED => 'Updated details',
                 DraftingRequestActivity::ACTION_FILES_UPDATED => 'Updated files',
                 DraftingRequestActivity::ACTION_REVISION_ADDED => 'Added revision',
+                DraftingRequestActivity::ACTION_REVISION_UPDATED => 'Updated revision',
                 DraftingRequestActivity::ACTION_QUOTE_ADDED => 'Added quote',
+                DraftingRequestActivity::ACTION_QUOTE_UPDATED => 'Updated quote',
                 DraftingRequestActivity::ACTION_INVOICE_ADDED => 'Added invoice',
+                DraftingRequestActivity::ACTION_INVOICE_UPDATED => 'Updated invoice',
                 default => 'Activity',
             },
             'description' => $activity->description,

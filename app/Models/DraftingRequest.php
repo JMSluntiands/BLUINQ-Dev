@@ -10,15 +10,27 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DraftingRequest extends Model
 {
-    public const STATUS_ALLOCATED = 'allocated';
+    public const STATUS_NEW = 'new';
 
-    public const STATUS_PENDING = 'pending';
+    public const STATUS_ASSIGNED = 'assigned';
 
-    public const STATUS_IN_PROGRESS = 'in_progress';
+    public const STATUS_WIP = 'wip';
 
-    public const STATUS_COMPLETED = 'completed';
+    public const STATUS_FOR_CHECKING = 'for_checking';
+
+    public const STATUS_SUBMITTED = 'submitted';
 
     public const STATUS_ON_HOLD = 'on_hold';
+
+    public const STATUS_CANCELLED = 'cancelled';
+
+    public const STATUS_FOR_QUOTE = 'for_quote';
+
+    public const STATUS_QUOTE_SENT = 'quote_sent';
+
+    public const STATUS_INVOICED = 'invoiced';
+
+    public const STATUS_PAID = 'paid';
 
     public const REVIEW_PENDING = 'pending';
 
@@ -32,11 +44,17 @@ class DraftingRequest extends Model
     public static function statusOptions(): array
     {
         return [
-            self::STATUS_ALLOCATED => 'Allocated',
-            self::STATUS_PENDING => 'Pending',
-            self::STATUS_IN_PROGRESS => 'In progress',
-            self::STATUS_COMPLETED => 'Completed',
-            self::STATUS_ON_HOLD => 'On hold',
+            self::STATUS_NEW => 'New',
+            self::STATUS_ASSIGNED => 'Assigned',
+            self::STATUS_WIP => 'WIP',
+            self::STATUS_FOR_CHECKING => 'For Checking',
+            self::STATUS_SUBMITTED => 'Submitted',
+            self::STATUS_ON_HOLD => 'On Hold',
+            self::STATUS_CANCELLED => 'Cancelled',
+            self::STATUS_FOR_QUOTE => 'For Quote',
+            self::STATUS_QUOTE_SENT => 'Quote Sent',
+            self::STATUS_INVOICED => 'Invoiced',
+            self::STATUS_PAID => 'Paid',
         ];
     }
 
@@ -61,6 +79,7 @@ class DraftingRequest extends Model
         'max_building_area_sqm',
         'design_requirements',
         'building_type_id',
+        'zoning',
         'ndis_sda',
         'external_wall_construction_id',
         'roof_type_id',
@@ -118,6 +137,17 @@ class DraftingRequest extends Model
     public function isArchived(): bool
     {
         return $this->archived_at !== null;
+    }
+
+    public function jobNumber(): string
+    {
+        $at = $this->requested_at ?? $this->created_at;
+
+        $year = $at !== null
+            ? $at->timezone(config('app.timezone'))->format('y')
+            : now(config('app.timezone'))->format('y');
+
+        return sprintf('%s%03d', $year, $this->id);
     }
 
     /**
@@ -224,7 +254,7 @@ class DraftingRequest extends Model
     public function statusLabel(): string
     {
         if ($this->status === null || $this->status === '') {
-            return self::statusOptions()[self::STATUS_ALLOCATED];
+            return self::statusOptions()[self::STATUS_NEW];
         }
 
         return self::statusOptions()[$this->status]

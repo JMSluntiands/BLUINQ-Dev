@@ -1,43 +1,51 @@
 /** @type {Record<string, string>} */
 export const JOB_STATUS_STYLES = {
+    new: 'bg-slate-500/90 text-white dark:bg-slate-500 dark:text-white',
+    assigned: 'bg-blue-500/90 text-white dark:bg-blue-500 dark:text-white',
+    wip: 'bg-[#f08080] text-white dark:bg-[#f08080] dark:text-white',
     for_checking:
         'bg-cyan-500/90 text-white dark:bg-cyan-500 dark:text-white',
-    wip: 'bg-[#f08080] text-white dark:bg-[#f08080] dark:text-white',
-    new: 'bg-slate-500/90 text-white dark:bg-slate-500 dark:text-white',
+    submitted:
+        'bg-emerald-500/90 text-white dark:bg-emerald-500 dark:text-white',
     on_hold:
         'bg-violet-600/90 text-white dark:bg-violet-600 dark:text-white',
-    pending:
-        'border border-amber-400/80 bg-amber-50 text-amber-700 dark:border-amber-500/70 dark:bg-[#1a1b2e] dark:text-amber-400',
-    allocated:
-        'bg-slate-500/90 text-white dark:bg-slate-500 dark:text-white',
-    in_progress:
-        'bg-[#f08080] text-white dark:bg-[#f08080] dark:text-white',
-    completed:
-        'bg-cyan-500/90 text-white dark:bg-cyan-500 dark:text-white',
+    cancelled: 'bg-rose-500/90 text-white dark:bg-rose-500 dark:text-white',
+    for_quote:
+        'bg-indigo-500/90 text-white dark:bg-indigo-500 dark:text-white',
+    quote_sent:
+        'bg-purple-500/90 text-white dark:bg-purple-500 dark:text-white',
+    invoiced: 'bg-teal-500/90 text-white dark:bg-teal-500 dark:text-white',
+    paid: 'bg-green-600/90 text-white dark:bg-green-600 dark:text-white',
 };
 
 /** @type {Record<string, string>} */
 export const JOB_STATUS_LABELS = {
-    for_checking: 'For Checking',
-    wip: 'WIP',
     new: 'New',
+    assigned: 'Assigned',
+    wip: 'WIP',
+    for_checking: 'For Checking',
+    submitted: 'Submitted',
     on_hold: 'On Hold',
-    pending: 'Pending',
-    allocated: 'Allocated',
-    in_progress: 'In progress',
-    completed: 'Completed',
+    cancelled: 'Cancelled',
+    for_quote: 'For Quote',
+    quote_sent: 'Quote Sent',
+    invoiced: 'Invoiced',
+    paid: 'Paid',
 };
 
 /** Board column order when jobs are split into status tables. */
 export const JOB_BOARD_STATUS_ORDER = [
     'new',
+    'assigned',
     'wip',
     'for_checking',
+    'submitted',
     'on_hold',
-    'pending',
-    'allocated',
-    'in_progress',
-    'completed',
+    'cancelled',
+    'for_quote',
+    'quote_sent',
+    'invoiced',
+    'paid',
 ];
 
 /** Job list page sections. */

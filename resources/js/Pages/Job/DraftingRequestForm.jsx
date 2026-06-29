@@ -99,6 +99,9 @@ export default function DraftingRequestForm({
         if (!next.facade) {
             delete next.facade;
         }
+        if (!next.documents?.length) {
+            delete next.documents;
+        }
         return next;
     });
 
@@ -672,8 +675,7 @@ export default function DraftingRequestForm({
                             className="w-full"
                             label={
                                 <InputLabel htmlFor="documents">
-                                    18. Upload all documents required.
-                                    <ReqMark />
+                                    18. Upload documents
                                 </InputLabel>
                             }
                             hint={

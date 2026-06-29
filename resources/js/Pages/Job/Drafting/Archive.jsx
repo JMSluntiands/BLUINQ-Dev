@@ -96,7 +96,7 @@ export default function DraftingArchive({
             columnHelper.accessor('reference', {
                 header: ({ column }) => (
                     <DataTableSortHeader column={column}>
-                        Reference
+                        Job No.
                     </DataTableSortHeader>
                 ),
                 cell: ({ row, getValue }) => (

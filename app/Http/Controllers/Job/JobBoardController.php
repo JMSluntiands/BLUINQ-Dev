@@ -127,6 +127,13 @@ class JobBoardController extends Controller
                     'hours' => $validated['hours'] ?? null,
                 ],
             );
+
+            $this->board->syncAssignmentHoursToRevision(
+                $draftingRequest,
+                $role,
+                (int) $validated['user_id'],
+                $validated['hours'] ?? null,
+            );
         }
 
         return back();

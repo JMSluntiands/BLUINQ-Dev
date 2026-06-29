@@ -1,4 +1,3 @@
-import DraftingStatusBadge from '@/Components/DraftingStatusBadge';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import Modal from '@/Components/Modal';
@@ -36,17 +35,24 @@ export default function DraftingEditModals({
 
     const jobForm = useForm({
         section: 'job',
-        status: draftingRequest.status ?? 'allocated',
+        status: draftingRequest.status ?? 'new',
         building_type_id: draftingRequest.building_type_id ?? '',
+        zoning: draftingRequest.zoning ?? '',
         site_address: draftingRequest.site_address ?? '',
         service_engaging_ids: draftingRequest.service_engaging_ids ?? [],
         ndis_sda: draftingRequest.ndis_sda ?? false,
+        external_wall_construction_id:
+            draftingRequest.external_wall_construction_id ?? '',
+        roof_type_id: draftingRequest.roof_type_id ?? '',
+        ceiling_heights: draftingRequest.ceiling_heights ?? '',
+        first_floor_slab: draftingRequest.first_floor_slab ?? '',
+        design_requirements: draftingRequest.design_requirements ?? '',
+        additional_inclusions: draftingRequest.additional_inclusions ?? '',
     });
 
     const buildingForm = useForm({
         section: 'building',
         site_owner_name: draftingRequest.site_owner_name ?? '',
-        max_building_area_sqm: draftingRequest.max_building_area_sqm ?? '',
         external_wall_construction_id:
             draftingRequest.external_wall_construction_id ?? '',
         roof_type_id: draftingRequest.roof_type_id ?? '',
@@ -81,7 +87,11 @@ export default function DraftingEditModals({
     };
 
     return (
-        <Modal show={section != null} onClose={onClose} maxWidth="2xl">
+        <Modal
+            show={section != null}
+            onClose={onClose}
+            maxWidth="2xl"
+        >
             {section === 'client' ? (
                 <form
                     onSubmit={(e) => {
@@ -169,23 +179,13 @@ export default function DraftingEditModals({
                         e.preventDefault();
                         submit(jobForm);
                     }}
-                    className="p-6"
+                    className="flex max-h-[85vh] flex-col p-5"
                 >
                     <ModalHeader title={SECTION_TITLES.job} onClose={onClose} />
-                    <div className="mt-4 space-y-4">
+                    <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
                             <InputLabel htmlFor="edit-status" value="JOB STATUS" />
-                            <div className="mt-2 mb-3">
-                                <DraftingStatusBadge
-                                    status={jobForm.data.status}
-                                    label={
-                                        statusOptions.find(
-                                            (o) =>
-                                                o.value === jobForm.data.status,
-                                        )?.label ?? jobForm.data.status
-                                    }
-                                />
-                            </div>
                             <select
                                 id="edit-status"
                                 className={selectClass}
@@ -232,11 +232,45 @@ export default function DraftingEditModals({
                             />
                         </div>
                         <div>
+                            <InputLabel htmlFor="edit-zoning" value="Zoning" />
+                            <TextInput
+                                id="edit-zoning"
+                                className="mt-1 block w-full"
+                                value={jobForm.data.zoning}
+                                onChange={(e) =>
+                                    jobForm.setData('zoning', e.target.value)
+                                }
+                            />
+                            <InputError
+                                className="mt-1"
+                                message={jobForm.errors.zoning}
+                            />
+                        </div>
+                        <div>
+                            <InputLabel value="NDIS / SDA" />
+                            <label className="mt-1 flex h-10 items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-[#c5c7d0] text-[#0073ea] focus:ring-[#0073ea]"
+                                    checked={jobForm.data.ndis_sda}
+                                    onChange={(e) =>
+                                        jobForm.setData(
+                                            'ndis_sda',
+                                            e.target.checked,
+                                        )
+                                    }
+                                />
+                                <span className="text-sm font-medium text-[#323338] dark:text-slate-200">
+                                    NDIS / SDA dwelling
+                                </span>
+                            </label>
+                        </div>
+                        <div className="sm:col-span-2">
                             <InputLabel htmlFor="edit-site_address" value="Address" />
                             <textarea
                                 id="edit-site_address"
                                 className={textareaClass}
-                                rows={3}
+                                rows={2}
                                 value={jobForm.data.site_address}
                                 onChange={(e) =>
                                     jobForm.setData('site_address', e.target.value)
@@ -248,12 +282,12 @@ export default function DraftingEditModals({
                                 message={jobForm.errors.site_address}
                             />
                         </div>
-                        <div>
+                        <div className="sm:col-span-2">
                             <InputLabel value="Services" />
-                            <ul className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            <ul className="mt-1.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                                 {(formOptions.serviceEngagings ?? []).map((row) => (
                                     <li key={row.id}>
-                                        <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-[#e6e9ef] bg-[#fafbfc] px-3 py-2">
+                                        <label className="flex cursor-pointer items-start gap-1.5 rounded-md border border-[#e6e9ef] bg-[#fafbfc] px-2 py-1.5 dark:border-[#2f3347] dark:bg-[#151622]">
                                             <input
                                                 type="checkbox"
                                                 className="mt-0.5 rounded border-[#c5c7d0] text-[#0073ea] focus:ring-[#0073ea]"
@@ -266,7 +300,7 @@ export default function DraftingEditModals({
                                                     toggleService(jobForm, row.id)
                                                 }
                                             />
-                                            <span className="text-sm text-[#323338]">
+                                            <span className="text-xs text-[#323338] dark:text-slate-200">
                                                 {row.name}
                                             </span>
                                         </label>
@@ -281,23 +315,184 @@ export default function DraftingEditModals({
                                 }
                             />
                         </div>
-                        <label className="flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                className="rounded border-[#c5c7d0] text-[#0073ea] focus:ring-[#0073ea]"
-                                checked={jobForm.data.ndis_sda}
-                                onChange={(e) =>
-                                    jobForm.setData('ndis_sda', e.target.checked)
-                                }
-                            />
-                            <span className="text-sm font-medium text-[#323338]">
-                                NDIS / SDA dwelling
-                            </span>
-                        </label>
+                        <div className="sm:col-span-2 border-t border-[#e6e9ef] pt-3 dark:border-[#2f3347]">
+                            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400">
+                                Building specifications
+                            </p>
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <div>
+                                    <InputLabel
+                                        htmlFor="edit-job-external_wall"
+                                        value="External wall"
+                                    />
+                                    <select
+                                        id="edit-job-external_wall"
+                                        className={selectClass}
+                                        value={
+                                            jobForm.data
+                                                .external_wall_construction_id
+                                        }
+                                        onChange={(e) =>
+                                            jobForm.setData(
+                                                'external_wall_construction_id',
+                                                e.target.value,
+                                            )
+                                        }
+                                    >
+                                        <option value="">Select…</option>
+                                        {(
+                                            formOptions.externalWallConstructions ??
+                                            []
+                                        ).map((row) => (
+                                            <option key={row.id} value={row.id}>
+                                                {row.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <InputError
+                                        className="mt-2"
+                                        message={
+                                            jobForm.errors
+                                                .external_wall_construction_id
+                                        }
+                                    />
+                                </div>
+                                <div>
+                                    <InputLabel
+                                        htmlFor="edit-job-roof_type"
+                                        value="Roof"
+                                    />
+                                    <select
+                                        id="edit-job-roof_type"
+                                        className={selectClass}
+                                        value={jobForm.data.roof_type_id}
+                                        onChange={(e) =>
+                                            jobForm.setData(
+                                                'roof_type_id',
+                                                e.target.value,
+                                            )
+                                        }
+                                    >
+                                        <option value="">Select…</option>
+                                        {(formOptions.roofTypes ?? []).map(
+                                            (row) => (
+                                                <option
+                                                    key={row.id}
+                                                    value={row.id}
+                                                >
+                                                    {row.name}
+                                                </option>
+                                            ),
+                                        )}
+                                    </select>
+                                    <InputError
+                                        className="mt-2"
+                                        message={jobForm.errors.roof_type_id}
+                                    />
+                                </div>
+                                <div>
+                                    <InputLabel
+                                        htmlFor="edit-job-ceiling"
+                                        value="Ceiling heights"
+                                    />
+                                    <textarea
+                                        id="edit-job-ceiling"
+                                        className={textareaClass}
+                                        rows={2}
+                                        value={jobForm.data.ceiling_heights}
+                                        onChange={(e) =>
+                                            jobForm.setData(
+                                                'ceiling_heights',
+                                                e.target.value,
+                                            )
+                                        }
+                                        required
+                                    />
+                                    <InputError
+                                        className="mt-1"
+                                        message={jobForm.errors.ceiling_heights}
+                                    />
+                                </div>
+                                <div>
+                                    <InputLabel
+                                        htmlFor="edit-job-slab"
+                                        value="First floor slab"
+                                    />
+                                    <textarea
+                                        id="edit-job-slab"
+                                        className={textareaClass}
+                                        rows={2}
+                                        value={jobForm.data.first_floor_slab}
+                                        onChange={(e) =>
+                                            jobForm.setData(
+                                                'first_floor_slab',
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+                                    <InputError
+                                        className="mt-1"
+                                        message={jobForm.errors.first_floor_slab}
+                                    />
+                                </div>
+                                <div>
+                                    <InputLabel
+                                        htmlFor="edit-job-design_requirements"
+                                        value="Design requirements"
+                                    />
+                                    <textarea
+                                        id="edit-job-design_requirements"
+                                        className={textareaClass}
+                                        rows={2}
+                                        maxLength={2000}
+                                        value={jobForm.data.design_requirements}
+                                        onChange={(e) =>
+                                            jobForm.setData(
+                                                'design_requirements',
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+                                    <InputError
+                                        className="mt-1"
+                                        message={
+                                            jobForm.errors.design_requirements
+                                        }
+                                    />
+                                </div>
+                                <div>
+                                    <InputLabel
+                                        htmlFor="edit-job-additional_inclusions"
+                                        value="Additional inclusions"
+                                    />
+                                    <textarea
+                                        id="edit-job-additional_inclusions"
+                                        className={textareaClass}
+                                        rows={2}
+                                        maxLength={2000}
+                                        value={jobForm.data.additional_inclusions}
+                                        onChange={(e) =>
+                                            jobForm.setData(
+                                                'additional_inclusions',
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+                                    <InputError
+                                        className="mt-1"
+                                        message={
+                                            jobForm.errors.additional_inclusions
+                                        }
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        </div>
                     </div>
                     <ModalFooter
                         onClose={onClose}
                         processing={jobForm.processing}
+                        className="mt-4 shrink-0"
                     />
                 </form>
             ) : null}
@@ -332,27 +527,6 @@ export default function DraftingEditModals({
                             <InputError
                                 className="mt-2"
                                 message={buildingForm.errors.site_owner_name}
-                            />
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="edit-max_area" value="Max area (sqm)" />
-                            <TextInput
-                                id="edit-max_area"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                className="mt-1 block w-full"
-                                value={buildingForm.data.max_building_area_sqm}
-                                onChange={(e) =>
-                                    buildingForm.setData(
-                                        'max_building_area_sqm',
-                                        e.target.value,
-                                    )
-                                }
-                            />
-                            <InputError
-                                className="mt-2"
-                                message={buildingForm.errors.max_building_area_sqm}
                             />
                         </div>
                         <div>
@@ -535,9 +709,11 @@ function ModalHeader({ title, onClose }) {
     );
 }
 
-function ModalFooter({ onClose, processing }) {
+function ModalFooter({ onClose, processing, className = '' }) {
     return (
-        <div className="mt-6 flex flex-wrap justify-end gap-2">
+        <div
+            className={`mt-6 flex flex-wrap justify-end gap-2 ${className}`}
+        >
             <SecondaryButton
                 type="button"
                 onClick={onClose}

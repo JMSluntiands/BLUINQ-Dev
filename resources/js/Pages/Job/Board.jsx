@@ -115,13 +115,6 @@ export default function JobBoard({
                             preserveScroll: true,
                         })
                     }
-                    onAssignmentsUpdated={() =>
-                        router.reload({
-                            only: ['jobs'],
-                            preserveScroll: true,
-                        })
-                    }
-                    assignableUsers={assignableUsers}
                     jobListSections={jobListSections}
                 />
                 <Pagination pagination={jobs} />

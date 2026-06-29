@@ -1,15 +1,24 @@
 /** @type {Record<string, string>} */
 export const DRAFTING_STATUS_PILL_STYLES = {
-    allocated:
+    new: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-500 dark:bg-[#1a222e] dark:text-slate-300',
+    assigned:
         'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-400/60 dark:bg-[#1a222e] dark:text-blue-300',
-    pending:
-        'border-amber-200 bg-amber-50 text-amber-800 dark:border-[#eab308] dark:bg-[#1a222e] dark:text-[#eab308]',
-    in_progress:
-        'border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-400/60 dark:bg-[#1a222e] dark:text-violet-300',
-    completed:
+    wip: 'border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-400/60 dark:bg-[#1a222e] dark:text-violet-300',
+    for_checking:
+        'border-cyan-200 bg-cyan-50 text-cyan-800 dark:border-cyan-400/60 dark:bg-[#1a222e] dark:text-cyan-300',
+    submitted:
         'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-400/60 dark:bg-[#1a222e] dark:text-emerald-300',
     on_hold:
-        'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-500 dark:bg-[#1a222e] dark:text-slate-300',
+        'border-amber-200 bg-amber-50 text-amber-800 dark:border-[#eab308] dark:bg-[#1a222e] dark:text-[#eab308]',
+    cancelled:
+        'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-400/60 dark:bg-[#1a222e] dark:text-rose-300',
+    for_quote:
+        'border-indigo-200 bg-indigo-50 text-indigo-800 dark:border-indigo-400/60 dark:bg-[#1a222e] dark:text-indigo-300',
+    quote_sent:
+        'border-purple-200 bg-purple-50 text-purple-800 dark:border-purple-400/60 dark:bg-[#1a222e] dark:text-purple-300',
+    invoiced:
+        'border-teal-200 bg-teal-50 text-teal-800 dark:border-teal-400/60 dark:bg-[#1a222e] dark:text-teal-300',
+    paid: 'border-green-200 bg-green-50 text-green-800 dark:border-green-400/60 dark:bg-[#1a222e] dark:text-green-300',
 };
 
 export function draftingStatusPillClass(status) {

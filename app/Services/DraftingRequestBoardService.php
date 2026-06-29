@@ -29,6 +29,10 @@ class DraftingRequestBoardService
                     ->with('user:id,name')
                     ->orderBy('role')
                     ->orderBy('slot'),
+                'revisions' => fn ($relation) => $relation
+                    ->with('drafter:id,name')
+                    ->orderByDesc('log_date')
+                    ->orderByDesc('id'),
             ])
             ->withCount(['files', 'comments'])
             ->active()
@@ -98,24 +102,42 @@ class DraftingRequestBoardService
             $area = $areaValue.' m²';
         }
 
-        $boardStatus = $this->mapBoardStatus($row->status);
-        $drafting = $this->boardAssignmentsForRole(
-            $row->assignments,
-            DraftingRequestAssignment::ROLE_DRAFTING,
-            $this->draftingSlotCount(),
+        $actualStatus = $row->status ?? DraftingRequest::STATUS_NEW;
+        $boardStatus = $this->mapBoardStatus($actualStatus);
+        $draftingSlots = $this->draftingSlotCount();
+        $checkingSlots = $this->checkingSlotCount();
+        $drafting = $this->mergeStaffBoardSlots(
+            $this->boardAssignmentsForRole(
+                $row->assignments,
+                DraftingRequestAssignment::ROLE_DRAFTING,
+                $draftingSlots,
+            ),
+            $this->staffSlotsFromRevisionHours(
+                $row->revisions,
+                'drafting_hours',
+                $draftingSlots,
+            ),
         );
-        $checking = $this->boardAssignmentsForRole(
-            $row->assignments,
-            DraftingRequestAssignment::ROLE_CHECKING,
-            $this->checkingSlotCount(),
+        $checking = $this->mergeStaffBoardSlots(
+            $this->boardAssignmentsForRole(
+                $row->assignments,
+                DraftingRequestAssignment::ROLE_CHECKING,
+                $checkingSlots,
+            ),
+            $this->staffSlotsFromRevisionHours(
+                $row->revisions,
+                'checking_hours',
+                $checkingSlots,
+            ),
         );
-        $totalHours = $this->sumAssignmentHours($row->assignments);
+        $totalHours = $this->sumRevisionHours($row->revisions)
+            ?? $this->sumAssignmentHours($row->assignments);
 
         return [
             'id' => $row->id,
-            'reference' => sprintf('DRF-%05d', $row->id),
+            'reference' => $row->jobNumber(),
             'job' => $row->site_address ?: '—',
-            'job_no' => sprintf('DRF-%05d', $row->id),
+            'job_no' => $row->jobNumber(),
             'builder' => $row->company_name ?: ($row->your_name ?: '—'),
             'category' => $category,
             'category_full' => $categoryFull !== '' ? $categoryFull : '—',
@@ -129,8 +151,8 @@ class DraftingRequestBoardService
             'files_count' => $row->files_count,
             'area' => $area,
             'date_out' => '—',
-            'status' => $boardStatus,
-            'status_label' => $this->boardStatusLabel($boardStatus, $row->statusLabel()),
+            'status' => $actualStatus,
+            'status_label' => $row->statusLabel(),
             'list_group' => $this->mapJobListGroup($row),
             'is_priority' => (bool) $row->is_priority,
             'vo_hours' => null,
@@ -461,6 +483,193 @@ class DraftingRequestBoardService
     }
 
     /**
+     * @param  list<array<string, mixed>|null>  $assignments
+     * @param  list<array<string, mixed>|null>  $fromRevisions
+     * @return list<array<string, mixed>|null>
+     */
+    public function mergeStaffBoardSlots(array $assignments, array $fromRevisions): array
+    {
+        $slotCount = max(count($assignments), count($fromRevisions));
+        $merged = [];
+
+        for ($index = 0; $index < $slotCount; $index++) {
+            $assignment = $assignments[$index] ?? null;
+            $revisionSlot = $fromRevisions[$index] ?? null;
+
+            if ($assignment !== null) {
+                if (($assignment['hours'] ?? null) === null
+                    && $revisionSlot !== null
+                    && (int) ($assignment['user_id'] ?? 0) === (int) ($revisionSlot['user_id'] ?? 0)) {
+                    $assignment['hours'] = $revisionSlot['hours'];
+                }
+
+                $merged[$index] = $assignment;
+
+                continue;
+            }
+
+            $merged[$index] = $revisionSlot;
+        }
+
+        return $merged;
+    }
+
+    /**
+     * @param  Collection<int, DraftingRequestRevision>  $revisions
+     * @return list<array{user_id: int, initials: string, name?: string|null, hours?: string|null}|null>
+     */
+    public function staffSlotsFromRevisionHours(
+        Collection $revisions,
+        string $hoursColumn,
+        int $slots,
+    ): array {
+        if (! in_array($hoursColumn, ['drafting_hours', 'checking_hours'], true)) {
+            return $this->padStaffSlots([], $slots);
+        }
+
+        /** @var array<int, array{user_id: int, initials: string, name: string|null, hours: float}> $byUser */
+        $byUser = [];
+
+        foreach ($revisions as $revision) {
+            $hours = $revision->{$hoursColumn};
+            if ($hours === null || (float) $hours <= 0) {
+                continue;
+            }
+
+            $userId = $revision->drafter_user_id;
+            if ($userId === null) {
+                continue;
+            }
+
+            if (! isset($byUser[$userId])) {
+                $byUser[$userId] = [
+                    'user_id' => $userId,
+                    'initials' => $revision->drafter_initials
+                        ?? $revision->drafter?->badgeInitials()
+                        ?? '?',
+                    'name' => $revision->drafter?->name,
+                    'hours' => 0.0,
+                ];
+            }
+
+            $byUser[$userId]['hours'] += (float) $hours;
+        }
+
+        $assignments = [];
+        foreach ($byUser as $entry) {
+            $assignments[] = [
+                'user_id' => $entry['user_id'],
+                'initials' => $entry['initials'],
+                'name' => $entry['name'],
+                'hours' => $this->formatRevisionHours($entry['hours']),
+            ];
+        }
+
+        return $this->padStaffSlots($assignments, $slots);
+    }
+
+    public function syncRevisionHoursToAssignments(
+        DraftingRequest $draftingRequest,
+        DraftingRequestRevision $revision,
+    ): void {
+        $userId = $revision->drafter_user_id;
+        if ($userId === null) {
+            return;
+        }
+
+        if ($revision->drafting_hours !== null && (float) $revision->drafting_hours > 0) {
+            $this->upsertAssignmentForRole(
+                $draftingRequest,
+                DraftingRequestAssignment::ROLE_DRAFTING,
+                $userId,
+                $revision->drafting_hours,
+            );
+        }
+
+        if ($revision->checking_hours !== null && (float) $revision->checking_hours > 0) {
+            $this->upsertAssignmentForRole(
+                $draftingRequest,
+                DraftingRequestAssignment::ROLE_CHECKING,
+                $userId,
+                $revision->checking_hours,
+            );
+        }
+    }
+
+    public function syncAssignmentHoursToRevision(
+        DraftingRequest $draftingRequest,
+        string $role,
+        int $userId,
+        mixed $hours,
+    ): void {
+        $column = $role === DraftingRequestAssignment::ROLE_CHECKING
+            ? 'checking_hours'
+            : 'drafting_hours';
+
+        $revision = DraftingRequestRevision::query()
+            ->where('drafting_request_id', $draftingRequest->id)
+            ->where('drafter_user_id', $userId)
+            ->orderByDesc('log_date')
+            ->orderByDesc('id')
+            ->first();
+
+        if ($revision === null) {
+            return;
+        }
+
+        $revision->update([
+            $column => $hours !== null && $hours !== '' ? $hours : null,
+        ]);
+    }
+
+    private function upsertAssignmentForRole(
+        DraftingRequest $draftingRequest,
+        string $role,
+        int $userId,
+        mixed $hours,
+    ): void {
+        $existing = DraftingRequestAssignment::query()
+            ->where('drafting_request_id', $draftingRequest->id)
+            ->where('role', $role)
+            ->where('user_id', $userId)
+            ->first();
+
+        if ($existing !== null) {
+            $existing->update(['hours' => $hours]);
+
+            return;
+        }
+
+        $usedSlots = DraftingRequestAssignment::query()
+            ->where('drafting_request_id', $draftingRequest->id)
+            ->where('role', $role)
+            ->pluck('slot')
+            ->map(fn ($slot) => (int) $slot)
+            ->all();
+
+        $slot = 0;
+        while (in_array($slot, $usedSlots, true) && $slot <= $this->maxSlotForRole($role)) {
+            $slot++;
+        }
+
+        if ($slot > $this->maxSlotForRole($role)) {
+            $slot = 0;
+        }
+
+        DraftingRequestAssignment::query()->updateOrCreate(
+            [
+                'drafting_request_id' => $draftingRequest->id,
+                'role' => $role,
+                'slot' => $slot,
+            ],
+            [
+                'user_id' => $userId,
+                'hours' => $hours,
+            ],
+        );
+    }
+
+    /**
      * @param  Collection<int, DraftingRequestRevision>  $revisions
      * @param  list<string>  $categories
      * @return list<array{initials: string, hours?: string|null}|null>
@@ -489,7 +698,9 @@ class DraftingRequestBoardService
             $seenInitials[$initials] = true;
             $assignments[] = [
                 'initials' => $initials,
-                'hours' => $this->formatRevisionHours($revision->hours),
+                'hours' => $this->formatRevisionHours(
+                    $this->revisionHoursTotal($revision) ?: null,
+                ),
             ];
 
             if (count($assignments) >= $slots) {
@@ -506,7 +717,7 @@ class DraftingRequestBoardService
     public function sumRevisionHours(Collection $revisions): ?string
     {
         $total = $revisions->reduce(
-            static fn (float $carry, DraftingRequestRevision $revision) => $carry + (float) ($revision->hours ?? 0),
+            fn (float $carry, DraftingRequestRevision $revision) => $carry + $this->revisionHoursTotal($revision),
             0.0,
         );
 
@@ -526,6 +737,12 @@ class DraftingRequestBoardService
         $formatted = rtrim(rtrim((string) $hours, '0'), '.');
 
         return $formatted === '' ? null : $formatted.' h';
+    }
+
+    public function revisionHoursTotal(DraftingRequestRevision $revision): float
+    {
+        return (float) ($revision->drafting_hours ?? 0)
+            + (float) ($revision->checking_hours ?? 0);
     }
 
     /**
@@ -561,10 +778,13 @@ class DraftingRequestBoardService
     public function mapBoardStatus(?string $status): string
     {
         return match ($status) {
-            DraftingRequest::STATUS_IN_PROGRESS => 'wip',
-            DraftingRequest::STATUS_COMPLETED => 'for_checking',
-            DraftingRequest::STATUS_ON_HOLD => 'on_hold',
-            DraftingRequest::STATUS_PENDING, DraftingRequest::STATUS_ALLOCATED => 'new',
+            DraftingRequest::STATUS_WIP,
+            DraftingRequest::STATUS_ASSIGNED => 'wip',
+            DraftingRequest::STATUS_FOR_CHECKING,
+            DraftingRequest::STATUS_SUBMITTED => 'for_checking',
+            DraftingRequest::STATUS_ON_HOLD,
+            DraftingRequest::STATUS_CANCELLED => 'on_hold',
+            DraftingRequest::STATUS_NEW => 'new',
             default => 'new',
         };
     }
@@ -582,21 +802,32 @@ class DraftingRequestBoardService
 
     public function mapJobListGroup(DraftingRequest $row): string
     {
-        $status = $row->status ?? DraftingRequest::STATUS_ALLOCATED;
+        $status = $row->status ?? DraftingRequest::STATUS_NEW;
 
-        if ($status === DraftingRequest::STATUS_COMPLETED) {
+        if (in_array($status, [
+            DraftingRequest::STATUS_PAID,
+            DraftingRequest::STATUS_INVOICED,
+            DraftingRequest::STATUS_SUBMITTED,
+        ], true)) {
             return 'completed_projects';
         }
 
+        if ($status === DraftingRequest::STATUS_CANCELLED) {
+            return 'cancelled_jobs';
+        }
+
         if (in_array($status, [
-            DraftingRequest::STATUS_PENDING,
-            DraftingRequest::STATUS_ALLOCATED,
+            DraftingRequest::STATUS_FOR_QUOTE,
+            DraftingRequest::STATUS_QUOTE_SENT,
+            DraftingRequest::STATUS_NEW,
         ], true)) {
             return 'for_quotes';
         }
 
         if (in_array($status, [
-            DraftingRequest::STATUS_IN_PROGRESS,
+            DraftingRequest::STATUS_WIP,
+            DraftingRequest::STATUS_ASSIGNED,
+            DraftingRequest::STATUS_FOR_CHECKING,
             DraftingRequest::STATUS_ON_HOLD,
         ], true)) {
             return $this->isDesignPhaseRequest($row) ? 'design_wip' : 'drafting_wip';

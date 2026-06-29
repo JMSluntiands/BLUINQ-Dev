@@ -27,9 +27,15 @@ class DraftingRequestActivity extends Model
 
     public const ACTION_REVISION_ADDED = 'revision_added';
 
+    public const ACTION_REVISION_UPDATED = 'revision_updated';
+
     public const ACTION_QUOTE_ADDED = 'quote_added';
 
+    public const ACTION_QUOTE_UPDATED = 'quote_updated';
+
     public const ACTION_INVOICE_ADDED = 'invoice_added';
+
+    public const ACTION_INVOICE_UPDATED = 'invoice_updated';
 
     protected $fillable = [
         'drafting_request_id',

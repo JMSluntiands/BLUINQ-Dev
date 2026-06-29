@@ -38,7 +38,7 @@ class DraftingRequestReviewService
     {
         return [
             'id' => $request->id,
-            'reference' => sprintf('DRF-%05d', $request->id),
+            'reference' => $request->jobNumber(),
             'your_name' => $request->your_name,
             'company_name' => $request->company_name,
             'email' => $request->email,

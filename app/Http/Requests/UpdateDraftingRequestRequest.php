@@ -62,6 +62,7 @@ class UpdateDraftingRequestRequest extends FormRequest
                         fn ($q) => $q->whereNull('archived_at'),
                     ),
                 ],
+                'zoning' => ['nullable', 'string', 'max:255'],
                 'site_address' => ['required', 'string', 'max:2000'],
                 'service_engaging_ids' => ['required', 'array', 'min:1'],
                 'service_engaging_ids.*' => [
@@ -71,6 +72,24 @@ class UpdateDraftingRequestRequest extends FormRequest
                     ),
                 ],
                 'ndis_sda' => ['sometimes', 'boolean'],
+                'external_wall_construction_id' => [
+                    'nullable',
+                    'integer',
+                    Rule::exists('external_wall_constructions', 'id')->where(
+                        fn ($q) => $q->whereNull('archived_at'),
+                    ),
+                ],
+                'roof_type_id' => [
+                    'nullable',
+                    'integer',
+                    Rule::exists('roof_types', 'id')->where(
+                        fn ($q) => $q->whereNull('archived_at'),
+                    ),
+                ],
+                'ceiling_heights' => ['required', 'string', 'max:2000'],
+                'first_floor_slab' => ['nullable', 'string', 'max:2000'],
+                'design_requirements' => ['nullable', 'string', 'max:2000'],
+                'additional_inclusions' => ['nullable', 'string', 'max:2000'],
             ],
             'building' => [
                 'section' => ['required', 'string', 'in:building'],
@@ -116,6 +135,17 @@ class UpdateDraftingRequestRequest extends FormRequest
             $this->merge([
                 'ndis_sda' => filter_var($this->input('ndis_sda'), FILTER_VALIDATE_BOOLEAN),
             ]);
+
+            foreach (['external_wall_construction_id', 'roof_type_id'] as $key) {
+                if (! $this->has($key)) {
+                    continue;
+                }
+
+                $value = $this->input($key);
+                $this->merge([
+                    $key => $value === '' || $value === null ? null : $value,
+                ]);
+            }
         }
 
         if ($section === 'building') {

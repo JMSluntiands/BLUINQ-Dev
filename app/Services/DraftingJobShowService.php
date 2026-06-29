@@ -16,7 +16,11 @@ class DraftingJobShowService
         return $draftingRequest->revisions()
             ->with('drafter:id,name')
             ->get()
-            ->map(fn (DraftingRequestRevision $revision) => [
+            ->map(function (DraftingRequestRevision $revision) {
+                $status = $revision->status;
+                $statusOptions = DraftingRequest::statusOptions();
+
+                return [
                 'id' => $revision->id,
                 'code' => $revision->code,
                 'log_date' => $revision->log_date?->format('d M Y'),
@@ -24,11 +28,23 @@ class DraftingJobShowService
                 'drafter_initials' => $revision->drafter_initials
                     ?? $revision->drafter?->badgeInitials(),
                 'drafter_name' => $revision->drafter?->name,
-                'hours' => $revision->hours !== null
-                    ? rtrim(rtrim((string) $revision->hours, '0'), '.')
+                'drafter_user_id' => $revision->drafter_user_id,
+                'log_date_value' => $revision->log_date?->format('Y-m-d'),
+                'drafting_hours' => $revision->drafting_hours !== null
+                    ? rtrim(rtrim((string) $revision->drafting_hours, '0'), '.')
                     : null,
+                'checking_hours' => $revision->checking_hours !== null
+                    ? rtrim(rtrim((string) $revision->checking_hours, '0'), '.')
+                    : null,
+                'status' => $status,
+                'status_label' => $status !== null && $status !== ''
+                    ? ($statusOptions[$status] ?? ucfirst(str_replace('_', ' ', $status)))
+                    : null,
+                'area_size' => $revision->area_size,
                 'submitted_date' => $revision->submitted_date?->format('d M Y'),
-            ])
+                'submitted_date_value' => $revision->submitted_date?->format('Y-m-d'),
+            ];
+            })
             ->all();
     }
 

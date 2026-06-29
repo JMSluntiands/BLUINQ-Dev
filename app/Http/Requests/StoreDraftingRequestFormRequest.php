@@ -59,7 +59,7 @@ class StoreDraftingRequestFormRequest extends FormRequest
             'ceiling_heights' => ['required', 'string', 'max:2000'],
             'first_floor_slab' => ['nullable', 'string', 'max:2000'],
             'additional_inclusions' => ['nullable', 'string', 'max:2000'],
-            'documents' => ['required', 'array', 'min:1'],
+            'documents' => ['nullable', 'array'],
             'documents.*' => ['file', 'max:20480'],
         ];
     }

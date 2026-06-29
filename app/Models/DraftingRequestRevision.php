@@ -15,7 +15,10 @@ class DraftingRequestRevision extends Model
         'category',
         'drafter_user_id',
         'drafter_initials',
-        'hours',
+        'drafting_hours',
+        'checking_hours',
+        'status',
+        'area_size',
         'submitted_date',
     ];
 
@@ -27,7 +30,8 @@ class DraftingRequestRevision extends Model
         return [
             'log_date' => 'date',
             'submitted_date' => 'date',
-            'hours' => 'decimal:2',
+            'drafting_hours' => 'decimal:2',
+            'checking_hours' => 'decimal:2',
         ];
     }
 

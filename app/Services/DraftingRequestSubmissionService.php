@@ -24,7 +24,7 @@ class DraftingRequestSubmissionService
         return DB::transaction(function () use ($request, $user, $validated, $reviewStatus) {
             $draftingRequest = DraftingRequest::query()->create([
                 'user_id' => $user?->id,
-                'status' => DraftingRequest::STATUS_ALLOCATED,
+                'status' => DraftingRequest::STATUS_NEW,
                 'review_status' => $reviewStatus,
                 ...$validated,
             ]);
@@ -53,7 +53,7 @@ class DraftingRequestSubmissionService
                 }
             }
 
-            $reference = sprintf('DRF-%05d', $draftingRequest->id);
+            $reference = $draftingRequest->jobNumber();
             $description = $reviewStatus === DraftingRequest::REVIEW_PENDING
                 ? sprintf('Public drafting request %s was submitted and is awaiting review.', $reference)
                 : sprintf('Drafting request %s was submitted.', $reference);
@@ -76,7 +76,7 @@ class DraftingRequestSubmissionService
                 'review_status' => DraftingRequest::REVIEW_ACCEPTED,
                 'reviewed_by' => $reviewer->id,
                 'reviewed_at' => now('UTC'),
-                'status' => DraftingRequest::STATUS_ALLOCATED,
+                'status' => DraftingRequest::STATUS_NEW,
             ]);
 
             DraftingRequestActivity::record(
@@ -85,7 +85,7 @@ class DraftingRequestSubmissionService
                 DraftingRequestActivity::ACTION_REQUEST_ACCEPTED,
                 sprintf(
                     'Drafting request %s was accepted and added to the job board.',
-                    sprintf('DRF-%05d', $draftingRequest->id),
+                    $draftingRequest->jobNumber(),
                 ),
             );
         });

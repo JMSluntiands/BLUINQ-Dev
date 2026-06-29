@@ -26,16 +26,20 @@ const KIND_CONFIG = {
     quote: {
         kind: 'quote',
         title: 'Add quote',
+        editTitle: 'Edit quote',
         numberLabel: 'Quote #',
         numberPlaceholder: 'e.g. Q-1042',
         submitLabel: 'Add quote',
+        editSubmitLabel: 'Save quote',
     },
     invoice: {
         kind: 'invoice',
         title: 'Add invoice',
+        editTitle: 'Edit invoice',
         numberLabel: 'Invoice #',
         numberPlaceholder: 'e.g. INV-2091',
         submitLabel: 'Add invoice',
+        editSubmitLabel: 'Save invoice',
     },
 };
 
@@ -45,9 +49,11 @@ export default function DraftingAccountAddModal({
     draftingRequestId,
     listFilters = {},
     accountKind = 'quote',
+    entry = null,
 }) {
     const config = KIND_CONFIG[accountKind] ?? KIND_CONFIG.quote;
     const listQs = listQueryString(listFilters);
+    const isEditing = entry != null;
 
     const form = useForm({
         kind: config.kind,
@@ -61,13 +67,48 @@ export default function DraftingAccountAddModal({
         if (!show) {
             form.reset();
             form.clearErrors();
-        } else {
-            form.setData('kind', config.kind);
+            return;
         }
-    }, [show, accountKind]);
+
+        form.setData('kind', config.kind);
+
+        if (entry) {
+            form.setData({
+                kind: config.kind,
+                number: entry.number ?? '',
+                category: entry.category ?? '',
+                rate: entry.rate ?? '',
+                status: entry.status ?? '',
+            });
+        } else {
+            form.setData({
+                kind: config.kind,
+                number: '',
+                category: '',
+                rate: '',
+                status: '',
+            });
+        }
+    }, [show, accountKind, entry]);
 
     const submit = (e) => {
         e.preventDefault();
+
+        if (isEditing) {
+            form.patch(
+                route('job.drafting.accounts.update', [
+                    draftingRequestId,
+                    entry.id,
+                ]) + listQs,
+                {
+                    preserveScroll: true,
+                    onSuccess: () => onClose(),
+                },
+            );
+
+            return;
+        }
+
         form.post(
             route('job.drafting.accounts.store', draftingRequestId) + listQs,
             {
@@ -85,11 +126,12 @@ export default function DraftingAccountAddModal({
         <Modal show={show} onClose={onClose} maxWidth="lg">
             <form onSubmit={submit} className="p-6">
                 <h2 className="text-lg font-semibold text-[#323338] dark:text-white">
-                    {config.title}
+                    {isEditing ? config.editTitle : config.title}
                 </h2>
                 <p className="mt-1 text-sm text-[#676879] dark:text-slate-400">
-                    Link a new {config.kind} to this job. It will appear in the
-                    table and activity log.
+                    {isEditing
+                        ? `Update this ${config.kind} entry for this job.`
+                        : `Link a new ${config.kind} to this job. It will appear in the table and activity log.`}
                 </p>
 
                 <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -183,7 +225,7 @@ export default function DraftingAccountAddModal({
                         loading={form.processing}
                         className="rounded-lg normal-case tracking-normal"
                     >
-                        {config.submitLabel}
+                        {isEditing ? config.editSubmitLabel : config.submitLabel}
                     </PrimaryButton>
                 </div>
             </form>

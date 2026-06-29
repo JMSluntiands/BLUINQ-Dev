@@ -26,6 +26,7 @@
         "@heroicons/react": "^2.2.0",
         "@tanstack/react-table": "^8.21.3",
         "jquery": "^4.0.0",
-        "recharts": "^3.8.1"
+        "recharts": "^3.8.1",
+        "select2": "^4.1.0-rc.0"
     }
 }

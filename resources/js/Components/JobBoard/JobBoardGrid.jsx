@@ -5,7 +5,6 @@ import {
     TAG_PILL_CLASS,
     staffBadgeColor,
 } from '@/Components/JobBoard/jobBoardStyles';
-import JobBoardAssignmentModal from '@/Components/JobBoard/JobBoardAssignmentModal';
 import JobBoardCommentsModal, {
     JobBoardCommentButton,
 } from '@/Components/JobBoard/JobBoardCommentsModal';
@@ -18,8 +17,8 @@ import { FlagIcon as FlagIconSolid } from '@heroicons/react/24/solid';
 import { Link, router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 
-const DRAFTING_SLOTS = 2;
-const CHECKING_SLOTS = 2;
+const DRAFTING_SLOTS = 1;
+const CHECKING_SLOTS = 1;
 
 /**
  * @typedef {{ id?: number; user_id?: number; initials: string; name?: string; hours?: string | null }} StaffAssignment
@@ -72,38 +71,16 @@ function StatusPill({ status, label }) {
     );
 }
 
-function EmptyStaffSlot({ interactive = false, onClick, label }) {
-    if (interactive) {
+function StaffSlot({ assignment }) {
+    if (!assignment) {
         return (
-            <button
-                type="button"
-                onClick={onClick}
-                className="inline-flex h-6 w-6 items-center justify-center rounded border border-dashed border-[#c5c7d0] bg-[#f5f6f8] text-[10px] font-semibold text-[#676879] transition hover:border-[#0073ea] hover:text-[#0073ea] dark:border-[#3a3f55] dark:bg-[#252838] dark:text-slate-400 dark:hover:border-[#1890ff] dark:hover:text-[#1890ff]"
-                aria-label={label}
-                title={label}
-            >
-                +
-            </button>
+            <span className="text-[11px] text-[#676879] dark:text-slate-500">
+                —
+            </span>
         );
     }
 
     return (
-        <span className="inline-block h-6 w-6 rounded bg-[#e6e9ef] dark:bg-[#252838]" />
-    );
-}
-
-function StaffSlot({ assignment, interactive = false, onClick, label }) {
-    if (!assignment) {
-        return (
-            <EmptyStaffSlot
-                interactive={interactive}
-                onClick={onClick}
-                label={label}
-            />
-        );
-    }
-
-    const content = (
         <div className="flex items-center gap-1">
             <span
                 className={
@@ -120,22 +97,6 @@ function StaffSlot({ assignment, interactive = false, onClick, label }) {
                 </span>
             )}
         </div>
-    );
-
-    if (!interactive) {
-        return content;
-    }
-
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className="rounded-md transition hover:bg-[#f0f4ff] dark:hover:bg-[#243044]"
-            aria-label={label}
-            title={label}
-        >
-            {content}
-        </button>
     );
 }
 
@@ -286,12 +247,6 @@ function JobBoardTableHead({ showFilesInTotal, hideStatus }) {
  *   assignableUsers?: Array<{ id: number; name: string; initials?: string }>;
  *   commentJob: JobBoardRow | null;
  *   setCommentJob: (job: JobBoardRow | null) => void;
- *   setAssignmentTarget: (target: {
- *     job: JobBoardRow;
- *     role: 'drafting' | 'checking';
- *     slot: number;
- *     assignment: StaffAssignment | null;
- *   } | null) => void;
  *   onPriorityUpdated?: () => void;
  *   hideStatus?: boolean;
  * }} props
@@ -302,7 +257,6 @@ function JobBoardTableBody({
     showFilesInTotal = false,
     hideStatus = false,
     setCommentJob,
-    setAssignmentTarget,
     onPriorityUpdated,
 }) {
     return (
@@ -396,61 +350,29 @@ function JobBoardTableBody({
                         </td>
                         {Array.from(
                             { length: DRAFTING_SLOTS },
-                            (_, index) => {
-                                const slotLabel = `Assign drafting slot ${index + 1} for ${job.job_no}`;
-                                const canAssign = Boolean(job.can_assign);
-
-                                return (
-                                    <td
-                                        key={`${job.id}-draft-${index}`}
-                                        className={tdClass}
-                                    >
-                                        <StaffSlot
-                                            assignment={draftingSlots[index]}
-                                            interactive={canAssign}
-                                            onClick={() =>
-                                                setAssignmentTarget({
-                                                    job,
-                                                    role: 'drafting',
-                                                    slot: index,
-                                                    assignment:
-                                                        draftingSlots[index],
-                                                })
-                                            }
-                                            label={slotLabel}
-                                        />
-                                    </td>
-                                );
-                            },
+                            (_, index) => (
+                                <td
+                                    key={`${job.id}-draft-${index}`}
+                                    className={tdClass}
+                                >
+                                    <StaffSlot
+                                        assignment={draftingSlots[index]}
+                                    />
+                                </td>
+                            ),
                         )}
                         {Array.from(
                             { length: CHECKING_SLOTS },
-                            (_, index) => {
-                                const slotLabel = `Assign checking slot ${index + 1} for ${job.job_no}`;
-                                const canAssign = Boolean(job.can_assign);
-
-                                return (
-                                    <td
-                                        key={`${job.id}-check-${index}`}
-                                        className={tdClass}
-                                    >
-                                        <StaffSlot
-                                            assignment={checkingSlots[index]}
-                                            interactive={canAssign}
-                                            onClick={() =>
-                                                setAssignmentTarget({
-                                                    job,
-                                                    role: 'checking',
-                                                    slot: index,
-                                                    assignment:
-                                                        checkingSlots[index],
-                                                })
-                                            }
-                                            label={slotLabel}
-                                        />
-                                    </td>
-                                );
-                            },
+                            (_, index) => (
+                                <td
+                                    key={`${job.id}-check-${index}`}
+                                    className={tdClass}
+                                >
+                                    <StaffSlot
+                                        assignment={checkingSlots[index]}
+                                    />
+                                </td>
+                            ),
                         )}
                         <td
                             className={
@@ -523,7 +445,6 @@ function JobBoardStatusSection({
     showFilesInTotal,
     getJobHref,
     setCommentJob,
-    setAssignmentTarget,
     onPriorityUpdated,
     listSection = false,
 }) {
@@ -574,7 +495,6 @@ function JobBoardStatusSection({
                                 showFilesInTotal={showFilesInTotal}
                                 hideStatus
                                 setCommentJob={setCommentJob}
-                                setAssignmentTarget={setAssignmentTarget}
                                 onPriorityUpdated={onPriorityUpdated}
                             />
                         </table>
@@ -600,8 +520,6 @@ function JobBoardStatusSection({
  *   groupByStatus?: boolean;
  *   onCommentsUpdated?: () => void;
  *   onPriorityUpdated?: () => void;
- *   onAssignmentsUpdated?: () => void;
- *   assignableUsers?: Array<{ id: number; name: string; initials?: string }>;
  * }} props
  */
 export default function JobBoardGrid({
@@ -613,11 +531,8 @@ export default function JobBoardGrid({
     jobListSections = {},
     onCommentsUpdated,
     onPriorityUpdated,
-    onAssignmentsUpdated,
-    assignableUsers = [],
 }) {
     const [commentJob, setCommentJob] = useState(null);
-    const [assignmentTarget, setAssignmentTarget] = useState(null);
     const [collapsedStatuses, setCollapsedStatuses] = useState(
         () => new Set(),
     );
@@ -675,7 +590,6 @@ export default function JobBoardGrid({
                             showFilesInTotal={showFilesInTotal}
                             getJobHref={getJobHref}
                             setCommentJob={setCommentJob}
-                            setAssignmentTarget={setAssignmentTarget}
                             onPriorityUpdated={onPriorityUpdated}
                         />
                     ))
@@ -690,7 +604,6 @@ export default function JobBoardGrid({
                                 getJobHref={getJobHref}
                                 showFilesInTotal={showFilesInTotal}
                                 setCommentJob={setCommentJob}
-                                setAssignmentTarget={setAssignmentTarget}
                                 onPriorityUpdated={onPriorityUpdated}
                             />
                         </table>
@@ -703,17 +616,6 @@ export default function JobBoardGrid({
                 job={commentJob}
                 onClose={() => setCommentJob(null)}
                 onCommentsUpdated={onCommentsUpdated}
-            />
-
-            <JobBoardAssignmentModal
-                show={assignmentTarget != null}
-                job={assignmentTarget?.job ?? null}
-                role={assignmentTarget?.role ?? 'drafting'}
-                slot={assignmentTarget?.slot ?? 0}
-                assignment={assignmentTarget?.assignment ?? null}
-                assignableUsers={assignableUsers}
-                onClose={() => setAssignmentTarget(null)}
-                onSaved={onAssignmentsUpdated}
             />
         </>
     );

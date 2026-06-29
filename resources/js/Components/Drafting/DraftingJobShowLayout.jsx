@@ -292,10 +292,13 @@ function DataTable({ columns, rows, emptyMessage, minWidth = '32rem' }) {
  *   canEditBuildingArea?: boolean;
  *   canViewAccounts?: boolean;
  *   canAddAccount?: boolean;
+ *   onEditQuote?: (row: Record<string, unknown>) => void;
+ *   onEditInvoice?: (row: Record<string, unknown>) => void;
  *   onAddQuote?: () => void;
  *   onAddInvoice?: () => void;
  *   canViewRevision?: boolean;
  *   canAddRevision?: boolean;
+ *   onEditRevision?: (row: Record<string, unknown>) => void;
  *   onAddRevision?: () => void;
  *   updateUrl?: string;
  *   onEditJobDetails?: () => void;
@@ -317,10 +320,13 @@ export default function DraftingJobShowLayout({
     canEditBuildingArea = false,
     canViewAccounts = false,
     canAddAccount = false,
+    onEditQuote,
+    onEditInvoice,
     onAddQuote,
     onAddInvoice,
     canViewRevision = true,
     canAddRevision = false,
+    onEditRevision,
     onAddRevision,
     updateUrl = '',
     onEditJobDetails,
@@ -342,7 +348,7 @@ export default function DraftingJobShowLayout({
     const revisionColumns = [
         {
             key: 'revision',
-            label: 'Revision',
+            label: 'Job Number',
             render: (row) => (
                 <ExternalLink
                     href={
@@ -363,9 +369,7 @@ export default function DraftingJobShowLayout({
             key: 'category',
             label: 'Category',
             render: (row) => (
-                <span className="font-semibold uppercase">
-                    {row.category ?? '—'}
-                </span>
+                <span className="font-medium">{row.category ?? '—'}</span>
             ),
         },
         {
@@ -379,58 +383,118 @@ export default function DraftingJobShowLayout({
             ),
         },
         {
-            key: 'hours',
-            label: 'Hours',
+            key: 'drafting_hours',
+            label: 'Drafting hours',
             render: (row) => (
                 <span className="tabular-nums font-medium">
-                    {formatHours(row.hours)}
+                    {formatHours(row.drafting_hours)}
                 </span>
             ),
         },
         {
-            key: 'submitted_date',
-            label: 'Submitted Date',
-            render: (row) => row.submitted_date ?? '—',
-        },
-    ];
-
-    const accountColumns = (linkBase, numberKey) => [
-        {
-            key: 'number',
-            label: numberKey,
+            key: 'checking_hours',
+            label: 'Checking hours',
             render: (row) => (
-                <ExternalLink
-                    href={linkBase ? `${linkBase}${row.number}` : null}
-                    label={row.number}
-                />
-            ),
-        },
-        {
-            key: 'category',
-            label: 'Category',
-            render: (row) => (
-                <span className="font-semibold uppercase">
-                    {row.category ?? '—'}
+                <span className="tabular-nums font-medium">
+                    {formatHours(row.checking_hours)}
                 </span>
-            ),
-        },
-        {
-            key: 'rate',
-            label: 'Rate',
-            render: (row) => (
-                <span className="tabular-nums">{formatRate(row.rate)}</span>
             ),
         },
         {
             key: 'status',
             label: 'Status',
             render: (row) => (
-                <span className="font-semibold uppercase">
-                    {row.status ?? '—'}
+                <span className="font-medium">
+                    {row.status_label ?? row.status ?? '—'}
                 </span>
             ),
         },
+        {
+            key: 'area_size',
+            label: 'Area size',
+            render: (row) => row.area_size ?? '—',
+        },
+        {
+            key: 'submitted_date',
+            label: 'Submitted Date',
+            render: (row) => row.submitted_date ?? '—',
+        },
+        ...(canAddRevision && onEditRevision
+            ? [
+                  {
+                      key: 'actions',
+                      label: 'Action',
+                      render: (row) => (
+                          <button
+                              type="button"
+                              onClick={() => onEditRevision(row)}
+                              className="text-[11px] font-semibold text-[#0073ea] underline underline-offset-2 hover:text-[#0060c4] dark:text-[#60a5fa]"
+                          >
+                              Edit
+                          </button>
+                      ),
+                  },
+              ]
+            : []),
     ];
+
+    const accountColumns = (linkBase, numberKey, onEdit) => {
+        const columns = [
+            {
+                key: 'number',
+                label: numberKey,
+                render: (row) => (
+                    <ExternalLink
+                        href={linkBase ? `${linkBase}${row.number}` : null}
+                        label={row.number}
+                    />
+                ),
+            },
+            {
+                key: 'category',
+                label: 'Category',
+                render: (row) => (
+                    <span className="font-semibold uppercase">
+                        {row.category ?? '—'}
+                    </span>
+                ),
+            },
+            {
+                key: 'rate',
+                label: 'Rate',
+                render: (row) => (
+                    <span className="tabular-nums">{formatRate(row.rate)}</span>
+                ),
+            },
+            {
+                key: 'status',
+                label: 'Status',
+                render: (row) => (
+                    <span className="font-semibold uppercase">
+                        {row.status ?? '—'}
+                    </span>
+                ),
+            },
+        ];
+
+        if (canAddAccount && onEdit) {
+            columns.push({
+                key: 'actions',
+                label: 'Action',
+                render: (row) => (
+                    <button
+                        type="button"
+                        onClick={() => onEdit(row)}
+                        className="text-[11px] font-semibold text-[#0073ea] underline underline-offset-2 hover:text-[#0060c4] dark:text-[#60a5fa]"
+                    >
+                        Edit
+                    </button>
+                ),
+            });
+        }
+
+        return columns;
+    };
 
     return (
         <div className="space-y-4">
@@ -448,7 +512,7 @@ export default function DraftingJobShowLayout({
                         {draftingRequest.site_address || 'Job details'}
                     </h1>
                     <p className="mt-1 text-sm text-[#676879] dark:text-slate-400">
-                        Reference number:{' '}
+                        Job number:{' '}
                         <span className="font-medium text-[#323338] dark:text-slate-200">
                             {draftingRequest.reference}
                         </span>
@@ -558,30 +622,24 @@ export default function DraftingJobShowLayout({
                 </section>
 
                 {canViewRevision || canViewAccounts ? (
-                <section aria-label="Revision and accounts">
+                <section aria-label="Project and accounts">
                     <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-500">
-                        2. Revision & accounts
+                        2. Project & accounts
                     </p>
-                    <div
-                        className={
-                            canViewRevision && canViewAccounts
-                                ? 'grid grid-cols-1 gap-4 xl:grid-cols-2'
-                                : 'grid grid-cols-1 gap-4'
-                        }
-                    >
+                    <div className="grid grid-cols-1 gap-4">
                         {canViewRevision ? (
                         <JobPanel
                             title="Revision"
                             canAdd={canAddRevision}
                             onAdd={onAddRevision}
-                            addLabel="Add revision"
+                            addLabel="Add Item"
                         >
                             <div className="p-4">
                                 <DataTable
                                     columns={revisionColumns}
                                     rows={revisions}
                                     emptyMessage="No revisions recorded yet."
-                                    minWidth="36rem"
+                                    minWidth="44rem"
                                 />
                             </div>
                         </JobPanel>
@@ -613,6 +671,7 @@ export default function DraftingJobShowLayout({
                                             columns={accountColumns(
                                                 integrationUrls.xero_quote,
                                                 'Quote #',
+                                                onEditQuote,
                                             )}
                                             rows={quotes}
                                             emptyMessage="No quotes linked yet."
@@ -641,6 +700,7 @@ export default function DraftingJobShowLayout({
                                             columns={accountColumns(
                                                 integrationUrls.xero_invoice,
                                                 'Invoice #',
+                                                onEditInvoice,
                                             )}
                                             rows={invoices}
                                             emptyMessage="No invoices linked yet."

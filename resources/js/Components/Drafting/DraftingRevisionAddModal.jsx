@@ -3,9 +3,10 @@ import InputLabel from '@/Components/InputLabel';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import Select2 from '@/Components/Select2';
 import TextInput from '@/Components/TextInput';
 import { useForm, usePage } from '@inertiajs/react';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 
 function listQueryString(listFilters = {}) {
     const p = new URLSearchParams();
@@ -22,8 +23,26 @@ function listQueryString(listFilters = {}) {
     return s ? `?${s}` : '';
 }
 
-const selectClass =
-    'mt-1 block w-full rounded-md border border-[#c5c7d0] bg-white px-3 py-2 text-sm text-[#323338] shadow-sm focus:border-[#0073ea] focus:outline-none focus:ring-1 focus:ring-[#0073ea] dark:border-[#2f3347] dark:bg-[#151622] dark:text-slate-200 dark:focus:border-[#3b82f6] dark:focus:ring-[#3b82f6]';
+function suggestNextRevisionCode(jobNumber, revisions = []) {
+    const base = String(jobNumber ?? '').trim();
+    if (base === '') {
+        return '';
+    }
+
+    const escaped = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const suffixPattern = new RegExp(`^${escaped}-(\\d{2})$`);
+    let maxSuffix = 0;
+
+    for (const revision of revisions) {
+        const code = String(revision.code ?? '').trim();
+        const match = code.match(suffixPattern);
+        if (match) {
+            maxSuffix = Math.max(maxSuffix, Number.parseInt(match[1], 10));
+        }
+    }
+
+    return `${base}-${String(maxSuffix + 1).padStart(2, '0')}`;
+}
 
 export default function DraftingRevisionAddModal({
     show = false,
@@ -31,16 +50,67 @@ export default function DraftingRevisionAddModal({
     draftingRequestId,
     listFilters = {},
     drafterUsers = [],
+    entry = null,
+    jobNumber = '',
+    revisions = [],
+    statusOptions = [],
+    categoryOptions = [],
+    defaultJobStatus = 'new',
 }) {
-    const { auth } = usePage().props;
+    const { auth, categoryOptions: pageCategoryOptions = [] } = usePage().props;
+    const categories =
+        categoryOptions.length > 0 ? categoryOptions : pageCategoryOptions;
+
+    const categorySelectOptions = useMemo(() => {
+        const items = categories.map((option) => ({
+            value: option.name,
+            label: option.name,
+        }));
+
+        if (
+            entry?.category &&
+            !items.some((option) => option.value === entry.category)
+        ) {
+            items.unshift({
+                value: entry.category,
+                label: entry.category,
+            });
+        }
+
+        return items;
+    }, [categories, entry?.category]);
+
+    const userSelectOptions = useMemo(
+        () =>
+            drafterUsers.map((user) => ({
+                value: String(user.id),
+                label: `${user.name}${
+                    user.initials ? ` (${user.initials})` : ''
+                }`,
+            })),
+        [drafterUsers],
+    );
+
+    const statusSelectOptions = useMemo(
+        () =>
+            statusOptions.map((option) => ({
+                value: option.value,
+                label: option.label,
+            })),
+        [statusOptions],
+    );
     const listQs = listQueryString(listFilters);
+    const isEditing = entry != null;
 
     const form = useForm({
         code: '',
         log_date: '',
         category: '',
         drafter_user_id: '',
-        hours: '',
+        drafting_hours: '',
+        checking_hours: '',
+        status: defaultJobStatus || 'new',
+        area_size: '',
         submitted_date: '',
     });
 
@@ -51,17 +121,62 @@ export default function DraftingRevisionAddModal({
             return;
         }
 
+        if (entry) {
+            form.setData({
+                code: entry.code ?? '',
+                log_date: entry.log_date_value ?? '',
+                category: entry.category ?? '',
+                drafter_user_id: entry.drafter_user_id
+                    ? String(entry.drafter_user_id)
+                    : '',
+                drafting_hours: entry.drafting_hours ?? '',
+                checking_hours: entry.checking_hours ?? '',
+                status: entry.status ?? '',
+                area_size: entry.area_size ?? '',
+                submitted_date: entry.submitted_date_value ?? '',
+            });
+
+            return;
+        }
+
         const currentUserId = auth?.user?.id;
-        if (
+        const defaultDrafter =
             currentUserId &&
             drafterUsers.some((user) => user.id === currentUserId)
-        ) {
-            form.setData('drafter_user_id', String(currentUserId));
-        }
-    }, [show, auth?.user?.id, drafterUsers]);
+                ? String(currentUserId)
+                : '';
+
+        form.setData({
+            code: suggestNextRevisionCode(jobNumber, revisions),
+            log_date: '',
+            category: '',
+            drafter_user_id: defaultDrafter,
+            drafting_hours: '',
+            checking_hours: '',
+            status: defaultJobStatus || 'new',
+            area_size: '',
+            submitted_date: '',
+        });
+    }, [show, auth?.user?.id, drafterUsers, entry, jobNumber, revisions, defaultJobStatus]);
 
     const submit = (e) => {
         e.preventDefault();
+
+        if (isEditing) {
+            form.patch(
+                route('job.drafting.revisions.update', [
+                    draftingRequestId,
+                    entry.id,
+                ]) + listQs,
+                {
+                    preserveScroll: true,
+                    onSuccess: () => onClose(),
+                },
+            );
+
+            return;
+        }
+
         form.post(
             route('job.drafting.revisions.store', draftingRequestId) + listQs,
             {
@@ -78,16 +193,17 @@ export default function DraftingRevisionAddModal({
         <Modal show={show} onClose={onClose} maxWidth="lg">
             <form onSubmit={submit} className="p-6">
                 <h2 className="text-lg font-semibold text-[#323338] dark:text-white">
-                    Add revision
+                    {isEditing ? 'Edit item' : 'Add item'}
                 </h2>
                 <p className="mt-1 text-sm text-[#676879] dark:text-slate-400">
-                    Record a new revision entry. This will appear in the
-                    revision table and activity log.
+                    {isEditing
+                        ? 'Update this revision entry for this job.'
+                        : 'Record a new revision entry. This will appear in the table and activity log.'}
                 </p>
 
                 <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="sm:col-span-2">
-                        <InputLabel htmlFor="revision-code" value="Revision code" />
+                        <InputLabel htmlFor="revision-code" value="Job Number" />
                         <TextInput
                             id="revision-code"
                             value={form.data.code}
@@ -95,7 +211,8 @@ export default function DraftingRevisionAddModal({
                                 form.setData('code', e.target.value)
                             }
                             className="mt-1 block w-full"
-                            placeholder="e.g. B26001-01"
+                            placeholder="e.g. 26003-01"
+                            readOnly={!isEditing}
                             required
                         />
                         <InputError
@@ -143,17 +260,22 @@ export default function DraftingRevisionAddModal({
                     </div>
 
                     <div>
-                        <InputLabel htmlFor="revision-category" value="Category" />
-                        <TextInput
-                            id="revision-category"
-                            value={form.data.category}
-                            onChange={(e) =>
-                                form.setData('category', e.target.value)
-                            }
-                            className="mt-1 block w-full"
-                            placeholder="e.g. DRAFTING"
-                            required
+                        <InputLabel
+                            htmlFor="revision-category"
+                            value="Category"
                         />
+                        <div className="mt-1 select2-field">
+                            <Select2
+                                id="revision-category"
+                                value={form.data.category}
+                                onChange={(value) =>
+                                    form.setData('category', value)
+                                }
+                                options={categorySelectOptions}
+                                placeholder="Select category…"
+                                enabled={show}
+                            />
+                        </div>
                         <InputError
                             message={form.errors.category}
                             className="mt-1"
@@ -162,25 +284,19 @@ export default function DraftingRevisionAddModal({
 
                     <div>
                         <InputLabel htmlFor="revision-user" value="User" />
-                        <select
-                            id="revision-user"
-                            value={form.data.drafter_user_id}
-                            onChange={(e) =>
-                                form.setData('drafter_user_id', e.target.value)
-                            }
-                            className={selectClass}
-                            required
-                        >
-                            <option value="">Select user…</option>
-                            {drafterUsers.map((user) => (
-                                <option key={user.id} value={String(user.id)}>
-                                    {user.name}
-                                    {user.initials
-                                        ? ` (${user.initials})`
-                                        : ''}
-                                </option>
-                            ))}
-                        </select>
+                        <div className="mt-1 select2-field">
+                            <Select2
+                                id="revision-user"
+                                value={form.data.drafter_user_id}
+                                onChange={(value) =>
+                                    form.setData('drafter_user_id', value)
+                                }
+                                options={userSelectOptions}
+                                placeholder="Select user…"
+                                enabled={show}
+                                required
+                            />
+                        </div>
                         <InputError
                             message={form.errors.drafter_user_id}
                             className="mt-1"
@@ -188,21 +304,88 @@ export default function DraftingRevisionAddModal({
                     </div>
 
                     <div>
-                        <InputLabel htmlFor="revision-hours" value="Hours" />
+                        <InputLabel
+                            htmlFor="revision-drafting-hours"
+                            value="Drafting hours"
+                        />
                         <TextInput
-                            id="revision-hours"
+                            id="revision-drafting-hours"
                             type="number"
                             min="0"
                             step="0.25"
-                            value={form.data.hours}
+                            value={form.data.drafting_hours}
                             onChange={(e) =>
-                                form.setData('hours', e.target.value)
+                                form.setData('drafting_hours', e.target.value)
                             }
                             className="mt-1 block w-full"
                             placeholder="Optional"
                         />
                         <InputError
-                            message={form.errors.hours}
+                            message={form.errors.drafting_hours}
+                            className="mt-1"
+                        />
+                    </div>
+
+                    <div>
+                        <InputLabel
+                            htmlFor="revision-checking-hours"
+                            value="Checking hours"
+                        />
+                        <TextInput
+                            id="revision-checking-hours"
+                            type="number"
+                            min="0"
+                            step="0.25"
+                            value={form.data.checking_hours}
+                            onChange={(e) =>
+                                form.setData('checking_hours', e.target.value)
+                            }
+                            className="mt-1 block w-full"
+                            placeholder="Optional"
+                        />
+                        <InputError
+                            message={form.errors.checking_hours}
+                            className="mt-1"
+                        />
+                    </div>
+
+                    <div>
+                        <InputLabel htmlFor="revision-status" value="Status" />
+                        <div className="mt-1 select2-field">
+                            <Select2
+                                id="revision-status"
+                                value={form.data.status}
+                                onChange={(value) =>
+                                    form.setData('status', value)
+                                }
+                                options={statusSelectOptions}
+                                placeholder="Select status…"
+                                enabled={show}
+                                required
+                            />
+                        </div>
+                        <InputError
+                            message={form.errors.status}
+                            className="mt-1"
+                        />
+                    </div>
+
+                    <div>
+                        <InputLabel
+                            htmlFor="revision-area-size"
+                            value="Area size"
+                        />
+                        <TextInput
+                            id="revision-area-size"
+                            value={form.data.area_size}
+                            onChange={(e) =>
+                                form.setData('area_size', e.target.value)
+                            }
+                            className="mt-1 block w-full"
+                            placeholder="e.g. 32 SQM"
+                        />
+                        <InputError
+                            message={form.errors.area_size}
                             className="mt-1"
                         />
                     </div>
@@ -220,7 +403,7 @@ export default function DraftingRevisionAddModal({
                         loading={form.processing}
                         className="rounded-lg normal-case tracking-normal"
                     >
-                        Add revision
+                        {isEditing ? 'Save item' : 'Add item'}
                     </PrimaryButton>
                 </div>
             </form>

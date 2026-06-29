@@ -161,8 +161,12 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('job.drafting.update');
     Route::post('/job/drafting/{draftingRequest}/revisions', [DraftingController::class, 'storeRevision'])
         ->name('job.drafting.revisions.store');
+    Route::patch('/job/drafting/{draftingRequest}/revisions/{revision}', [DraftingController::class, 'updateRevision'])
+        ->name('job.drafting.revisions.update');
     Route::post('/job/drafting/{draftingRequest}/accounts', [DraftingController::class, 'storeAccountEntry'])
         ->name('job.drafting.accounts.store');
+    Route::patch('/job/drafting/{draftingRequest}/accounts/{accountEntry}', [DraftingController::class, 'updateAccountEntry'])
+        ->name('job.drafting.accounts.update');
 
     Route::get('/job/drafting-request-form', [DraftingRequestFormController::class, 'create'])
         ->name('job.drafting-request-form');
