@@ -12,6 +12,7 @@ use App\Http\Controllers\Job\JobBoardController;
 use App\Http\Controllers\Job\PendingDraftingRequestController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileImageController;
+use App\Http\Controllers\WeeklyTimesheetController;
 use App\Http\Controllers\Public\PublicDraftingRequestFormController;
 use App\Http\Controllers\Settings\ActivityLogController;
 use App\Http\Controllers\Settings\BuildingTypeController;
@@ -22,12 +23,14 @@ use App\Http\Controllers\Settings\Crm\CrmCategoryController;
 use App\Http\Controllers\Settings\DeliverableController;
 use App\Http\Controllers\Settings\ExternalWallConstructionController;
 use App\Http\Controllers\Settings\LevelOfDifficultyController;
+use App\Http\Controllers\Settings\PasswordChangeRequestController;
 use App\Http\Controllers\Settings\RoleController;
 use App\Http\Controllers\Settings\RolePermissionController;
 use App\Http\Controllers\Settings\RoofTypeController;
 use App\Http\Controllers\Settings\ScopeOfWorkController;
 use App\Http\Controllers\Settings\ServiceEngagingController;
 use App\Http\Controllers\Settings\UserAccountController;
+use App\Http\Controllers\UserMilestoneController;
 use App\Http\Controllers\Settings\WorkflowSettingsController;
 use App\Http\Controllers\TimesheetController;
 use App\Support\PublicDraftingFormUrl;
@@ -111,6 +114,17 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('leave.credits.index');
     Route::post('/leave/credits', [LeaveCreditsController::class, 'store'])
         ->name('leave.credits.store');
+
+    Route::get('/settings/user-milestones', [UserMilestoneController::class, 'index'])
+        ->name('settings.user-milestones.index');
+    Route::get('/settings/user-milestones/{user}', [UserMilestoneController::class, 'show'])
+        ->name('settings.user-milestones.show');
+    Route::post('/settings/user-milestones/{user}', [UserMilestoneController::class, 'store'])
+        ->name('settings.user-milestones.store');
+    Route::patch('/settings/user-milestones/{user}/milestones/{milestone}', [UserMilestoneController::class, 'update'])
+        ->name('settings.user-milestones.update');
+    Route::delete('/settings/user-milestones/{user}/milestones/{milestone}', [UserMilestoneController::class, 'destroy'])
+        ->name('settings.user-milestones.destroy');
 
     Route::get('/job/list', [JobBoardController::class, 'list'])
         ->name('job.list');
@@ -197,7 +211,14 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::post('/profile/weekly-timesheet/entries', [WeeklyTimesheetController::class, 'storeEntry'])
+        ->name('profile.weekly-timesheet.entries.store');
+    Route::patch('/profile/weekly-timesheet/entries/{timesheetEntry}/hours', [WeeklyTimesheetController::class, 'updateHour'])
+        ->name('profile.weekly-timesheet.hours.update');
+    Route::patch('/profile/weekly-timesheet/entries/{timesheetEntry}/approval', [WeeklyTimesheetController::class, 'updateApproval'])
+        ->name('profile.weekly-timesheet.approval.update');
+    Route::delete('/profile/weekly-timesheet/entries/{timesheetEntry}', [WeeklyTimesheetController::class, 'destroyEntry'])
+        ->name('profile.weekly-timesheet.entries.destroy');
     Route::get('/profile-images/{user}', [ProfileImageController::class, 'show'])
         ->name('profile.image');
 
@@ -358,6 +379,13 @@ Route::middleware(['auth', 'admin', 'permission.route'])->group(function () {
         Route::delete('/{user}', [UserAccountController::class, 'destroy'])->name('destroy');
         Route::post('/{user}/restore', [UserAccountController::class, 'restore'])->name('restore');
     });
+
+    Route::get('/settings/password-requests', [PasswordChangeRequestController::class, 'index'])
+        ->name('settings.password-requests.index');
+    Route::post('/settings/password-requests/{passwordChangeRequest}/approve', [PasswordChangeRequestController::class, 'approve'])
+        ->name('settings.password-requests.approve');
+    Route::post('/settings/password-requests/{passwordChangeRequest}/decline', [PasswordChangeRequestController::class, 'decline'])
+        ->name('settings.password-requests.decline');
 
     Route::prefix('settings/roles')->name('settings.roles.')->group(function () {
         Route::get('/', [RoleController::class, 'index'])->name('index');

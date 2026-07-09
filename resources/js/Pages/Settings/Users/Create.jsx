@@ -9,6 +9,7 @@ export default function UsersCreate({ roles = [] }) {
     const form = useForm({
         name: '',
         email: '',
+        position: '',
         password: '',
         password_confirmation: '',
         role_id: roles[0]?.id ?? '',
@@ -66,6 +67,23 @@ export default function UsersCreate({ roles = [] }) {
                             autoComplete="username"
                         />
                         <InputError className="mt-2" message={form.errors.email} />
+                    </div>
+
+                    <div>
+                        <InputLabel htmlFor="position" value="Position" />
+                        <TextInput
+                            id="position"
+                            className="mt-1 block w-full"
+                            value={form.data.position}
+                            onChange={(e) =>
+                                form.setData('position', e.target.value)
+                            }
+                            placeholder="e.g. Project Manager"
+                        />
+                        <InputError
+                            className="mt-2"
+                            message={form.errors.position}
+                        />
                     </div>
 
                     <div>

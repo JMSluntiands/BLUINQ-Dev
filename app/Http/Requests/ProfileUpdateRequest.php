@@ -21,11 +21,11 @@ class ProfileUpdateRequest extends FormRequest
             'company_name' => ['nullable', 'string', 'max:255'],
             'employee_number' => ['nullable', 'string', 'max:50'],
             'job_title' => ['nullable', 'string', 'max:255'],
+            'date_hired' => ['nullable', 'date'],
             'birthday' => ['nullable', 'date'],
             'personal_details' => ['nullable', 'string', 'max:5000'],
             'personal_file_url' => ['nullable', 'url', 'max:2048'],
             'claims_excel_url' => ['nullable', 'url', 'max:2048'],
-            'achievements_milestones' => ['nullable', 'string', 'max:5000'],
             'profile_image' => ['nullable', 'image', 'max:2048'],
             'email' => [
                 'required',

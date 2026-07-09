@@ -23,6 +23,7 @@ export default function UsersEdit({ user, roles = [], listFilters = {} }) {
     const form = useForm({
         name: user.name,
         email: user.email,
+        position: user.position ?? '',
         role_id: user.role_id,
         password: '',
         password_confirmation: '',
@@ -82,6 +83,23 @@ export default function UsersEdit({ user, roles = [], listFilters = {} }) {
                             autoComplete="username"
                         />
                         <InputError className="mt-2" message={form.errors.email} />
+                    </div>
+
+                    <div>
+                        <InputLabel htmlFor="position" value="Position" />
+                        <TextInput
+                            id="position"
+                            className="mt-1 block w-full"
+                            value={form.data.position}
+                            onChange={(e) =>
+                                form.setData('position', e.target.value)
+                            }
+                            placeholder="e.g. Project Manager"
+                        />
+                        <InputError
+                            className="mt-2"
+                            message={form.errors.position}
+                        />
                     </div>
 
                     <div>

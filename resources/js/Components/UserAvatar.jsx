@@ -1,16 +1,5 @@
+import { badgeInitialsFromName } from '@/utils/badgeInitials';
 import { useState } from 'react';
-
-function initialFromName(name) {
-    if (!name || typeof name !== 'string') {
-        return '?';
-    }
-    const trimmed = name.trim();
-    if (!trimmed) {
-        return '?';
-    }
-    const char = trimmed[0];
-    return char.toLocaleUpperCase();
-}
 
 /**
  * Circular profile image, or first letter of name when missing / broken image.
@@ -22,7 +11,7 @@ export default function UserAvatar({
 }) {
     const [imageFailed, setImageFailed] = useState(false);
     const url = user?.profile_image_url;
-    const initial = initialFromName(user?.name);
+    const initial = badgeInitialsFromName(user?.name);
 
     const base =
         'flex shrink-0 select-none items-center justify-center rounded-full font-semibold uppercase tracking-tight text-white ' +

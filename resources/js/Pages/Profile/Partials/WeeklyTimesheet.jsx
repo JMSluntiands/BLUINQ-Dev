@@ -1,6 +1,6 @@
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
-import { Link, usePage } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { Link, router, usePage } from '@inertiajs/react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const DAY_LETTERS = ['M', 'T', 'W', 'TH', 'F', 'SA', 'SU'];
 const MONTH_ABBREVS = [
@@ -33,32 +33,13 @@ const MONTH_NAMES = [
 ];
 const STANDARD_HOURS = 8;
 
-const INITIAL_ROWS = [
-    {
-        id: 1,
-        revision: 'B26001-01',
-        jobId: null,
-        hours: [3, 4, 5, 10, 10, 0, 0],
-        approval: 'pending',
-    },
-    {
-        id: 2,
-        revision: 'B25123-02',
-        jobId: null,
-        hours: [8, 4, 2, 0, 0, 4, 0],
-        approval: 'pending',
-    },
-    {
-        id: 3,
-        revision: 'B26004-01',
-        jobId: null,
-        hours: [0, 0, 0, 0, 0, 0, 0],
-        approval: 'pending',
-    },
-];
-
 function toLocalDate(date) {
     return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function parseIsoDate(value) {
+    const [year, month, day] = value.split('-').map(Number);
+    return new Date(year, month - 1, day);
 }
 
 function startOfWeek(date) {
@@ -73,6 +54,13 @@ function addDays(date, days) {
     const d = toLocalDate(date);
     d.setDate(d.getDate() + days);
     return d;
+}
+
+function toIsoDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 function dateKey(date) {
@@ -176,36 +164,179 @@ function ApprovalCell({ status, canApprove, onApprove, onDecline }) {
     );
 }
 
-export default function WeeklyTimesheet() {
+function AddTaskMenu({ availableRevisions, standardTasks, weekStart, onClose }) {
+    const [revisionId, setRevisionId] = useState('');
+
+    const addStandardTask = (taskType) => {
+        router.post(
+            route('profile.weekly-timesheet.entries.store'),
+            {
+                week_start: weekStart,
+                task_type: taskType,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: onClose,
+            },
+        );
+    };
+
+    const addRevisionTask = (event) => {
+        event.preventDefault();
+        if (!revisionId) {
+            return;
+        }
+
+        router.post(
+            route('profile.weekly-timesheet.entries.store'),
+            {
+                week_start: weekStart,
+                task_type: 'revision',
+                revision_id: revisionId,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: onClose,
+            },
+        );
+    };
+
+    return (
+        <div className="absolute right-0 top-full z-20 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-lg dark:border-gray-700 dark:bg-[#0f1729]">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                Standard tasks
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+                {Object.entries(standardTasks).map(([taskType, label]) => (
+                    <button
+                        key={taskType}
+                        type="button"
+                        onClick={() => addStandardTask(taskType)}
+                        className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 transition hover:border-sky-500 hover:text-sky-600 dark:border-gray-700 dark:text-gray-200 dark:hover:border-sky-500 dark:hover:text-sky-400"
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>
+
+            <form onSubmit={addRevisionTask} className="mt-4 border-t border-slate-100 pt-3 dark:border-gray-800">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                    APM revision
+                </p>
+                <select
+                    value={revisionId}
+                    onChange={(event) => setRevisionId(event.target.value)}
+                    className="mt-2 block w-full rounded-lg border-slate-300 text-xs shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-gray-700 dark:bg-slate-900 dark:text-gray-100"
+                >
+                    <option value="">Select revision...</option>
+                    {availableRevisions.map((revision) => (
+                        <option key={revision.id} value={revision.id}>
+                            {revision.code}
+                            {revision.job_number ? ` · ${revision.job_number}` : ''}
+                        </option>
+                    ))}
+                </select>
+                <button
+                    type="submit"
+                    disabled={!revisionId}
+                    className="mt-2 w-full rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    Add revision task
+                </button>
+            </form>
+        </div>
+    );
+}
+
+export default function WeeklyTimesheet({ weeklyTimesheet }) {
     const { auth } = usePage().props;
     const canApprove = auth.user?.role === 'admin';
-    const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
-    const [rows, setRows] = useState(INITIAL_ROWS);
+    const [addMenuOpen, setAddMenuOpen] = useState(false);
+    const saveTimers = useRef({});
 
+    const weekStart = useMemo(
+        () => parseIsoDate(weeklyTimesheet?.week_start ?? toIsoDate(startOfWeek(new Date()))),
+        [weeklyTimesheet?.week_start],
+    );
     const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart]);
-    const dayTotals = useMemo(() => calcDayTotals(rows), [rows]);
+    const rows = weeklyTimesheet?.rows ?? [];
+    const availableRevisions = weeklyTimesheet?.available_revisions ?? [];
+    const standardTasks = weeklyTimesheet?.standard_tasks ?? {};
+    const [localRows, setLocalRows] = useState(rows);
+    const dayTotals = useMemo(() => calcDayTotals(localRows), [localRows]);
 
-    const updateHour = (rowId, dayIndex, value) => {
-        setRows((current) =>
+    useEffect(() => {
+        setLocalRows(rows);
+    }, [rows]);
+
+    useEffect(() => {
+        return () => {
+            Object.values(saveTimers.current).forEach(clearTimeout);
+        };
+    }, []);
+
+    const navigateWeek = (offsetDays) => {
+        const nextWeek = addDays(weekStart, offsetDays);
+        router.get(
+            route('profile.edit'),
+            { week: toIsoDate(nextWeek) },
+            { preserveState: false, preserveScroll: true },
+        );
+    };
+
+    const persistHour = (rowId, dayIndex, value) => {
+        const hours = clampHour(value);
+        const workDate = toIsoDate(weekDays[dayIndex]);
+        const timerKey = `${rowId}-${dayIndex}`;
+
+        setLocalRows((current) =>
             current.map((row) => {
                 if (row.id !== rowId) {
                     return row;
                 }
 
-                const hours = [...row.hours];
-                hours[dayIndex] = clampHour(value);
+                const nextHours = [...row.hours];
+                nextHours[dayIndex] = hours;
 
-                return { ...row, hours };
+                return { ...row, hours: nextHours };
             }),
         );
+
+        if (saveTimers.current[timerKey]) {
+            clearTimeout(saveTimers.current[timerKey]);
+        }
+
+        saveTimers.current[timerKey] = setTimeout(() => {
+            router.patch(
+                route('profile.weekly-timesheet.hours.update', rowId),
+                {
+                    work_date: workDate,
+                    hours,
+                },
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                },
+            );
+        }, 400);
     };
 
     const updateApproval = (rowId, approval) => {
-        setRows((current) =>
-            current.map((row) =>
-                row.id === rowId ? { ...row, approval } : row,
-            ),
+        router.patch(
+            route('profile.weekly-timesheet.approval.update', rowId),
+            { approval_status: approval },
+            { preserveScroll: true },
         );
+    };
+
+    const removeRow = (rowId) => {
+        if (!window.confirm('Remove this task row from the timesheet?')) {
+            return;
+        }
+
+        router.delete(route('profile.weekly-timesheet.entries.destroy', rowId), {
+            preserveScroll: true,
+        });
     };
 
     return (
@@ -218,12 +349,29 @@ export default function WeeklyTimesheet() {
                     </h3>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative">
+                        <button
+                            type="button"
+                            onClick={() => setAddMenuOpen((open) => !open)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-sky-500 hover:text-sky-600 dark:border-gray-700 dark:text-gray-200 dark:hover:border-sky-500 dark:hover:text-sky-400"
+                        >
+                            <PlusIcon className="h-4 w-4" />
+                            Add task
+                        </button>
+                        {addMenuOpen && (
+                            <AddTaskMenu
+                                availableRevisions={availableRevisions}
+                                standardTasks={standardTasks}
+                                weekStart={weeklyTimesheet.week_start}
+                                onClose={() => setAddMenuOpen(false)}
+                            />
+                        )}
+                    </div>
+
                     <button
                         type="button"
-                        onClick={() =>
-                            setWeekStart((current) => addDays(current, -7))
-                        }
+                        onClick={() => navigateWeek(-7)}
                         className="rounded-md border border-slate-200 p-1 text-slate-500 transition hover:border-blue-500/40 hover:text-blue-500 dark:border-gray-700 dark:text-gray-400 dark:hover:text-blue-400"
                         aria-label="Previous week"
                     >
@@ -234,9 +382,7 @@ export default function WeeklyTimesheet() {
                     </p>
                     <button
                         type="button"
-                        onClick={() =>
-                            setWeekStart((current) => addDays(current, 7))
-                        }
+                        onClick={() => navigateWeek(7)}
                         className="rounded-md border border-slate-200 p-1 text-slate-500 transition hover:border-blue-500/40 hover:text-blue-500 dark:border-gray-700 dark:text-gray-400 dark:hover:text-blue-400"
                         aria-label="Next week"
                     >
@@ -246,136 +392,157 @@ export default function WeeklyTimesheet() {
             </div>
 
             <div className="overflow-x-auto px-3 py-4 sm:px-5">
-                <table className="w-full min-w-[760px] border-collapse text-center text-xs">
-                    <thead>
-                        <tr>
-                            <th className="border border-slate-200 bg-slate-50 px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-[0.12em] text-blue-600 dark:border-gray-800 dark:bg-[#0f1729] dark:text-blue-500">
-                                Revision
-                            </th>
-                            {weekDays.map((day, dayIndex) => {
-                                const { letter, dateLabel } = formatDayHeader(
-                                    day,
-                                    dayIndex,
-                                );
+                {localRows.length === 0 ? (
+                    <div className="px-3 py-10 text-center text-sm text-slate-500 dark:text-gray-400">
+                        No tasks for this week. Use <strong>Add task</strong> to
+                        link an APM revision or add Admin, Training, or Meeting.
+                    </div>
+                ) : (
+                    <table className="w-full min-w-[760px] border-collapse text-center text-xs">
+                        <thead>
+                            <tr>
+                                <th className="border border-slate-200 bg-slate-50 px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-[0.12em] text-blue-600 dark:border-gray-800 dark:bg-[#0f1729] dark:text-blue-500">
+                                    Task
+                                </th>
+                                {weekDays.map((day, dayIndex) => {
+                                    const { letter, dateLabel } = formatDayHeader(
+                                        day,
+                                        dayIndex,
+                                    );
+
+                                    return (
+                                        <th
+                                            key={dateKey(day)}
+                                            className="min-w-[4.5rem] border border-slate-200 bg-slate-50 px-1.5 py-2 text-center dark:border-gray-800 dark:bg-[#0f1729]"
+                                        >
+                                            <span className="block whitespace-nowrap text-[10px] font-bold uppercase leading-tight tracking-wide text-blue-600 dark:text-blue-500">
+                                                {dateLabel}
+                                            </span>
+                                            <span className="mt-1 block text-[11px] font-bold uppercase leading-none text-blue-600 dark:text-blue-500">
+                                                {letter}
+                                            </span>
+                                        </th>
+                                    );
+                                })}
+                                <th className="border border-slate-200 bg-slate-50 px-2 py-2.5 text-[10px] font-bold uppercase tracking-wide text-blue-600 dark:border-gray-800 dark:bg-[#0f1729] dark:text-blue-500">
+                                    Overtime
+                                </th>
+                                <th className="border border-slate-200 bg-slate-50 px-2 py-2.5 text-[10px] font-bold uppercase tracking-wide text-blue-600 dark:border-gray-800 dark:bg-[#0f1729] dark:text-blue-500">
+                                    Approval
+                                </th>
+                                <th className="border border-slate-200 bg-slate-50 px-2 py-2.5 dark:border-gray-800 dark:bg-[#0f1729]" />
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {localRows.map((row) => {
+                                const overtime = calcOvertime(row.hours);
 
                                 return (
-                                    <th
-                                        key={dateKey(day)}
-                                        className="min-w-[4.5rem] border border-slate-200 bg-slate-50 px-1.5 py-2 text-center dark:border-gray-800 dark:bg-[#0f1729]"
-                                    >
-                                        <span className="block whitespace-nowrap text-[10px] font-bold uppercase leading-tight tracking-wide text-blue-600 dark:text-blue-500">
-                                            {dateLabel}
-                                        </span>
-                                        <span className="mt-1 block text-[11px] font-bold uppercase leading-none text-blue-600 dark:text-blue-500">
-                                            {letter}
-                                        </span>
-                                    </th>
-                                );
-                            })}
-                            <th className="border border-slate-200 bg-slate-50 px-2 py-2.5 text-[10px] font-bold uppercase tracking-wide text-blue-600 dark:border-gray-800 dark:bg-[#0f1729] dark:text-blue-500">
-                                Overtime
-                            </th>
-                            <th className="border border-slate-200 bg-slate-50 px-2 py-2.5 text-[10px] font-bold uppercase tracking-wide text-blue-600 dark:border-gray-800 dark:bg-[#0f1729] dark:text-blue-500">
-                                Approval
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map((row) => {
-                            const overtime = calcOvertime(row.hours);
-
-                            return (
-                                <tr key={row.id}>
-                                    <td className="border border-slate-200 px-3 py-2 text-left dark:border-gray-800">
-                                        {row.jobId ? (
-                                            <Link
-                                                href={route(
-                                                    'job.drafting.show',
-                                                    row.jobId,
-                                                )}
-                                                className="font-semibold text-blue-600 hover:underline dark:text-blue-400"
+                                    <tr key={row.id}>
+                                        <td className="border border-slate-200 px-3 py-2 text-left dark:border-gray-800">
+                                            {row.is_linked && row.job_id ? (
+                                                <Link
+                                                    href={route(
+                                                        'job.drafting.show',
+                                                        row.job_id,
+                                                    )}
+                                                    className="font-semibold text-blue-600 hover:underline dark:text-blue-400"
+                                                >
+                                                    {row.task_label}
+                                                </Link>
+                                            ) : (
+                                                <span className="font-semibold text-slate-800 dark:text-gray-200">
+                                                    {row.task_label}
+                                                </span>
+                                            )}
+                                            <p className="mt-0.5 text-[10px] uppercase tracking-wide text-slate-400 dark:text-gray-600">
+                                                {row.is_linked
+                                                    ? 'Linked from APM'
+                                                    : 'Standard task'}
+                                            </p>
+                                        </td>
+                                        {row.hours.map((hour, dayIndex) => (
+                                            <td
+                                                key={`${row.id}-${dayIndex}`}
+                                                className="border border-slate-200 p-1 dark:border-gray-800"
                                             >
-                                                {row.revision}
-                                            </Link>
-                                        ) : (
-                                            <span className="font-semibold text-slate-800 dark:text-gray-200">
-                                                {row.revision}
-                                            </span>
-                                        )}
-                                        <p className="mt-0.5 text-[10px] uppercase tracking-wide text-slate-400 dark:text-gray-600">
-                                            Linked from job list
-                                        </p>
-                                    </td>
-                                    {row.hours.map((hour, dayIndex) => (
-                                        <td
-                                            key={`${row.id}-${dayIndex}`}
-                                            className="border border-slate-200 p-1 dark:border-gray-800"
-                                        >
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                max="24"
-                                                step="0.5"
-                                                value={hour}
-                                                onChange={(e) =>
-                                                    updateHour(
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    max="24"
+                                                    step="0.5"
+                                                    value={hour}
+                                                    onChange={(e) =>
+                                                        persistHour(
+                                                            row.id,
+                                                            dayIndex,
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    className="w-12 rounded border-0 bg-transparent px-1 py-1 text-center text-sm font-medium text-slate-800 focus:bg-blue-500/5 focus:ring-1 focus:ring-blue-500/40 dark:text-gray-100 dark:focus:bg-blue-500/10"
+                                                />
+                                            </td>
+                                        ))}
+                                        <td className="border border-slate-200 px-2 py-2 font-semibold text-slate-800 dark:border-gray-800 dark:text-gray-200">
+                                            {overtime}
+                                        </td>
+                                        <td className="border border-slate-200 px-2 py-2 dark:border-gray-800">
+                                            <ApprovalCell
+                                                status={row.approval}
+                                                canApprove={canApprove}
+                                                onApprove={() =>
+                                                    updateApproval(
                                                         row.id,
-                                                        dayIndex,
-                                                        e.target.value,
+                                                        'approved',
                                                     )
                                                 }
-                                                className="w-12 rounded border-0 bg-transparent px-1 py-1 text-center text-sm font-medium text-slate-800 focus:bg-blue-500/5 focus:ring-1 focus:ring-blue-500/40 dark:text-gray-100 dark:focus:bg-blue-500/10"
+                                                onDecline={() =>
+                                                    updateApproval(
+                                                        row.id,
+                                                        'declined',
+                                                    )
+                                                }
                                             />
                                         </td>
-                                    ))}
-                                    <td className="border border-slate-200 px-2 py-2 font-semibold text-slate-800 dark:border-gray-800 dark:text-gray-200">
-                                        {overtime}
-                                    </td>
-                                    <td className="border border-slate-200 px-2 py-2 dark:border-gray-800">
-                                        <ApprovalCell
-                                            status={row.approval}
-                                            canApprove={canApprove}
-                                            onApprove={() =>
-                                                updateApproval(
-                                                    row.id,
-                                                    'approved',
-                                                )
-                                            }
-                                            onDecline={() =>
-                                                updateApproval(
-                                                    row.id,
-                                                    'declined',
-                                                )
-                                            }
-                                        />
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                        <tr className="bg-slate-50/80 dark:bg-[#0f1729]/80">
-                            <td className="border border-slate-200 px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600 dark:border-gray-800 dark:text-gray-400">
-                                Total hours per day
-                            </td>
-                            {dayTotals.map((total, index) => (
-                                <td
-                                    key={`total-${index}`}
-                                    className="border border-slate-200 px-2 py-2.5 font-bold text-slate-800 dark:border-gray-800 dark:text-gray-200"
-                                >
-                                    {total}
+                                        <td className="border border-slate-200 px-2 py-2 dark:border-gray-800">
+                                            <button
+                                                type="button"
+                                                onClick={() => removeRow(row.id)}
+                                                className="rounded p-1 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                                                title="Remove task"
+                                            >
+                                                <TrashIcon className="h-4 w-4" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                            <tr className="bg-slate-50/80 dark:bg-[#0f1729]/80">
+                                <td className="border border-slate-200 px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600 dark:border-gray-800 dark:text-gray-400">
+                                    Total hours per day
                                 </td>
-                            ))}
-                            <td
-                                className="border border-slate-200 dark:border-gray-800"
-                                colSpan={2}
-                            />
-                        </tr>
-                    </tbody>
-                </table>
+                                {dayTotals.map((total, index) => (
+                                    <td
+                                        key={`total-${index}`}
+                                        className="border border-slate-200 px-2 py-2.5 font-bold text-slate-800 dark:border-gray-800 dark:text-gray-200"
+                                    >
+                                        {total}
+                                    </td>
+                                ))}
+                                <td
+                                    className="border border-slate-200 dark:border-gray-800"
+                                    colSpan={3}
+                                />
+                            </tr>
+                        </tbody>
+                    </table>
+                )}
             </div>
 
             <div className="border-t border-slate-100 px-5 py-3 text-[11px] text-slate-500 dark:border-gray-800/70 dark:text-gray-500 sm:px-6">
-                Hours are entered manually per job. Overtime is auto-calculated
-                for any day over {STANDARD_HOURS} hours.
+                Link APM revisions or add Admin, Training, and Meeting tasks.
+                Revision task hours sync with APM drafting hours automatically.
+                Overtime is calculated for any day over {STANDARD_HOURS} hours.
                 {canApprove
                     ? ' You can approve or decline entries as admin.'
                     : ' Approval is handled by admin or manager.'}

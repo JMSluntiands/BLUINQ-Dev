@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\PasswordChangeRequest;
+use App\Services\WeeklyTimesheetService;
+use Carbon\Carbon;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -14,16 +16,26 @@ use Inertia\Response;
 
 class ProfileController extends Controller
 {
+    public function __construct(
+        private WeeklyTimesheetService $weeklyTimesheet,
+    ) {}
+
     /**
      * Display the user's profile form.
      */
     public function edit(Request $request): Response
     {
         $user = $request->user();
-        $user->loadMissing('role');
+        $user->loadMissing(['role', 'milestones']);
+
+        $weekStart = $request->filled('week')
+            ? Carbon::parse((string) $request->input('week'))->startOfWeek(Carbon::MONDAY)
+            : now()->startOfWeek(Carbon::MONDAY);
 
         return Inertia::render('Profile/Edit', [
             'profile' => $this->profilePayload($user),
+            'weeklyTimesheet' => $this->weeklyTimesheet->payloadForUser($user, $weekStart),
+            'passwordChangeRequest' => $this->passwordChangeRequestPayload($user),
             'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => session('status'),
         ]);
@@ -68,11 +80,19 @@ class ProfileController extends Controller
             'company_name' => $user->company_name,
             'employee_number' => $user->employee_number,
             'job_title' => $user->job_title,
+            'position' => $user->position,
+            'date_hired' => $user->date_hired?->format('Y-m-d'),
+            'leave_credits' => $user->leave_credits,
             'birthday' => $user->birthday?->format('Y-m-d'),
             'personal_details' => $user->personal_details,
             'personal_file_url' => $user->personal_file_url,
             'claims_excel_url' => $user->claims_excel_url,
-            'achievements_milestones' => $user->achievements_milestones,
+            'milestones' => $user->milestones->map(fn ($milestone) => [
+                'id' => $milestone->id,
+                'milestone_date_label' => $milestone->milestone_date->format('M Y'),
+                'title' => $milestone->title,
+                'impact_result' => $milestone->impact_result,
+            ]),
             'profile_image_url' => $user->profile_image_url,
             'role_display_name' => $user->role?->name,
             'email_verified_at' => $user->email_verified_at,
@@ -80,23 +100,24 @@ class ProfileController extends Controller
     }
 
     /**
-     * Delete the user's account.
+     * @return array<string, mixed>|null
      */
-    public function destroy(Request $request): RedirectResponse
+    private function passwordChangeRequestPayload($user): ?array
     {
-        $request->validate([
-            'password' => ['required', 'current_password'],
-        ]);
+        $pending = PasswordChangeRequest::query()
+            ->where('user_id', $user->id)
+            ->where('status', PasswordChangeRequest::STATUS_PENDING)
+            ->latest('id')
+            ->first();
 
-        $user = $request->user();
+        if ($pending === null) {
+            return null;
+        }
 
-        Auth::logout();
-
-        $user->delete();
-
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        return Redirect::to('/');
+        return [
+            'id' => $pending->id,
+            'status' => $pending->status,
+            'requested_at' => $pending->created_at?->timezone(config('app.timezone'))->format('d M Y, h:i A'),
+        ];
     }
 }

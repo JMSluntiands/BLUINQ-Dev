@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\PasswordChangeRequest;
 use App\Models\Permission;
 use App\Services\DraftingRequestReviewService;
 use App\Services\LeaveService;
@@ -54,6 +55,9 @@ class HandleInertiaRequests extends Middleware
             ],
             'pendingLeaveCount' => $user?->hasPermission('leave.manage')
                 ? app(LeaveService::class)->pendingCount()
+                : 0,
+            'pendingPasswordChangeCount' => $user?->hasPermission('settings.user-accounts.manage')
+                ? PasswordChangeRequest::query()->pending()->count()
                 : 0,
             'pendingDraftingRequestCount' => $user?->hasPermission('job.drafting-request.review')
                 ? app(DraftingRequestReviewService::class)->pendingCount()

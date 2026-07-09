@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\PasswordChangeRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -11,7 +12,7 @@ use Illuminate\Validation\Rules\Password;
 class PasswordController extends Controller
 {
     /**
-     * Update the user's password.
+     * Submit a password change request for admin approval.
      */
     public function update(Request $request): RedirectResponse
     {
@@ -20,10 +21,19 @@ class PasswordController extends Controller
             'password' => ['required', Password::defaults(), 'confirmed'],
         ]);
 
-        $request->user()->update([
+        $user = $request->user();
+
+        PasswordChangeRequest::query()
+            ->where('user_id', $user->id)
+            ->where('status', PasswordChangeRequest::STATUS_PENDING)
+            ->update(['status' => PasswordChangeRequest::STATUS_CANCELLED]);
+
+        PasswordChangeRequest::query()->create([
+            'user_id' => $user->id,
             'password' => Hash::make($validated['password']),
+            'status' => PasswordChangeRequest::STATUS_PENDING,
         ]);
 
-        return back();
+        return back()->with('status', 'password-change-requested');
     }
 }

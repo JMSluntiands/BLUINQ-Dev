@@ -25,6 +25,7 @@ use App\Models\DraftingRequestRevision;
 use App\Models\User;
 use App\Services\DraftingJobShowService;
 use App\Services\DraftingRequestBoardService;
+use App\Services\TimesheetDraftingHoursSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -42,6 +43,7 @@ class DraftingController extends Controller
     public function __construct(
         private DraftingJobShowService $jobShow,
         private DraftingRequestBoardService $board,
+        private TimesheetDraftingHoursSyncService $timesheetSync,
     ) {}
 
     public function index(Request $request): Response
@@ -441,6 +443,7 @@ class DraftingController extends Controller
         );
 
         $this->board->syncRevisionHoursToAssignments($draftingRequest, $revision);
+        $this->timesheetSync->syncRevisionToTimesheet($revision->fresh());
 
         return redirect()
             ->route('job.drafting.show', [
@@ -503,6 +506,7 @@ class DraftingController extends Controller
         );
 
         $this->board->syncRevisionHoursToAssignments($draftingRequest, $revision->fresh());
+        $this->timesheetSync->syncRevisionToTimesheet($revision->fresh());
 
         return redirect()
             ->route('job.drafting.show', [

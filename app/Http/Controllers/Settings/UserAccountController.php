@@ -21,7 +21,6 @@ class UserAccountController extends Controller
         $query = User::query()
             ->with('role')
             ->active()
-            ->whereHas('role', fn ($q) => $q->where('slug', '!=', 'admin'))
             ->orderBy('name');
 
         if ($search !== '') {
@@ -38,6 +37,7 @@ class UserAccountController extends Controller
                     'id' => $u->id,
                     'name' => $u->name,
                     'email' => $u->email,
+                    'position' => $u->position,
                     'role' => $u->role?->slug,
                     'role_name' => $u->role?->name,
                 ])
@@ -63,6 +63,8 @@ class UserAccountController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class.',email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role_id' => ['required', Rule::exists('roles', 'id')],
+            'position' => ['nullable', 'string', 'max:255'],
+            'date_hired' => ['nullable', 'date'],
         ]);
 
         User::query()->create([
@@ -70,6 +72,8 @@ class UserAccountController extends Controller
             'email' => $validated['email'],
             'password' => $validated['password'],
             'role_id' => (int) $validated['role_id'],
+            'position' => $validated['position'] ?? null,
+            'date_hired' => $validated['date_hired'] ?? null,
         ]);
 
         return redirect()
@@ -90,6 +94,8 @@ class UserAccountController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'position' => $user->position,
+                'date_hired' => $user->date_hired?->format('Y-m-d'),
                 'role' => $user->role?->slug,
                 'role_id' => $user->role_id,
             ],
@@ -117,6 +123,8 @@ class UserAccountController extends Controller
             ],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'role_id' => ['required', Rule::exists('roles', 'id')],
+            'position' => ['nullable', 'string', 'max:255'],
+            'date_hired' => ['nullable', 'date'],
         ]);
 
         $newRole = Role::query()->findOrFail((int) $validated['role_id']);
@@ -137,6 +145,8 @@ class UserAccountController extends Controller
         $user->name = $validated['name'];
         $user->email = $validated['email'];
         $user->role_id = (int) $validated['role_id'];
+        $user->position = $validated['position'] ?? null;
+        $user->date_hired = $validated['date_hired'] ?? null;
 
         if (! empty($validated['password'])) {
             $user->password = $validated['password'];
@@ -209,6 +219,7 @@ class UserAccountController extends Controller
                     'id' => $u->id,
                     'name' => $u->name,
                     'email' => $u->email,
+                    'position' => $u->position,
                     'role' => $u->role?->slug,
                     'role_name' => $u->role?->name,
                     'archived_at' => $u->archived_at?->toIso8601String(),

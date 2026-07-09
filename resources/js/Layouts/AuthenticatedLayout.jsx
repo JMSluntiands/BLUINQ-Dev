@@ -15,6 +15,7 @@ import {
     DocumentTextIcon,
     Squares2X2Icon,
     ShieldCheckIcon,
+    SparklesIcon,
     UsersIcon,
     WrenchScrewdriverIcon,
     XMarkIcon,
@@ -79,7 +80,7 @@ function SidebarSubLink({ href, active, children, onNavigate }) {
 }
 
 export default function AuthenticatedLayout({ header, children }) {
-    const { auth, logo_url: logoUrl, pendingLeaveCount = 0, pendingDraftingRequestCount = 0 } = usePage().props;
+    const { auth, logo_url: logoUrl, pendingLeaveCount = 0, pendingDraftingRequestCount = 0, pendingPasswordChangeCount = 0 } = usePage().props;
     const user = auth.user;
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -116,6 +117,7 @@ export default function AuthenticatedLayout({ header, children }) {
     const canTimesheet = can('timesheet.view');
     const canManageLeave = can('leave.manage');
     const canManageLeaveCredits = can('leave.credits.manage');
+    const canManageUserMilestones = can('profile.milestones.manage');
     const canDraftingMemos = can('drafting-memos.view');
     const canDraftingArchive = can('job.drafting.archive');
     const canArchiProject =
@@ -135,6 +137,9 @@ export default function AuthenticatedLayout({ header, children }) {
     const isTimesheet = route().current('timesheet.index');
     const isLeaveApprovals = route().current('leave.approvals');
     const isLeaveCredits = route().current('leave.credits.index');
+    const isUserMilestones =
+        route().current('settings.user-milestones.index') ||
+        route().current('settings.user-milestones.show');
     const isJobBoard =
         route().current('job.board') || route().current('job.drafting');
     const isDraftingList = isJobBoard || route().current('job.drafting.show');
@@ -155,6 +160,7 @@ export default function AuthenticatedLayout({ header, children }) {
     const isUsersArchive = route().current('settings.users.archive');
     const isUsersSection =
         isUsersIndex || isUsersCreate || isUsersEdit || isUsersArchive;
+    const isPasswordRequests = route().current('settings.password-requests.index');
     const isPermissions = route().current('settings.permissions.edit');
     const isActivityLogs = route().current('settings.activity-logs.index');
     const isProfile = route().current('profile.edit');
@@ -180,7 +186,8 @@ export default function AuthenticatedLayout({ header, children }) {
         canActivityLogs ||
         canRoles ||
         canManageLeave ||
-        canManageLeaveCredits;
+        canManageLeaveCredits ||
+        canManageUserMilestones;
     const showWorkflowSettings =
         canServiceEngaging ||
         canExternalWallConstruction ||
@@ -431,7 +438,9 @@ export default function AuthenticatedLayout({ header, children }) {
                                     Workflow settings
                                 </NavItem>
                             )}
-                            {(canManageLeave || canManageLeaveCredits) && (
+                            {(canManageLeave ||
+                                canManageLeaveCredits ||
+                                canManageUserMilestones) && (
                                 <>
                                     <p
                                         className={
@@ -441,7 +450,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                                 : 'pt-1')
                                         }
                                     >
-                                        Leave
+                                        HR
                                     </p>
                                     {canManageLeave && (
                                         <NavItem
@@ -480,6 +489,23 @@ export default function AuthenticatedLayout({ header, children }) {
                                             Credits
                                         </NavItem>
                                     )}
+                                    {canManageUserMilestones && (
+                                        <NavItem
+                                            href={route(
+                                                'settings.user-milestones.index',
+                                            )}
+                                            active={isUserMilestones}
+                                            onNavigate={closeSidebar}
+                                            icon={
+                                                <SparklesIcon
+                                                    className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
+                                                    aria-hidden
+                                                />
+                                            }
+                                        >
+                                            Milestones
+                                        </NavItem>
+                                    )}
                                 </>
                             )}
                             {(canUserAccounts ||
@@ -492,7 +518,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                             'px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 ' +
                                             (showWorkflowSettings ||
                                             canManageLeave ||
-                                            canManageLeaveCredits
+                                            canManageLeaveCredits ||
+                                            canManageUserMilestones
                                                 ? 'pt-3'
                                                 : 'pt-1')
                                         }
@@ -512,6 +539,28 @@ export default function AuthenticatedLayout({ header, children }) {
                                             }
                                         >
                                             User accounts
+                                        </NavItem>
+                                    )}
+                                    {canUserAccounts && (
+                                        <NavItem
+                                            href={route('settings.password-requests.index')}
+                                            active={isPasswordRequests}
+                                            onNavigate={closeSidebar}
+                                            icon={
+                                                <KeyIcon
+                                                    className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
+                                                    aria-hidden
+                                                />
+                                            }
+                                        >
+                                            <span className="flex flex-1 items-center justify-between gap-2">
+                                                Password requests
+                                                {pendingPasswordChangeCount > 0 && (
+                                                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold leading-none text-white">
+                                                        {pendingPasswordChangeCount}
+                                                    </span>
+                                                )}
+                                            </span>
                                         </NavItem>
                                     )}
                                     {canRoles && (

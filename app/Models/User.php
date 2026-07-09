@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
@@ -30,6 +31,8 @@ class User extends Authenticatable
         'company_name',
         'employee_number',
         'job_title',
+        'position',
+        'date_hired',
         'birthday',
         'personal_details',
         'personal_file_url',
@@ -72,6 +75,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'archived_at' => 'datetime',
             'birthday' => 'date',
+            'date_hired' => 'date',
             'leave_credits' => 'integer',
         ];
     }
@@ -100,6 +104,14 @@ class User extends Authenticatable
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class);
+    }
+
+    /**
+     * @return HasMany<UserMilestone, $this>
+     */
+    public function milestones(): HasMany
+    {
+        return $this->hasMany(UserMilestone::class)->orderByDesc('milestone_date');
     }
 
     public function isAdmin(): bool
@@ -137,7 +149,7 @@ class User extends Authenticatable
             );
         }
 
-        return mb_strtoupper(mb_substr($name, 0, min(2, mb_strlen($name))));
+        return mb_strtoupper(mb_substr($name, 0, min(3, mb_strlen($name))));
     }
 
     /**

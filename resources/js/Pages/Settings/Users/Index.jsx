@@ -100,6 +100,16 @@ export default function UsersIndex({ users, filters = {} }) {
                     <span className="text-[#323338]">{getValue()}</span>
                 ),
             }),
+            columnHelper.accessor('position', {
+                header: ({ column }) => (
+                    <DataTableSortHeader column={column}>
+                        Position
+                    </DataTableSortHeader>
+                ),
+                cell: ({ getValue }) => (
+                    <span className="text-[#676879]">{getValue() || '—'}</span>
+                ),
+            }),
             columnHelper.accessor('role_name', {
                 header: ({ column }) => (
                     <DataTableSortHeader column={column}>
@@ -174,6 +184,12 @@ export default function UsersIndex({ users, filters = {} }) {
                             className="inline-flex items-center rounded-lg bg-[#0073ea] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0060c4]"
                         >
                             Add user
+                        </Link>
+                        <Link
+                            href={route('settings.password-requests.index')}
+                            className="inline-flex items-center rounded-lg border border-[#c5c7d0] bg-white px-3 py-2 text-sm font-semibold text-[#323338] shadow-sm transition hover:bg-[#f6f7fb]"
+                        >
+                            Password requests
                         </Link>
                         <Link
                             href={

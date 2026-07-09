@@ -3,12 +3,17 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import { Transition } from '@headlessui/react';
-import { useForm } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 import { useRef } from 'react';
 
-export default function UpdatePasswordForm({ className = '' }) {
+export default function UpdatePasswordForm({
+    passwordChangeRequest = null,
+    className = '',
+}) {
+    const { flash } = usePage().props;
     const passwordInput = useRef();
     const currentPasswordInput = useRef();
+    const hasPendingRequest = passwordChangeRequest?.status === 'pending';
 
     const {
         data,
@@ -44,18 +49,31 @@ export default function UpdatePasswordForm({ className = '' }) {
         });
     };
 
+    const showSuccess =
+        recentlySuccessful || flash?.status === 'password-change-requested';
+
     return (
         <section className={className}>
             <header>
                 <h2 className="text-lg font-medium text-gray-900 dark:text-slate-100">
-                    Update Password
+                    Password change
                 </h2>
 
                 <p className="mt-1 text-sm text-gray-600 dark:text-slate-400">
-                    Ensure your account is using a long, random password to stay
-                    secure.
+                    Submit a new password for admin approval. Your password will
+                    not change until an administrator approves the request.
                 </p>
             </header>
+
+            {hasPendingRequest && (
+                <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+                    <p className="font-semibold">Pending admin approval</p>
+                    <p className="mt-1 text-amber-800 dark:text-amber-200/90">
+                        Submitted on {passwordChangeRequest.requested_at}. You can
+                        submit a new request to replace the pending one.
+                    </p>
+                </div>
+            )}
 
             <form onSubmit={updatePassword} className="mt-6 space-y-6">
                 <div>
@@ -122,17 +140,19 @@ export default function UpdatePasswordForm({ className = '' }) {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <PrimaryButton loading={processing}>Save</PrimaryButton>
+                    <PrimaryButton loading={processing}>
+                        Request password change
+                    </PrimaryButton>
 
                     <Transition
-                        show={recentlySuccessful}
+                        show={showSuccess}
                         enter="transition ease-in-out"
                         enterFrom="opacity-0"
                         leave="transition ease-in-out"
                         leaveTo="opacity-0"
                     >
                         <p className="text-sm text-gray-600 dark:text-slate-400">
-                            Saved.
+                            Request submitted for admin approval.
                         </p>
                     </Transition>
                 </div>
