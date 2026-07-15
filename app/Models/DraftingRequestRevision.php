@@ -15,6 +15,8 @@ class DraftingRequestRevision extends Model
         'category',
         'drafter_user_id',
         'drafter_initials',
+        'checker_user_id',
+        'checker_initials',
         'drafting_hours',
         'checking_hours',
         'status',
@@ -57,5 +59,13 @@ class DraftingRequestRevision extends Model
     public function drafter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'drafter_user_id');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function checker(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'checker_user_id');
     }
 }

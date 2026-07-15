@@ -47,6 +47,13 @@ class UpdateDraftingRequestRevisionRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->input('checker_user_id') === '') {
+            $this->merge(['checker_user_id' => null]);
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -79,6 +86,13 @@ class UpdateDraftingRequestRevisionRequest extends FormRequest
                     fn ($query) => $query->whereNull('archived_at'),
                 ),
             ],
+            'checker_user_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('users', 'id')->where(
+                    fn ($query) => $query->whereNull('archived_at'),
+                ),
+            ],
             'drafting_hours' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
             'checking_hours' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
             'status' => ['required', 'string', Rule::in(DraftingRequest::statusValues())],
@@ -95,10 +109,11 @@ class UpdateDraftingRequestRevisionRequest extends FormRequest
         return [
             'code.required' => 'Enter a job number.',
             'code.regex' => 'Use format YY001 or YY001-01 (e.g. 26001 or 26001-01).',
-            'log_date.required' => 'Select a log date.',
+            'log_date.required' => 'Select a date in.',
             'category.required' => 'Select a category.',
-            'drafter_user_id.required' => 'Select a user.',
-            'drafter_user_id.exists' => 'Select a valid user.',
+            'drafter_user_id.required' => 'Select a drafter.',
+            'drafter_user_id.exists' => 'Select a valid drafter.',
+            'checker_user_id.exists' => 'Select a valid checker.',
         ];
     }
 }

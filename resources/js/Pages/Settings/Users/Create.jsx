@@ -5,11 +5,13 @@ import TextInput from '@/Components/TextInput';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 
-export default function UsersCreate({ roles = [] }) {
+export default function UsersCreate({ roles = [], employmentStatuses = {} }) {
     const form = useForm({
         name: '',
         email: '',
         position: '',
+        date_hired: '',
+        employment_status: 'regular',
         password: '',
         password_confirmation: '',
         role_id: roles[0]?.id ?? '',
@@ -83,6 +85,57 @@ export default function UsersCreate({ roles = [] }) {
                         <InputError
                             className="mt-2"
                             message={form.errors.position}
+                        />
+                    </div>
+
+                    <div>
+                        <InputLabel htmlFor="date_hired" value="Date hired" />
+                        <TextInput
+                            id="date_hired"
+                            type="date"
+                            className="mt-1 block w-full"
+                            value={form.data.date_hired}
+                            onChange={(e) =>
+                                form.setData('date_hired', e.target.value)
+                            }
+                        />
+                        <InputError
+                            className="mt-2"
+                            message={form.errors.date_hired}
+                        />
+                    </div>
+
+                    <div>
+                        <InputLabel
+                            htmlFor="employment_status"
+                            value="Employment status"
+                        />
+                        <select
+                            id="employment_status"
+                            className="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                            value={form.data.employment_status}
+                            onChange={(e) =>
+                                form.setData(
+                                    'employment_status',
+                                    e.target.value,
+                                )
+                            }
+                        >
+                            {Object.entries(employmentStatuses).map(
+                                ([value, label]) => (
+                                    <option key={value} value={value}>
+                                        {label}
+                                    </option>
+                                ),
+                            )}
+                        </select>
+                        <p className="mt-1 text-xs text-slate-500">
+                            Probationary/Training staff are not entitled to AL,
+                            SL, or HL.
+                        </p>
+                        <InputError
+                            className="mt-2"
+                            message={form.errors.employment_status}
                         />
                     </div>
 

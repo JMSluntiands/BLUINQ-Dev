@@ -243,7 +243,7 @@ export default function Approvals({
                                         </p>
                                     )}
                                     {request.status === 'pending' &&
-                                        request.type === 'leave' && (
+                                        request.deducts_credits && (
                                             <p
                                                 className={
                                                     'mt-1 text-xs font-medium ' +
@@ -252,9 +252,19 @@ export default function Approvals({
                                                         : 'text-rose-600 dark:text-rose-400')
                                                 }
                                             >
-                                                Credits:{' '}
-                                                {request.user.leave_credits} ·
-                                                Needs {request.credits_required}
+                                                {request.type_code}: AL{' '}
+                                                {request.user.balances
+                                                    ?.al_available ??
+                                                    request.user
+                                                        .leave_credits}{' '}
+                                                · SL{' '}
+                                                {request.user.balances
+                                                    ?.sl_credits ?? 0}{' '}
+                                                · Medical{' '}
+                                                {request.user.balances
+                                                    ?.medical_remaining ?? 0}{' '}
+                                                · Needs{' '}
+                                                {request.credits_required}
                                                 {request.has_enough_credits
                                                     ? ''
                                                     : ' (insufficient)'}

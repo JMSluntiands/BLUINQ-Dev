@@ -59,7 +59,7 @@ class LeaveRequestController extends Controller
             'user_id' => $request->user()->id,
             'start_date' => $request->validated('start_date'),
             'end_date' => $request->validated('end_date'),
-            'type' => $request->validated('type'),
+            'type' => LeaveRequest::normalizeType($request->validated('type')),
             'reason' => $request->validated('reason'),
             'status' => LeaveRequest::STATUS_PENDING,
         ]);

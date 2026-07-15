@@ -10,6 +10,8 @@ return [
         'dashboard' => 'dashboard.view',
         'dashboard.clock-in' => 'dashboard.view',
         'dashboard.clock-out' => 'dashboard.view',
+        'calendar-events.store' => 'dashboard.view',
+        'calendar-events.destroy' => 'dashboard.view',
         'announcements.index' => 'announcements.view',
         'announcements.archive' => 'announcements.view',
         'announcements.create' => 'announcements.manage',

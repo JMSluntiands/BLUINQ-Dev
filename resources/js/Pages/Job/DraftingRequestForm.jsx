@@ -84,6 +84,7 @@ export default function DraftingRequestForm({
         max_building_area_sqm: '',
         design_requirements: '',
         building_type_id: '',
+        zoning: '',
         ndis_sda: false,
         external_wall_construction_id: '',
         roof_type_id: '',
@@ -469,13 +470,33 @@ export default function DraftingRequestForm({
                                     </p>
                                 ) : null}
                             </FieldBlock>
+
+                            <FieldBlock
+                                label={
+                                    <InputLabel htmlFor="zoning">
+                                        11. Zoning
+                                    </InputLabel>
+                                }
+                                hint="e.g. R2, R3, Mixed Use, Commercial…"
+                                error={errors.zoning}
+                            >
+                                <TextInput
+                                    id="zoning"
+                                    className={inputClass}
+                                    value={data.zoning}
+                                    onChange={(e) =>
+                                        setData('zoning', e.target.value)
+                                    }
+                                    placeholder="Enter zoning"
+                                />
+                            </FieldBlock>
                         </div>
 
                         <FieldBlock
                             className="w-full"
                             label={
                                 <InputLabel htmlFor="facade">
-                                    11. Facade Type
+                                    12. Facade Type
                                 </InputLabel>
                             }
                             hint="Please share the photo/image of the facade type."
@@ -515,7 +536,7 @@ export default function DraftingRequestForm({
                         <FieldBlock
                             label={
                                 <InputLabel htmlFor="ndis_sda">
-                                    12. NDIS – SDA Dwelling (Class 3)
+                                    13. NDIS – SDA Dwelling (Class 3)
                                 </InputLabel>
                             }
                             hint="Please mark tick if this is an NDIS requirement dwelling."
@@ -541,7 +562,7 @@ export default function DraftingRequestForm({
                             <FieldBlock
                                 label={
                                     <InputLabel htmlFor="external_wall_construction_id">
-                                        13. External Wall Construction
+                                        14. External Wall Construction
                                     </InputLabel>
                                 }
                                 hint="Options from Workflow settings → External wall construction."
@@ -570,7 +591,7 @@ export default function DraftingRequestForm({
                             <FieldBlock
                                 label={
                                     <InputLabel htmlFor="roof_type_id">
-                                        14. Roof Type
+                                        15. Roof Type
                                     </InputLabel>
                                 }
                                 hint="Options from Workflow settings → Roof type."
@@ -601,7 +622,7 @@ export default function DraftingRequestForm({
                             <FieldBlock
                                 label={
                                     <InputLabel htmlFor="ceiling_heights">
-                                        15. Ceiling Heights
+                                        16. Ceiling Heights
                                         <ReqMark />
                                     </InputLabel>
                                 }
@@ -625,7 +646,7 @@ export default function DraftingRequestForm({
                             <FieldBlock
                                 label={
                                     <InputLabel htmlFor="first_floor_slab">
-                                        16. First Floor Slab/Construction
+                                        17. First Floor Slab/Construction
                                     </InputLabel>
                                 }
                                 error={errors.first_floor_slab}
@@ -648,7 +669,7 @@ export default function DraftingRequestForm({
                             className="w-full"
                             label={
                                 <InputLabel htmlFor="additional_inclusions">
-                                    17. Additional Inclusions
+                                    18. Additional Inclusions
                                 </InputLabel>
                             }
                             hint="Kindly note all additional instructions to be drawn and to be included. e.g. add-ons Granny Flat/Ancillary area, loft, etc."
@@ -675,7 +696,7 @@ export default function DraftingRequestForm({
                             className="w-full"
                             label={
                                 <InputLabel htmlFor="documents">
-                                    18. Upload documents
+                                    19. Upload documents
                                 </InputLabel>
                             }
                             hint={

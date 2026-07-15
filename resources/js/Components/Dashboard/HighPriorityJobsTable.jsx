@@ -7,10 +7,10 @@ export default function HighPriorityJobsTable({ boardPreviewJobs = [] }) {
             <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                     <h3 className="text-base font-semibold text-slate-900 dark:text-white">
-                        Drafting requests
+                        Urgent requests
                     </h3>
                     <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-                        Flagged requests on the project board
+                        Priority requests on the project board
                     </p>
                 </div>
                 <Link
@@ -23,7 +23,7 @@ export default function HighPriorityJobsTable({ boardPreviewJobs = [] }) {
             <div className="overflow-hidden rounded-xl border border-[#2a2d3e] dark:border-[#2f3347]">
                 <JobBoardGrid
                     jobs={boardPreviewJobs}
-                    emptyMessage="No flagged drafting requests."
+                    emptyMessage="No urgent requests."
                     getJobHref={(row) =>
                         route('job.drafting.show', row.id)
                     }

@@ -362,7 +362,7 @@ export default function DraftingJobShowLayout({
         },
         {
             key: 'log_date',
-            label: 'Log Date',
+            label: 'Date In',
             render: (row) => row.log_date ?? '—',
         },
         {
@@ -370,34 +370,6 @@ export default function DraftingJobShowLayout({
             label: 'Category',
             render: (row) => (
                 <span className="font-medium">{row.category ?? '—'}</span>
-            ),
-        },
-        {
-            key: 'drafter',
-            label: 'User',
-            render: (row) => (
-                <DrafterBadge
-                    initials={row.drafter_initials}
-                    name={row.drafter_name}
-                />
-            ),
-        },
-        {
-            key: 'drafting_hours',
-            label: 'Drafting hours',
-            render: (row) => (
-                <span className="tabular-nums font-medium">
-                    {formatHours(row.drafting_hours)}
-                </span>
-            ),
-        },
-        {
-            key: 'checking_hours',
-            label: 'Checking hours',
-            render: (row) => (
-                <span className="tabular-nums font-medium">
-                    {formatHours(row.checking_hours)}
-                </span>
             ),
         },
         {
@@ -410,13 +382,54 @@ export default function DraftingJobShowLayout({
             ),
         },
         {
+            key: 'drafter',
+            label: 'Drafter',
+            render: (row) => (
+                <DrafterBadge
+                    initials={row.drafter_initials}
+                    name={row.drafter_name}
+                />
+            ),
+        },
+        {
+            key: 'drafting_hours',
+            label: 'Drafting Hours',
+            render: (row) => (
+                <span className="tabular-nums font-medium">
+                    {formatHours(row.drafting_hours)}
+                </span>
+            ),
+        },
+        {
+            key: 'checker',
+            label: 'Checker',
+            render: (row) =>
+                row.checker_user_id || row.checker_initials ? (
+                    <DrafterBadge
+                        initials={row.checker_initials}
+                        name={row.checker_name}
+                    />
+                ) : (
+                    '—'
+                ),
+        },
+        {
+            key: 'checking_hours',
+            label: 'Checking Hours',
+            render: (row) => (
+                <span className="tabular-nums font-medium">
+                    {formatHours(row.checking_hours)}
+                </span>
+            ),
+        },
+        {
             key: 'area_size',
-            label: 'Area size',
+            label: 'Area Size',
             render: (row) => row.area_size ?? '—',
         },
         {
             key: 'submitted_date',
-            label: 'Submitted Date',
+            label: 'Date Out',
             render: (row) => row.submitted_date ?? '—',
         },
         ...(canAddRevision && onEditRevision

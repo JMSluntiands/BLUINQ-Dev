@@ -4,7 +4,6 @@ use App\Http\Controllers\Api\V1\ArrivalInputFileController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BuildingTypeController;
 use App\Http\Controllers\Api\V1\CrmCategoryController;
-use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DeliverableController;
 use App\Http\Controllers\Api\V1\ExternalWallConstructionController;
 use App\Http\Controllers\Api\V1\LevelOfDifficultyController;
@@ -29,9 +28,6 @@ Route::prefix('v1')->group(function (): void {
             Route::match(['put', 'patch'], '/password', [ProfileApiController::class, 'updatePassword']);
             Route::delete('/', [ProfileApiController::class, 'destroy']);
         });
-
-        Route::middleware(['api.permission:dashboard.view'])
-            ->get('/dashboard/stats', [DashboardController::class, 'stats']);
 
         Route::middleware(['api.permission:settings.building-type.view'])
             ->prefix('settings/building-type')

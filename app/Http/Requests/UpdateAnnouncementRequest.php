@@ -18,6 +18,7 @@ class UpdateAnnouncementRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
+            'image' => ['nullable', 'image', 'max:4096'],
             'description' => [
                 'required',
                 'string',

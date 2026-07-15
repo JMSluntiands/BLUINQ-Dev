@@ -399,6 +399,13 @@ class DraftingController extends Controller
             ->active()
             ->findOrFail($validated['drafter_user_id']);
 
+        $checker = null;
+        if (! empty($validated['checker_user_id'])) {
+            $checker = User::query()
+                ->active()
+                ->findOrFail($validated['checker_user_id']);
+        }
+
         $revision = DraftingRequestRevision::query()->create([
             'drafting_request_id' => $draftingRequest->id,
             'user_id' => $request->user()->id,
@@ -407,6 +414,8 @@ class DraftingController extends Controller
             'category' => trim($validated['category']),
             'drafter_user_id' => $drafter->id,
             'drafter_initials' => $drafter->badgeInitials(),
+            'checker_user_id' => $checker?->id,
+            'checker_initials' => $checker?->badgeInitials(),
             'drafting_hours' => $validated['drafting_hours'] ?? null,
             'checking_hours' => $validated['checking_hours'] ?? null,
             'status' => $validated['status'],
@@ -421,11 +430,13 @@ class DraftingController extends Controller
             $revision->checking_hours,
         );
 
+        $people = $drafter->name.($checker ? ' / '.$checker->name : '');
+
         $description = sprintf(
             'Added revision %s (%s, %s%s).',
             $revision->code,
             $revision->category,
-            $drafter->name,
+            $people,
             $hoursLabel ? ', '.$hoursLabel : '',
         );
 
@@ -464,12 +475,21 @@ class DraftingController extends Controller
             ->active()
             ->findOrFail($validated['drafter_user_id']);
 
+        $checker = null;
+        if (! empty($validated['checker_user_id'])) {
+            $checker = User::query()
+                ->active()
+                ->findOrFail($validated['checker_user_id']);
+        }
+
         $revision->update([
             'code' => trim($validated['code']),
             'log_date' => $validated['log_date'],
             'category' => trim($validated['category']),
             'drafter_user_id' => $drafter->id,
             'drafter_initials' => $drafter->badgeInitials(),
+            'checker_user_id' => $checker?->id,
+            'checker_initials' => $checker?->badgeInitials(),
             'drafting_hours' => $validated['drafting_hours'] ?? null,
             'checking_hours' => $validated['checking_hours'] ?? null,
             'status' => $validated['status'],
@@ -484,11 +504,13 @@ class DraftingController extends Controller
             $revision->checking_hours,
         );
 
+        $people = $drafter->name.($checker ? ' / '.$checker->name : '');
+
         $description = sprintf(
             'Updated revision %s (%s, %s%s).',
             $revision->code,
             $revision->category,
-            $drafter->name,
+            $people,
             $hoursLabel ? ', '.$hoursLabel : '',
         );
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CalendarEventController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\BrandLogoController;
 use App\Http\Controllers\DashboardController;
@@ -82,6 +83,10 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('dashboard.clock-in');
     Route::post('/dashboard/clock-out', [DashboardController::class, 'clockOut'])
         ->name('dashboard.clock-out');
+    Route::post('/calendar-events', [CalendarEventController::class, 'store'])
+        ->name('calendar-events.store');
+    Route::delete('/calendar-events/{calendarEvent}', [CalendarEventController::class, 'destroy'])
+        ->name('calendar-events.destroy');
 
     Route::get('/announcements', [AnnouncementController::class, 'index'])
         ->name('announcements.index');

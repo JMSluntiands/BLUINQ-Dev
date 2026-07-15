@@ -45,7 +45,9 @@ class LeaveCreditsController extends Controller
                     'job_title' => $user->job_title,
                     'role' => $user->role?->name ?? $user->role?->slug,
                     'profile_image_url' => $user->profile_image_url,
+                    'employment_status' => $user->employment_status ?? 'regular',
                     'leave_credits' => $this->leave->creditsForUser($user),
+                    'balances' => $this->leave->balancesForUser($user),
                 ]),
             'filters' => [
                 'search' => $search,
@@ -62,6 +64,7 @@ class LeaveCreditsController extends Controller
             (int) $request->validated('amount'),
             $request->user(),
             $request->validated('notes'),
+            $request->validated('bucket'),
         );
 
         return back()->with('status', 'leave-credits-added');

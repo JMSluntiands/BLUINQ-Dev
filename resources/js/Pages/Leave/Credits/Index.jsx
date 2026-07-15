@@ -17,9 +17,11 @@ const FLASH_MESSAGES = {
 };
 
 function AddCreditsModal({ employee, onClose }) {
+    const balances = employee.balances ?? {};
     const { data, setData, post, processing, errors, reset } = useForm({
         user_id: employee.id,
         amount: '',
+        bucket: 'al',
         notes: '',
     });
 
@@ -49,13 +51,32 @@ function AddCreditsModal({ employee, onClose }) {
                     Add leave credits
                 </h2>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    {employee.name} · Current balance:{' '}
+                    {employee.name} · AL:{' '}
                     <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                        {employee.leave_credits}
+                        {balances.al_available ?? employee.leave_credits}
+                    </span>
+                    {' · '}SL:{' '}
+                    <span className="font-semibold text-sky-600 dark:text-sky-400">
+                        {balances.sl_credits ?? 0}
                     </span>
                 </p>
 
                 <div className="mt-5 space-y-4">
+                    <div>
+                        <InputLabel htmlFor="bucket" value="Credit type" />
+                        <select
+                            id="bucket"
+                            value={data.bucket}
+                            onChange={(event) =>
+                                setData('bucket', event.target.value)
+                            }
+                            className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                        >
+                            <option value="al">Annual Leave (AL)</option>
+                            <option value="sl">Sick Leave (SL)</option>
+                        </select>
+                        <InputError message={errors.bucket} className="mt-1" />
+                    </div>
                     <div>
                         <InputLabel htmlFor="amount" value="Credits to add" />
                         <TextInput
@@ -132,8 +153,9 @@ export default function Index({ employees, filters = {} }) {
             <div className="rounded-2xl border border-slate-200/90 bg-white shadow-sm dark:border-slate-700/70 dark:bg-slate-900/90">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
                     <p className="text-sm text-slate-500 dark:text-slate-400">
-                        Manually add leave credits for employees. Credits are
-                        deducted automatically when leave is approved.
+                        Manage AL and SL balances. Monthly AL accrual and yearly
+                        SL refresh run automatically. Carry-over AL expires end
+                        of June.
                     </p>
                     <form onSubmit={handleSearch} className="flex gap-2">
                         <input
@@ -171,20 +193,33 @@ export default function Index({ employees, filters = {} }) {
                                         {employee.email}
                                     </p>
                                 </div>
-                                <div className="text-center">
-                                    <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                                        Credits
-                                    </p>
-                                    <p
-                                        className={
-                                            'text-2xl font-bold tabular-nums ' +
-                                            (employee.leave_credits < 0
-                                                ? 'text-rose-500'
-                                                : 'text-emerald-600 dark:text-emerald-400')
-                                        }
-                                    >
-                                        {employee.leave_credits}
-                                    </p>
+                                <div className="flex gap-4 text-center">
+                                    <div>
+                                        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                                            AL
+                                        </p>
+                                        <p className="text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                                            {employee.balances?.al_available ??
+                                                employee.leave_credits}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                                            SL
+                                        </p>
+                                        <p className="text-xl font-bold tabular-nums text-sky-600 dark:text-sky-400">
+                                            {employee.balances?.sl_credits ?? 0}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                                            Medical
+                                        </p>
+                                        <p className="text-xl font-bold tabular-nums text-violet-600 dark:text-violet-400">
+                                            {employee.balances
+                                                ?.medical_remaining ?? 0}
+                                        </p>
+                                    </div>
                                 </div>
                                 <button
                                     type="button"

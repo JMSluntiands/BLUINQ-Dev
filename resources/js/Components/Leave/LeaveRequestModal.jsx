@@ -4,13 +4,15 @@ import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
-import { useForm } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 
 export default function LeaveRequestModal({ show, onClose }) {
+    const { leaveTypes = [], leaveBalances = null } = usePage().props;
+
     const { data, setData, post, processing, errors, reset } = useForm({
         start_date: '',
         end_date: '',
-        type: 'leave',
+        type: 'al',
         reason: '',
     });
 
@@ -30,6 +32,14 @@ export default function LeaveRequestModal({ show, onClose }) {
         onClose();
     };
 
+    const types =
+        leaveTypes.length > 0
+            ? leaveTypes
+            : [
+                  { value: 'al', label: 'Annual Leave', code: 'AL' },
+                  { value: 'remote', label: 'Remote work', code: 'REMOTE' },
+              ];
+
     return (
         <Modal show={show} onClose={handleClose} maxWidth="lg">
             <form onSubmit={submit} className="p-6">
@@ -40,6 +50,42 @@ export default function LeaveRequestModal({ show, onClose }) {
                     Submit your request for admin approval. It will appear on the
                     team calendar once approved.
                 </p>
+
+                {leaveBalances && (
+                    <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs dark:border-slate-700 dark:bg-slate-800/60 sm:grid-cols-4">
+                        <div>
+                            <p className="text-slate-500 dark:text-slate-400">AL</p>
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                                {leaveBalances.al_available}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-slate-500 dark:text-slate-400">SL</p>
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                                {leaveBalances.sl_credits}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-slate-500 dark:text-slate-400">Medical left</p>
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                                {leaveBalances.medical_remaining}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-slate-500 dark:text-slate-400">Status</p>
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                                {leaveBalances.employment_status_label}
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {!leaveBalances?.entitled && (
+                    <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
+                        Probationary/training staff are not entitled to AL, SL, or
+                        HL. You may still request other leave types for approval.
+                    </p>
+                )}
 
                 <div className="mt-6 space-y-4">
                     <div>
@@ -52,8 +98,11 @@ export default function LeaveRequestModal({ show, onClose }) {
                             }
                             className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                         >
-                            <option value="leave">Leave</option>
-                            <option value="remote">Remote work</option>
+                            {types.map((type) => (
+                                <option key={type.value} value={type.value}>
+                                    {type.code} — {type.label}
+                                </option>
+                            ))}
                         </select>
                         <InputError message={errors.type} className="mt-1" />
                     </div>
@@ -118,7 +167,7 @@ export default function LeaveRequestModal({ show, onClose }) {
                     <SecondaryButton type="button" onClick={handleClose}>
                         Cancel
                     </SecondaryButton>
-                    <PrimaryButton disabled={processing}>
+                    <PrimaryButton type="submit" loading={processing}>
                         Submit request
                     </PrimaryButton>
                 </div>

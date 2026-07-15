@@ -4,7 +4,9 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import RichTextEditor from '@/Components/RichTextEditor';
 import TextInput from '@/Components/TextInput';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { PhotoIcon } from '@heroicons/react/24/outline';
 import { Head, Link, useForm } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 
 function filterQueryString(filters) {
     const p = new URLSearchParams();
@@ -20,15 +22,34 @@ function filterQueryString(filters) {
 
 export default function Edit({ announcement, listFilters = {} }) {
     const listQs = filterQueryString(listFilters);
+    const [imagePreview, setImagePreview] = useState(null);
 
     const form = useForm({
         title: announcement.title,
         description: announcement.description,
+        image: null,
+        _method: 'patch',
     });
+
+    useEffect(() => {
+        if (!form.data.image) {
+            setImagePreview(null);
+            return;
+        }
+
+        const objectUrl = URL.createObjectURL(form.data.image);
+        setImagePreview(objectUrl);
+
+        return () => URL.revokeObjectURL(objectUrl);
+    }, [form.data.image]);
+
+    const displayImage = imagePreview || announcement.image_url || null;
 
     const submit = (e) => {
         e.preventDefault();
-        form.patch(route('announcements.update', announcement.id) + listQs);
+        form.post(route('announcements.update', announcement.id) + listQs, {
+            forceFormData: true,
+        });
     };
 
     return (
@@ -65,6 +86,42 @@ export default function Edit({ announcement, listFilters = {} }) {
                         <InputError
                             className="mt-2"
                             message={form.errors.title}
+                        />
+                    </div>
+
+                    <div>
+                        <InputLabel htmlFor="image" value="Cover image" />
+                        <div className="mt-1.5 space-y-3">
+                            {displayImage && (
+                                <img
+                                    src={displayImage}
+                                    alt=""
+                                    className="h-40 w-full rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                                />
+                            )}
+                            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-sky-500 hover:text-sky-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-sky-500 dark:hover:text-sky-400">
+                                <PhotoIcon className="h-4 w-4" />
+                                {displayImage ? 'Change image' : 'Upload image'}
+                                <input
+                                    id="image"
+                                    type="file"
+                                    accept="image/*"
+                                    className="sr-only"
+                                    onChange={(e) =>
+                                        form.setData(
+                                            'image',
+                                            e.target.files?.[0] ?? null,
+                                        )
+                                    }
+                                />
+                            </label>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Optional. JPG, PNG, or GIF up to 4 MB.
+                            </p>
+                        </div>
+                        <InputError
+                            className="mt-2"
+                            message={form.errors.image}
                         />
                     </div>
 

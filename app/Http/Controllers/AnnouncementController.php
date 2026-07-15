@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateAnnouncementRequest;
 use App\Models\Announcement;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -45,12 +46,18 @@ class AnnouncementController extends Controller
 
     public function store(StoreAnnouncementRequest $request): RedirectResponse
     {
-        Announcement::query()->create([
+        $data = [
             'user_id' => $request->user()->id,
             'title' => $request->validated('title'),
             'description' => $request->sanitizedDescription(),
             'published_at' => now('UTC'),
-        ]);
+        ];
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image')->store('announcement-images', 'public');
+        }
+
+        Announcement::query()->create($data);
 
         return redirect()
             ->route('announcements.index')
@@ -68,6 +75,7 @@ class AnnouncementController extends Controller
                 'id' => $announcement->id,
                 'title' => $announcement->title,
                 'description' => $announcement->description,
+                'image_url' => $announcement->image_url,
             ],
             'listFilters' => $this->redirectQuery($request),
         ]);
@@ -81,10 +89,20 @@ class AnnouncementController extends Controller
             abort(404);
         }
 
-        $announcement->update([
+        $data = [
             'title' => $request->validated('title'),
             'description' => $request->sanitizedDescription(),
-        ]);
+        ];
+
+        if ($request->hasFile('image')) {
+            if ($announcement->image) {
+                Storage::disk('public')->delete($announcement->image);
+            }
+
+            $data['image'] = $request->file('image')->store('announcement-images', 'public');
+        }
+
+        $announcement->update($data);
 
         return redirect()
             ->route('announcements.index', $this->redirectQuery($request))
@@ -148,7 +166,7 @@ class AnnouncementController extends Controller
     /**
      * @return list<array<string, mixed>>
      */
-    public static function latestForDashboard(int $limit = 4): array
+    public static function latestForDashboard(int $limit = 1): array
     {
         return Announcement::query()
             ->active()
@@ -180,6 +198,7 @@ class AnnouncementController extends Controller
             'id' => $announcement->id,
             'title' => $announcement->title,
             'description' => $announcement->description,
+            'image_url' => $announcement->image_url,
             'excerpt' => Str::limit(trim(strip_tags($announcement->description)), 140),
             'published_at' => $publishedAt?->toIso8601String(),
             'date' => $publishedAt?->format('F j, Y'),

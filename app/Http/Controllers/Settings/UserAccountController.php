@@ -53,6 +53,7 @@ class UserAccountController extends Controller
     {
         return Inertia::render('Settings/Users/Create', [
             'roles' => $this->roleOptions(),
+            'employmentStatuses' => config('leave.employment_statuses', []),
         ]);
     }
 
@@ -65,16 +66,28 @@ class UserAccountController extends Controller
             'role_id' => ['required', Rule::exists('roles', 'id')],
             'position' => ['nullable', 'string', 'max:255'],
             'date_hired' => ['nullable', 'date'],
+            'employment_status' => ['required', Rule::in(['regular', 'probationary', 'training'])],
         ]);
 
-        User::query()->create([
+        $user = User::query()->create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => $validated['password'],
             'role_id' => (int) $validated['role_id'],
             'position' => $validated['position'] ?? null,
             'date_hired' => $validated['date_hired'] ?? null,
+            'employment_status' => $validated['employment_status'],
+            'leave_credits' => 0,
+            'al_credits' => 0,
+            'sl_credits' => $validated['employment_status'] === 'regular'
+                ? (int) config('leave.sl.annual_days', 15)
+                : 0,
+            'leave_balance_year' => (int) now()->year,
         ]);
+
+        if ($validated['employment_status'] === 'regular') {
+            app(\App\Services\LeaveEntitlementService::class)->accrueMonthlyAl($user);
+        }
 
         return redirect()
             ->route('settings.users.index', $this->redirectQuery($request))
@@ -96,10 +109,12 @@ class UserAccountController extends Controller
                 'email' => $user->email,
                 'position' => $user->position,
                 'date_hired' => $user->date_hired?->format('Y-m-d'),
+                'employment_status' => $user->employment_status ?? 'regular',
                 'role' => $user->role?->slug,
                 'role_id' => $user->role_id,
             ],
             'roles' => $this->roleOptions(),
+            'employmentStatuses' => config('leave.employment_statuses', []),
             'listFilters' => $this->redirectQuery($request),
         ]);
     }
@@ -125,6 +140,7 @@ class UserAccountController extends Controller
             'role_id' => ['required', Rule::exists('roles', 'id')],
             'position' => ['nullable', 'string', 'max:255'],
             'date_hired' => ['nullable', 'date'],
+            'employment_status' => ['required', Rule::in(['regular', 'probationary', 'training'])],
         ]);
 
         $newRole = Role::query()->findOrFail((int) $validated['role_id']);
@@ -147,6 +163,7 @@ class UserAccountController extends Controller
         $user->role_id = (int) $validated['role_id'];
         $user->position = $validated['position'] ?? null;
         $user->date_hired = $validated['date_hired'] ?? null;
+        $user->employment_status = $validated['employment_status'];
 
         if (! empty($validated['password'])) {
             $user->password = $validated['password'];

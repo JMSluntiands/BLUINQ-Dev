@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -12,8 +13,16 @@ class Announcement extends Model
         'user_id',
         'title',
         'description',
+        'image',
         'published_at',
         'archived_at',
+    ];
+
+    /**
+     * @var list<string>
+     */
+    protected $appends = [
+        'image_url',
     ];
 
     protected function casts(): array
@@ -53,5 +62,27 @@ class Announcement extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Public URL for the stored announcement image, or null.
+     */
+    protected function imageUrl(): Attribute
+    {
+        return Attribute::get(function (): ?string {
+            if (! $this->image) {
+                return null;
+            }
+
+            $relativePath = str_replace('/', DIRECTORY_SEPARATOR, $this->image);
+            $publicPath = public_path('storage'.DIRECTORY_SEPARATOR.$relativePath);
+            $storedPath = storage_path('app/public/'.$relativePath);
+
+            if (! is_file($publicPath) && ! is_file($storedPath)) {
+                return null;
+            }
+
+            return '/storage/'.ltrim(str_replace('\\', '/', $this->image), '/');
+        });
     }
 }

@@ -30,7 +30,7 @@ class DraftingRequestBoardService
                     ->orderBy('role')
                     ->orderBy('slot'),
                 'revisions' => fn ($relation) => $relation
-                    ->with('drafter:id,name')
+                    ->with(['drafter:id,name', 'checker:id,name'])
                     ->orderByDesc('log_date')
                     ->orderByDesc('id'),
             ])
@@ -237,7 +237,7 @@ class DraftingRequestBoardService
 
         if ($requestIds->isNotEmpty()) {
             $revisions = DraftingRequestRevision::query()
-                ->with('drafter:id,name')
+                ->with(['drafter:id,name', 'checker:id,name'])
                 ->whereIn('drafting_request_id', $requestIds)
                 ->whereBetween('log_date', [
                     $monthStart->toDateString(),
@@ -536,7 +536,8 @@ class DraftingRequestBoardService
                 continue;
             }
 
-            $userId = $revision->drafter_user_id;
+            $useChecker = $hoursColumn === 'checking_hours' && $revision->checker_user_id !== null;
+            $userId = $useChecker ? $revision->checker_user_id : $revision->drafter_user_id;
             if ($userId === null) {
                 continue;
             }
@@ -544,10 +545,16 @@ class DraftingRequestBoardService
             if (! isset($byUser[$userId])) {
                 $byUser[$userId] = [
                     'user_id' => $userId,
-                    'initials' => $revision->drafter_initials
-                        ?? $revision->drafter?->badgeInitials()
-                        ?? '?',
-                    'name' => $revision->drafter?->name,
+                    'initials' => $useChecker
+                        ? ($revision->checker_initials
+                            ?? $revision->checker?->badgeInitials()
+                            ?? '?')
+                        : ($revision->drafter_initials
+                            ?? $revision->drafter?->badgeInitials()
+                            ?? '?'),
+                    'name' => $useChecker
+                        ? $revision->checker?->name
+                        : $revision->drafter?->name,
                     'hours' => 0.0,
                 ];
             }
@@ -572,25 +579,29 @@ class DraftingRequestBoardService
         DraftingRequest $draftingRequest,
         DraftingRequestRevision $revision,
     ): void {
-        $userId = $revision->drafter_user_id;
-        if ($userId === null) {
-            return;
-        }
-
-        if ($revision->drafting_hours !== null && (float) $revision->drafting_hours > 0) {
+        if (
+            $revision->drafter_user_id !== null
+            && $revision->drafting_hours !== null
+            && (float) $revision->drafting_hours > 0
+        ) {
             $this->upsertAssignmentForRole(
                 $draftingRequest,
                 DraftingRequestAssignment::ROLE_DRAFTING,
-                $userId,
+                $revision->drafter_user_id,
                 $revision->drafting_hours,
             );
         }
 
-        if ($revision->checking_hours !== null && (float) $revision->checking_hours > 0) {
+        $checkerUserId = $revision->checker_user_id ?? $revision->drafter_user_id;
+        if (
+            $checkerUserId !== null
+            && $revision->checking_hours !== null
+            && (float) $revision->checking_hours > 0
+        ) {
             $this->upsertAssignmentForRole(
                 $draftingRequest,
                 DraftingRequestAssignment::ROLE_CHECKING,
-                $userId,
+                $checkerUserId,
                 $revision->checking_hours,
             );
         }

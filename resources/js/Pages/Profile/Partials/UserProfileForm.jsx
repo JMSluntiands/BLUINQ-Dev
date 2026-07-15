@@ -269,8 +269,34 @@ export default function UserProfileForm({
                                     value={formatBirthday(profile.date_hired)}
                                 />
                                 <ProfileDetailItem
-                                    label="Leave credits"
-                                    value={String(profile.leave_credits ?? 0)}
+                                    label="Employment status"
+                                    value={
+                                        profile.leave_balances
+                                            ?.employment_status_label ??
+                                        profile.employment_status ??
+                                        'Regular'
+                                    }
+                                />
+                                <ProfileDetailItem
+                                    label="Annual Leave (AL)"
+                                    value={String(
+                                        profile.leave_balances?.al_available ??
+                                            profile.leave_credits ??
+                                            0,
+                                    )}
+                                />
+                                <ProfileDetailItem
+                                    label="Sick Leave (SL)"
+                                    value={String(
+                                        profile.leave_balances?.sl_credits ?? 0,
+                                    )}
+                                />
+                                <ProfileDetailItem
+                                    label="Medical remaining (SL+HL)"
+                                    value={String(
+                                        profile.leave_balances
+                                            ?.medical_remaining ?? 0,
+                                    )}
                                 />
                             </ProfileDetailsSection>
 

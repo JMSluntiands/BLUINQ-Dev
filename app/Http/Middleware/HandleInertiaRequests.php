@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\PasswordChangeRequest;
 use App\Models\Permission;
 use App\Services\DraftingRequestReviewService;
+use App\Services\LeaveEntitlementService;
 use App\Services\LeaveService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -56,6 +57,19 @@ class HandleInertiaRequests extends Middleware
             'pendingLeaveCount' => $user?->hasPermission('leave.manage')
                 ? app(LeaveService::class)->pendingCount()
                 : 0,
+            'leaveBalances' => $user && $user->hasPermission('leave.apply')
+                ? app(LeaveEntitlementService::class)->balancesFor($user)
+                : null,
+            'leaveTypes' => collect(config('leave.types', []))
+                ->map(fn (array $meta, string $key) => [
+                    'value' => $key,
+                    'label' => $meta['label'],
+                    'code' => $meta['code'],
+                    'deduct' => $meta['deduct'],
+                    'requires_entitlement' => (bool) ($meta['requires_entitlement'] ?? false),
+                ])
+                ->values()
+                ->all(),
             'pendingPasswordChangeCount' => $user?->hasPermission('settings.user-accounts.manage')
                 ? PasswordChangeRequest::query()->pending()->count()
                 : 0,

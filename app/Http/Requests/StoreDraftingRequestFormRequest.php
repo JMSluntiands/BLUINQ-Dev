@@ -40,6 +40,7 @@ class StoreDraftingRequestFormRequest extends FormRequest
                     fn ($q) => $q->whereNull('archived_at'),
                 ),
             ],
+            'zoning' => ['nullable', 'string', 'max:255'],
             'facade' => ['nullable', 'file', 'max:20480'],
             'ndis_sda' => ['sometimes', 'boolean'],
             'external_wall_construction_id' => [
@@ -82,6 +83,10 @@ class StoreDraftingRequestFormRequest extends FormRequest
 
         if ($this->input('max_building_area_sqm') === '') {
             $normalized['max_building_area_sqm'] = null;
+        }
+
+        if ($this->input('zoning') === '') {
+            $normalized['zoning'] = null;
         }
 
         $this->merge($normalized);

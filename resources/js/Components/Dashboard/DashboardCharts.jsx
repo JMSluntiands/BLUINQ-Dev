@@ -1,8 +1,12 @@
+import LeaderboardWidgetSettings, {
+    useLeaderboardWidgetSettings,
+} from '@/Components/Dashboard/LeaderboardWidgetSettings';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
     ChartBarIcon,
     ChevronLeftIcon,
     ChevronRightIcon,
+    Cog6ToothIcon,
     FunnelIcon,
     TrophyIcon,
 } from '@heroicons/react/24/outline';
@@ -13,6 +17,7 @@ import {
     BarChart,
     CartesianGrid,
     Cell,
+    LabelList,
     Legend,
     ResponsiveContainer,
     Tooltip,
@@ -214,8 +219,8 @@ const TOOLTIP_CONTENT_STYLE = {
 
 function ChartPanel({ title, icon: Icon, iconClassName, children, toolbar }) {
     return (
-        <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm dark:border-slate-700/70 dark:bg-slate-900/90">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+        <div className="rounded-2xl border border-slate-200/90 bg-white shadow-sm dark:border-slate-700/70 dark:bg-slate-900/90">
+            <div className="relative z-20 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
                 <div className="flex items-center gap-2.5">
                     <span
                         className={
@@ -229,9 +234,9 @@ function ChartPanel({ title, icon: Icon, iconClassName, children, toolbar }) {
                         {title}
                     </h3>
                 </div>
-                {toolbar}
+                <div className="relative z-20">{toolbar}</div>
             </div>
-            <div className="p-4 sm:p-5">{children}</div>
+            <div className="relative p-4 sm:p-5">{children}</div>
         </div>
     );
 }
@@ -241,6 +246,34 @@ function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth, jobStatusC
     const data = drafterLeaderboard?.data ?? [];
     const selectedMonth = drafterLeaderboard?.month ?? toMonthKey(new Date());
     const monthLabel = drafterLeaderboard?.label ?? formatLeaderboardMonth(selectedMonth);
+    const seriesKeys = DRAFTER_SERIES.map((series) => series.key);
+    const [widgetSettings, setWidgetSettings] =
+        useLeaderboardWidgetSettings(seriesKeys);
+
+    const drafters = useMemo(
+        () => data.map((entry) => entry.drafter),
+        [data],
+    );
+
+    const chartData = useMemo(() => {
+        if (widgetSettings.selectedDrafters.length === 0) {
+            return data;
+        }
+
+        return data.filter((entry) =>
+            widgetSettings.selectedDrafters.includes(entry.drafter),
+        );
+    }, [data, widgetSettings.selectedDrafters]);
+
+    const activeSeries = useMemo(
+        () =>
+            DRAFTER_SERIES.filter((series) =>
+                widgetSettings.visibleSeries.includes(series.key),
+            ),
+        [widgetSettings.visibleSeries],
+    );
+
+    const isStacked = widgetSettings.chartType === 'stacked';
 
     const reloadLeaderboard = (nextMonth) => {
         router.get(
@@ -267,6 +300,28 @@ function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth, jobStatusC
                 <div className="flex items-center gap-2">
                     <button
                         type="button"
+                        onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setWidgetSettings((current) => ({
+                                ...current,
+                                panelOpen: !current.panelOpen,
+                            }));
+                        }}
+                        className={
+                            'relative z-30 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ' +
+                            (widgetSettings.panelOpen
+                                ? 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-300'
+                                : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800')
+                        }
+                        aria-label="Toggle widget settings"
+                        aria-expanded={widgetSettings.panelOpen}
+                    >
+                        <Cog6ToothIcon className="h-3.5 w-3.5" aria-hidden />
+                        Settings
+                    </button>
+                    <button
+                        type="button"
                         onClick={() => reloadLeaderboard(shiftLeaderboardMonth(selectedMonth, -1))}
                         className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-sky-600 transition hover:bg-sky-50 dark:text-sky-400 dark:hover:bg-sky-500/10"
                         aria-label="Previous month"
@@ -286,6 +341,14 @@ function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth, jobStatusC
                 </div>
             }
         >
+            <div
+                className={
+                    widgetSettings.panelOpen
+                        ? 'flex flex-col gap-4 lg:flex-row lg:items-start'
+                        : ''
+                }
+            >
+                <div className="min-w-0 flex-1">
             <div className="mb-4 flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
                     {monthLabel}
@@ -306,66 +369,152 @@ function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth, jobStatusC
                     No drafting activity for this month yet.
                 </div>
             ) : (
-                <div className="h-80 w-full">
+                <div className="h-80 w-full overflow-hidden">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart
-                            data={data}
-                            margin={{ top: 8, right: 8, left: 0, bottom: 4 }}
+                            data={chartData}
+                            margin={{ top: 16, right: 8, left: 0, bottom: 4 }}
                         >
-                        <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke={chartColors.grid}
-                            vertical={false}
-                        />
-                        <XAxis
-                            dataKey="drafter"
-                            tick={{ fill: chartColors.axis, fontSize: 11 }}
-                            axisLine={{ stroke: chartColors.grid }}
-                            tickLine={false}
-                        />
-                        <YAxis
-                            allowDecimals={false}
-                            tick={{ fill: chartColors.axis, fontSize: 11 }}
-                            axisLine={false}
-                            tickLine={false}
-                            label={{
-                                value: 'Count',
-                                angle: -90,
-                                position: 'insideLeft',
-                                fill: chartColors.axis,
-                                fontSize: 11,
-                            }}
-                        />
-                        <Tooltip
-                            content={
-                                <ChartTooltip chartColors={chartColors} />
-                            }
-                            wrapperStyle={TOOLTIP_WRAPPER_STYLE}
-                            contentStyle={TOOLTIP_CONTENT_STYLE}
-                            cursor={{ fill: chartColors.grid, opacity: 0.25 }}
-                            offset={4}
-                        />
-                        <Legend
-                            wrapperStyle={{
-                                fontSize: '11px',
-                                paddingTop: '12px',
-                                color: chartColors.legend,
-                            }}
-                        />
-                        {DRAFTER_SERIES.map((series) => (
-                            <Bar
-                                key={series.key}
-                                dataKey={series.key}
-                                name={series.label}
-                                stackId="jobs"
-                                fill={series.color}
-                                radius={[0, 0, 0, 0]}
+                            {widgetSettings.showGrid && (
+                                <CartesianGrid
+                                    strokeDasharray="3 3"
+                                    stroke={chartColors.grid}
+                                    vertical={false}
+                                />
+                            )}
+                            <XAxis
+                                dataKey="drafter"
+                                tick={{
+                                    fill: chartColors.axis,
+                                    fontSize: 11,
+                                }}
+                                axisLine={{ stroke: chartColors.grid }}
+                                tickLine={false}
                             />
-                        ))}
-                    </BarChart>
-                </ResponsiveContainer>
-            </div>
+                            <YAxis
+                                allowDecimals={false}
+                                tick={{
+                                    fill: chartColors.axis,
+                                    fontSize: 11,
+                                }}
+                                axisLine={false}
+                                tickLine={false}
+                                label={{
+                                    value: 'Count',
+                                    angle: -90,
+                                    position: 'insideLeft',
+                                    fill: chartColors.axis,
+                                    fontSize: 11,
+                                }}
+                            />
+                            <Tooltip
+                                content={
+                                    <ChartTooltip chartColors={chartColors} />
+                                }
+                                wrapperStyle={TOOLTIP_WRAPPER_STYLE}
+                                contentStyle={TOOLTIP_CONTENT_STYLE}
+                                cursor={{
+                                    fill: chartColors.grid,
+                                    opacity: 0.25,
+                                }}
+                                offset={4}
+                            />
+                            {widgetSettings.showLegend && (
+                                <Legend
+                                    wrapperStyle={{
+                                        fontSize: '11px',
+                                        paddingTop: '12px',
+                                        color: chartColors.legend,
+                                    }}
+                                />
+                            )}
+                            {activeSeries.map((series, index) => (
+                                <Bar
+                                    key={series.key}
+                                    dataKey={series.key}
+                                    name={series.label}
+                                    stackId={
+                                        isStacked ? 'jobs' : undefined
+                                    }
+                                    fill={series.color}
+                                    radius={
+                                        isStacked
+                                            ? [0, 0, 0, 0]
+                                            : [4, 4, 0, 0]
+                                    }
+                                >
+                                    {widgetSettings.showBarLabels && (
+                                        <LabelList
+                                            dataKey={series.key}
+                                            position={
+                                                isStacked ? 'center' : 'top'
+                                            }
+                                            fill={
+                                                isStacked
+                                                    ? '#ffffff'
+                                                    : chartColors.axis
+                                            }
+                                            fontSize={10}
+                                            formatter={(value) =>
+                                                value > 0 ? value : ''
+                                            }
+                                        />
+                                    )}
+                                    {widgetSettings.showBarLabels &&
+                                        isStacked &&
+                                        index === activeSeries.length - 1 && (
+                                            <LabelList
+                                                position="top"
+                                                fill={chartColors.axis}
+                                                fontSize={11}
+                                                formatter={(
+                                                    _value,
+                                                    _name,
+                                                    props,
+                                                ) => {
+                                                    const total =
+                                                        activeSeries.reduce(
+                                                            (sum, item) =>
+                                                                sum +
+                                                                (props
+                                                                    .payload?.[
+                                                                    item.key
+                                                                ] ?? 0),
+                                                            0,
+                                                        );
+
+                                                    return total > 0
+                                                        ? total
+                                                        : '';
+                                                }}
+                                            />
+                                        )}
+                                </Bar>
+                            ))}
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
             )}
+
+                </div>
+
+            {widgetSettings.panelOpen && (
+                <div className="w-full shrink-0 lg:w-80">
+                    <LeaderboardWidgetSettings
+                        settings={widgetSettings}
+                        onChange={setWidgetSettings}
+                        onClose={() =>
+                            setWidgetSettings((current) => ({
+                                ...current,
+                                panelOpen: false,
+                            }))
+                        }
+                        drafters={drafters}
+                        series={DRAFTER_SERIES}
+                    />
+                </div>
+            )}
+            </div>
         </ChartPanel>
     );
 }
@@ -534,11 +683,13 @@ export default function DashboardCharts({
 }) {
     return (
         <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <DrafterLeaderboardChart
-                drafterLeaderboard={drafterLeaderboard}
-                calendarMonth={calendarMonth}
-                jobStatusChart={jobStatusChart}
-            />
+            <div className="xl:col-span-2">
+                <DrafterLeaderboardChart
+                    drafterLeaderboard={drafterLeaderboard}
+                    calendarMonth={calendarMonth}
+                    jobStatusChart={jobStatusChart}
+                />
+            </div>
             <JobStatusChart
                 jobStatusChart={jobStatusChart}
                 calendarMonth={calendarMonth}

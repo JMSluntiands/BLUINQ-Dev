@@ -3,9 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\AnnouncementController;
-use App\Models\User;
 use App\Services\AttendanceService;
+use App\Services\CalendarEventService;
 use App\Services\DraftingRequestBoardService;
+use App\Services\HolidayService;
 use App\Services\LeaveService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -17,7 +18,9 @@ class DashboardController extends Controller
 {
     public function __construct(
         private AttendanceService $attendance,
+        private CalendarEventService $calendarEvents,
         private DraftingRequestBoardService $board,
+        private HolidayService $holidays,
         private LeaveService $leave,
     ) {}
 
@@ -57,24 +60,6 @@ class DashboardController extends Controller
                     ->values()
                     ->all()
                 : [],
-            'stats' => [
-                [
-                    'label' => 'Total users',
-                    'value' => User::query()->active()->count(),
-                ],
-                [
-                    'label' => 'Administrators',
-                    'value' => User::query()->active()->whereHas('role', fn ($q) => $q->where('slug', 'admin'))->count(),
-                ],
-                [
-                    'label' => 'Members',
-                    'value' => User::query()->active()->whereHas('role', fn ($q) => $q->where('slug', 'user'))->count(),
-                ],
-                [
-                    'label' => 'New (7 days)',
-                    'value' => User::query()->active()->where('created_at', '>=', now()->subDays(7))->count(),
-                ],
-            ],
             'attendance' => $this->attendance->dashboardAttendancePayload(),
             'clock' => $user
                 ? $this->attendance->clockStateForUser($user)
@@ -89,6 +74,10 @@ class DashboardController extends Controller
             'leaveCalendar' => $user
                 ? $this->leave->calendarPayload($calendarStart, $calendarEnd)
                 : [],
+            'holidays' => $this->holidays->forRange($calendarStart, $calendarEnd),
+            'calendarEvents' => $this->calendarEvents->forRange($calendarStart, $calendarEnd),
+            'upcomingHolidays' => $this->holidays->upcoming(),
+            'upcomingBirthdays' => $this->leave->upcomingBirthdays(),
             'calendarMonth' => $month->format('Y-m'),
             'onLeaveToday' => $user
                 ? $this->leave->onLeaveToday()
