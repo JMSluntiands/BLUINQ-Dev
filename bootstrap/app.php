@@ -7,9 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
 use Inertia\Inertia;
 use Symfony\Component\HttpKernel\Exception\HttpException;
-use Throwable;
 
-$isCsrfMismatch = static function (Throwable $e): bool {
+$isCsrfMismatch = static function (\Throwable $e): bool {
     if ($e instanceof TokenMismatchException) {
         return true;
     }
