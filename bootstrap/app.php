@@ -3,6 +3,8 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -12,6 +14,17 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Hostinger / reverse proxies terminate TLS; without this, session + CSRF
+        // cookies can mismatch on POST (login/logout → 419 Page Expired).
+        $middleware->trustProxies(
+            at: '*',
+            headers: Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_HOST
+                | Request::HEADER_X_FORWARDED_PORT
+                | Request::HEADER_X_FORWARDED_PROTO
+                | Request::HEADER_X_FORWARDED_AWS_ELB
+        );
+
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
@@ -30,5 +43,30 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->reportable(function (TokenMismatchException $e): void {
+            logger()->warning('CSRF token mismatch (419)', [
+                'url' => request()->fullUrl(),
+                'method' => request()->method(),
+                'secure' => request()->secure(),
+                'ip' => request()->ip(),
+                'has_session_cookie' => request()->cookies->has(config('session.cookie')),
+                'session_cookie_name' => config('session.cookie'),
+            ]);
+        });
+
+        $exceptions->renderable(function (TokenMismatchException $e, Request $request) {
+            $message = 'Your session expired. Please try again.';
+
+            if ($request->header('X-Inertia')) {
+                return redirect()->back()->with('status', $message);
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 419);
+            }
+
+            return redirect()
+                ->guest(route('login'))
+                ->with('status', $message);
+        });
     })->create();
