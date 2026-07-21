@@ -5,6 +5,21 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
+use Inertia\Inertia;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use Throwable;
+
+$isCsrfMismatch = static function (Throwable $e): bool {
+    if ($e instanceof TokenMismatchException) {
+        return true;
+    }
+
+    if ($e instanceof HttpException && $e->getStatusCode() === 419) {
+        return true;
+    }
+
+    return $e->getPrevious() instanceof TokenMismatchException;
+};
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -30,6 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
             \App\Http\Middleware\EnsureUserIsNotArchived::class,
             \App\Http\Middleware\LogSuccessfulWrites::class,
+            \App\Http\Middleware\PreventPageCache::class,
         ]);
 
         $middleware->api(append: [
@@ -42,9 +58,15 @@ return Application::configure(basePath: dirname(__DIR__))
             'api.permission' => \App\Http\Middleware\EnsureApiPermission::class,
         ]);
     })
-    ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->reportable(function (TokenMismatchException $e): void {
-            logger()->warning('CSRF token mismatch (419)', [
+    ->withExceptions(function (Exceptions $exceptions) use ($isCsrfMismatch): void {
+        // Laravel converts TokenMismatchException → HttpException(419) before render,
+        // so we must handle HttpException 419 (not only TokenMismatchException).
+        $exceptions->reportable(function (Throwable $e) use ($isCsrfMismatch): void {
+            if (! $isCsrfMismatch($e)) {
+                return;
+            }
+
+            logger()->error('CSRF token mismatch (419)', [
                 'url' => request()->fullUrl(),
                 'method' => request()->method(),
                 'secure' => request()->secure(),
@@ -54,19 +76,22 @@ return Application::configure(basePath: dirname(__DIR__))
             ]);
         });
 
-        $exceptions->renderable(function (TokenMismatchException $e, Request $request) {
-            $message = 'Your session expired. Please try again.';
+        $exceptions->renderable(function (Throwable $e, Request $request) use ($isCsrfMismatch) {
+            if (! $isCsrfMismatch($e)) {
+                return null;
+            }
 
+            $target = $request->headers->get('referer') ?: url('/');
+
+            // Force a full page reload so the browser picks up a fresh CSRF cookie/token.
+            // This is what a manual refresh does — automate it instead of showing 419.
             if ($request->header('X-Inertia')) {
-                return redirect()->back()->with('status', $message);
+                return Inertia::location($target);
             }
 
-            if ($request->expectsJson()) {
-                return response()->json(['message' => $message], 419);
-            }
-
-            return redirect()
-                ->guest(route('login'))
-                ->with('status', $message);
+            return redirect()->to($target)->with(
+                'status',
+                'Your session expired. Please try again.',
+            );
         });
     })->create();
