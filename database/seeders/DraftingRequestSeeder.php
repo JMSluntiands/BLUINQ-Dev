@@ -183,6 +183,7 @@ class DraftingRequestSeeder extends Seeder
                     ...$sample,
                     'user_id' => $userId,
                     'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+                    'workflow_stage' => DraftingRequest::STAGE_APM,
                     'reviewed_by' => $userId,
                     'reviewed_at' => now()->subHours(2),
                     'archived_at' => null,

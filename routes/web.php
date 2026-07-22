@@ -9,6 +9,7 @@ use App\Http\Controllers\LeaveCreditsController;
 use App\Http\Controllers\Job\DraftingMemoController;
 use App\Http\Controllers\Job\DraftingController;
 use App\Http\Controllers\Job\DraftingRequestFormController;
+use App\Http\Controllers\Job\MasterlistController;
 use App\Http\Controllers\Job\JobBoardController;
 use App\Http\Controllers\Job\PendingDraftingRequestController;
 use App\Http\Controllers\ProfileController;
@@ -83,6 +84,8 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('dashboard.clock-in');
     Route::post('/dashboard/clock-out', [DashboardController::class, 'clockOut'])
         ->name('dashboard.clock-out');
+    Route::post('/dashboard/activities', [DashboardController::class, 'storeActivity'])
+        ->name('dashboard.activities.store');
     Route::post('/calendar-events', [CalendarEventController::class, 'store'])
         ->name('calendar-events.store');
     Route::delete('/calendar-events/{calendarEvent}', [CalendarEventController::class, 'destroy'])
@@ -96,6 +99,8 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('announcements.store');
     Route::get('/announcements/archive', [AnnouncementController::class, 'archive'])
         ->name('announcements.archive');
+    Route::get('/announcements/{announcement}', [AnnouncementController::class, 'show'])
+        ->name('announcements.show');
     Route::get('/announcements/{announcement}/edit', [AnnouncementController::class, 'edit'])
         ->name('announcements.edit');
     Route::patch('/announcements/{announcement}', [AnnouncementController::class, 'update'])
@@ -133,6 +138,8 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
 
     Route::get('/job/list', [JobBoardController::class, 'list'])
         ->name('job.list');
+    Route::get('/job/status-chart', [JobBoardController::class, 'statusChart'])
+        ->name('job.status-chart');
     Route::get('/job/board', [JobBoardController::class, 'index'])
         ->name('job.board');
     Route::get('/job/drafting', [JobBoardController::class, 'redirectFromLegacyList'])
@@ -163,6 +170,8 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('job.drafting.priority.update');
     Route::patch('/job/drafting/{draftingRequest}/assignments', [JobBoardController::class, 'updateAssignment'])
         ->name('job.drafting.assignments.update');
+    Route::patch('/job/drafting/{draftingRequest}/board', [JobBoardController::class, 'updateBoardFields'])
+        ->name('job.drafting.board.update');
 
     Route::get('/drafting-memos', [DraftingMemoController::class, 'index'])
         ->name('drafting-memos.index');
@@ -186,6 +195,21 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('job.drafting.accounts.store');
     Route::patch('/job/drafting/{draftingRequest}/accounts/{accountEntry}', [DraftingController::class, 'updateAccountEntry'])
         ->name('job.drafting.accounts.update');
+
+    Route::get('/job/masterlist', [MasterlistController::class, 'index'])
+        ->name('job.masterlist');
+    Route::get('/job/masterlist/create', [MasterlistController::class, 'create'])
+        ->name('job.masterlist.create');
+    Route::post('/job/masterlist', [MasterlistController::class, 'store'])
+        ->name('job.masterlist.store');
+    Route::get('/job/masterlist/{draftingRequest}', [MasterlistController::class, 'show'])
+        ->name('job.masterlist.show');
+    Route::get('/job/masterlist/{draftingRequest}/edit', [MasterlistController::class, 'edit'])
+        ->name('job.masterlist.edit');
+    Route::post('/job/masterlist/{draftingRequest}', [MasterlistController::class, 'update'])
+        ->name('job.masterlist.update');
+    Route::post('/job/masterlist/{draftingRequest}/forward', [MasterlistController::class, 'forward'])
+        ->name('job.masterlist.forward');
 
     Route::get('/job/drafting-request-form', [DraftingRequestFormController::class, 'create'])
         ->name('job.drafting-request-form');

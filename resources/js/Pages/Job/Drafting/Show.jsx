@@ -31,8 +31,8 @@ function listQueryString(listFilters = {}) {
     if (listFilters.per_page) {
         p.set('per_page', String(listFilters.per_page));
     }
-    if (listFilters.from === 'archive') {
-        p.set('from', 'archive');
+    if (listFilters.from === 'archive' || listFilters.from === 'masterlist') {
+        p.set('from', listFilters.from);
     }
     const s = p.toString();
     return s ? `?${s}` : '';
@@ -84,9 +84,16 @@ export default function DraftingShow({
 
     const listQs = listQueryString(listFilters);
     const fromArchive = listFilters.from === 'archive';
-    const backHref =
-        (fromArchive ? route('job.drafting.archive') : route('job.board')) +
-        listQs;
+    const fromMasterlist = listFilters.from === 'masterlist';
+    const backHref = fromMasterlist
+        ? route('job.masterlist') + listQs
+        : (fromArchive ? route('job.drafting.archive') : route('job.board')) +
+          listQs;
+    const backLabel = fromMasterlist
+        ? '← Back to masterlist'
+        : fromArchive
+          ? '← Back to archive'
+          : '← Back to board';
     const updateUrl =
         route('job.drafting.update', draftingRequest.id) + listQs;
     const [archiveOpen, setArchiveOpen] = useState(false);
@@ -148,7 +155,7 @@ export default function DraftingShow({
     return (
         <AuthenticatedLayout>
             <Head
-                title={`${draftingRequest.site_address || draftingRequest.reference} — Job`}
+                title={`${draftingRequest.site_address || draftingRequest.reference} — Project info`}
             />
 
             <div className="mx-auto max-w-[1400px] space-y-6 pb-10">
@@ -230,6 +237,7 @@ export default function DraftingShow({
                     quotes={quotes}
                     invoices={invoices}
                     integrationUrls={integrationUrls}
+                    variant={fromMasterlist ? 'masterlist' : 'default'}
                     canEdit={editJobDetails}
                     canEditJobDetails={editJobDetails}
                     canEditBuildingArea={editBuildingArea}
@@ -246,32 +254,47 @@ export default function DraftingShow({
                     updateUrl={updateUrl}
                     onEditJobDetails={() => setEditSection('job')}
                     backHref={backHref}
+                    backLabel={backLabel}
                     archiveActions={archiveActions}
                     filesPanel={
                         viewFiles ? (
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                            <FilePanel
-                                title="Facade / plans"
-                                files={facadeFiles}
-                                emptyLabel="No facade or plan files."
-                                canEdit={editFiles}
-                                onEdit={() => setFilesEditPanel('facade')}
-                            />
-                            <FilePanel
-                                title="Documents"
-                                files={documentFiles}
-                                emptyLabel="No documents uploaded."
-                                canEdit={editFiles}
-                                onEdit={() => setFilesEditPanel('documents')}
-                            />
-                            <FilePanel
-                                title="Team uploads"
-                                files={teamFiles}
-                                emptyLabel="No team uploads yet."
-                                canEdit={editFiles}
-                                onEdit={() => setFilesEditPanel('team')}
-                            />
-                        </div>
+                            fromMasterlist ? (
+                                <FilePanel
+                                    title="Documents"
+                                    files={documentFiles}
+                                    emptyLabel="No documents uploaded."
+                                    canEdit={editFiles}
+                                    onEdit={() => setFilesEditPanel('documents')}
+                                />
+                            ) : (
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                    <FilePanel
+                                        title="Facade / plans"
+                                        files={facadeFiles}
+                                        emptyLabel="No facade or plan files."
+                                        canEdit={editFiles}
+                                        onEdit={() =>
+                                            setFilesEditPanel('facade')
+                                        }
+                                    />
+                                    <FilePanel
+                                        title="Documents"
+                                        files={documentFiles}
+                                        emptyLabel="No documents uploaded."
+                                        canEdit={editFiles}
+                                        onEdit={() =>
+                                            setFilesEditPanel('documents')
+                                        }
+                                    />
+                                    <FilePanel
+                                        title="Team uploads"
+                                        files={teamFiles}
+                                        emptyLabel="No team uploads yet."
+                                        canEdit={editFiles}
+                                        onEdit={() => setFilesEditPanel('team')}
+                                    />
+                                </div>
+                            )
                         ) : null
                     }
                     commentsPanel={

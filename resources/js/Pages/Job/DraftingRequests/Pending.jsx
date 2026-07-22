@@ -7,7 +7,7 @@ import { CheckCircleIcon } from '@heroicons/react/24/outline';
 import { Head, router, useForm } from '@inertiajs/react';
 
 const FLASH_MESSAGES = {
-    'drf-accepted': 'Drafting request accepted and added to the job board.',
+    'drf-accepted': 'Drafting request accepted and added to the masterlist.',
     'drf-already-reviewed': 'This request was already reviewed.',
 };
 

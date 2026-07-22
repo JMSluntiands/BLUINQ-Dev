@@ -8,6 +8,7 @@ use App\Http\Requests\StoreDraftingMemoTagRequest;
 use App\Http\Requests\UpdateDraftingMemoRequest;
 use App\Models\DraftingMemo;
 use App\Models\DraftingMemoTag;
+use App\Models\DraftingRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -65,13 +66,7 @@ class DraftingMemoController extends Controller
                 'tag_id' => $tagId,
                 'sort' => $sort,
             ],
-            'clients' => DraftingMemo::query()
-                ->select('client_name')
-                ->distinct()
-                ->orderBy('client_name')
-                ->pluck('client_name')
-                ->values()
-                ->all(),
+            'clients' => $this->clientOptions(),
             'tags' => DraftingMemoTag::query()
                 ->orderBy('name')
                 ->get(['id', 'name'])
@@ -264,6 +259,37 @@ class DraftingMemoController extends Controller
             'attachment_path' => null,
             'attachment_name' => null,
         ]);
+    }
+
+    /**
+     * Client names from Project Management jobs and existing memos.
+     *
+     * @return list<string>
+     */
+    private function clientOptions(): array
+    {
+        $fromJobs = DraftingRequest::query()
+            ->whereNotNull('company_name')
+            ->where('company_name', '!=', '')
+            ->distinct()
+            ->orderBy('company_name')
+            ->pluck('company_name');
+
+        $fromMemos = DraftingMemo::query()
+            ->whereNotNull('client_name')
+            ->where('client_name', '!=', '')
+            ->distinct()
+            ->orderBy('client_name')
+            ->pluck('client_name');
+
+        return $fromJobs
+            ->merge($fromMemos)
+            ->map(fn ($name) => trim((string) $name))
+            ->filter()
+            ->unique(fn (string $name) => mb_strtolower($name))
+            ->sort(SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->all();
     }
 
     /**

@@ -72,6 +72,7 @@ class StoreDraftingRequestRevisionRequest extends FormRequest
             'code.regex' => 'Use format YY001 or YY001-01 (e.g. 26001 or 26001-01).',
             'log_date.required' => 'Select a date in.',
             'category.required' => 'Select a category.',
+            'category.exists' => 'Select a valid category.',
             'drafter_user_id.required' => 'Select a drafter.',
             'drafter_user_id.exists' => 'Select a valid drafter.',
             'checker_user_id.exists' => 'Select a valid checker.',

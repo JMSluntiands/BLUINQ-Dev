@@ -16,8 +16,8 @@ function listQueryString(listFilters = {}) {
     if (listFilters.per_page) {
         p.set('per_page', String(listFilters.per_page));
     }
-    if (listFilters.from === 'archive') {
-        p.set('from', 'archive');
+    if (listFilters.from === 'archive' || listFilters.from === 'masterlist') {
+        p.set('from', listFilters.from);
     }
     const s = p.toString();
     return s ? `?${s}` : '';

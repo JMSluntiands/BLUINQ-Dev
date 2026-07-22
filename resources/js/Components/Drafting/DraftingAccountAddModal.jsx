@@ -4,8 +4,8 @@ import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
-import { useForm } from '@inertiajs/react';
-import { useEffect } from 'react';
+import { useForm, usePage } from '@inertiajs/react';
+import { useEffect, useMemo } from 'react';
 
 function listQueryString(listFilters = {}) {
     const p = new URLSearchParams();
@@ -15,8 +15,8 @@ function listQueryString(listFilters = {}) {
     if (listFilters.per_page) {
         p.set('per_page', String(listFilters.per_page));
     }
-    if (listFilters.from === 'archive') {
-        p.set('from', 'archive');
+    if (listFilters.from === 'archive' || listFilters.from === 'masterlist') {
+        p.set('from', listFilters.from);
     }
     const s = p.toString();
     return s ? `?${s}` : '';
@@ -31,6 +31,12 @@ const KIND_CONFIG = {
         numberPlaceholder: 'e.g. Q-1042',
         submitLabel: 'Add quote',
         editSubmitLabel: 'Save quote',
+        defaultStatuses: [
+            'QUOTE SENT',
+            'DECLINED',
+            'ACCEPTED',
+            'REVISED',
+        ],
     },
     invoice: {
         kind: 'invoice',
@@ -40,8 +46,12 @@ const KIND_CONFIG = {
         numberPlaceholder: 'e.g. INV-2091',
         submitLabel: 'Add invoice',
         editSubmitLabel: 'Save invoice',
+        defaultStatuses: ['INVOICED', 'PAID'],
     },
 };
+
+const selectClass =
+    'mt-1 block w-full rounded-md border-[#c5c7d0] text-sm shadow-sm focus:border-[#0073ea] focus:ring-[#0073ea] dark:border-[#3b82f6]/40 dark:bg-[#1a1b2e] dark:text-slate-200';
 
 export default function DraftingAccountAddModal({
     show = false,
@@ -50,10 +60,27 @@ export default function DraftingAccountAddModal({
     listFilters = {},
     accountKind = 'quote',
     entry = null,
+    statusOptions = null,
 }) {
     const config = KIND_CONFIG[accountKind] ?? KIND_CONFIG.quote;
     const listQs = listQueryString(listFilters);
     const isEditing = entry != null;
+    const { accountStatusOptions: pageStatusOptions = {} } = usePage().props;
+
+    const statuses = useMemo(() => {
+        const fromProp =
+            statusOptions ??
+            pageStatusOptions?.[config.kind] ??
+            config.defaultStatuses;
+
+        const list = Array.isArray(fromProp) ? [...fromProp] : [];
+
+        if (entry?.status && !list.includes(entry.status)) {
+            list.unshift(entry.status);
+        }
+
+        return list;
+    }, [statusOptions, pageStatusOptions, config.kind, entry?.status]);
 
     const form = useForm({
         kind: config.kind,
@@ -86,7 +113,7 @@ export default function DraftingAccountAddModal({
                 number: '',
                 category: '',
                 rate: '',
-                status: '',
+                status: statuses[0] ?? '',
             });
         }
     }, [show, accountKind, entry]);
@@ -179,16 +206,22 @@ export default function DraftingAccountAddModal({
 
                     <div>
                         <InputLabel htmlFor="account-status" value="Status" />
-                        <TextInput
+                        <select
                             id="account-status"
+                            className={selectClass}
                             value={form.data.status}
                             onChange={(e) =>
                                 form.setData('status', e.target.value)
                             }
-                            className="mt-1 block w-full"
-                            placeholder="e.g. SENT"
                             required
-                        />
+                        >
+                            <option value="">Select…</option>
+                            {statuses.map((status) => (
+                                <option key={status} value={status}>
+                                    {status}
+                                </option>
+                            ))}
+                        </select>
                         <InputError
                             message={form.errors.status}
                             className="mt-1"

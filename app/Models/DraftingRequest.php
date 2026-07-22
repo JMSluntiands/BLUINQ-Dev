@@ -38,6 +38,10 @@ class DraftingRequest extends Model
 
     public const REVIEW_REJECTED = 'rejected';
 
+    public const STAGE_MASTERLIST = 'masterlist';
+
+    public const STAGE_APM = 'apm';
+
     /**
      * @return array<string, string>
      */
@@ -71,6 +75,7 @@ class DraftingRequest extends Model
         'status',
         'is_priority',
         'requested_at',
+        'date_out',
         'your_name',
         'company_name',
         'email',
@@ -81,16 +86,72 @@ class DraftingRequest extends Model
         'building_type_id',
         'zoning',
         'ndis_sda',
+        'unit_development_count',
         'external_wall_construction_id',
         'roof_type_id',
         'ceiling_heights',
         'first_floor_slab',
         'additional_inclusions',
+        'drawing_checklist',
         'archived_at',
         'review_status',
+        'workflow_stage',
         'reviewed_by',
         'reviewed_at',
     ];
+
+    /**
+     * Default drawing status checklist keys shown on PROJECT INFO.
+     *
+     * @return list<array{key: string, label: string}>
+     */
+    public static function defaultDrawingChecklist(): array
+    {
+        return [
+            ['key' => 'site_plan', 'label' => 'Site Plan'],
+            ['key' => 'overall_site_plan', 'label' => 'Overall Site Plan'],
+            ['key' => 'ground_floor_plan', 'label' => 'Ground Floor Plan'],
+            ['key' => 'first_floor_plan', 'label' => 'First Floor Plan'],
+            ['key' => 'elevations', 'label' => 'Elevations'],
+            ['key' => 'sections', 'label' => 'Sections'],
+            ['key' => 'details', 'label' => 'Details'],
+            ['key' => 'roof_plan', 'label' => 'Roof Plan'],
+            ['key' => 'stair_layout', 'label' => 'Stair Layout'],
+            ['key' => 'internal_layout', 'label' => 'Internal Layout'],
+            ['key' => 'electrical_plans', 'label' => 'Electrical Plans'],
+            ['key' => 'slab_plumbing', 'label' => 'Slab / Plumbing'],
+            ['key' => 'landscape_plan', 'label' => 'Landscape Plan'],
+            ['key' => 'set_out_plan', 'label' => 'Set Out Plan'],
+            ['key' => 'shadow_diagram', 'label' => 'Shadow Diagram'],
+            ['key' => '3d_model', 'label' => '3D Model'],
+        ];
+    }
+
+    /**
+     * @return list<array{key: string, label: string, checked: bool}>
+     */
+    public function resolvedDrawingChecklist(): array
+    {
+        $saved = is_array($this->drawing_checklist) ? $this->drawing_checklist : [];
+        $byKey = [];
+
+        foreach ($saved as $item) {
+            if (! is_array($item) || empty($item['key'])) {
+                continue;
+            }
+
+            $byKey[(string) $item['key']] = (bool) ($item['checked'] ?? false);
+        }
+
+        return array_map(
+            fn (array $item) => [
+                'key' => $item['key'],
+                'label' => $item['label'],
+                'checked' => $byKey[$item['key']] ?? false,
+            ],
+            self::defaultDrawingChecklist(),
+        );
+    }
 
     /**
      * @return array<string, string>
@@ -99,10 +160,13 @@ class DraftingRequest extends Model
     {
         return [
             'requested_at' => 'datetime',
+            'date_out' => 'date',
             'archived_at' => 'datetime',
             'max_building_area_sqm' => 'decimal:2',
             'ndis_sda' => 'boolean',
             'is_priority' => 'boolean',
+            'unit_development_count' => 'integer',
+            'drawing_checklist' => 'array',
             'reviewed_at' => 'datetime',
         ];
     }
@@ -114,6 +178,24 @@ class DraftingRequest extends Model
     public function scopeReviewAccepted(Builder $query): Builder
     {
         return $query->where('review_status', self::REVIEW_ACCEPTED);
+    }
+
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeMasterlist(Builder $query): Builder
+    {
+        return $query->where('workflow_stage', self::STAGE_MASTERLIST);
+    }
+
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeApm(Builder $query): Builder
+    {
+        return $query->where('workflow_stage', self::STAGE_APM);
     }
 
     /**
@@ -249,6 +331,15 @@ class DraftingRequest extends Model
     {
         return $this->hasMany(DraftingRequestAccountEntry::class)
             ->orderByDesc('id');
+    }
+
+    /**
+     * @return HasMany<DraftingRequestUnit, $this>
+     */
+    public function units(): HasMany
+    {
+        return $this->hasMany(DraftingRequestUnit::class)
+            ->orderBy('unit_number');
     }
 
     public function statusLabel(): string

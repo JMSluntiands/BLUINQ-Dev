@@ -1,19 +1,21 @@
 import JobBoardGrid from '@/Components/JobBoard/JobBoardGrid';
 import JobBoardPendingRequests from '@/Components/JobBoard/JobBoardPendingRequests';
+import AddFromMasterlistControl from '@/Components/JobBoard/AddFromMasterlistControl';
 import FlashNoticeModal from '@/Components/FlashNoticeModal';
 import Pagination from '@/Components/Pagination';
 import TableSearchToolbar from '@/Components/TableSearchToolbar';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { PlusIcon } from '@heroicons/react/24/outline';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
 const FLASH_MESSAGES = {
     'drf-submitted':
         'Your drafting request was submitted successfully.',
     'drf-archived': 'Drafting request moved to archive.',
-    'drf-accepted': 'Drafting request accepted and added to the job board.',
+    'drf-accepted': 'Drafting request accepted and added to the masterlist.',
     'drf-already-reviewed': 'This request was already reviewed.',
+    'masterlist-forwarded':
+        'Project added to Archi Project Management from the masterlist.',
 };
 
 export default function JobBoard({
@@ -21,20 +23,21 @@ export default function JobBoard({
     filters = {},
     canViewAllRequests = false,
     assignableUsers = [],
+    statusOptions = [],
     groupByStatus = false,
     jobListSections = {},
     canReviewPublicRequests = false,
+    canForwardFromMasterlist = false,
+    masterlistCandidates = [],
     pendingRequests = [],
 }) {
-    const { auth } = usePage().props;
-    const canCreateDraftRequest =
-        auth.user?.permissions?.includes('job.drafting-request.view') ??
-        false;
     const rows = jobs?.data ?? [];
     const [liveSearch, setLiveSearch] = useState('');
     const hasSearch = Boolean(liveSearch.trim());
     const searchRoute = groupByStatus ? 'job.list' : 'job.board';
-    const pageTitle = groupByStatus ? 'Job list' : 'Archi Team — Job board';
+    const pageTitle = groupByStatus
+        ? 'Archi Project Management'
+        : 'Archi Team — Job board';
     const pageDescription = groupByStatus
         ? canViewAllRequests
             ? 'All jobs on the project board, grouped by status.'
@@ -58,7 +61,7 @@ export default function JobBoard({
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div className="min-w-0">
                         <h2 className="text-xl font-semibold leading-tight text-[#323338] dark:text-white">
                             {pageTitle}
@@ -67,14 +70,10 @@ export default function JobBoard({
                             {pageDescription}
                         </p>
                     </div>
-                    {canCreateDraftRequest && (
-                        <Link
-                            href={route('job.drafting-request-form')}
-                            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#0073ea] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0060c4] dark:bg-[#1890ff] dark:hover:bg-[#1478e0]"
-                        >
-                            <PlusIcon className="h-4 w-4" aria-hidden />
-                            New request
-                        </Link>
+                    {canForwardFromMasterlist && (
+                        <AddFromMasterlistControl
+                            candidates={masterlistCandidates}
+                        />
                     )}
                 </div>
             }
@@ -97,19 +96,27 @@ export default function JobBoard({
                     emptyMessage={
                         hasSearch
                             ? 'No drafting requests match your search.'
-                            : 'No drafting requests yet. Submit a new request to start processing.'
+                            : 'No drafting requests yet. Add a project from the masterlist to get started.'
                     }
                     getJobHref={(row) =>
                         route('job.drafting.show', row.id)
                     }
                     showFilesInTotal
+                    assignableUsers={assignableUsers}
+                    statusOptions={statusOptions}
                     onCommentsUpdated={() =>
+                        router.reload({
+                            only: ['jobs', 'masterlistCandidates'],
+                            preserveScroll: true,
+                        })
+                    }
+                    onPriorityUpdated={() =>
                         router.reload({
                             only: ['jobs'],
                             preserveScroll: true,
                         })
                     }
-                    onPriorityUpdated={() =>
+                    onAssignmentsUpdated={() =>
                         router.reload({
                             only: ['jobs'],
                             preserveScroll: true,

@@ -65,4 +65,24 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
         $response->assertRedirect('/');
     }
+
+    public function test_stale_csrf_on_logout_still_ends_the_session(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user);
+        $this->withSession(['_token' => 'valid-session-token']);
+
+        $response = $this
+            ->withHeader('X-Inertia', 'true')
+            ->withHeader('X-XSRF-TOKEN', 'stale-token')
+            ->post('/logout', ['_token' => 'stale-token']);
+
+        $this->assertGuest();
+        $response->assertStatus(409);
+        $this->assertTrue(
+            in_array($response->headers->get('X-Inertia-Location'), [url('/'), '/'], true),
+            'Expected Inertia location to the login page.',
+        );
+    }
 }

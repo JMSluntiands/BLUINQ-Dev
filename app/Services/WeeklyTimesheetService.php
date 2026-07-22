@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\DraftingRequest;
 use App\Models\DraftingRequestRevision;
 use App\Models\TimesheetEntry;
 use App\Models\TimesheetEntryHour;
@@ -27,7 +28,7 @@ class WeeklyTimesheetService
         $entries = TimesheetEntry::query()
             ->where('user_id', $user->id)
             ->whereDate('week_start', $weekStart)
-            ->with(['revision.draftingRequest', 'hours'])
+            ->with(['revision.draftingRequest', 'draftingRequest', 'hours'])
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get();
@@ -78,6 +79,7 @@ class WeeklyTimesheetService
                 'week_start' => $weekStart->toDateString(),
                 'task_type' => TimesheetEntry::TASK_REVISION,
                 'drafting_request_revision_id' => $revisionId,
+                'drafting_request_id' => $revision->drafting_request_id,
                 'sort_order' => $this->nextSortOrder($user, $weekStart),
             ]);
         }
@@ -93,6 +95,7 @@ class WeeklyTimesheetService
             ->whereDate('week_start', $weekStart)
             ->where('task_type', $taskType)
             ->whereNull('drafting_request_revision_id')
+            ->whereNull('drafting_request_id')
             ->exists();
 
         if ($exists) {
@@ -107,6 +110,75 @@ class WeeklyTimesheetService
             'task_type' => $taskType,
             'sort_order' => $this->nextSortOrder($user, $weekStart),
         ]);
+    }
+
+    public function storeDashboardActivity(
+        User $user,
+        string $activity,
+        int $projectId,
+        Carbon $workDate,
+        int $hours,
+        int $minutes,
+    ): TimesheetEntry {
+        if (! array_key_exists($activity, TimesheetEntry::ACTIVITY_TASK_LABELS)) {
+            throw ValidationException::withMessages([
+                'activity' => 'Select a valid activity.',
+            ]);
+        }
+
+        $project = $this->findActivityProject($user, $projectId);
+        if ($project === null) {
+            throw ValidationException::withMessages([
+                'project_id' => 'The selected project is not available.',
+            ]);
+        }
+
+        $duration = max(0, min(24, round(($hours + ($minutes / 60)) * 2) / 2));
+        if ($duration <= 0) {
+            throw ValidationException::withMessages([
+                'hours' => 'Enter a duration greater than zero.',
+            ]);
+        }
+
+        $weekStart = $workDate->copy()->startOfWeek(Carbon::MONDAY);
+
+        $entry = TimesheetEntry::query()
+            ->where('user_id', $user->id)
+            ->whereDate('week_start', $weekStart)
+            ->where('task_type', $activity)
+            ->where('drafting_request_id', $projectId)
+            ->whereNull('drafting_request_revision_id')
+            ->first();
+
+        if ($entry === null) {
+            $entry = TimesheetEntry::query()->create([
+                'user_id' => $user->id,
+                'week_start' => $weekStart->toDateString(),
+                'task_type' => $activity,
+                'drafting_request_id' => $projectId,
+                'sort_order' => $this->nextSortOrder($user, $weekStart),
+            ]);
+        }
+
+        $existingHour = TimesheetEntryHour::query()
+            ->where('timesheet_entry_id', $entry->id)
+            ->whereDate('work_date', $workDate)
+            ->first();
+
+        $totalHours = max(
+            0,
+            min(24, round((((float) ($existingHour?->hours ?? 0)) + $duration) * 2) / 2),
+        );
+
+        TimesheetEntryHour::query()->updateOrCreate(
+            [
+                'timesheet_entry_id' => $entry->id,
+                'work_date' => $workDate->toDateString(),
+            ],
+            ['hours' => $totalHours],
+        );
+
+        return $entry->fresh(['hours', 'draftingRequest']);
     }
 
     public function updateHour(
@@ -180,17 +252,30 @@ class WeeklyTimesheetService
             ->all();
 
         $revision = $entry->revision;
-        $jobId = $revision?->drafting_request_id;
+        $project = $entry->draftingRequest;
+        $isProjectActivity = $entry->isProjectActivity();
+        $jobId = $entry->drafting_request_id
+            ?? $revision?->drafting_request_id;
+
+        $taskLabel = $isProjectActivity
+            ? (string) ($project?->jobNumber() ?? 'Project')
+            : $this->taskLabel($entry);
+
+        $activityLabel = $isProjectActivity
+            ? (TimesheetEntry::ACTIVITY_TASK_LABELS[$entry->task_type] ?? ucfirst($entry->task_type))
+            : null;
 
         return [
             'id' => $entry->id,
             'task_type' => $entry->task_type,
-            'task_label' => $this->taskLabel($entry),
+            'task_label' => $taskLabel,
+            'activity_label' => $activityLabel,
             'revision_id' => $entry->drafting_request_revision_id,
             'job_id' => $jobId,
             'hours' => $hours,
             'approval' => $entry->approval_status,
             'is_linked' => $entry->isRevisionTask(),
+            'is_project_activity' => $isProjectActivity,
         ];
     }
 
@@ -200,7 +285,36 @@ class WeeklyTimesheetService
             return (string) ($entry->revision?->code ?? 'Revision');
         }
 
-        return TimesheetEntry::STANDARD_TASK_LABELS[$entry->task_type] ?? ucfirst($entry->task_type);
+        return TimesheetEntry::STANDARD_TASK_LABELS[$entry->task_type]
+            ?? TimesheetEntry::ACTIVITY_TASK_LABELS[$entry->task_type]
+            ?? ucfirst($entry->task_type);
+    }
+
+    private function findActivityProject(User $user, int $projectId): ?DraftingRequest
+    {
+        return DraftingRequest::query()
+            ->active()
+            ->reviewAccepted()
+            ->apm()
+            ->whereKey($projectId)
+            ->whereIn('status', [
+                DraftingRequest::STATUS_WIP,
+                DraftingRequest::STATUS_ASSIGNED,
+                DraftingRequest::STATUS_FOR_CHECKING,
+                DraftingRequest::STATUS_ON_HOLD,
+            ])
+            ->when(
+                ! $user->isAdmin(),
+                fn ($query) => $query->where(function ($inner) use ($user) {
+                    $inner
+                        ->where('user_id', $user->id)
+                        ->orWhereHas(
+                            'assignments',
+                            fn ($assignment) => $assignment->where('user_id', $user->id),
+                        );
+                }),
+            )
+            ->first();
     }
 
     /**

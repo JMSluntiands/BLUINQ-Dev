@@ -5,6 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -80,10 +81,38 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
-            $target = $request->headers->get('referer') ?: url('/');
+            $isLogout = $request->isMethod('post') && $request->routeIs('logout');
+            $isLogin = $request->isMethod('post')
+                && ($request->is('/') || $request->routeIs('login'));
 
-            // Force a full page reload so the browser picks up a fresh CSRF cookie/token.
-            // This is what a manual refresh does — automate it instead of showing 419.
+            // Stale CSRF on logout must still end the session. Otherwise we
+            // bounce to / while still authenticated and guest middleware
+            // sends the user straight back to the dashboard (feels like
+            // "double logout").
+            if ($isLogout && $request->hasSession()) {
+                Auth::guard('web')->logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                if ($request->header('X-Inertia')) {
+                    return Inertia::location(url('/'));
+                }
+
+                return redirect('/');
+            }
+
+            $target = $isLogin
+                ? url('/')
+                : ($request->headers->get('referer') ?: url('/'));
+
+            if ($request->hasSession()) {
+                $request->session()->regenerateToken();
+                $request->session()->flash(
+                    'status',
+                    'Your session expired. Please try again.',
+                );
+            }
+
             if ($request->header('X-Inertia')) {
                 return Inertia::location($target);
             }

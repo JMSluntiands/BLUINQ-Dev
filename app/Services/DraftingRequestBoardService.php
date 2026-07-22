@@ -37,6 +37,7 @@ class DraftingRequestBoardService
             ->withCount(['files', 'comments'])
             ->active()
             ->reviewAccepted()
+            ->apm()
             ->orderByDesc('is_priority')
             ->orderByDesc('requested_at')
             ->orderByDesc('id');
@@ -133,6 +134,28 @@ class DraftingRequestBoardService
         $totalHours = $this->sumRevisionHours($row->revisions)
             ?? $this->sumAssignmentHours($row->assignments);
 
+        $latestRevision = $row->revisions->first()?->code;
+        $accounting = $row->relationLoaded('accountEntries')
+            ? $row->accountEntries->first()?->status
+            : null;
+        $statusOptions = DraftingRequest::statusOptions();
+        $revisions = $row->revisions
+            ->sortBy('id')
+            ->values()
+            ->map(function ($revision) use ($statusOptions) {
+                $status = $revision->status;
+
+                return [
+                    'id' => $revision->id,
+                    'code' => $revision->code ?: '—',
+                    'status' => $status,
+                    'status_label' => $status !== null && $status !== ''
+                        ? ($statusOptions[$status] ?? ucfirst(str_replace('_', ' ', $status)))
+                        : null,
+                ];
+            })
+            ->all();
+
         return [
             'id' => $row->id,
             'reference' => $row->jobNumber(),
@@ -142,6 +165,9 @@ class DraftingRequestBoardService
             'category' => $category,
             'category_full' => $categoryFull !== '' ? $categoryFull : '—',
             'house_type' => $row->buildingType?->name ?? '—',
+            'latest_revision' => $latestRevision ?: '—',
+            'accounting' => $accounting ?: '—',
+            'revisions' => $revisions,
             'date_in' => $row->requested_at?->timezone($tz)->format('M j') ?? '—',
             'eta' => '—',
             'progress_segments' => $this->buildProgressSegments($boardStatus, $drafting, $checking),
@@ -150,7 +176,8 @@ class DraftingRequestBoardService
             'total_hours' => $totalHours,
             'files_count' => $row->files_count,
             'area' => $area,
-            'date_out' => '—',
+            'date_out' => $row->date_out?->format('Y-m-d'),
+            'date_out_label' => $row->date_out?->format('M j') ?? '—',
             'status' => $actualStatus,
             'status_label' => $row->statusLabel(),
             'list_group' => $this->mapJobListGroup($row),

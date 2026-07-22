@@ -64,33 +64,40 @@ export default function DraftingRequestForm({
     standalone = false,
     submitted = false,
     submitUrl = null,
+    backUrl = null,
+    formTitle = null,
+    mode = 'create',
 }) {
     const { logo_url: logoUrl } = usePage().props;
     const Layout = standalone ? PublicFormLayout : AuthenticatedLayout;
+    const isEdit = mode === 'edit';
+    const pageTitle = formTitle ?? (isEdit ? 'Edit masterlist entry' : 'Drafting Request Form');
+    const listBackUrl = backUrl ?? (standalone ? null : route('job.masterlist'));
     const storeRoute =
         submitUrl ??
         (standalone
             ? route('public.drafting-request-form.store')
-            : route('job.drafting-request-form.store'));
+            : route('job.masterlist.store'));
 
     const { data, setData, post, processing, errors, transform } = useForm({
         requested_at: applicant.requested_at,
-        your_name: '',
-        company_name: '',
-        email: '',
-        service_engaging_ids: [],
-        site_address: '',
-        site_owner_name: '',
-        max_building_area_sqm: '',
-        design_requirements: '',
-        building_type_id: '',
-        zoning: '',
-        ndis_sda: false,
-        external_wall_construction_id: '',
-        roof_type_id: '',
-        ceiling_heights: '',
-        first_floor_slab: '',
-        additional_inclusions: '',
+        your_name: applicant.your_name ?? '',
+        company_name: applicant.company_name ?? '',
+        email: applicant.email ?? '',
+        service_engaging_ids: applicant.service_engaging_ids ?? [],
+        site_address: applicant.site_address ?? '',
+        site_owner_name: applicant.site_owner_name ?? '',
+        max_building_area_sqm: applicant.max_building_area_sqm ?? '',
+        design_requirements: applicant.design_requirements ?? '',
+        building_type_id: applicant.building_type_id ?? '',
+        zoning: applicant.zoning ?? '',
+        ndis_sda: Boolean(applicant.ndis_sda),
+        external_wall_construction_id:
+            applicant.external_wall_construction_id ?? '',
+        roof_type_id: applicant.roof_type_id ?? '',
+        ceiling_heights: applicant.ceiling_heights ?? '',
+        first_floor_slab: applicant.first_floor_slab ?? '',
+        additional_inclusions: applicant.additional_inclusions ?? '',
         facade: null,
         documents: [],
     });
@@ -133,17 +140,17 @@ export default function DraftingRequestForm({
     const addIncLen = data.additional_inclusions?.length ?? 0;
 
     return (
-        <Layout title="Drafting Request Form">
-            {!standalone && <Head title="Drafting Request Form" />}
+        <Layout title={pageTitle}>
+            {!standalone && <Head title={pageTitle} />}
 
             <div className="mx-auto w-full min-w-0 max-w-[1400px] space-y-5 pb-12 sm:space-y-6">
-                {!standalone && (
+                {!standalone && listBackUrl && (
                     <div>
                         <Link
-                            href={route('job.board')}
+                            href={listBackUrl}
                             className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
                         >
-                            ← Back to Archi Team
+                            ← Back to Masterlist
                         </Link>
                     </div>
                 )}
@@ -172,7 +179,7 @@ export default function DraftingRequestForm({
                             )}
                             <div className="min-w-0 flex-1">
                                 <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
-                                    Drafting Request Form
+                                    {pageTitle}
                                 </h1>
                                 <p className="mt-2 max-w-[85ch] text-sm leading-relaxed text-slate-600 dark:text-slate-300 sm:text-base">
                                     Thank you for using BLUINQ for your
@@ -764,11 +771,11 @@ export default function DraftingRequestForm({
 
                         <div className="flex flex-wrap items-center gap-4 border-t border-slate-200 pt-8 dark:border-slate-700">
                             <PrimaryButton type="submit" loading={processing}>
-                                Submit request
+                                {isEdit ? 'Save changes' : 'Submit request'}
                             </PrimaryButton>
-                            {!standalone && (
+                            {!standalone && listBackUrl && (
                                 <Link
-                                    href={route('job.board')}
+                                    href={listBackUrl}
                                     className="text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
                                 >
                                     Cancel

@@ -450,6 +450,16 @@ export default function WeeklyTimesheet({ weeklyTimesheet }) {
                                                 >
                                                     {row.task_label}
                                                 </Link>
+                                            ) : row.is_project_activity && row.job_id ? (
+                                                <Link
+                                                    href={route(
+                                                        'job.drafting.show',
+                                                        row.job_id,
+                                                    )}
+                                                    className="font-semibold text-blue-600 hover:underline dark:text-blue-400"
+                                                >
+                                                    {row.task_label}
+                                                </Link>
                                             ) : (
                                                 <span className="font-semibold text-slate-800 dark:text-gray-200">
                                                     {row.task_label}
@@ -458,7 +468,9 @@ export default function WeeklyTimesheet({ weeklyTimesheet }) {
                                             <p className="mt-0.5 text-[10px] uppercase tracking-wide text-slate-400 dark:text-gray-600">
                                                 {row.is_linked
                                                     ? 'Linked from APM'
-                                                    : 'Standard task'}
+                                                    : row.is_project_activity
+                                                      ? row.activity_label
+                                                      : 'Standard task'}
                                             </p>
                                         </td>
                                         {row.hours.map((hour, dayIndex) => (
@@ -540,9 +552,11 @@ export default function WeeklyTimesheet({ weeklyTimesheet }) {
             </div>
 
             <div className="border-t border-slate-100 px-5 py-3 text-[11px] text-slate-500 dark:border-gray-800/70 dark:text-gray-500 sm:px-6">
-                Link APM revisions or add Admin, Training, and Meeting tasks.
-                Revision task hours sync with APM drafting hours automatically.
-                Overtime is calculated for any day over {STANDARD_HOURS} hours.
+                Link APM revisions, add Admin / Training / Meeting tasks, or log
+                project activities from the dashboard. Project activity rows show
+                the job number with the activity underneath. Revision task hours
+                sync with APM drafting hours automatically. Overtime is calculated
+                for any day over {STANDARD_HOURS} hours.
                 {canApprove
                     ? ' You can approve or decline entries as admin.'
                     : ' Approval is handled by admin or manager.'}

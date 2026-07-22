@@ -22,6 +22,7 @@ use App\Models\DraftingRequestComment;
 use App\Models\DraftingRequestFile;
 use App\Models\DraftingRequestAccountEntry;
 use App\Models\DraftingRequestRevision;
+use App\Models\DraftingRequestUnit;
 use App\Models\User;
 use App\Services\DraftingJobShowService;
 use App\Services\DraftingRequestBoardService;
@@ -30,6 +31,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -98,11 +100,25 @@ class DraftingController extends Controller
     {
         $this->authorizeView($request, $draftingRequest);
 
+        return $this->renderJobShow($request, $draftingRequest);
+    }
+
+    /**
+     * Shared job show page (Drafting APM + Masterlist).
+     *
+     * @param  array{search?: string, per_page?: int|null, from?: string|null}  $listFilterOverrides
+     */
+    public function renderJobShow(
+        Request $request,
+        DraftingRequest $draftingRequest,
+        array $listFilterOverrides = [],
+    ): Response {
         $draftingRequest->load([
             'buildingType:id,name',
             'externalWallConstruction:id,name',
             'roofType:id,name',
             'serviceEngagings:id,name',
+            'units',
             'files' => fn ($query) => $query->orderBy('kind')->orderBy('id'),
             'user:id,name,email',
             'comments' => fn ($query) => $query
@@ -113,10 +129,9 @@ class DraftingController extends Controller
         ]);
 
         $tz = config('app.timezone');
-        $listFilters = $this->listFiltersFromRequest($request);
+        $listFilters = array_merge($this->listFiltersFromRequest($request), $listFilterOverrides);
         $user = $request->user();
         $capabilities = $this->jobCapabilities($user, $draftingRequest);
-        $active = ! $draftingRequest->isArchived();
 
         return Inertia::render('Job/Drafting/Show', [
             'draftingRequest' => [
@@ -146,7 +161,21 @@ class DraftingController extends Controller
                 'design_requirements' => $draftingRequest->design_requirements,
                 'building_type' => $draftingRequest->buildingType?->name,
                 'ndis_sda' => $draftingRequest->ndis_sda,
+                'unit_development_count' => (int) ($draftingRequest->unit_development_count ?? 0),
+                'units' => $draftingRequest->units
+                    ->map(fn (DraftingRequestUnit $unit) => [
+                        'id' => $unit->id,
+                        'unit_number' => $unit->unit_number,
+                        'house_type' => $unit->house_type,
+                        'area_sqm' => $unit->area_sqm !== null
+                            ? rtrim(rtrim((string) $unit->area_sqm, '0'), '.')
+                            : null,
+                    ])
+                    ->values()
+                    ->all(),
+                'drawing_checklist' => $draftingRequest->resolvedDrawingChecklist(),
                 'external_wall_construction' => $draftingRequest->externalWallConstruction?->name,
+                'construction' => $draftingRequest->externalWallConstruction?->name,
                 'roof_type' => $draftingRequest->roofType?->name,
                 'ceiling_heights' => $draftingRequest->ceiling_heights,
                 'first_floor_slab' => $draftingRequest->first_floor_slab,
@@ -232,11 +261,19 @@ class DraftingController extends Controller
                 ])
                 ->values()
                 ->all(),
+            'accountStatusOptions' => [
+                'quote' => DraftingRequestAccountEntry::quoteStatusOptions(),
+                'invoice' => DraftingRequestAccountEntry::invoiceStatusOptions(),
+            ],
             'categoryOptions' => CrmCategory::query()
                 ->active()
                 ->where('status', 'active')
                 ->orderBy('name')
                 ->get(['id', 'name'])
+                ->map(fn (CrmCategory $row) => [
+                    'id' => $row->id,
+                    'name' => $row->name,
+                ])
                 ->values()
                 ->all(),
         ]);
@@ -255,7 +292,11 @@ class DraftingController extends Controller
                 abort(404);
             }
 
-            if (! $request->user()->hasPermission('job.drafting.building-area.edit')) {
+            $user = $request->user();
+            $masterlistOk = $draftingRequest->workflow_stage === DraftingRequest::STAGE_MASTERLIST
+                && $user->hasPermission('job.drafting-request.view');
+
+            if (! $user->hasPermission('job.drafting.building-area.edit') && ! $masterlistOk) {
                 abort(403);
             }
         } else {
@@ -266,13 +307,83 @@ class DraftingController extends Controller
         $section = $validated['section'];
         unset($validated['section']);
 
+        if ($section === 'drawing_checklist_reset') {
+            $draftingRequest->update([
+                'drawing_checklist' => array_map(
+                    fn (array $item) => [
+                        'key' => $item['key'],
+                        'label' => $item['label'],
+                        'checked' => false,
+                    ],
+                    DraftingRequest::defaultDrawingChecklist(),
+                ),
+            ]);
+
+            DraftingRequestActivity::record(
+                $draftingRequest,
+                $request->user(),
+                DraftingRequestActivity::ACTION_DRAWING_CHECKLIST_RESET,
+                'Reset drawing status checklist.',
+            );
+
+            return redirect()
+                ->route($this->jobShowRouteName($request), $this->jobShowRouteParams($draftingRequest, $request))
+                ->with('status', 'drf-updated');
+        }
+
+        if ($section === 'drawing_checklist') {
+            $defaults = collect(DraftingRequest::defaultDrawingChecklist())
+                ->keyBy('key');
+            $incoming = collect($validated['items'] ?? [])
+                ->keyBy('key');
+
+            $checklist = $defaults
+                ->map(fn (array $item, string $key) => [
+                    'key' => $key,
+                    'label' => $item['label'],
+                    'checked' => (bool) ($incoming->get($key)['checked'] ?? false),
+                ])
+                ->values()
+                ->all();
+
+            $draftingRequest->update(['drawing_checklist' => $checklist]);
+
+            DraftingRequestActivity::record(
+                $draftingRequest,
+                $request->user(),
+                DraftingRequestActivity::ACTION_DRAWING_CHECKLIST_UPDATED,
+                'Updated drawing status checklist.',
+            );
+
+            return redirect()
+                ->route($this->jobShowRouteName($request), $this->jobShowRouteParams($draftingRequest, $request))
+                ->with('status', 'drf-updated');
+        }
+
         $serviceEngagingIds = $validated['service_engaging_ids'] ?? null;
         unset($validated['service_engaging_ids']);
+
+        $units = $validated['units'] ?? null;
+        unset($validated['units']);
 
         $draftingRequest->update($validated);
 
         if ($serviceEngagingIds !== null) {
             $draftingRequest->serviceEngagings()->sync($serviceEngagingIds);
+        }
+
+        if ($section === 'job' && $units !== null) {
+            $this->syncUnits(
+                $draftingRequest,
+                (int) ($validated['unit_development_count'] ?? 0),
+                $units,
+            );
+        } elseif ($section === 'job' && array_key_exists('unit_development_count', $validated)) {
+            $this->syncUnits(
+                $draftingRequest,
+                (int) $validated['unit_development_count'],
+                [],
+            );
         }
 
         DraftingRequestActivity::record(
@@ -283,10 +394,7 @@ class DraftingController extends Controller
         );
 
         return redirect()
-            ->route('job.drafting.show', [
-                'draftingRequest' => $draftingRequest->id,
-                ...array_filter($this->listFiltersFromRequest($request)),
-            ])
+            ->route($this->jobShowRouteName($request), $this->jobShowRouteParams($draftingRequest, $request))
             ->with('status', 'drf-updated');
     }
 
@@ -301,10 +409,7 @@ class DraftingController extends Controller
 
         if ($previousStatus === $newStatus) {
             return redirect()
-                ->route('job.drafting.show', [
-                    'draftingRequest' => $draftingRequest->id,
-                    ...array_filter($this->listFiltersFromRequest($request)),
-                ]);
+                ->route($this->jobShowRouteName($request), $this->jobShowRouteParams($draftingRequest, $request));
         }
 
         $draftingRequest->update(['status' => $newStatus]);
@@ -322,10 +427,7 @@ class DraftingController extends Controller
         );
 
         return redirect()
-            ->route('job.drafting.show', [
-                'draftingRequest' => $draftingRequest->id,
-                ...array_filter($this->listFiltersFromRequest($request)),
-            ])
+            ->route($this->jobShowRouteName($request), $this->jobShowRouteParams($draftingRequest, $request))
             ->with('status', 'drf-status-updated');
     }
 
@@ -350,6 +452,12 @@ class DraftingController extends Controller
                 $draftingRequest->jobNumber(),
             ),
         );
+
+        if ($this->listFiltersFromRequest($request)['from'] === 'masterlist') {
+            return redirect()
+                ->route('job.masterlist', $this->redirectQuery($request))
+                ->with('status', 'drf-archived');
+        }
 
         return redirect()
             ->route('job.board', $this->redirectQuery($request))
@@ -457,10 +565,7 @@ class DraftingController extends Controller
         $this->timesheetSync->syncRevisionToTimesheet($revision->fresh());
 
         return redirect()
-            ->route('job.drafting.show', [
-                'draftingRequest' => $draftingRequest->id,
-                ...array_filter($this->listFiltersFromRequest($request)),
-            ])
+            ->route($this->jobShowRouteName($request), $this->jobShowRouteParams($draftingRequest, $request))
             ->with('status', 'drf-revision-added');
     }
 
@@ -531,10 +636,7 @@ class DraftingController extends Controller
         $this->timesheetSync->syncRevisionToTimesheet($revision->fresh());
 
         return redirect()
-            ->route('job.drafting.show', [
-                'draftingRequest' => $draftingRequest->id,
-                ...array_filter($this->listFiltersFromRequest($request)),
-            ])
+            ->route($this->jobShowRouteName($request), $this->jobShowRouteParams($draftingRequest, $request))
             ->with('status', 'drf-revision-updated');
     }
 
@@ -585,10 +687,7 @@ class DraftingController extends Controller
         );
 
         return redirect()
-            ->route('job.drafting.show', [
-                'draftingRequest' => $draftingRequest->id,
-                ...array_filter($this->listFiltersFromRequest($request)),
-            ])
+            ->route($this->jobShowRouteName($request), $this->jobShowRouteParams($draftingRequest, $request))
             ->with('status', $isQuote ? 'drf-quote-added' : 'drf-invoice-added');
     }
 
@@ -630,10 +729,7 @@ class DraftingController extends Controller
         );
 
         return redirect()
-            ->route('job.drafting.show', [
-                'draftingRequest' => $draftingRequest->id,
-                ...array_filter($this->listFiltersFromRequest($request)),
-            ])
+            ->route($this->jobShowRouteName($request), $this->jobShowRouteParams($draftingRequest, $request))
             ->with('status', $isQuote ? 'drf-quote-updated' : 'drf-invoice-updated');
     }
 
@@ -751,10 +847,7 @@ class DraftingController extends Controller
 
         if ($uploaded === 0) {
             return redirect()
-                ->route('job.drafting.show', [
-                    'draftingRequest' => $draftingRequest->id,
-                    ...array_filter($this->listFiltersFromRequest($request)),
-                ]);
+                ->route($this->jobShowRouteName($request), $this->jobShowRouteParams($draftingRequest, $request));
         }
 
         DraftingRequestActivity::record(
@@ -769,10 +862,7 @@ class DraftingController extends Controller
         );
 
         return redirect()
-            ->route('job.drafting.show', [
-                'draftingRequest' => $draftingRequest->id,
-                ...array_filter($this->listFiltersFromRequest($request)),
-            ])
+            ->route($this->jobShowRouteName($request), $this->jobShowRouteParams($draftingRequest, $request))
             ->with('status', 'drf-files-updated');
     }
 
@@ -798,10 +888,7 @@ class DraftingController extends Controller
         );
 
         return redirect()
-            ->route('job.drafting.show', [
-                'draftingRequest' => $draftingRequest->id,
-                ...array_filter($this->listFiltersFromRequest($request)),
-            ])
+            ->route($this->jobShowRouteName($request), $this->jobShowRouteParams($draftingRequest, $request))
             ->with('status', 'drf-files-updated');
     }
 
@@ -872,6 +959,7 @@ class DraftingController extends Controller
                 'serviceEngagings:id,name',
             ])
             ->withCount('files')
+            ->apm()
             ->orderByDesc('requested_at')
             ->orderByDesc('id');
 
@@ -976,6 +1064,19 @@ class DraftingController extends Controller
         if ($user === null || ! $this->userCanViewDraftingRequest($user, $draftingRequest)) {
             abort(403);
         }
+
+        if ($draftingRequest->workflow_stage === DraftingRequest::STAGE_MASTERLIST) {
+            if ($draftingRequest->review_status !== DraftingRequest::REVIEW_ACCEPTED
+                || $draftingRequest->isArchived()) {
+                abort(404);
+            }
+
+            return;
+        }
+
+        if ($draftingRequest->workflow_stage !== DraftingRequest::STAGE_APM) {
+            abort(404);
+        }
     }
 
     private function authorizeArchive(
@@ -995,7 +1096,11 @@ class DraftingController extends Controller
     ): void {
         $this->authorizeView($request, $draftingRequest);
 
-        if (! $request->user()->hasPermission('job.drafting.job-details.edit')) {
+        $user = $request->user();
+        $masterlistOk = $draftingRequest->workflow_stage === DraftingRequest::STAGE_MASTERLIST
+            && $user->hasPermission('job.drafting-request.view');
+
+        if (! $user->hasPermission('job.drafting.job-details.edit') && ! $masterlistOk) {
             abort(403);
         }
 
@@ -1033,21 +1138,44 @@ class DraftingController extends Controller
     {
         $canView = $this->userCanViewDraftingRequest($user, $draftingRequest);
         $active = ! $draftingRequest->isArchived();
+        $masterlistAccess = $draftingRequest->workflow_stage === DraftingRequest::STAGE_MASTERLIST
+            && $user->hasPermission('job.drafting-request.view');
 
         return [
-            'editJobDetails' => $canView && $active && $user->hasPermission('job.drafting.job-details.edit'),
-            'editBuildingArea' => $canView && $active && $user->hasPermission('job.drafting.building-area.edit'),
-            'editStatus' => $canView && $active && $user->hasPermission('job.drafting.job-details.edit'),
+            'editJobDetails' => $canView && $active && (
+                $user->hasPermission('job.drafting.job-details.edit')
+                || $masterlistAccess
+            ),
+            'editBuildingArea' => $canView && $active && (
+                $user->hasPermission('job.drafting.building-area.edit')
+                || $masterlistAccess
+            ),
+            'editStatus' => $canView && $active && (
+                $user->hasPermission('job.drafting.job-details.edit')
+                || $masterlistAccess
+            ),
             'archive' => $canView && $user->hasPermission('job.drafting.archive'),
-            'viewRevision' => $canView && $user->hasPermission('job.drafting.revision.view'),
+            'viewRevision' => $canView && (
+                $user->hasPermission('job.drafting.revision.view') || $masterlistAccess
+            ),
             'addRevision' => $canView && $active && $user->hasPermission('job.drafting.revision.add'),
-            'viewAccounts' => $canView && $user->hasPermission('job.drafting.accounts.view'),
+            'viewAccounts' => $canView && (
+                $user->hasPermission('job.drafting.accounts.view') || $masterlistAccess
+            ),
             'addAccount' => $canView && $active && $user->hasPermission('job.drafting.accounts.add'),
-            'viewFiles' => $canView && $user->hasPermission('job.drafting.files.view'),
+            'viewFiles' => $canView && (
+                $user->hasPermission('job.drafting.files.view') || $masterlistAccess
+            ),
             'editFiles' => $canView && $active && $user->hasPermission('job.drafting.files.edit'),
-            'viewComments' => $canView && $user->hasPermission('job.drafting.comments.view'),
-            'postComments' => $canView && $active && $user->hasPermission('job.drafting.comments.post'),
-            'viewActivity' => $canView && $user->hasPermission('job.drafting.activity.view'),
+            'viewComments' => $canView && (
+                $user->hasPermission('job.drafting.comments.view') || $masterlistAccess
+            ),
+            'postComments' => $canView && $active && (
+                $user->hasPermission('job.drafting.comments.post') || $masterlistAccess
+            ),
+            'viewActivity' => $canView && (
+                $user->hasPermission('job.drafting.activity.view') || $masterlistAccess
+            ),
         ];
     }
 
@@ -1055,15 +1183,19 @@ class DraftingController extends Controller
         User $user,
         DraftingRequest $draftingRequest,
     ): bool {
-        if (! $user->hasPermission('job.drafting.view')) {
-            return false;
-        }
+        $isOwnerOrAdmin = $user->isAdmin() || $draftingRequest->user_id === $user->id;
 
-        if ($user->isAdmin()) {
+        if ($user->hasPermission('job.drafting.view') && $isOwnerOrAdmin) {
             return true;
         }
 
-        return $draftingRequest->user_id === $user->id;
+        if ($draftingRequest->workflow_stage === DraftingRequest::STAGE_MASTERLIST
+            && $user->hasPermission('job.drafting-request.view')
+            && $isOwnerOrAdmin) {
+            return true;
+        }
+
+        return false;
     }
 
     private function authorizeRunComments(
@@ -1095,14 +1227,33 @@ class DraftingController extends Controller
     private function listFiltersFromRequest(Request $request): array
     {
         $perPage = $request->query('per_page');
+        $from = $request->query('from');
 
         return [
             'search' => Str::limit(trim((string) $request->query('search', '')), 255),
             'per_page' => $perPage !== null && $perPage !== ''
                 ? (int) $perPage
                 : null,
-            'from' => $request->query('from') === 'archive' ? 'archive' : null,
+            'from' => in_array($from, ['archive', 'masterlist'], true) ? $from : null,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function jobShowRouteParams(DraftingRequest $draftingRequest, Request $request): array
+    {
+        return [
+            'draftingRequest' => $draftingRequest->id,
+            ...array_filter($this->listFiltersFromRequest($request)),
+        ];
+    }
+
+    private function jobShowRouteName(Request $request): string
+    {
+        return $this->listFiltersFromRequest($request)['from'] === 'masterlist'
+            ? 'job.masterlist.show'
+            : 'job.drafting.show';
     }
 
     /**
@@ -1146,6 +1297,8 @@ class DraftingController extends Controller
             'action' => $activity->action,
             'action_label' => match ($activity->action) {
                 DraftingRequestActivity::ACTION_REQUEST_SUBMITTED => 'Submitted drafting request',
+                DraftingRequestActivity::ACTION_REQUEST_ACCEPTED => 'Accepted drafting request',
+                DraftingRequestActivity::ACTION_FORWARDED_TO_APM => 'Forwarded to APM',
                 DraftingRequestActivity::ACTION_COMMENT_POSTED => 'Posted a comment',
                 DraftingRequestActivity::ACTION_RUN_COMMENT_POSTED => 'Posted a run comment',
                 DraftingRequestActivity::ACTION_ARCHIVED => 'Archived drafting request',
@@ -1159,6 +1312,8 @@ class DraftingController extends Controller
                 DraftingRequestActivity::ACTION_QUOTE_UPDATED => 'Updated quote',
                 DraftingRequestActivity::ACTION_INVOICE_ADDED => 'Added invoice',
                 DraftingRequestActivity::ACTION_INVOICE_UPDATED => 'Updated invoice',
+                DraftingRequestActivity::ACTION_DRAWING_CHECKLIST_UPDATED => 'Updated drawing status',
+                DraftingRequestActivity::ACTION_DRAWING_CHECKLIST_RESET => 'Reset drawing status',
                 default => 'Activity',
             },
             'description' => $activity->description,
@@ -1253,12 +1408,49 @@ class DraftingController extends Controller
     {
         return match ($section) {
             'client' => 'client details',
-            'job' => 'job details',
+            'job' => 'project info',
             'building' => 'building specifications',
             'notes' => 'notes',
             'building_area' => 'building area',
+            'drawing_checklist' => 'drawing status',
+            'drawing_checklist_reset' => 'drawing status',
             default => 'details',
         };
+    }
+
+    /**
+     * @param  list<array{unit_number?: int, house_type?: string|null, area_sqm?: mixed}>  $units
+     */
+    private function syncUnits(
+        DraftingRequest $draftingRequest,
+        int $count,
+        array $units,
+    ): void {
+        $count = max(0, min(50, $count));
+        $byNumber = collect($units)
+            ->filter(fn ($unit) => isset($unit['unit_number']))
+            ->keyBy(fn ($unit) => (int) $unit['unit_number']);
+
+        DB::transaction(function () use ($draftingRequest, $count, $byNumber) {
+            $draftingRequest->units()
+                ->where('unit_number', '>', $count)
+                ->delete();
+
+            for ($n = 1; $n <= $count; $n++) {
+                $row = $byNumber->get($n, []);
+                $area = $row['area_sqm'] ?? null;
+
+                $draftingRequest->units()->updateOrCreate(
+                    ['unit_number' => $n],
+                    [
+                        'house_type' => isset($row['house_type']) && $row['house_type'] !== ''
+                            ? trim((string) $row['house_type'])
+                            : null,
+                        'area_sqm' => $area === '' || $area === null ? null : $area,
+                    ],
+                );
+            }
+        });
     }
 
     /**

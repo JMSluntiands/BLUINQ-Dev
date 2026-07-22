@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\AnnouncementController;
+use App\Http\Requests\StoreDashboardActivityRequest;
+use App\Models\DraftingRequest;
 use App\Services\AttendanceService;
 use App\Services\CalendarEventService;
 use App\Services\DraftingRequestBoardService;
 use App\Services\HolidayService;
 use App\Services\LeaveService;
+use App\Services\WeeklyTimesheetService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,6 +25,7 @@ class DashboardController extends Controller
         private DraftingRequestBoardService $board,
         private HolidayService $holidays,
         private LeaveService $leave,
+        private WeeklyTimesheetService $timesheet,
     ) {}
 
     public function index(Request $request): Response
@@ -35,11 +39,6 @@ class DashboardController extends Controller
             : Carbon::today()->startOfMonth();
         [$calendarStart, $calendarEnd] = $this->leave->monthGridRange($month);
 
-        $jobStatusDate = $request->string('job_status_date')->toString();
-        $jobStatusDate = preg_match('/^\d{4}-\d{2}-\d{2}$/', $jobStatusDate)
-            ? $jobStatusDate
-            : Carbon::today(config('app.timezone'))->format('Y-m-d');
-
         $leaderboardMonth = $request->string('leaderboard_month')->toString();
         $leaderboardMonth = preg_match('/^\d{4}-\d{2}$/', $leaderboardMonth)
             ? $leaderboardMonth
@@ -48,7 +47,7 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard', [
             'boardPreviewJobs' => $user?->hasPermission('job.list.view')
                 ? $boardQuery
-                    ->where('is_priority', true)
+                    ->where('status', DraftingRequest::STATUS_FOR_CHECKING)
                     ->limit(5)
                     ->get()
                     ->map(function ($row) use ($request) {
@@ -63,6 +62,52 @@ class DashboardController extends Controller
             'attendance' => $this->attendance->dashboardAttendancePayload(),
             'clock' => $user
                 ? $this->attendance->clockStateForUser($user)
+                : null,
+            'activityFormOptions' => $user?->hasPermission('dashboard.view')
+                ? [
+                    'activities' => [
+                        ['value' => 'admin', 'label' => 'Admin'],
+                        ['value' => 'meeting', 'label' => 'Meeting'],
+                        ['value' => 'training', 'label' => 'Training'],
+                        ['value' => 'drafting', 'label' => 'Drafting'],
+                        ['value' => 'downtime', 'label' => 'Downtime'],
+                    ],
+                    'projects' => $user->hasPermission('job.list.view')
+                        ? DraftingRequest::query()
+                            ->active()
+                            ->reviewAccepted()
+                            ->apm()
+                            ->whereIn('status', [
+                                DraftingRequest::STATUS_WIP,
+                                DraftingRequest::STATUS_ASSIGNED,
+                                DraftingRequest::STATUS_FOR_CHECKING,
+                                DraftingRequest::STATUS_ON_HOLD,
+                            ])
+                            ->when(
+                                ! $user->isAdmin(),
+                                fn ($query) => $query->where(function ($inner) use ($user) {
+                                    $inner
+                                        ->where('user_id', $user->id)
+                                        ->orWhereHas(
+                                            'assignments',
+                                            fn ($assignment) => $assignment->where('user_id', $user->id),
+                                        );
+                                }),
+                            )
+                            ->orderByDesc('requested_at')
+                            ->orderByDesc('id')
+                            ->limit(200)
+                            ->get(['id', 'site_address', 'requested_at', 'created_at'])
+                            ->map(fn ($row) => [
+                                'value' => (string) $row->id,
+                                'label' => trim(
+                                    ($row->site_address ?: 'Untitled').' ('.$row->jobNumber().')',
+                                ),
+                            ])
+                            ->values()
+                            ->all()
+                        : [],
+                ]
                 : null,
             'announcements' => $user?->hasPermission('announcements.view')
                 ? AnnouncementController::latestForDashboard()
@@ -82,9 +127,6 @@ class DashboardController extends Controller
             'onLeaveToday' => $user
                 ? $this->leave->onLeaveToday()
                 : [],
-            'jobStatusChart' => $user?->hasPermission('job.list.view')
-                ? $this->board->jobStatusChartPayload($request, $jobStatusDate)
-                : null,
             'drafterLeaderboard' => $user?->hasPermission('job.list.view')
                 ? $this->board->drafterLeaderboardPayload($request, $leaderboardMonth)
                 : null,
@@ -125,5 +167,21 @@ class DashboardController extends Controller
         ]);
 
         return back()->with('status', 'clocked-out');
+    }
+
+    public function storeActivity(StoreDashboardActivityRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $this->timesheet->storeDashboardActivity(
+            $request->user(),
+            $validated['activity'],
+            (int) $validated['project_id'],
+            Carbon::parse($validated['date']),
+            (int) $validated['hours'],
+            (int) $validated['minutes'],
+        );
+
+        return back()->with('status', 'activity-logged');
     }
 }

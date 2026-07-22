@@ -44,6 +44,19 @@ class AnnouncementController extends Controller
         return Inertia::render('Announcements/Create');
     }
 
+    public function show(Announcement $announcement): Response
+    {
+        if ($announcement->isArchived()) {
+            abort(404);
+        }
+
+        $announcement->loadMissing('user:id,name');
+
+        return Inertia::render('Announcements/Show', [
+            'announcement' => $this->formatAnnouncement($announcement),
+        ]);
+    }
+
     public function store(StoreAnnouncementRequest $request): RedirectResponse
     {
         $data = [

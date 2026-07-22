@@ -64,6 +64,7 @@ class UpdateDraftingRequestRequest extends FormRequest
                 ],
                 'zoning' => ['nullable', 'string', 'max:255'],
                 'site_address' => ['required', 'string', 'max:2000'],
+                'site_owner_name' => ['nullable', 'string', 'max:255'],
                 'service_engaging_ids' => ['required', 'array', 'min:1'],
                 'service_engaging_ids.*' => [
                     'integer',
@@ -72,6 +73,11 @@ class UpdateDraftingRequestRequest extends FormRequest
                     ),
                 ],
                 'ndis_sda' => ['sometimes', 'boolean'],
+                'unit_development_count' => ['nullable', 'integer', 'min:0', 'max:50'],
+                'units' => ['nullable', 'array', 'max:50'],
+                'units.*.unit_number' => ['required_with:units', 'integer', 'min:1', 'max:50'],
+                'units.*.house_type' => ['nullable', 'string', 'max:255'],
+                'units.*.area_sqm' => ['nullable', 'numeric', 'min:0'],
                 'external_wall_construction_id' => [
                     'nullable',
                     'integer',
@@ -90,6 +96,15 @@ class UpdateDraftingRequestRequest extends FormRequest
                 'first_floor_slab' => ['nullable', 'string', 'max:2000'],
                 'design_requirements' => ['nullable', 'string', 'max:2000'],
                 'additional_inclusions' => ['nullable', 'string', 'max:2000'],
+            ],
+            'drawing_checklist' => [
+                'section' => ['required', 'string', 'in:drawing_checklist'],
+                'items' => ['required', 'array'],
+                'items.*.key' => ['required', 'string', 'max:64'],
+                'items.*.checked' => ['required', 'boolean'],
+            ],
+            'drawing_checklist_reset' => [
+                'section' => ['required', 'string', 'in:drawing_checklist_reset'],
             ],
             'building' => [
                 'section' => ['required', 'string', 'in:building'],
@@ -122,7 +137,7 @@ class UpdateDraftingRequestRequest extends FormRequest
                 'max_building_area_sqm' => ['nullable', 'numeric', 'min:0'],
             ],
             default => [
-                'section' => ['required', 'string', 'in:client,job,building,notes,building_area'],
+                'section' => ['required', 'string', 'in:client,job,building,notes,building_area,drawing_checklist,drawing_checklist_reset'],
             ],
         };
     }
@@ -136,6 +151,15 @@ class UpdateDraftingRequestRequest extends FormRequest
                 'ndis_sda' => filter_var($this->input('ndis_sda'), FILTER_VALIDATE_BOOLEAN),
             ]);
 
+            if ($this->has('unit_development_count')) {
+                $count = $this->input('unit_development_count');
+                $this->merge([
+                    'unit_development_count' => $count === '' || $count === null
+                        ? 0
+                        : (int) $count,
+                ]);
+            }
+
             foreach (['external_wall_construction_id', 'roof_type_id'] as $key) {
                 if (! $this->has($key)) {
                     continue;
@@ -146,6 +170,17 @@ class UpdateDraftingRequestRequest extends FormRequest
                     $key => $value === '' || $value === null ? null : $value,
                 ]);
             }
+        }
+
+        if ($section === 'drawing_checklist' && is_array($this->input('items'))) {
+            $items = collect($this->input('items'))
+                ->map(fn ($item) => [
+                    'key' => $item['key'] ?? null,
+                    'checked' => filter_var($item['checked'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                ])
+                ->all();
+
+            $this->merge(['items' => $items]);
         }
 
         if ($section === 'building') {

@@ -6,7 +6,7 @@ import RichTextEditor from '@/Components/RichTextEditor';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
 import { useForm } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const selectClass =
     'mt-1 block w-full rounded-md border border-[#c5c7d0] bg-white px-3 py-2 text-sm text-[#323338] shadow-sm focus:border-[#0073ea] focus:outline-none focus:ring-1 focus:ring-[#0073ea] dark:border-[#2f3347] dark:bg-[#151622] dark:text-slate-200';
@@ -45,6 +45,7 @@ function filterQueryString(filters = {}) {
  * @param {{
  *   show: boolean;
  *   memo?: object | null;
+ *   clients?: string[];
  *   tags?: Array<{ id: number; name: string }>;
  *   filters?: object;
  *   canManageTags?: boolean;
@@ -54,6 +55,7 @@ function filterQueryString(filters = {}) {
 export default function DraftingMemoFormModal({
     show,
     memo = null,
+    clients = [],
     tags = [],
     filters = {},
     canManageTags = false,
@@ -66,6 +68,22 @@ export default function DraftingMemoFormModal({
     const [availableTags, setAvailableTags] = useState(tags);
     const [addingTag, setAddingTag] = useState(false);
     const [tagError, setTagError] = useState(null);
+
+    const clientOptions = useMemo(() => {
+        const names = [...clients];
+        const current = memo?.client_name?.trim();
+
+        if (
+            current &&
+            !names.some(
+                (name) => name.toLowerCase() === current.toLowerCase(),
+            )
+        ) {
+            names.unshift(current);
+        }
+
+        return names;
+    }, [clients, memo?.client_name]);
 
     const form = useForm({
         client_name: '',
@@ -193,15 +211,22 @@ export default function DraftingMemoFormModal({
                 <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="sm:col-span-2">
                         <InputLabel htmlFor="memo-client" value="Client name" />
-                        <TextInput
+                        <select
                             id="memo-client"
                             value={form.data.client_name}
                             onChange={(event) =>
                                 form.setData('client_name', event.target.value)
                             }
-                            className="mt-1 block w-full"
+                            className={selectClass}
                             required
-                        />
+                        >
+                            <option value="">Select client…</option>
+                            {clientOptions.map((client) => (
+                                <option key={client} value={client}>
+                                    {client}
+                                </option>
+                            ))}
+                        </select>
                         <InputError
                             message={form.errors.client_name}
                             className="mt-1"
@@ -246,7 +271,7 @@ export default function DraftingMemoFormModal({
 
                     <div className="sm:col-span-2">
                         <InputLabel value="Memo / description" />
-                        <div className="mt-1 [&_.rich-text-editor]:max-h-[140px] [&_.rich-text-editor]:min-h-[88px]">
+                        <div className="mt-1 [&_.rich-text-editor]:max-h-[420px] [&_.rich-text-editor]:min-h-[240px]">
                             <RichTextEditor
                                 key={editorKey}
                                 value={form.data.description}

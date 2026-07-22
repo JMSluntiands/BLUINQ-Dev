@@ -3,7 +3,7 @@ import InputError from '@/Components/InputError';
 import TextInput from '@/Components/TextInput';
 import { PencilSquareIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { Link, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const cardClass =
     'overflow-hidden rounded-xl border border-[#e6e9ef] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)] dark:border-[#2f3347] dark:bg-[#1a1b2e]';
@@ -19,6 +19,9 @@ const thClass =
 const tdClass =
     'whitespace-nowrap border border-[#e6e9ef] px-3 py-2.5 align-middle text-xs text-[#323338] dark:border-[#2f3347] dark:text-slate-200';
 
+const sectionLabelClass =
+    'mb-3 text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-500';
+
 export function JobPanel({
     title,
     subtitle,
@@ -28,6 +31,7 @@ export function JobPanel({
     canAdd = false,
     onAdd,
     addLabel = 'Add',
+    headerActions = null,
     className = '',
 }) {
     return (
@@ -41,32 +45,38 @@ export function JobPanel({
                         </p>
                     ) : null}
                 </div>
-                {canEdit && onEdit ? (
-                    <button
-                        type="button"
-                        onClick={onEdit}
-                        className="inline-flex items-center gap-1 rounded-md border border-[#c5c7d0] bg-white px-2.5 py-1 text-xs font-semibold text-[#0073ea] shadow-sm transition hover:bg-[#e6f4ff] dark:border-[#3b82f6]/50 dark:bg-[#1a1b2e] dark:text-[#60a5fa] dark:hover:bg-[#243044]"
-                    >
-                        <PencilSquareIcon className="h-3.5 w-3.5" aria-hidden />
-                        Edit
-                    </button>
-                ) : canAdd && onAdd ? (
-                    <button
-                        type="button"
-                        onClick={onAdd}
-                        className="inline-flex items-center gap-1 rounded-md border border-[#c5c7d0] bg-white px-2.5 py-1 text-xs font-semibold text-[#0073ea] shadow-sm transition hover:bg-[#e6f4ff] dark:border-[#3b82f6]/50 dark:bg-[#1a1b2e] dark:text-[#60a5fa] dark:hover:bg-[#243044]"
-                    >
-                        <PlusIcon className="h-3.5 w-3.5" aria-hidden />
-                        {addLabel}
-                    </button>
-                ) : null}
+                <div className="flex flex-wrap items-center gap-2">
+                    {headerActions}
+                    {canEdit && onEdit ? (
+                        <button
+                            type="button"
+                            onClick={onEdit}
+                            className="inline-flex items-center gap-1 rounded-md border border-[#c5c7d0] bg-white px-2.5 py-1 text-xs font-semibold text-[#0073ea] shadow-sm transition hover:bg-[#e6f4ff] dark:border-[#3b82f6]/50 dark:bg-[#1a1b2e] dark:text-[#60a5fa] dark:hover:bg-[#243044]"
+                        >
+                            <PencilSquareIcon
+                                className="h-3.5 w-3.5"
+                                aria-hidden
+                            />
+                            Edit
+                        </button>
+                    ) : canAdd && onAdd ? (
+                        <button
+                            type="button"
+                            onClick={onAdd}
+                            className="inline-flex items-center gap-1 rounded-md border border-[#c5c7d0] bg-white px-2.5 py-1 text-xs font-semibold text-[#0073ea] shadow-sm transition hover:bg-[#e6f4ff] dark:border-[#3b82f6]/50 dark:bg-[#1a1b2e] dark:text-[#60a5fa] dark:hover:bg-[#243044]"
+                        >
+                            <PlusIcon className="h-3.5 w-3.5" aria-hidden />
+                            {addLabel}
+                        </button>
+                    ) : null}
+                </div>
             </div>
             <div>{children}</div>
         </section>
     );
 }
 
-function JobDetailField({ label, children, value }) {
+function JobDetailField({ label, children, value, hint = null }) {
     const display =
         children ??
         (value === null || value === undefined || value === '' ? '—' : value);
@@ -79,6 +89,11 @@ function JobDetailField({ label, children, value }) {
             <dd className="mt-1 whitespace-pre-wrap text-sm text-[#323338] dark:text-slate-200">
                 {display}
             </dd>
+            {hint ? (
+                <p className="mt-1 text-[11px] text-[#676879] dark:text-slate-500">
+                    {hint}
+                </p>
+            ) : null}
         </div>
     );
 }
@@ -163,12 +178,7 @@ function formatHours(hours) {
     return `${hours} hrs`;
 }
 
-function BuildingAreaEditor({
-    value,
-    canEdit,
-    updateUrl,
-    onCancel,
-}) {
+function BuildingAreaEditor({ value, canEdit, updateUrl, onCancel }) {
     const form = useForm({
         section: 'building_area',
         max_building_area_sqm: value ?? '',
@@ -231,6 +241,137 @@ function BuildingAreaEditor({
     );
 }
 
+function DrawingStatusPanel({
+    items = [],
+    canEdit = false,
+    updateUrl = '',
+}) {
+    const form = useForm({
+        section: 'drawing_checklist',
+        items: items.map((item) => ({
+            key: item.key,
+            checked: Boolean(item.checked),
+        })),
+    });
+
+    const resetForm = useForm({
+        section: 'drawing_checklist_reset',
+    });
+
+    useEffect(() => {
+        form.setData(
+            'items',
+            items.map((item) => ({
+                key: item.key,
+                checked: Boolean(item.checked),
+            })),
+        );
+    }, [items]);
+
+    const toggleItem = (key) => {
+        form.setData(
+            'items',
+            form.data.items.map((item) =>
+                item.key === key
+                    ? { ...item, checked: !item.checked }
+                    : item,
+            ),
+        );
+    };
+
+    const save = () => {
+        form.patch(updateUrl, { preserveScroll: true });
+    };
+
+    const reset = () => {
+        if (
+            !window.confirm(
+                'Reset all drawing status checks? This cannot be undone.',
+            )
+        ) {
+            return;
+        }
+
+        resetForm.patch(updateUrl, { preserveScroll: true });
+    };
+
+    const checkedByKey = Object.fromEntries(
+        form.data.items.map((item) => [item.key, item.checked]),
+    );
+
+    return (
+        <JobPanel
+            title="Drawing status"
+            subtitle="Visible to all job viewers"
+            headerActions={
+                canEdit ? (
+                    <>
+                        <button
+                            type="button"
+                            onClick={reset}
+                            disabled={resetForm.processing || form.processing}
+                            className="rounded-md border border-[#c5c7d0] bg-white px-2.5 py-1 text-xs font-semibold text-[#676879] shadow-sm transition hover:bg-[#f6f7fb] disabled:opacity-50 dark:border-[#3b82f6]/40 dark:bg-[#1a1b2e] dark:text-slate-300 dark:hover:bg-[#243044]"
+                        >
+                            Reset
+                        </button>
+                        <button
+                            type="button"
+                            onClick={save}
+                            disabled={form.processing || resetForm.processing}
+                            className="rounded-md bg-[#0073ea] px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-[#0060c4] disabled:opacity-50"
+                        >
+                            Save
+                        </button>
+                    </>
+                ) : null
+            }
+        >
+            <div className="p-4">
+                <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {items.map((item) => {
+                        const checked = Boolean(checkedByKey[item.key]);
+                        const is3d = item.key === '3d_model';
+
+                        return (
+                            <li key={item.key}>
+                                <label
+                                    className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2.5 transition ${
+                                        checked
+                                            ? 'border-[#0073ea]/40 bg-[#e6f4ff]/60 dark:border-[#3b82f6]/40 dark:bg-[#243044]/50'
+                                            : 'border-[#e6e9ef] bg-[#fafbfc] dark:border-[#2f3347] dark:bg-[#151622]'
+                                    } ${!canEdit ? 'cursor-default' : ''}`}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        className="mt-0.5 rounded border-[#c5c7d0] text-[#0073ea] focus:ring-[#0073ea]"
+                                        checked={checked}
+                                        disabled={!canEdit || form.processing}
+                                        onChange={() => toggleItem(item.key)}
+                                    />
+                                    <span className="min-w-0">
+                                        <span className="block text-sm font-medium text-[#323338] dark:text-slate-200">
+                                            {item.label}
+                                        </span>
+                                        {is3d ? (
+                                            <span className="mt-0.5 block text-[11px] text-[#676879] dark:text-slate-500">
+                                                Placeholder — 3D integration TBD
+                                            </span>
+                                        ) : null}
+                                    </span>
+                                </label>
+                            </li>
+                        );
+                    })}
+                </ul>
+                <InputError
+                    message={form.errors.items || form.errors.section}
+                    className="mt-3"
+                />
+            </div>
+        </JobPanel>
+    );
+}
+
 function DataTable({ columns, rows, emptyMessage, minWidth = '32rem' }) {
     return (
         <div className="overflow-x-auto rounded-lg border border-[#e6e9ef] dark:border-[#2f3347]">
@@ -281,33 +422,7 @@ function DataTable({ columns, rows, emptyMessage, minWidth = '32rem' }) {
 }
 
 /**
- * @param {{
- *   draftingRequest: Record<string, unknown>;
- *   revisions?: Array<Record<string, unknown>>;
- *   quotes?: Array<Record<string, unknown>>;
- *   invoices?: Array<Record<string, unknown>>;
- *   integrationUrls?: { sharepoint?: string|null; xero_quote?: string|null; xero_invoice?: string|null };
- *   canEdit?: boolean;
- *   canEditJobDetails?: boolean;
- *   canEditBuildingArea?: boolean;
- *   canViewAccounts?: boolean;
- *   canAddAccount?: boolean;
- *   onEditQuote?: (row: Record<string, unknown>) => void;
- *   onEditInvoice?: (row: Record<string, unknown>) => void;
- *   onAddQuote?: () => void;
- *   onAddInvoice?: () => void;
- *   canViewRevision?: boolean;
- *   canAddRevision?: boolean;
- *   onEditRevision?: (row: Record<string, unknown>) => void;
- *   onAddRevision?: () => void;
- *   updateUrl?: string;
- *   onEditJobDetails?: () => void;
- *   commentsPanel?: React.ReactNode;
- *   filesPanel?: React.ReactNode;
- *   activityPanel?: React.ReactNode;
- *   backHref?: string;
- *   archiveActions?: React.ReactNode;
- * }} props
+ * PROJECT INFO layout for drafting job show page.
  */
 export default function DraftingJobShowLayout({
     draftingRequest,
@@ -334,9 +449,12 @@ export default function DraftingJobShowLayout({
     filesPanel,
     activityPanel,
     backHref,
+    backLabel,
     archiveActions,
+    variant = 'default',
 }) {
     const [editingArea, setEditingArea] = useState(false);
+    const isMasterlist = variant === 'masterlist';
 
     const contactLine = [
         draftingRequest.your_name,
@@ -344,6 +462,9 @@ export default function DraftingJobShowLayout({
     ]
         .filter(Boolean)
         .join(' ');
+
+    const units = draftingRequest.units ?? [];
+    const unitCount = Number(draftingRequest.unit_development_count ?? 0);
 
     const revisionColumns = [
         {
@@ -509,253 +630,401 @@ export default function DraftingJobShowLayout({
         return columns;
     };
 
+    const pageHeader = (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+                {backHref ? (
+                    <Link
+                        href={backHref}
+                        className="mb-2 inline-block text-sm font-medium text-[#0073ea] hover:underline dark:text-[#60a5fa]"
+                    >
+                        {backLabel ?? '← Back to board'}
+                    </Link>
+                ) : null}
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-500">
+                    Project info
+                </p>
+                <h1 className="mt-1 text-xl font-semibold leading-snug text-[#323338] dark:text-white sm:text-2xl">
+                    {draftingRequest.site_address || 'Project info'}
+                </h1>
+                <p className="mt-1 text-sm text-[#676879] dark:text-slate-400">
+                    Lead number:{' '}
+                    <span className="font-medium text-[#323338] dark:text-slate-200">
+                        {draftingRequest.reference}
+                    </span>
+                    {draftingRequest.is_archived ? ' · Archived' : ''}
+                </p>
+            </div>
+            {!isMasterlist && archiveActions ? (
+                <div className="flex flex-wrap gap-2">{archiveActions}</div>
+            ) : null}
+        </div>
+    );
+
+    const archivedBanner = draftingRequest.is_archived ? (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/50 dark:bg-amber-950/30 dark:text-amber-200">
+            This job is archived
+            {draftingRequest.archived_at
+                ? ` on ${draftingRequest.archived_at}`
+                : ''}
+            .
+        </p>
+    ) : null;
+
+    const clientDetailsPanel = (
+        <JobPanel
+            title={isMasterlist ? 'Client details' : 'Project info'}
+            subtitle={
+                isMasterlist
+                    ? 'Contact and site details'
+                    : 'Synced with Project Management'
+            }
+            canEdit={canEdit || canEditJobDetails}
+            onEdit={onEditJobDetails}
+        >
+            <dl>
+                <JobDetailField
+                    label="Client name"
+                    value={draftingRequest.company_name}
+                    hint="Connected to Project Management"
+                />
+                <JobDetailField
+                    label="Contact"
+                    value={contactLine || null}
+                />
+                <JobDetailField
+                    label="Site address"
+                    value={draftingRequest.site_address}
+                />
+                <JobDetailField
+                    label="Home owner name"
+                    value={draftingRequest.site_owner_name}
+                />
+                <JobDetailField
+                    label="House type"
+                    value={
+                        draftingRequest.building_type
+                            ? String(draftingRequest.building_type).toUpperCase()
+                            : null
+                    }
+                />
+                <JobDetailField
+                    label="Zoning"
+                    value={draftingRequest.zoning}
+                />
+                <JobDetailField label="Building area">
+                    {editingArea ? (
+                        <BuildingAreaEditor
+                            value={draftingRequest.max_building_area_sqm}
+                            canEdit
+                            updateUrl={updateUrl}
+                            onCancel={() => setEditingArea(false)}
+                        />
+                    ) : (
+                        <div className="flex items-center gap-2">
+                            <span>
+                                {draftingRequest.building_area_label ?? '—'}
+                            </span>
+                            {canEditBuildingArea ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingArea(true)}
+                                    className="text-[11px] font-semibold text-[#0073ea] underline underline-offset-2 hover:text-[#0060c4] dark:text-[#60a5fa]"
+                                >
+                                    Edit
+                                </button>
+                            ) : null}
+                        </div>
+                    )}
+                </JobDetailField>
+                <JobDetailField
+                    label="Services / category"
+                    value={draftingRequest.services_label}
+                    hint="From Project Management categories"
+                />
+                <JobDetailField
+                    label="NDIS / SDA"
+                    value={draftingRequest.ndis_sda ? 'YES' : 'NO'}
+                />
+                <JobDetailField
+                    label="Construction"
+                    value={
+                        draftingRequest.construction ??
+                        draftingRequest.external_wall_construction
+                    }
+                />
+                <JobDetailField
+                    label="Roof"
+                    value={draftingRequest.roof_type}
+                />
+                <JobDetailField
+                    label="Ceiling heights"
+                    value={draftingRequest.ceiling_heights}
+                />
+                <JobDetailField
+                    label="First floor slab"
+                    value={draftingRequest.first_floor_slab}
+                />
+                <JobDetailField label="Unit development">
+                    {unitCount > 0 ? (
+                        <div className="space-y-2">
+                            <p className="text-sm font-medium">
+                                {unitCount} unit
+                                {unitCount === 1 ? '' : 's'}
+                            </p>
+                            <div className="overflow-x-auto rounded-lg border border-[#e6e9ef] dark:border-[#2f3347]">
+                                <table className="w-full min-w-[20rem] border-collapse text-left">
+                                    <thead>
+                                        <tr>
+                                            <th className={thClass}>Unit</th>
+                                            <th className={thClass}>
+                                                House type
+                                            </th>
+                                            <th className={thClass}>Area</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {Array.from(
+                                            { length: unitCount },
+                                            (_, i) => {
+                                                const n = i + 1;
+                                                const unit =
+                                                    units.find(
+                                                        (u) =>
+                                                            Number(
+                                                                u.unit_number,
+                                                            ) === n,
+                                                    ) ?? {};
+
+                                                return (
+                                                    <tr key={n}>
+                                                        <td className={tdClass}>
+                                                            Unit {n}
+                                                        </td>
+                                                        <td className={tdClass}>
+                                                            {unit.house_type ||
+                                                                '—'}
+                                                        </td>
+                                                        <td className={tdClass}>
+                                                            {unit.area_sqm
+                                                                ? `${unit.area_sqm} SQM`
+                                                                : '—'}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            },
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ) : (
+                        '0'
+                    )}
+                </JobDetailField>
+                {(draftingRequest.design_requirements ||
+                    draftingRequest.additional_inclusions) && (
+                    <JobDetailField
+                        label="Notes / requirements"
+                        value={[
+                            draftingRequest.design_requirements,
+                            draftingRequest.additional_inclusions,
+                        ]
+                            .filter(Boolean)
+                            .join('\n\n')}
+                    />
+                )}
+            </dl>
+        </JobPanel>
+    );
+
+    const revisionsPanel = canViewRevision ? (
+        <JobPanel
+            title="Revisions"
+            subtitle="Visible to all job viewers"
+            canAdd={canAddRevision}
+            onAdd={onAddRevision}
+            addLabel="Add Item"
+        >
+            <div className="p-4">
+                <DataTable
+                    columns={revisionColumns}
+                    rows={revisions}
+                    emptyMessage="No revisions recorded yet."
+                    minWidth="44rem"
+                />
+            </div>
+        </JobPanel>
+    ) : null;
+
+    const accountsPanel = canViewAccounts ? (
+        <JobPanel title="Quotes & invoices" subtitle="Admin only">
+            <div className="space-y-4 p-4">
+                <div>
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400">
+                            Quote #
+                        </h3>
+                        {canAddAccount && onAddQuote ? (
+                            <button
+                                type="button"
+                                onClick={onAddQuote}
+                                className="inline-flex items-center gap-1 rounded-md border border-[#c5c7d0] bg-white px-2 py-0.5 text-[10px] font-semibold text-[#0073ea] shadow-sm transition hover:bg-[#e6f4ff] dark:border-[#3b82f6]/50 dark:bg-[#1a1b2e] dark:text-[#60a5fa] dark:hover:bg-[#243044]"
+                            >
+                                <PlusIcon className="h-3 w-3" aria-hidden />
+                                Add quote
+                            </button>
+                        ) : null}
+                    </div>
+                    <DataTable
+                        columns={accountColumns(
+                            integrationUrls.xero_quote,
+                            'Quote #',
+                            onEditQuote,
+                        )}
+                        rows={quotes}
+                        emptyMessage="No quotes linked yet."
+                    />
+                </div>
+                <div>
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400">
+                            Invoice #
+                        </h3>
+                        {canAddAccount && onAddInvoice ? (
+                            <button
+                                type="button"
+                                onClick={onAddInvoice}
+                                className="inline-flex items-center gap-1 rounded-md border border-[#c5c7d0] bg-white px-2 py-0.5 text-[10px] font-semibold text-[#0073ea] shadow-sm transition hover:bg-[#e6f4ff] dark:border-[#3b82f6]/50 dark:bg-[#1a1b2e] dark:text-[#60a5fa] dark:hover:bg-[#243044]"
+                            >
+                                <PlusIcon className="h-3 w-3" aria-hidden />
+                                Add invoice
+                            </button>
+                        ) : null}
+                    </div>
+                    <DataTable
+                        columns={accountColumns(
+                            integrationUrls.xero_invoice,
+                            'Invoice #',
+                            onEditInvoice,
+                        )}
+                        rows={invoices}
+                        emptyMessage="No invoices linked yet."
+                    />
+                </div>
+            </div>
+        </JobPanel>
+    ) : null;
+
+    const drawingPanel = (
+        <DrawingStatusPanel
+            items={draftingRequest.drawing_checklist ?? []}
+            canEdit={canEdit || canEditJobDetails}
+            updateUrl={updateUrl}
+        />
+    );
+
+    const commentsBlock = commentsPanel ? (
+        <JobPanel
+            title="Comments"
+            className="flex min-h-[18rem] flex-col"
+        >
+            <div className="flex min-h-[16rem] flex-1 flex-col">
+                {commentsPanel}
+            </div>
+        </JobPanel>
+    ) : null;
+
+    if (isMasterlist) {
+        return (
+            <div className="space-y-4">
+                {pageHeader}
+                {archivedBanner}
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+                    <aside className="space-y-4 lg:col-span-4">
+                        {clientDetailsPanel}
+                        {activityPanel ? (
+                            <section aria-label="Activity logs">
+                                {activityPanel}
+                            </section>
+                        ) : null}
+                        {filesPanel ? (
+                            <section aria-label="Documents">{filesPanel}</section>
+                        ) : null}
+                        {commentsBlock}
+                        {archiveActions ? (
+                            <div className="flex flex-wrap gap-2">
+                                {archiveActions}
+                            </div>
+                        ) : null}
+                    </aside>
+                    <div className="space-y-4 lg:col-span-8">
+                        {(canViewRevision || canViewAccounts) && (
+                            <section aria-label="Project and accounts">
+                                <p className={sectionLabelClass}>
+                                    Project & accounts
+                                </p>
+                                <div className="space-y-4">
+                                    {revisionsPanel}
+                                    {accountsPanel}
+                                </div>
+                            </section>
+                        )}
+                        <section aria-label="Drawing status">
+                            <p className={sectionLabelClass}>Drawing status</p>
+                            {drawingPanel}
+                        </section>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                    {backHref ? (
-                        <Link
-                            href={backHref}
-                            className="mb-2 inline-block text-sm font-medium text-[#0073ea] hover:underline dark:text-[#60a5fa]"
-                        >
-                            ← Back to board
-                        </Link>
-                    ) : null}
-                    <h1 className="text-xl font-semibold leading-snug text-[#323338] dark:text-white sm:text-2xl">
-                        {draftingRequest.site_address || 'Job details'}
-                    </h1>
-                    <p className="mt-1 text-sm text-[#676879] dark:text-slate-400">
-                        Job number:{' '}
-                        <span className="font-medium text-[#323338] dark:text-slate-200">
-                            {draftingRequest.reference}
-                        </span>
-                        {draftingRequest.is_archived ? ' · Archived' : ''}
-                    </p>
-                </div>
-                {archiveActions ? (
-                    <div className="flex flex-wrap gap-2">{archiveActions}</div>
-                ) : null}
-            </div>
-
-            {draftingRequest.is_archived ? (
-                <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/50 dark:bg-amber-950/30 dark:text-amber-200">
-                    This job is archived
-                    {draftingRequest.archived_at
-                        ? ` on ${draftingRequest.archived_at}`
-                        : ''}
-                    .
-                </p>
-            ) : null}
+            {pageHeader}
+            {archivedBanner}
 
             <div className="space-y-6">
-                <section aria-label="Job overview">
-                    <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-500">
-                        1. Job details
-                    </p>
-                    <JobPanel
-                        title="Job details"
-                        canEdit={canEdit || canEditJobDetails}
-                        onEdit={onEditJobDetails}
-                    >
-                                <dl>
-                                    <JobDetailField
-                                        label="Client name"
-                                        value={draftingRequest.company_name}
-                                    />
-                                    <JobDetailField
-                                        label="Contact"
-                                        value={contactLine || null}
-                                    />
-                                    <JobDetailField
-                                        label="House type"
-                                        value={
-                                            draftingRequest.building_type
-                                                ? String(
-                                                      draftingRequest.building_type,
-                                                  ).toUpperCase()
-                                                : null
-                                        }
-                                    />
-                                    <JobDetailField
-                                        label="Zoning"
-                                        value={draftingRequest.zoning}
-                                    />
-                                    <JobDetailField label="Building area">
-                                        {editingArea ? (
-                                            <BuildingAreaEditor
-                                                value={
-                                                    draftingRequest.max_building_area_sqm
-                                                }
-                                                canEdit
-                                                updateUrl={updateUrl}
-                                                onCancel={() =>
-                                                    setEditingArea(false)
-                                                }
-                                            />
-                                        ) : (
-                                            <div className="flex items-center gap-2">
-                                                <span>
-                                                    {draftingRequest.building_area_label ??
-                                                        '—'}
-                                                </span>
-                                                {canEditBuildingArea ? (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            setEditingArea(true)
-                                                        }
-                                                        className="text-[11px] font-semibold text-[#0073ea] underline underline-offset-2 hover:text-[#0060c4] dark:text-[#60a5fa]"
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                ) : null}
-                                            </div>
-                                        )}
-                                    </JobDetailField>
-                                    <JobDetailField
-                                        label="Services / category"
-                                        value={draftingRequest.services_label}
-                                    />
-                                    <JobDetailField
-                                        label="NDIS / SDA"
-                                        value={
-                                            draftingRequest.ndis_sda
-                                                ? 'YES'
-                                                : 'NO'
-                                        }
-                                    />
-                                    <JobDetailField
-                                        label="Building specifications"
-                                        value={
-                                            draftingRequest.building_specifications
-                                        }
-                                    />
-                                </dl>
-                    </JobPanel>
+                <section aria-label="Project info">
+                    <p className={sectionLabelClass}>1. Project info</p>
+                    {clientDetailsPanel}
                 </section>
 
                 {canViewRevision || canViewAccounts ? (
-                <section aria-label="Project and accounts">
-                    <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-500">
-                        2. Project & accounts
-                    </p>
-                    <div className="grid grid-cols-1 gap-4">
-                        {canViewRevision ? (
-                        <JobPanel
-                            title="Revision"
-                            canAdd={canAddRevision}
-                            onAdd={onAddRevision}
-                            addLabel="Add Item"
-                        >
-                            <div className="p-4">
-                                <DataTable
-                                    columns={revisionColumns}
-                                    rows={revisions}
-                                    emptyMessage="No revisions recorded yet."
-                                    minWidth="44rem"
-                                />
-                            </div>
-                        </JobPanel>
-                        ) : null}
-
-                        {canViewAccounts ? (
-                            <JobPanel title="Quotes & invoices">
-                                <div className="space-y-4 p-4">
-                                    <div>
-                                        <div className="mb-2 flex items-center justify-between gap-2">
-                                            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400">
-                                                Quote #
-                                            </h3>
-                                            {canAddAccount && onAddQuote ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={onAddQuote}
-                                                    className="inline-flex items-center gap-1 rounded-md border border-[#c5c7d0] bg-white px-2 py-0.5 text-[10px] font-semibold text-[#0073ea] shadow-sm transition hover:bg-[#e6f4ff] dark:border-[#3b82f6]/50 dark:bg-[#1a1b2e] dark:text-[#60a5fa] dark:hover:bg-[#243044]"
-                                                >
-                                                    <PlusIcon
-                                                        className="h-3 w-3"
-                                                        aria-hidden
-                                                    />
-                                                    Add quote
-                                                </button>
-                                            ) : null}
-                                        </div>
-                                        <DataTable
-                                            columns={accountColumns(
-                                                integrationUrls.xero_quote,
-                                                'Quote #',
-                                                onEditQuote,
-                                            )}
-                                            rows={quotes}
-                                            emptyMessage="No quotes linked yet."
-                                        />
-                                    </div>
-                                    <div>
-                                        <div className="mb-2 flex items-center justify-between gap-2">
-                                            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400">
-                                                Invoice #
-                                            </h3>
-                                            {canAddAccount && onAddInvoice ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={onAddInvoice}
-                                                    className="inline-flex items-center gap-1 rounded-md border border-[#c5c7d0] bg-white px-2 py-0.5 text-[10px] font-semibold text-[#0073ea] shadow-sm transition hover:bg-[#e6f4ff] dark:border-[#3b82f6]/50 dark:bg-[#1a1b2e] dark:text-[#60a5fa] dark:hover:bg-[#243044]"
-                                                >
-                                                    <PlusIcon
-                                                        className="h-3 w-3"
-                                                        aria-hidden
-                                                    />
-                                                    Add invoice
-                                                </button>
-                                            ) : null}
-                                        </div>
-                                        <DataTable
-                                            columns={accountColumns(
-                                                integrationUrls.xero_invoice,
-                                                'Invoice #',
-                                                onEditInvoice,
-                                            )}
-                                            rows={invoices}
-                                            emptyMessage="No invoices linked yet."
-                                        />
-                                    </div>
-                                </div>
-                            </JobPanel>
-                        ) : null}
-                    </div>
-                </section>
+                    <section aria-label="Project and accounts">
+                        <p className={sectionLabelClass}>
+                            2. Project & accounts
+                        </p>
+                        <div className="grid grid-cols-1 gap-4">
+                            {revisionsPanel}
+                            {accountsPanel}
+                        </div>
+                    </section>
                 ) : null}
+
+                <section aria-label="Drawing status">
+                    <p className={sectionLabelClass}>3. Drawing status</p>
+                    {drawingPanel}
+                </section>
 
                 {filesPanel ? (
                     <section aria-label="Files">
-                        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-500">
-                            3. Files
-                        </p>
+                        <p className={sectionLabelClass}>4. Files</p>
                         {filesPanel}
                     </section>
                 ) : null}
 
                 {commentsPanel ? (
                     <section aria-label="Comments">
-                        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-500">
-                            4. Comments
-                        </p>
-                        <JobPanel
-                            title="Discussion"
-                            className="flex min-h-[18rem] flex-col"
-                        >
-                            <div className="flex min-h-[16rem] flex-1 flex-col">
-                                {commentsPanel}
-                            </div>
-                        </JobPanel>
+                        <p className={sectionLabelClass}>5. Comments</p>
+                        {commentsBlock}
                     </section>
                 ) : null}
 
                 {activityPanel ? (
                     <section aria-label="Activity log">
-                        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-500">
-                            5. Activity log
-                        </p>
+                        <p className={sectionLabelClass}>6. Activity log</p>
                         {activityPanel}
                     </section>
                 ) : null}

@@ -9,7 +9,7 @@ import {
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { router } from '@inertiajs/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -379,35 +379,6 @@ export default function LeaveHolidayCalendar({
 
         return map;
     }, [users]);
-
-    useEffect(() => {
-        const refreshCalendar = () => {
-            router.reload({
-                only: RELOAD_PROPS,
-                preserveScroll: true,
-                preserveState: false,
-            });
-        };
-
-        const interval = window.setInterval(() => {
-            if (document.visibilityState === 'visible') {
-                refreshCalendar();
-            }
-        }, 10000);
-
-        const onVisibilityChange = () => {
-            if (document.visibilityState === 'visible') {
-                refreshCalendar();
-            }
-        };
-
-        document.addEventListener('visibilitychange', onVisibilityChange);
-
-        return () => {
-            window.clearInterval(interval);
-            document.removeEventListener('visibilitychange', onVisibilityChange);
-        };
-    }, [activeMonth]);
 
     const changeMonth = (direction) => {
         router.get(

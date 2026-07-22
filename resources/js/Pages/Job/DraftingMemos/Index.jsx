@@ -466,6 +466,7 @@ export default function Index({
             <DraftingMemoFormModal
                 show={formOpen}
                 memo={formMemo}
+                clients={clients}
                 tags={tags}
                 filters={filters}
                 canManageTags={canManageTags}

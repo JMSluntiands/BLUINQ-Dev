@@ -16,13 +16,32 @@ class TimesheetEntry extends Model
 
     public const TASK_MEETING = 'meeting';
 
+    public const TASK_DRAFTING = 'drafting';
+
+    public const TASK_DOWNTIME = 'downtime';
+
     /**
+     * Tasks that can be added from Weekly Timesheet "Add task".
+     *
      * @var array<string, string>
      */
     public const STANDARD_TASK_LABELS = [
         self::TASK_ADMIN => 'Admin',
         self::TASK_TRAINING => 'Training',
         self::TASK_MEETING => 'Meeting',
+    ];
+
+    /**
+     * Activities logged from the dashboard clock panel (project-scoped).
+     *
+     * @var array<string, string>
+     */
+    public const ACTIVITY_TASK_LABELS = [
+        self::TASK_ADMIN => 'Admin',
+        self::TASK_MEETING => 'Meeting',
+        self::TASK_TRAINING => 'Training',
+        self::TASK_DRAFTING => 'Drafting',
+        self::TASK_DOWNTIME => 'Downtime',
     ];
 
     /**
@@ -33,6 +52,7 @@ class TimesheetEntry extends Model
         'week_start',
         'task_type',
         'drafting_request_revision_id',
+        'drafting_request_id',
         'approval_status',
         'sort_order',
     ];
@@ -64,6 +84,14 @@ class TimesheetEntry extends Model
     }
 
     /**
+     * @return BelongsTo<DraftingRequest, $this>
+     */
+    public function draftingRequest(): BelongsTo
+    {
+        return $this->belongsTo(DraftingRequest::class);
+    }
+
+    /**
      * @return HasMany<TimesheetEntryHour, $this>
      */
     public function hours(): HasMany
@@ -75,5 +103,12 @@ class TimesheetEntry extends Model
     {
         return $this->task_type === self::TASK_REVISION
             && $this->drafting_request_revision_id !== null;
+    }
+
+    public function isProjectActivity(): bool
+    {
+        return $this->drafting_request_id !== null
+            && ! $this->isRevisionTask()
+            && array_key_exists($this->task_type, self::ACTIVITY_TASK_LABELS);
     }
 }

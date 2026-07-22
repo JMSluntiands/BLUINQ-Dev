@@ -8,6 +8,7 @@ import {
 import JobBoardCommentsModal, {
     JobBoardCommentButton,
 } from '@/Components/JobBoard/JobBoardCommentsModal';
+import JobBoardAssignmentModal from '@/Components/JobBoard/JobBoardAssignmentModal';
 import {
     ChevronDownIcon,
     ChevronRightIcon,
@@ -15,7 +16,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { FlagIcon as FlagIconSolid } from '@heroicons/react/24/solid';
 import { Link, router } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 
 const DRAFTING_SLOTS = 1;
 const CHECKING_SLOTS = 1;
@@ -30,6 +31,9 @@ const CHECKING_SLOTS = 1;
  *   builder: string;
  *   category: string;
  *   house_type: string;
+ *   latest_revision?: string;
+ *   accounting?: string;
+ *   revisions?: Array<{ id: number; code: string; status?: string | null; status_label?: string | null }>;
  *   date_in: string;
  *   eta: string;
  *   progress_segments?: ProgressSegment[];
@@ -38,6 +42,7 @@ const CHECKING_SLOTS = 1;
  *   total_hours?: number | null;
  *   area?: string | null;
  *   date_out?: string | null;
+ *   date_out_label?: string | null;
  *   status: keyof typeof JOB_STATUS_LABELS;
  *   status_label?: string;
  *   list_group?: string;
@@ -71,16 +76,12 @@ function StatusPill({ status, label }) {
     );
 }
 
-function StaffSlot({ assignment }) {
-    if (!assignment) {
-        return (
-            <span className="text-[11px] text-[#676879] dark:text-slate-500">
-                —
-            </span>
-        );
-    }
-
-    return (
+function StaffSlot({ assignment, editable = false, onClick }) {
+    const content = !assignment ? (
+        <span className="text-[11px] text-[#676879] dark:text-slate-500">
+            {editable ? 'Assign…' : '—'}
+        </span>
+    ) : (
         <div className="flex items-center gap-1">
             <span
                 className={
@@ -97,6 +98,101 @@ function StaffSlot({ assignment }) {
                 </span>
             )}
         </div>
+    );
+
+    if (!editable) {
+        return content;
+    }
+
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="rounded-md px-1 py-0.5 text-left transition hover:bg-[#e6f4ff] dark:hover:bg-[#243044]"
+            title="Edit assignment"
+        >
+            {content}
+        </button>
+    );
+}
+
+function EditableStatusSelect({ job, statusOptions = [], disabled = false }) {
+    const [busy, setBusy] = useState(false);
+
+    if (disabled) {
+        return (
+            <StatusPill status={job.status} label={job.status_label} />
+        );
+    }
+
+    return (
+        <select
+            value={job.status ?? 'new'}
+            disabled={busy}
+            onChange={(event) => {
+                const next = event.target.value;
+                if (next === job.status) {
+                    return;
+                }
+                setBusy(true);
+                router.patch(
+                    route('job.drafting.board.update', job.id),
+                    { status: next },
+                    {
+                        preserveScroll: true,
+                        onFinish: () => setBusy(false),
+                    },
+                );
+            }}
+            className={
+                'max-w-[8.5rem] rounded-md border-0 px-2 py-1 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-[#0073ea] disabled:opacity-50 ' +
+                (JOB_STATUS_STYLES[job.status] ?? JOB_STATUS_STYLES.new)
+            }
+            aria-label={`Status for ${job.job_no}`}
+        >
+            {statusOptions.map((option) => (
+                <option
+                    key={option.value}
+                    value={option.value}
+                    className="bg-white text-[#323338]"
+                >
+                    {option.label}
+                </option>
+            ))}
+        </select>
+    );
+}
+
+function EditableDateOut({ job, disabled = false }) {
+    const [busy, setBusy] = useState(false);
+
+    if (disabled) {
+        return (
+            <span className="whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400">
+                {job.date_out_label ?? '—'}
+            </span>
+        );
+    }
+
+    return (
+        <input
+            type="date"
+            value={job.date_out ?? ''}
+            disabled={busy}
+            onChange={(event) => {
+                setBusy(true);
+                router.patch(
+                    route('job.drafting.board.update', job.id),
+                    { date_out: event.target.value || null },
+                    {
+                        preserveScroll: true,
+                        onFinish: () => setBusy(false),
+                    },
+                );
+            }}
+            className="w-[8.5rem] rounded-md border border-[#c5c7d0] bg-white px-1.5 py-1 text-[11px] tabular-nums text-[#323338] focus:border-[#0073ea] focus:outline-none focus:ring-1 focus:ring-[#0073ea] disabled:opacity-50 dark:border-[#2f3347] dark:bg-[#151622] dark:text-slate-200"
+            aria-label={`Date out for ${job.job_no}`}
+        />
     );
 }
 
@@ -193,7 +289,31 @@ function groupJobsByListSection(jobs, sectionLabels) {
     }));
 }
 
-function JobBoardTableHead({ showFilesInTotal, hideStatus }) {
+function JobBoardTableHead({
+    showFilesInTotal,
+    hideStatus,
+    showActions = false,
+    variant = 'board',
+}) {
+    if (variant === 'masterlist') {
+        return (
+            <thead className="bg-[#fafbfc] dark:bg-[#151622]">
+                <tr>
+                    <th className={thClass}>Job</th>
+                    <th className={thClass + ' w-10'} />
+                    <th className={thClass}>Lead No.</th>
+                    <th className={thClass}>Client Name</th>
+                    <th className={thClass}>House Type</th>
+                    <th className={thClass}>Latest Revision</th>
+                    <th className={thClass}>Status</th>
+                    <th className={thClass}>Accounting</th>
+                    <th className={thClass + ' w-10'}>Priority</th>
+                    {showActions && <th className={thClass}>Actions</th>}
+                </tr>
+            </thead>
+        );
+    }
+
     const draftingHeaders = Array.from({ length: DRAFTING_SLOTS }, (_, index) => (
         <th key={`drafting-${index}`} className={thClass}>
             Drafting
@@ -211,24 +331,20 @@ function JobBoardTableHead({ showFilesInTotal, hideStatus }) {
             <tr>
                 <th className={thClass}>Job</th>
                 <th className={thClass + ' w-10'} />
-                <th className={thClass}>Job No.</th>
-                <th className={thClass}>Builder Name</th>
+                <th className={thClass}>Lead No.</th>
+                <th className={thClass}>Client Name</th>
                 <th className={thClass}>Category</th>
                 <th className={thClass}>House Type</th>
                 <th className={thClass}>Date In</th>
                 <th className={thClass}>ETA</th>
-                <th className={thClass}>Progress</th>
                 {draftingHeaders}
                 {checkingHeaders}
-                <th className={thClass}>
-                    {showFilesInTotal ? 'Files' : 'Total'}
-                </th>
                 <th className={thClass}>Total hrs</th>
                 <th className={thClass}>Date Out</th>
                 {!hideStatus && <th className={thClass}>Status</th>}
                 <th className={thClass + ' w-10'}>Priority</th>
-                <th className={thClass}>VO hrs</th>
-                <th className={thClass}>IN</th>
+                <th className={thClass}>VO</th>
+                {showActions && <th className={thClass}>Actions</th>}
             </tr>
         </thead>
     );
@@ -249,6 +365,7 @@ function JobBoardTableHead({ showFilesInTotal, hideStatus }) {
  *   setCommentJob: (job: JobBoardRow | null) => void;
  *   onPriorityUpdated?: () => void;
  *   hideStatus?: boolean;
+ *   variant?: 'board' | 'masterlist';
  * }} props
  */
 function JobBoardTableBody({
@@ -258,178 +375,351 @@ function JobBoardTableBody({
     hideStatus = false,
     setCommentJob,
     onPriorityUpdated,
+    renderActions = null,
+    variant = 'board',
+    assignableUsers = [],
+    statusOptions = [],
+    onOpenAssignment = null,
 }) {
+    const isMasterlist = variant === 'masterlist';
+    const [expandedIds, setExpandedIds] = useState(() => new Set());
+
+    const toggleExpanded = (jobId) => {
+        setExpandedIds((current) => {
+            const next = new Set(current);
+            if (next.has(jobId)) {
+                next.delete(jobId);
+            } else {
+                next.add(jobId);
+            }
+            return next;
+        });
+    };
+
+    const masterlistColSpan = renderActions ? 10 : 9;
+
     return (
         <tbody>
             {jobs.map((job, rowIndex) => {
                 const draftingSlots = job.drafting ?? [];
                 const checkingSlots = job.checking ?? [];
+                const revisions = job.revisions ?? [];
+                const isExpanded = expandedIds.has(job.id);
+                const rowTone = job.is_priority
+                    ? 'bg-amber-50/70 dark:bg-[#2a1f2e]'
+                    : rowIndex % 2 === 1
+                      ? 'bg-[#fafbfc] dark:bg-[#1e1f32]'
+                      : 'bg-white dark:bg-[#1a1b2e]';
 
                 return (
-                    <tr
-                        key={job.id}
-                        className={
-                            'border-b border-[#e6e9ef] transition-colors hover:bg-[#f0f4ff] dark:border-[#2a2d42] dark:hover:bg-[#22243a] ' +
-                            (job.is_priority
-                                ? 'bg-amber-50/70 dark:bg-[#2a1f2e]'
-                                : rowIndex % 2 === 1
-                                  ? 'bg-[#fafbfc] dark:bg-[#1e1f32]'
-                                  : 'bg-white dark:bg-[#1a1b2e]')
-                        }
-                    >
-                        <td className={tdClass}>
-                            <div className="flex min-w-[14rem] items-center gap-1.5">
-                                <ChevronRightIcon
-                                    className="h-3.5 w-3.5 shrink-0 text-[#676879] dark:text-slate-500"
-                                    aria-hidden
-                                />
-                                <span
-                                    className="line-clamp-2 min-w-0 flex-1 font-medium text-[#323338] dark:text-white"
-                                    title={job.job}
-                                >
-                                    {job.job}
-                                </span>
-                            </div>
-                        </td>
-                        <td className={tdClass}>
-                            <JobBoardCommentButton
-                                count={job.comments_count ?? 0}
-                                label={job.job}
-                                onClick={() => setCommentJob(job)}
-                            />
-                        </td>
-                        <td className={tdClass + ' tabular-nums'}>
-                            {getJobHref ? (
-                                <Link
-                                    href={getJobHref(job)}
-                                    className="font-semibold text-[#0073ea] transition hover:text-[#0060c4] hover:underline dark:text-[#1890ff] dark:hover:text-[#1478e0]"
-                                >
-                                    {job.job_no}
-                                </Link>
-                            ) : (
-                                <span className="text-[#0073ea] dark:text-[#1890ff]">
-                                    {job.job_no}
-                                </span>
-                            )}
-                        </td>
-                        <td className={tdClass}>
-                            <TagPill title={job.builder}>
-                                {job.builder}
-                            </TagPill>
-                        </td>
-                        <td className={tdClass}>
-                            <TagPill
-                                title={job.category_full ?? job.category}
-                            >
-                                {job.category}
-                            </TagPill>
-                        </td>
-                        <td className={tdClass}>
-                            <TagPill title={job.house_type}>
-                                {job.house_type}
-                            </TagPill>
-                        </td>
-                        <td
+                    <Fragment key={job.id}>
+                        <tr
                             className={
-                                tdClass +
-                                ' whitespace-nowrap tabular-nums'
+                                'border-b border-[#e6e9ef] transition-colors hover:bg-[#f0f4ff] dark:border-[#2a2d42] dark:hover:bg-[#22243a] ' +
+                                rowTone
                             }
                         >
-                            {job.date_in}
-                        </td>
-                        <td
-                            className={
-                                tdClass +
-                                ' whitespace-nowrap tabular-nums'
-                            }
-                        >
-                            {job.eta}
-                        </td>
-                        <td className={tdClass}>
-                            <ProgressCell segments={job.progress_segments} />
-                        </td>
-                        {Array.from(
-                            { length: DRAFTING_SLOTS },
-                            (_, index) => (
-                                <td
-                                    key={`${job.id}-draft-${index}`}
-                                    className={tdClass}
-                                >
-                                    <StaffSlot
-                                        assignment={draftingSlots[index]}
-                                    />
-                                </td>
-                            ),
-                        )}
-                        {Array.from(
-                            { length: CHECKING_SLOTS },
-                            (_, index) => (
-                                <td
-                                    key={`${job.id}-check-${index}`}
-                                    className={tdClass}
-                                >
-                                    <StaffSlot
-                                        assignment={checkingSlots[index]}
-                                    />
-                                </td>
-                            ),
-                        )}
-                        <td
-                            className={
-                                tdClass +
-                                ' whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400'
-                            }
-                        >
-                            {showFilesInTotal
-                                ? (job.files_count ?? 0)
-                                : job.total_hours != null
-                                  ? `${job.total_hours} h`
-                                  : '—'}
-                        </td>
-                        <td
-                            className={
-                                tdClass +
-                                ' whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400'
-                            }
-                        >
-                            {job.total_hours != null
-                                ? `${job.total_hours} h`
-                                : '—'}
-                        </td>
-                        <td
-                            className={
-                                tdClass +
-                                ' whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400'
-                            }
-                        >
-                            {job.date_out ?? '—'}
-                        </td>
-                        {!hideStatus && (
                             <td className={tdClass}>
-                                <StatusPill
-                                    status={job.status}
-                                    label={job.status_label}
+                                <div className="flex min-w-[14rem] items-center gap-1.5">
+                                    {isMasterlist ? (
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                toggleExpanded(job.id)
+                                            }
+                                            className="rounded p-0.5 text-[#676879] transition hover:bg-[#e6e9ef] hover:text-[#323338] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                                            aria-expanded={isExpanded}
+                                            aria-label={
+                                                isExpanded
+                                                    ? 'Hide revisions'
+                                                    : 'Show revisions'
+                                            }
+                                            title={
+                                                isExpanded
+                                                    ? 'Hide revisions'
+                                                    : 'Show revisions'
+                                            }
+                                        >
+                                            <ChevronRightIcon
+                                                className={
+                                                    'h-3.5 w-3.5 shrink-0 transition-transform ' +
+                                                    (isExpanded
+                                                        ? 'rotate-90'
+                                                        : '')
+                                                }
+                                                aria-hidden
+                                            />
+                                        </button>
+                                    ) : (
+                                        <ChevronRightIcon
+                                            className="h-3.5 w-3.5 shrink-0 text-[#676879] dark:text-slate-500"
+                                            aria-hidden
+                                        />
+                                    )}
+                                    <span
+                                        className="line-clamp-2 min-w-0 flex-1 font-medium text-[#323338] dark:text-white"
+                                        title={job.job}
+                                    >
+                                        {job.job}
+                                    </span>
+                                </div>
+                            </td>
+                            <td className={tdClass}>
+                                <JobBoardCommentButton
+                                    count={job.comments_count ?? 0}
+                                    label={job.job}
+                                    onClick={() => setCommentJob(job)}
                                 />
                             </td>
-                        )}
-                        <td className={tdClass}>
-                            <PriorityFlag
-                                job={job}
-                                onToggled={onPriorityUpdated}
-                            />
-                        </td>
-                        <td
-                            className={
-                                tdClass +
-                                ' whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400'
-                            }
-                        >
-                            {job.vo_hours ?? '—'}
-                        </td>
-                        <td className={tdClass + ' text-[#676879] dark:text-slate-400'}>
-                            —
-                        </td>
-                    </tr>
+                            <td className={tdClass + ' tabular-nums'}>
+                                {getJobHref ? (
+                                    <Link
+                                        href={getJobHref(job)}
+                                        className="font-semibold text-[#0073ea] transition hover:text-[#0060c4] hover:underline dark:text-[#1890ff] dark:hover:text-[#1478e0]"
+                                    >
+                                        {job.job_no}
+                                    </Link>
+                                ) : (
+                                    <span className="text-[#0073ea] dark:text-[#1890ff]">
+                                        {job.job_no}
+                                    </span>
+                                )}
+                            </td>
+                            <td className={tdClass}>
+                                <TagPill title={job.builder}>
+                                    {job.builder}
+                                </TagPill>
+                            </td>
+                            {isMasterlist ? (
+                                <>
+                                    <td className={tdClass}>
+                                        <TagPill title={job.house_type}>
+                                            {job.house_type}
+                                        </TagPill>
+                                    </td>
+                                    <td
+                                        className={
+                                            tdClass + ' whitespace-nowrap'
+                                        }
+                                    >
+                                        {job.latest_revision ?? '—'}
+                                    </td>
+                                    <td className={tdClass}>
+                                        <StatusPill
+                                            status={job.status}
+                                            label={job.status_label}
+                                        />
+                                    </td>
+                                    <td className={tdClass}>
+                                        <TagPill title={job.accounting}>
+                                            {job.accounting ?? '—'}
+                                        </TagPill>
+                                    </td>
+                                </>
+                            ) : (
+                                <>
+                                    <td className={tdClass}>
+                                        <TagPill
+                                            title={
+                                                job.category_full ??
+                                                job.category
+                                            }
+                                        >
+                                            {job.category}
+                                        </TagPill>
+                                    </td>
+                                    <td className={tdClass}>
+                                        <TagPill title={job.house_type}>
+                                            {job.house_type}
+                                        </TagPill>
+                                    </td>
+                                    <td
+                                        className={
+                                            tdClass +
+                                            ' whitespace-nowrap tabular-nums'
+                                        }
+                                    >
+                                        {job.date_in}
+                                    </td>
+                                    <td
+                                        className={
+                                            tdClass +
+                                            ' whitespace-nowrap tabular-nums'
+                                        }
+                                    >
+                                        {job.eta}
+                                    </td>
+                                    {Array.from(
+                                        { length: DRAFTING_SLOTS },
+                                        (_, index) => (
+                                            <td
+                                                key={`${job.id}-draft-${index}`}
+                                                className={tdClass}
+                                            >
+                                                <StaffSlot
+                                                    assignment={
+                                                        draftingSlots[index]
+                                                    }
+                                                    editable={Boolean(
+                                                        job.can_assign &&
+                                                            onOpenAssignment,
+                                                    )}
+                                                    onClick={() =>
+                                                        onOpenAssignment?.({
+                                                            job,
+                                                            role: 'drafting',
+                                                            slot: index,
+                                                            assignment:
+                                                                draftingSlots[
+                                                                    index
+                                                                ],
+                                                        })
+                                                    }
+                                                />
+                                            </td>
+                                        ),
+                                    )}
+                                    {Array.from(
+                                        { length: CHECKING_SLOTS },
+                                        (_, index) => (
+                                            <td
+                                                key={`${job.id}-check-${index}`}
+                                                className={tdClass}
+                                            >
+                                                <StaffSlot
+                                                    assignment={
+                                                        checkingSlots[index]
+                                                    }
+                                                    editable={Boolean(
+                                                        job.can_assign &&
+                                                            onOpenAssignment,
+                                                    )}
+                                                    onClick={() =>
+                                                        onOpenAssignment?.({
+                                                            job,
+                                                            role: 'checking',
+                                                            slot: index,
+                                                            assignment:
+                                                                checkingSlots[
+                                                                    index
+                                                                ],
+                                                        })
+                                                    }
+                                                />
+                                            </td>
+                                        ),
+                                    )}
+                                    <td
+                                        className={
+                                            tdClass +
+                                            ' whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400'
+                                        }
+                                    >
+                                        {job.total_hours != null
+                                            ? `${job.total_hours} h`
+                                            : '—'}
+                                    </td>
+                                    <td className={tdClass}>
+                                        <EditableDateOut
+                                            job={job}
+                                            disabled={!job.can_assign}
+                                        />
+                                    </td>
+                                    {!hideStatus && (
+                                        <td className={tdClass}>
+                                            <EditableStatusSelect
+                                                job={job}
+                                                statusOptions={statusOptions}
+                                                disabled={!job.can_assign}
+                                            />
+                                        </td>
+                                    )}
+                                </>
+                            )}
+                            <td className={tdClass}>
+                                <PriorityFlag
+                                    job={job}
+                                    onToggled={onPriorityUpdated}
+                                />
+                            </td>
+                            {!isMasterlist && (
+                                <td
+                                    className={
+                                        tdClass +
+                                        ' whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400'
+                                    }
+                                >
+                                    {job.vo_hours ?? '—'}
+                                </td>
+                            )}
+                            {renderActions ? (
+                                <td className={tdClass}>
+                                    {renderActions(job)}
+                                </td>
+                            ) : null}
+                        </tr>
+
+                        {isMasterlist &&
+                            isExpanded &&
+                            (revisions.length > 0 ? (
+                                revisions.map((revision) => (
+                                    <tr
+                                        key={`${job.id}-rev-${revision.id}`}
+                                        className="border-b border-[#e6e9ef] bg-[#f6f7fb] dark:border-[#2a2d42] dark:bg-[#151622]"
+                                    >
+                                        <td className={tdClass} colSpan={2}>
+                                            <div className="flex items-center gap-1.5 ps-6">
+                                                <span className="text-[10px] text-[#c5c7d0] dark:text-slate-600">
+                                                    └
+                                                </span>
+                                                <span className="font-semibold tabular-nums text-[#0073ea] dark:text-[#1890ff]">
+                                                    {revision.code}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className={tdClass}>—</td>
+                                        <td className={tdClass}>—</td>
+                                        <td className={tdClass}>—</td>
+                                        <td
+                                            className={
+                                                tdClass + ' whitespace-nowrap'
+                                            }
+                                        >
+                                            {revision.code}
+                                        </td>
+                                        <td className={tdClass}>
+                                            {revision.status ? (
+                                                <StatusPill
+                                                    status={revision.status}
+                                                    label={
+                                                        revision.status_label
+                                                    }
+                                                />
+                                            ) : (
+                                                '—'
+                                            )}
+                                        </td>
+                                        <td className={tdClass}>—</td>
+                                        <td className={tdClass}>—</td>
+                                        {renderActions ? (
+                                            <td className={tdClass}>—</td>
+                                        ) : null}
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr className="border-b border-[#e6e9ef] bg-[#f6f7fb] dark:border-[#2a2d42] dark:bg-[#151622]">
+                                    <td
+                                        className={
+                                            tdClass +
+                                            ' ps-8 text-[#676879] dark:text-slate-400'
+                                        }
+                                        colSpan={masterlistColSpan}
+                                    >
+                                        No revisions yet.
+                                    </td>
+                                </tr>
+                            ))}
+                    </Fragment>
                 );
             })}
         </tbody>
@@ -447,6 +737,12 @@ function JobBoardStatusSection({
     setCommentJob,
     onPriorityUpdated,
     listSection = false,
+    hideStatus = false,
+    renderActions = null,
+    variant = 'board',
+    assignableUsers = [],
+    statusOptions = [],
+    onOpenAssignment = null,
 }) {
     const sectionId = `job-board-status-${status}`;
 
@@ -484,18 +780,32 @@ function JobBoardStatusSection({
             {!collapsed &&
                 (jobs.length > 0 ? (
                     <div id={sectionId} className="overflow-x-auto">
-                        <table className="w-full min-w-[90rem] border-collapse text-left">
+                        <table
+                            className={
+                                'w-full border-collapse text-left ' +
+                                (variant === 'masterlist'
+                                    ? 'min-w-[64rem]'
+                                    : 'min-w-[96rem]')
+                            }
+                        >
                             <JobBoardTableHead
                                 showFilesInTotal={showFilesInTotal}
-                                hideStatus
+                                hideStatus={hideStatus}
+                                showActions={Boolean(renderActions)}
+                                variant={variant}
                             />
                             <JobBoardTableBody
                                 jobs={jobs}
                                 getJobHref={getJobHref}
                                 showFilesInTotal={showFilesInTotal}
-                                hideStatus
+                                hideStatus={hideStatus}
                                 setCommentJob={setCommentJob}
                                 onPriorityUpdated={onPriorityUpdated}
+                                renderActions={renderActions}
+                                variant={variant}
+                                assignableUsers={assignableUsers}
+                                statusOptions={statusOptions}
+                                onOpenAssignment={onOpenAssignment}
                             />
                         </table>
                     </div>
@@ -520,6 +830,7 @@ function JobBoardStatusSection({
  *   groupByStatus?: boolean;
  *   onCommentsUpdated?: () => void;
  *   onPriorityUpdated?: () => void;
+ *   variant?: 'board' | 'masterlist';
  * }} props
  */
 export default function JobBoardGrid({
@@ -531,8 +842,15 @@ export default function JobBoardGrid({
     jobListSections = {},
     onCommentsUpdated,
     onPriorityUpdated,
+    onAssignmentsUpdated,
+    hideStatus = false,
+    renderActions = null,
+    variant = 'board',
+    assignableUsers = [],
+    statusOptions = [],
 }) {
     const [commentJob, setCommentJob] = useState(null);
+    const [assignmentTarget, setAssignmentTarget] = useState(null);
     const [collapsedStatuses, setCollapsedStatuses] = useState(
         () => new Set(),
     );
@@ -572,6 +890,9 @@ export default function JobBoardGrid({
         );
     }
 
+    const tableMinWidth =
+        variant === 'masterlist' ? 'min-w-[64rem]' : 'min-w-[96rem]';
+
     return (
         <>
             <div className="bg-white dark:bg-[#1a1b2e]">
@@ -591,20 +912,40 @@ export default function JobBoardGrid({
                             getJobHref={getJobHref}
                             setCommentJob={setCommentJob}
                             onPriorityUpdated={onPriorityUpdated}
+                            hideStatus={hideStatus}
+                            renderActions={renderActions}
+                            variant={variant}
+                            assignableUsers={assignableUsers}
+                            statusOptions={statusOptions}
+                            onOpenAssignment={setAssignmentTarget}
                         />
                     ))
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full min-w-[90rem] border-collapse text-left">
+                        <table
+                            className={
+                                'w-full border-collapse text-left ' +
+                                tableMinWidth
+                            }
+                        >
                             <JobBoardTableHead
                                 showFilesInTotal={showFilesInTotal}
+                                hideStatus={hideStatus}
+                                showActions={Boolean(renderActions)}
+                                variant={variant}
                             />
                             <JobBoardTableBody
                                 jobs={jobs}
                                 getJobHref={getJobHref}
                                 showFilesInTotal={showFilesInTotal}
+                                hideStatus={hideStatus}
                                 setCommentJob={setCommentJob}
                                 onPriorityUpdated={onPriorityUpdated}
+                                renderActions={renderActions}
+                                variant={variant}
+                                assignableUsers={assignableUsers}
+                                statusOptions={statusOptions}
+                                onOpenAssignment={setAssignmentTarget}
                             />
                         </table>
                     </div>
@@ -616,6 +957,17 @@ export default function JobBoardGrid({
                 job={commentJob}
                 onClose={() => setCommentJob(null)}
                 onCommentsUpdated={onCommentsUpdated}
+            />
+
+            <JobBoardAssignmentModal
+                show={assignmentTarget != null}
+                job={assignmentTarget?.job ?? null}
+                role={assignmentTarget?.role ?? 'drafting'}
+                slot={assignmentTarget?.slot ?? 0}
+                assignment={assignmentTarget?.assignment ?? null}
+                assignableUsers={assignableUsers}
+                onClose={() => setAssignmentTarget(null)}
+                onSaved={onAssignmentsUpdated}
             />
         </>
     );

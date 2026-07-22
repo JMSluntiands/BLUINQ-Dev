@@ -11,6 +11,8 @@ class DraftingRequestActivity extends Model
 
     public const ACTION_REQUEST_ACCEPTED = 'request_accepted';
 
+    public const ACTION_FORWARDED_TO_APM = 'forwarded_to_apm';
+
     public const ACTION_COMMENT_POSTED = 'comment_posted';
 
     public const ACTION_RUN_COMMENT_POSTED = 'run_comment_posted';
@@ -36,6 +38,10 @@ class DraftingRequestActivity extends Model
     public const ACTION_INVOICE_ADDED = 'invoice_added';
 
     public const ACTION_INVOICE_UPDATED = 'invoice_updated';
+
+    public const ACTION_DRAWING_CHECKLIST_UPDATED = 'drawing_checklist_updated';
+
+    public const ACTION_DRAWING_CHECKLIST_RESET = 'drawing_checklist_reset';
 
     protected $fillable = [
         'drafting_request_id',

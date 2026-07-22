@@ -5,6 +5,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
 import { useForm } from '@inertiajs/react';
+import { useEffect } from 'react';
 
 const selectClass =
     'mt-1 block w-full rounded-md border-[#c5c7d0] text-sm shadow-sm focus:border-[#0073ea] focus:ring-[#0073ea]';
@@ -13,10 +14,28 @@ const textareaClass =
 
 const SECTION_TITLES = {
     client: 'Edit client details',
-    job: 'Edit job details',
+    job: 'Edit project info',
     building: 'Edit building specifications',
     notes: 'Edit notes',
 };
+
+function buildUnits(count, existing = []) {
+    const n = Math.max(0, Math.min(50, Number(count) || 0));
+    const byNumber = Object.fromEntries(
+        (existing ?? []).map((unit) => [Number(unit.unit_number), unit]),
+    );
+
+    return Array.from({ length: n }, (_, i) => {
+        const unitNumber = i + 1;
+        const row = byNumber[unitNumber] ?? {};
+
+        return {
+            unit_number: unitNumber,
+            house_type: row.house_type ?? '',
+            area_sqm: row.area_sqm ?? '',
+        };
+    });
+}
 
 export default function DraftingEditModals({
     section,
@@ -39,8 +58,15 @@ export default function DraftingEditModals({
         building_type_id: draftingRequest.building_type_id ?? '',
         zoning: draftingRequest.zoning ?? '',
         site_address: draftingRequest.site_address ?? '',
+        site_owner_name: draftingRequest.site_owner_name ?? '',
         service_engaging_ids: draftingRequest.service_engaging_ids ?? [],
         ndis_sda: draftingRequest.ndis_sda ?? false,
+        unit_development_count:
+            draftingRequest.unit_development_count ?? 0,
+        units: buildUnits(
+            draftingRequest.unit_development_count ?? 0,
+            draftingRequest.units ?? [],
+        ),
         external_wall_construction_id:
             draftingRequest.external_wall_construction_id ?? '',
         roof_type_id: draftingRequest.roof_type_id ?? '',
@@ -49,6 +75,37 @@ export default function DraftingEditModals({
         design_requirements: draftingRequest.design_requirements ?? '',
         additional_inclusions: draftingRequest.additional_inclusions ?? '',
     });
+
+    useEffect(() => {
+        if (section !== 'job') {
+            return;
+        }
+
+        jobForm.setData({
+            section: 'job',
+            status: draftingRequest.status ?? 'new',
+            building_type_id: draftingRequest.building_type_id ?? '',
+            zoning: draftingRequest.zoning ?? '',
+            site_address: draftingRequest.site_address ?? '',
+            site_owner_name: draftingRequest.site_owner_name ?? '',
+            service_engaging_ids: draftingRequest.service_engaging_ids ?? [],
+            ndis_sda: draftingRequest.ndis_sda ?? false,
+            unit_development_count:
+                draftingRequest.unit_development_count ?? 0,
+            units: buildUnits(
+                draftingRequest.unit_development_count ?? 0,
+                draftingRequest.units ?? [],
+            ),
+            external_wall_construction_id:
+                draftingRequest.external_wall_construction_id ?? '',
+            roof_type_id: draftingRequest.roof_type_id ?? '',
+            ceiling_heights: draftingRequest.ceiling_heights ?? '',
+            first_floor_slab: draftingRequest.first_floor_slab ?? '',
+            design_requirements: draftingRequest.design_requirements ?? '',
+            additional_inclusions: draftingRequest.additional_inclusions ?? '',
+        });
+        jobForm.clearErrors();
+    }, [section, draftingRequest.id]);
 
     const buildingForm = useForm({
         section: 'building',
@@ -283,6 +340,27 @@ export default function DraftingEditModals({
                             />
                         </div>
                         <div className="sm:col-span-2">
+                            <InputLabel
+                                htmlFor="edit-site_owner_name"
+                                value="Home owner name"
+                            />
+                            <TextInput
+                                id="edit-site_owner_name"
+                                className="mt-1 block w-full"
+                                value={jobForm.data.site_owner_name}
+                                onChange={(e) =>
+                                    jobForm.setData(
+                                        'site_owner_name',
+                                        e.target.value,
+                                    )
+                                }
+                            />
+                            <InputError
+                                className="mt-1"
+                                message={jobForm.errors.site_owner_name}
+                            />
+                        </div>
+                        <div className="sm:col-span-2">
                             <InputLabel value="Services" />
                             <ul className="mt-1.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                                 {(formOptions.serviceEngagings ?? []).map((row) => (
@@ -323,7 +401,7 @@ export default function DraftingEditModals({
                                 <div>
                                     <InputLabel
                                         htmlFor="edit-job-external_wall"
-                                        value="External wall"
+                                        value="Construction"
                                     />
                                     <select
                                         id="edit-job-external_wall"
@@ -432,9 +510,139 @@ export default function DraftingEditModals({
                                     />
                                     <InputError
                                         className="mt-1"
-                                        message={jobForm.errors.first_floor_slab}
+                                        message={
+                                            jobForm.errors.first_floor_slab
+                                        }
                                     />
                                 </div>
+                                <div className="sm:col-span-2">
+                                    <InputLabel
+                                        htmlFor="edit-unit-development"
+                                        value="Unit development (0–50)"
+                                    />
+                                    <TextInput
+                                        id="edit-unit-development"
+                                        type="number"
+                                        min="0"
+                                        max="50"
+                                        className="mt-1 block w-full"
+                                        value={
+                                            jobForm.data.unit_development_count
+                                        }
+                                        onChange={(e) => {
+                                            const count = Math.max(
+                                                0,
+                                                Math.min(
+                                                    50,
+                                                    Number(e.target.value) ||
+                                                        0,
+                                                ),
+                                            );
+                                            jobForm.setData({
+                                                ...jobForm.data,
+                                                unit_development_count: count,
+                                                units: buildUnits(
+                                                    count,
+                                                    jobForm.data.units,
+                                                ),
+                                            });
+                                        }}
+                                    />
+                                    <InputError
+                                        className="mt-1"
+                                        message={
+                                            jobForm.errors
+                                                .unit_development_count
+                                        }
+                                    />
+                                </div>
+                                {jobForm.data.units.length > 0 ? (
+                                    <div className="sm:col-span-2 space-y-3">
+                                        {jobForm.data.units.map(
+                                            (unit, index) => (
+                                                <div
+                                                    key={unit.unit_number}
+                                                    className="grid grid-cols-1 gap-2 rounded-lg border border-[#e6e9ef] bg-[#fafbfc] p-3 sm:grid-cols-3 dark:border-[#2f3347] dark:bg-[#151622]"
+                                                >
+                                                    <p className="text-xs font-semibold uppercase tracking-wide text-[#676879] sm:col-span-3 dark:text-slate-400">
+                                                        Unit {unit.unit_number}
+                                                    </p>
+                                                    <div className="sm:col-span-2">
+                                                        <InputLabel
+                                                            htmlFor={`unit-house-${unit.unit_number}`}
+                                                            value="House type"
+                                                        />
+                                                        <TextInput
+                                                            id={`unit-house-${unit.unit_number}`}
+                                                            className="mt-1 block w-full"
+                                                            value={
+                                                                unit.house_type
+                                                            }
+                                                            onChange={(e) => {
+                                                                const next = [
+                                                                    ...jobForm
+                                                                        .data
+                                                                        .units,
+                                                                ];
+                                                                next[index] = {
+                                                                    ...next[
+                                                                        index
+                                                                    ],
+                                                                    house_type:
+                                                                        e.target
+                                                                            .value,
+                                                                };
+                                                                jobForm.setData(
+                                                                    'units',
+                                                                    next,
+                                                                );
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <InputLabel
+                                                            htmlFor={`unit-area-${unit.unit_number}`}
+                                                            value="Area (SQM)"
+                                                        />
+                                                        <TextInput
+                                                            id={`unit-area-${unit.unit_number}`}
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.01"
+                                                            className="mt-1 block w-full"
+                                                            value={
+                                                                unit.area_sqm
+                                                            }
+                                                            onChange={(e) => {
+                                                                const next = [
+                                                                    ...jobForm
+                                                                        .data
+                                                                        .units,
+                                                                ];
+                                                                next[index] = {
+                                                                    ...next[
+                                                                        index
+                                                                    ],
+                                                                    area_sqm:
+                                                                        e.target
+                                                                            .value,
+                                                                };
+                                                                jobForm.setData(
+                                                                    'units',
+                                                                    next,
+                                                                );
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ),
+                                        )}
+                                        <InputError
+                                            className="mt-1"
+                                            message={jobForm.errors.units}
+                                        />
+                                    </div>
+                                ) : null}
                                 <div>
                                     <InputLabel
                                         htmlFor="edit-job-design_requirements"
@@ -470,7 +678,9 @@ export default function DraftingEditModals({
                                         className={textareaClass}
                                         rows={2}
                                         maxLength={2000}
-                                        value={jobForm.data.additional_inclusions}
+                                        value={
+                                            jobForm.data.additional_inclusions
+                                        }
                                         onChange={(e) =>
                                             jobForm.setData(
                                                 'additional_inclusions',
@@ -530,7 +740,7 @@ export default function DraftingEditModals({
                             />
                         </div>
                         <div>
-                            <InputLabel htmlFor="edit-external_wall" value="External wall" />
+                            <InputLabel htmlFor="edit-external_wall" value="Construction" />
                             <select
                                 id="edit-external_wall"
                                 className={selectClass}

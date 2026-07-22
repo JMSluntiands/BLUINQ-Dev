@@ -144,6 +144,17 @@ class AttendanceService
         $defaultTimezone = $this->attendanceTimezone();
         $nowLocal = $this->nowInAttendanceTimezone();
 
+        $lastOut = AttendanceClock::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('clock_out_at')
+            ->orderByDesc('clock_out_at')
+            ->first();
+
+        $lastOutAt = $lastOut?->clock_out_at;
+        $splitSeconds = $lastOutAt !== null
+            ? max(0, $nowLocal->getTimestamp() - $lastOutAt->timezone($defaultTimezone)->getTimestamp())
+            : 0;
+
         return [
             'clocked_in' => $record->clock_in_at !== null,
             'clocked_out' => $record->clock_out_at !== null,
@@ -160,7 +171,22 @@ class AttendanceService
             'timezone' => $defaultTimezone,
             'timezones' => config('attendance.display_timezones', []),
             'current_local_time' => $nowLocal->format('g:i A'),
+            'current_local_time_hm' => $nowLocal->format('H:i'),
             'current_local_date' => $nowLocal->format('D, M j, Y'),
+            'timezone_offset_label' => 'GMT'.(
+                ($offset = intdiv($nowLocal->utcOffset(), 60)) >= 0
+                    ? '+'.$offset
+                    : (string) $offset
+            ),
+            'last_out_at' => $lastOutAt?->toIso8601String(),
+            'last_out_label' => $lastOutAt !== null
+                ? 'Last out '.$lastOutAt->timezone($defaultTimezone)->diffForHumans($nowLocal)
+                : 'No previous clock out',
+            'split_time_label' => sprintf(
+                '%02d:%02d',
+                intdiv($splitSeconds, 3600),
+                intdiv($splitSeconds % 3600, 60),
+            ),
         ];
     }
 

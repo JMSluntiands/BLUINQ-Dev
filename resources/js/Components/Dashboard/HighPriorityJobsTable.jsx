@@ -7,14 +7,14 @@ export default function HighPriorityJobsTable({ boardPreviewJobs = [] }) {
             <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                     <h3 className="text-base font-semibold text-slate-900 dark:text-white">
-                        Urgent requests
+                        For Checking
                     </h3>
                     <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-                        Priority requests on the project board
+                        Jobs waiting for checking on the project board
                     </p>
                 </div>
                 <Link
-                    href={route('job.list')}
+                    href={route('job.board')}
                     className="shrink-0 text-sm font-medium text-[#1890ff] transition hover:text-[#1478e0] dark:text-[#1890ff]"
                 >
                     View full board
@@ -23,7 +23,7 @@ export default function HighPriorityJobsTable({ boardPreviewJobs = [] }) {
             <div className="overflow-hidden rounded-xl border border-[#2a2d3e] dark:border-[#2f3347]">
                 <JobBoardGrid
                     jobs={boardPreviewJobs}
-                    emptyMessage="No urgent requests."
+                    emptyMessage="No jobs for checking."
                     getJobHref={(row) =>
                         route('job.drafting.show', row.id)
                     }

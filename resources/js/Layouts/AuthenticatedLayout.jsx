@@ -7,6 +7,7 @@ import {
     Bars3Icon,
     BriefcaseIcon,
     CalendarDaysIcon,
+    ChartBarIcon,
     ClipboardDocumentListIcon,
     ChevronRightIcon,
     ClockIcon,
@@ -120,20 +121,23 @@ export default function AuthenticatedLayout({ header, children }) {
     const canManageUserMilestones = can('profile.milestones.manage');
     const canDraftingMemos = can('drafting-memos.view');
     const canDraftingArchive = can('job.drafting.archive');
-    const canArchiProject =
+    const canApm =
         canJobList ||
-        canDraftingRequest ||
         canReviewDraftingRequests ||
         canDraftingArchive ||
         can('job.drafting.view');
+    const showArchiMenu =
+        canDraftingMemos || canDraftingRequest || canApm || canJobList;
 
     const isDashboard = route().current('dashboard');
     const isAnnouncements =
         route().current('announcements.index') ||
+        route().current('announcements.show') ||
         route().current('announcements.create') ||
         route().current('announcements.edit') ||
         route().current('announcements.archive');
     const isJobList = route().current('job.list');
+    const isJobStatusChart = route().current('job.status-chart');
     const isTimesheet = route().current('timesheet.index');
     const isLeaveApprovals = route().current('leave.approvals');
     const isLeaveCredits = route().current('leave.credits.index');
@@ -143,17 +147,19 @@ export default function AuthenticatedLayout({ header, children }) {
     const isJobBoard =
         route().current('job.board') || route().current('job.drafting');
     const isDraftingList = isJobBoard || route().current('job.drafting.show');
-    const isDraftingMemos =
-        route().current('drafting-memos.index');
+    const isDraftingMemos = route().current('drafting-memos.index');
     const isDraftingArchive = route().current('job.drafting.archive');
-    const isDraftingRequestForm = route().current(
-        'job.drafting-request-form',
-    );
-    const isArchiTeamSection =
+    const isMasterlist =
+        route().current('job.masterlist') ||
+        route().current('job.masterlist.create') ||
+        route().current('job.masterlist.edit') ||
+        route().current('job.drafting-request-form');
+    const isArchiMenuSection =
+        isDraftingMemos ||
+        isMasterlist ||
         isJobBoard ||
         isDraftingList ||
-        isDraftingArchive ||
-        isDraftingRequestForm;
+        isDraftingArchive;
     const isUsersIndex = route().current('settings.users.index');
     const isUsersCreate = route().current('settings.users.create');
     const isUsersEdit = route().current('settings.users.edit');
@@ -199,14 +205,13 @@ export default function AuthenticatedLayout({ header, children }) {
         canCrmCategories ||
         canLevelOfDifficulty;
 
-    const [archiTeamMenuOpen, setArchiTeamMenuOpen] =
-        useState(isArchiTeamSection);
+    const [archiMenuOpen, setArchiMenuOpen] = useState(isArchiMenuSection);
 
     useEffect(() => {
-        if (isArchiTeamSection) {
-            setArchiTeamMenuOpen(true);
+        if (isArchiMenuSection) {
+            setArchiMenuOpen(true);
         }
-    }, [isArchiTeamSection]);
+    }, [isArchiMenuSection]);
 
     return (
         <div className="min-h-screen bg-slate-100 dark:bg-[#0a0c14]">
@@ -303,7 +308,22 @@ export default function AuthenticatedLayout({ header, children }) {
                                 />
                             }
                         >
-                            Job list
+                            Archi Project Management
+                        </NavItem>
+                    )}
+                    {canJobList && (
+                        <NavItem
+                            href={route('job.status-chart')}
+                            active={isJobStatusChart}
+                            onNavigate={closeSidebar}
+                            icon={
+                                <ChartBarIcon
+                                    className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
+                                    aria-hidden
+                                />
+                            }
+                        >
+                            Statistic
                         </NavItem>
                     )}
                     {canTimesheet && (
@@ -321,22 +341,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             Timesheet
                         </NavItem>
                     )}
-                    {canDraftingMemos && (
-                        <NavItem
-                            href={route('drafting-memos.index')}
-                            active={isDraftingMemos}
-                            onNavigate={closeSidebar}
-                            icon={
-                                <DocumentTextIcon
-                                    className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
-                                    aria-hidden
-                                />
-                            }
-                        >
-                            Drafting Memos
-                        </NavItem>
-                    )}
-                    {canArchiProject && (
+                    {showArchiMenu && (
                         <div className="mt-3 space-y-1">
                             <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
                                 Workflow
@@ -344,60 +349,72 @@ export default function AuthenticatedLayout({ header, children }) {
                             <div>
                                 <button
                                     type="button"
-                                    aria-expanded={archiTeamMenuOpen}
+                                    aria-expanded={archiMenuOpen}
                                     onClick={() =>
-                                        setArchiTeamMenuOpen((open) => !open)
+                                        setArchiMenuOpen((open) => !open)
                                     }
                                     className={
                                         'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ' +
-                                        (isArchiTeamSection
-                                            ? 'bg-sky-50 text-sky-700'
-                                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')
+                                        (isArchiMenuSection
+                                            ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'
+                                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100')
                                     }
                                 >
                                     <BriefcaseIcon
                                         className={
                                             'h-5 w-5 shrink-0 ' +
-                                            (isArchiTeamSection
+                                            (isArchiMenuSection
                                                 ? 'text-sky-600'
                                                 : 'text-slate-400 group-hover:text-slate-500')
                                         }
                                         aria-hidden
                                     />
                                     <span className="min-w-0 flex-1">
-                                        Archi Project
+                                        Archi menu
                                     </span>
                                     <ChevronRightIcon
                                         className={
                                             'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ' +
-                                            (archiTeamMenuOpen ? 'rotate-90' : '')
+                                            (archiMenuOpen ? 'rotate-90' : '')
                                         }
                                         aria-hidden
                                     />
                                 </button>
-                                {archiTeamMenuOpen && (
+                                {archiMenuOpen && (
                                     <div className="mt-0.5 space-y-0.5 pb-1">
-                                        {canDraftingRequest && (
+                                        {canDraftingMemos && (
                                             <SidebarSubLink
                                                 href={route(
-                                                    'job.drafting-request-form',
+                                                    'drafting-memos.index',
                                                 )}
-                                                active={isDraftingRequestForm}
+                                                active={isDraftingMemos}
                                                 onNavigate={closeSidebar}
                                             >
-                                                Drafting Request Form
+                                                Drafting Memos
+                                            </SidebarSubLink>
+                                        )}
+                                        {canDraftingRequest && (
+                                            <SidebarSubLink
+                                                href={route('job.masterlist')}
+                                                active={isMasterlist}
+                                                onNavigate={closeSidebar}
+                                            >
+                                                Project Masterlist
                                             </SidebarSubLink>
                                         )}
                                         {canJobList && (
                                             <SidebarSubLink
                                                 href={route('job.board')}
-                                                active={isJobBoard}
+                                                active={
+                                                    isJobBoard || isDraftingList
+                                                }
                                                 onNavigate={closeSidebar}
                                             >
                                                 <span className="flex flex-1 items-center justify-between gap-2">
-                                                    Drafting Requests
+                                                    New Jobs
                                                     {canReviewDraftingRequests &&
-                                                        pendingDraftingRequestCount > 0 && (
+                                                        pendingDraftingRequestCount >
+                                                            0 && (
                                                             <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold leading-none text-white">
                                                                 {
                                                                     pendingDraftingRequestCount
@@ -409,7 +426,9 @@ export default function AuthenticatedLayout({ header, children }) {
                                         )}
                                         {canJobList && (
                                             <SidebarSubLink
-                                                href={route('job.drafting.archive')}
+                                                href={route(
+                                                    'job.drafting.archive',
+                                                )}
                                                 active={isDraftingArchive}
                                                 onNavigate={closeSidebar}
                                             >

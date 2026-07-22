@@ -141,6 +141,8 @@ export default function Login({ status }) {
                             )}
 
                             <form
+                                method="post"
+                                action={route('login')}
                                 className="space-y-6"
                                 onSubmit={submit}
                                 noValidate

@@ -12,7 +12,7 @@ import {
     UserMinusIcon,
 } from '@heroicons/react/24/outline';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const FLASH_MESSAGES = {
     'leave-request-submitted':
@@ -130,8 +130,7 @@ function AnnouncementCover({ imageUrl }) {
     );
 }
 
-function AnnouncementExcerpt({ description }) {
-    const [expanded, setExpanded] = useState(false);
+function AnnouncementExcerpt({ description, href }) {
     const plainText = stripHtml(description).replace(/\s+/g, ' ').trim();
     const isLong = plainText.length > ANNOUNCEMENT_PREVIEW_LENGTH;
     const previewText = isLong
@@ -140,25 +139,17 @@ function AnnouncementExcerpt({ description }) {
 
     return (
         <div>
-            {expanded ? (
-                <div
-                    className="rich-text-content mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300 [&_a]:text-sky-600 [&_a]:underline dark:[&_a]:text-sky-400 [&_blockquote]:border-l-2 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3 [&_blockquote]:text-slate-500 dark:[&_blockquote]:border-slate-600 dark:[&_blockquote]:text-slate-400 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:text-sm [&_h3]:font-semibold [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5"
-                    dangerouslySetInnerHTML={{ __html: description }}
-                />
-            ) : (
-                <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                    {previewText}
-                </p>
-            )}
-            {isLong && (
-                <button
-                    type="button"
-                    onClick={() => setExpanded((current) => !current)}
-                    className="mt-2 text-sm font-medium text-sky-600 transition hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
+            <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                {previewText || '—'}
+            </p>
+            {href ? (
+                <Link
+                    href={href}
+                    className="mt-2 inline-block text-sm font-medium text-sky-600 transition hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
                 >
-                    {expanded ? 'See less' : 'See more'}
-                </button>
-            )}
+                    See more
+                </Link>
+            ) : null}
         </div>
     );
 }
@@ -290,12 +281,32 @@ export default function Dashboard() {
         upcomingBirthdays = [],
         onLeaveToday = [],
         calendarMonth,
-        jobStatusChart = null,
         drafterLeaderboard = null,
+        activityFormOptions = null,
     } = usePage().props;
     const absentEmployees = attendance.absent ?? [];
     const absentAfterNine = Boolean(attendance.absent_after_nine);
-    const latestAnnouncement = announcements[0] ?? null;
+    const [selectedAnnouncementId, setSelectedAnnouncementId] = useState(
+        announcements[0]?.id ?? null,
+    );
+
+    useEffect(() => {
+        if (
+            announcements.length > 0 &&
+            !announcements.some(
+                (announcement) => announcement.id === selectedAnnouncementId,
+            )
+        ) {
+            setSelectedAnnouncementId(announcements[0].id);
+        }
+    }, [announcements, selectedAnnouncementId]);
+
+    const featuredAnnouncement =
+        announcements.find(
+            (announcement) => announcement.id === selectedAnnouncementId,
+        ) ??
+        announcements[0] ??
+        null;
 
     return (
         <AuthenticatedLayout
@@ -308,7 +319,10 @@ export default function Dashboard() {
             <Head title="Dashboard" />
             <FlashNoticeModal messages={FLASH_MESSAGES} />
 
-            <ClockInOutPanel clock={clock} />
+            <ClockInOutPanel
+                clock={clock}
+                activityFormOptions={activityFormOptions}
+            />
 
             <div className="mt-8 grid grid-cols-1 items-stretch gap-5 lg:grid-cols-12 lg:gap-6">
                 {canViewAnnouncements && (
@@ -332,27 +346,79 @@ export default function Dashboard() {
                             )}
                         </div>
                     ) : (
-                    <article className="min-w-0">
-                        <AnnouncementCover
-                            imageUrl={latestAnnouncement.image_url}
-                        />
+                    <div className="grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-5 lg:gap-6">
+                        <article className="min-w-0 lg:col-span-3">
+                            <AnnouncementCover
+                                imageUrl={featuredAnnouncement.image_url}
+                            />
 
-                        <p className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">
-                            Latest update
-                        </p>
-                        <h4 className="mt-1 text-lg font-semibold leading-snug text-slate-900 dark:text-white sm:text-xl">
-                            {latestAnnouncement.title}
-                        </h4>
-                        <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-                            {latestAnnouncement.date} ·{' '}
-                            {latestAnnouncement.time} ·{' '}
-                            {latestAnnouncement.author}
-                        </p>
-                        <AnnouncementExcerpt
-                            key={latestAnnouncement.id}
-                            description={latestAnnouncement.description}
-                        />
-                    </article>
+                            <p className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                                Latest update
+                            </p>
+                            <h4 className="mt-1 text-lg font-semibold leading-snug text-slate-900 dark:text-white sm:text-xl">
+                                {featuredAnnouncement.title}
+                            </h4>
+                            <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                                {featuredAnnouncement.date} ·{' '}
+                                {featuredAnnouncement.time} ·{' '}
+                                {featuredAnnouncement.author}
+                            </p>
+                            <AnnouncementExcerpt
+                                key={featuredAnnouncement.id}
+                                description={featuredAnnouncement.description}
+                                href={route(
+                                    'announcements.show',
+                                    featuredAnnouncement.id,
+                                )}
+                            />
+                        </article>
+
+                        <aside className="min-w-0 lg:col-span-2 lg:border-l lg:border-slate-100 lg:pl-5 dark:lg:border-slate-800">
+                            <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
+                                Previous
+                            </h4>
+                            <ul className="mt-3 max-h-72 space-y-1.5 overflow-y-auto pr-1">
+                                {announcements.map((announcement) => {
+                                    const isActive =
+                                        announcement.id ===
+                                        selectedAnnouncementId;
+
+                                    return (
+                                        <li key={announcement.id}>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setSelectedAnnouncementId(
+                                                        announcement.id,
+                                                    )
+                                                }
+                                                className={
+                                                    'w-full rounded-xl border px-3 py-2.5 text-left transition ' +
+                                                    (isActive
+                                                        ? 'border-sky-200 bg-sky-50 dark:border-sky-500/40 dark:bg-sky-500/10'
+                                                        : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/60')
+                                                }
+                                            >
+                                                <p
+                                                    className={
+                                                        'text-sm font-medium leading-snug ' +
+                                                        (isActive
+                                                            ? 'text-sky-800 dark:text-sky-300'
+                                                            : 'text-slate-700 dark:text-slate-200')
+                                                    }
+                                                >
+                                                    {announcement.title}
+                                                </p>
+                                                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                                                    {announcement.date}
+                                                </p>
+                                            </button>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </aside>
+                    </div>
                     )}
                 </DashboardPanel>
                 )}
@@ -460,6 +526,13 @@ export default function Dashboard() {
                 </DashboardPanel>
             </div>
 
+            <HighPriorityJobsTable boardPreviewJobs={boardPreviewJobs} />
+
+            <DashboardCharts
+                drafterLeaderboard={drafterLeaderboard}
+                calendarMonth={calendarMonth}
+            />
+
             <LeaveHolidayCalendar
                 key={`calendar-${calendarMonth}`}
                 users={leaveCalendar}
@@ -469,14 +542,6 @@ export default function Dashboard() {
                 canAddCalendarEvent
                 currentUserId={auth.user?.id ?? null}
                 canDeleteAnyEvent={auth.user?.role === 'admin'}
-                calendarMonth={calendarMonth}
-            />
-
-            <HighPriorityJobsTable boardPreviewJobs={boardPreviewJobs} />
-
-            <DashboardCharts
-                jobStatusChart={jobStatusChart}
-                drafterLeaderboard={drafterLeaderboard}
                 calendarMonth={calendarMonth}
             />
         </AuthenticatedLayout>

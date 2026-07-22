@@ -241,7 +241,7 @@ function ChartPanel({ title, icon: Icon, iconClassName, children, toolbar }) {
     );
 }
 
-function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth, jobStatusChart }) {
+function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth }) {
     const chartColors = useChartColors();
     const data = drafterLeaderboard?.data ?? [];
     const selectedMonth = drafterLeaderboard?.month ?? toMonthKey(new Date());
@@ -255,16 +255,6 @@ function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth, jobStatusC
         [data],
     );
 
-    const chartData = useMemo(() => {
-        if (widgetSettings.selectedDrafters.length === 0) {
-            return data;
-        }
-
-        return data.filter((entry) =>
-            widgetSettings.selectedDrafters.includes(entry.drafter),
-        );
-    }, [data, widgetSettings.selectedDrafters]);
-
     const activeSeries = useMemo(
         () =>
             DRAFTER_SERIES.filter((series) =>
@@ -273,6 +263,25 @@ function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth, jobStatusC
         [widgetSettings.visibleSeries],
     );
 
+    const chartData = useMemo(() => {
+        const filtered =
+            widgetSettings.selectedDrafters.length === 0
+                ? data
+                : data.filter((entry) =>
+                      widgetSettings.selectedDrafters.includes(entry.drafter),
+                  );
+
+        // Precompute stack totals for LabelList — Recharts v3 formatter only
+        // receives the label value (not the old value/name/props signature).
+        return filtered.map((entry) => ({
+            ...entry,
+            _stackTotal: activeSeries.reduce(
+                (sum, series) => sum + (Number(entry[series.key]) || 0),
+                0,
+            ),
+        }));
+    }, [data, widgetSettings.selectedDrafters, activeSeries]);
+
     const isStacked = widgetSettings.chartType === 'stacked';
 
     const reloadLeaderboard = (nextMonth) => {
@@ -280,7 +289,6 @@ function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth, jobStatusC
             route('dashboard', {
                 leaderboard_month: nextMonth,
                 calendar_month: calendarMonth,
-                job_status_date: jobStatusChart?.date,
             }),
             {},
             {
@@ -464,29 +472,13 @@ function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth, jobStatusC
                                         isStacked &&
                                         index === activeSeries.length - 1 && (
                                             <LabelList
+                                                dataKey="_stackTotal"
                                                 position="top"
                                                 fill={chartColors.axis}
                                                 fontSize={11}
-                                                formatter={(
-                                                    _value,
-                                                    _name,
-                                                    props,
-                                                ) => {
-                                                    const total =
-                                                        activeSeries.reduce(
-                                                            (sum, item) =>
-                                                                sum +
-                                                                (props
-                                                                    .payload?.[
-                                                                    item.key
-                                                                ] ?? 0),
-                                                            0,
-                                                        );
-
-                                                    return total > 0
-                                                        ? total
-                                                        : '';
-                                                }}
+                                                formatter={(value) =>
+                                                    value > 0 ? value : ''
+                                                }
                                             />
                                         )}
                                 </Bar>
@@ -519,7 +511,12 @@ function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth, jobStatusC
     );
 }
 
-function JobStatusChart({ jobStatusChart, calendarMonth }) {
+function JobStatusChart({
+    jobStatusChart,
+    reloadRoute = 'dashboard',
+    reloadOnly = ['jobStatusChart'],
+    preserveQuery = {},
+}) {
     const chartColors = useChartColors();
     const [showDateFilter, setShowDateFilter] = useState(false);
     const chartData = jobStatusChart?.data?.length
@@ -530,15 +527,15 @@ function JobStatusChart({ jobStatusChart, calendarMonth }) {
 
     const reloadChart = (nextDate) => {
         router.get(
-            route('dashboard', {
+            route(reloadRoute, {
+                ...preserveQuery,
                 job_status_date: nextDate,
-                calendar_month: calendarMonth,
             }),
             {},
             {
                 preserveState: true,
                 preserveScroll: true,
-                only: ['jobStatusChart'],
+                only: reloadOnly,
             },
         );
     };
@@ -676,22 +673,16 @@ function JobStatusChart({ jobStatusChart, calendarMonth }) {
     );
 }
 
+export { JobStatusChart };
+
 export default function DashboardCharts({
-    jobStatusChart,
     drafterLeaderboard,
     calendarMonth,
 }) {
     return (
-        <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <div className="xl:col-span-2">
-                <DrafterLeaderboardChart
-                    drafterLeaderboard={drafterLeaderboard}
-                    calendarMonth={calendarMonth}
-                    jobStatusChart={jobStatusChart}
-                />
-            </div>
-            <JobStatusChart
-                jobStatusChart={jobStatusChart}
+        <div className="mt-8 grid grid-cols-1 gap-6">
+            <DrafterLeaderboardChart
+                drafterLeaderboard={drafterLeaderboard}
                 calendarMonth={calendarMonth}
             />
         </div>

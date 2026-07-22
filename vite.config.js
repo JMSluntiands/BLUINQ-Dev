@@ -17,5 +17,12 @@ export default defineConfig({
         hmr: {
             host: '127.0.0.1',
         },
+        watch: {
+            ignored: [
+                '**/.tmp-debug/**',
+                '**/.cursor-chrome-tmp/**',
+                '**/storage/framework/**',
+            ],
+        },
     },
 });

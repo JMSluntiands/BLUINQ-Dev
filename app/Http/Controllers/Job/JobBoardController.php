@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Job;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateDraftingRequestAssignmentRequest;
+use App\Http\Requests\UpdateDraftingRequestBoardFieldsRequest;
 use App\Models\DraftingRequest;
+use App\Models\DraftingRequestActivity;
 use App\Models\DraftingRequestAssignment;
 use App\Services\DraftingRequestBoardService;
 use App\Services\DraftingRequestReviewService;
@@ -39,6 +41,7 @@ class JobBoardController extends Controller
 
         $user = $request->user();
         $canReviewPublicRequests = $user?->hasPermission('job.drafting-request.review') ?? false;
+        $canForwardFromMasterlist = $user?->hasPermission('job.masterlist.forward') ?? false;
 
         return Inertia::render('Job/Board', [
             'jobs' => $query
@@ -53,6 +56,10 @@ class JobBoardController extends Controller
             'filters' => $filters,
             'canViewAllRequests' => $user?->isAdmin() ?? false,
             'canReviewPublicRequests' => $canReviewPublicRequests,
+            'canForwardFromMasterlist' => $canForwardFromMasterlist,
+            'masterlistCandidates' => $canForwardFromMasterlist
+                ? $this->masterlistCandidatesForBoard($request)
+                : [],
             'pendingRequests' => $canReviewPublicRequests
                 ? $this->review->pendingQuery()
                     ->limit(50)
@@ -62,10 +69,68 @@ class JobBoardController extends Controller
                     ->all()
                 : [],
             'assignableUsers' => $this->board->assignableUsers(),
+            'statusOptions' => collect(DraftingRequest::statusOptions())
+                ->map(fn (string $label, string $value) => [
+                    'value' => $value,
+                    'label' => $label,
+                ])
+                ->values()
+                ->all(),
             'groupByStatus' => $groupByStatus,
             'jobListSections' => $groupByStatus
                 ? $this->board->jobListSectionLabels()
                 : [],
+        ]);
+    }
+
+    /**
+     * Masterlist entries not yet on the APM board.
+     *
+     * @return list<array{id: int, value: string, label: string, lead_no: string}>
+     */
+    private function masterlistCandidatesForBoard(Request $request): array
+    {
+        $user = $request->user();
+
+        $query = DraftingRequest::query()
+            ->masterlist()
+            ->reviewAccepted()
+            ->active()
+            ->orderByDesc('requested_at')
+            ->orderByDesc('id');
+
+        if ($user !== null && ! $user->isAdmin()) {
+            $query->where('user_id', $user->id);
+        }
+
+        return $query
+            ->limit(200)
+            ->get(['id', 'requested_at', 'created_at', 'company_name', 'your_name', 'site_address'])
+            ->map(function (DraftingRequest $row) {
+                $leadNo = $row->jobNumber();
+                $client = $row->company_name ?: ($row->your_name ?: '—');
+                $job = $row->site_address ?: '—';
+
+                return [
+                    'id' => $row->id,
+                    'value' => (string) $row->id,
+                    'lead_no' => $leadNo,
+                    'label' => "{$leadNo} — {$client} — {$job}",
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    public function statusChart(Request $request): Response
+    {
+        $jobStatusDate = $request->string('job_status_date')->toString();
+        $jobStatusDate = preg_match('/^\d{4}-\d{2}-\d{2}$/', $jobStatusDate)
+            ? $jobStatusDate
+            : null;
+
+        return Inertia::render('Job/StatusChart', [
+            'jobStatusChart' => $this->board->jobStatusChartPayload($request, $jobStatusDate),
         ]);
     }
 
@@ -134,6 +199,50 @@ class JobBoardController extends Controller
                 (int) $validated['user_id'],
                 $validated['hours'] ?? null,
             );
+        }
+
+        return back();
+    }
+
+    public function updateBoardFields(
+        UpdateDraftingRequestBoardFieldsRequest $request,
+        DraftingRequest $draftingRequest,
+    ): RedirectResponse {
+        if (! $this->board->canAssignStaff($request, $draftingRequest)) {
+            abort(403);
+        }
+
+        if ($draftingRequest->isArchived()) {
+            abort(404);
+        }
+
+        $validated = $request->validated();
+
+        if (array_key_exists('status', $validated)) {
+            $previousStatus = $draftingRequest->status;
+            $newStatus = $validated['status'];
+
+            if ($previousStatus !== $newStatus) {
+                $draftingRequest->update(['status' => $newStatus]);
+
+                $options = DraftingRequest::statusOptions();
+                $fromLabel = $options[$previousStatus]
+                    ?? ($previousStatus ? ucfirst(str_replace('_', ' ', $previousStatus)) : 'New');
+                $toLabel = $options[$newStatus] ?? ucfirst(str_replace('_', ' ', $newStatus));
+
+                DraftingRequestActivity::record(
+                    $draftingRequest,
+                    $request->user(),
+                    DraftingRequestActivity::ACTION_STATUS_CHANGED,
+                    sprintf('Status changed from %s to %s.', $fromLabel, $toLabel),
+                );
+            }
+        }
+
+        if (array_key_exists('date_out', $validated)) {
+            $draftingRequest->update([
+                'date_out' => $validated['date_out'],
+            ]);
         }
 
         return back();
