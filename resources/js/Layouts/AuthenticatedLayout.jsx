@@ -131,7 +131,7 @@ export default function AuthenticatedLayout({ header, children }) {
         canDraftingArchive ||
         can('job.drafting.view');
     const showArchiMenu =
-        canDraftingMemos || canDraftingRequest || canApm || canJobList;
+        canDraftingMemos || canApm || canJobList;
 
     const isDashboard = route().current('dashboard');
     const isAnnouncements =
@@ -160,7 +160,7 @@ export default function AuthenticatedLayout({ header, children }) {
         route().current('job.drafting-request-form');
     const isArchiMenuSection =
         isDraftingMemos ||
-        isMasterlist ||
+        isJobList ||
         isJobBoard ||
         isDraftingList ||
         isDraftingArchive;
@@ -308,10 +308,10 @@ export default function AuthenticatedLayout({ header, children }) {
                             Announcement
                         </NavItem>
                     )}
-                    {canJobList && (
+                    {canDraftingRequest && (
                         <NavItem
-                            href={route('job.list')}
-                            active={isJobList}
+                            href={route('job.masterlist')}
+                            active={isMasterlist}
                             onNavigate={closeSidebar}
                             icon={
                                 <ClipboardDocumentListIcon
@@ -320,7 +320,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                 />
                             }
                         >
-                            Archi Project Management
+                            Project Masterlist
                         </NavItem>
                     )}
                     {canJobList && (
@@ -405,13 +405,13 @@ export default function AuthenticatedLayout({ header, children }) {
                                                 Drafting Memos
                                             </SidebarSubLink>
                                         )}
-                                        {canDraftingRequest && (
+                                        {canJobList && (
                                             <SidebarSubLink
-                                                href={route('job.masterlist')}
-                                                active={isMasterlist}
+                                                href={route('job.list')}
+                                                active={isJobList}
                                                 onNavigate={closeSidebar}
                                             >
-                                                Project Masterlist
+                                                Archi Project Management
                                             </SidebarSubLink>
                                         )}
                                         {canJobList && (
