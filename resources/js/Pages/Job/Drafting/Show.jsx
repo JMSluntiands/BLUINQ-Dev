@@ -629,20 +629,20 @@ function ActivityLogsSection({ embedded = false }) {
             </div>
 
             {activities.length === 0 ? (
-                <p className="flex items-center gap-2 px-4 py-8 text-sm text-[#676879] dark:text-slate-400 sm:px-5">
+                <p className="flex items-center gap-2 px-4 py-6 text-sm text-[#676879] dark:text-slate-400 sm:px-5">
                     <ClockIcon className="h-5 w-5 shrink-0" aria-hidden />
                     No activity recorded yet.
                 </p>
             ) : (
-                <ul className="space-y-0 px-4 py-5 sm:px-5">
+                <ul className="max-h-56 space-y-0 overflow-y-auto overscroll-contain px-4 py-3 sm:max-h-64 sm:px-5">
                     {activities.map((activity, index) => (
                         <li
                             key={activity.id}
-                            className="relative flex gap-4 pb-8 last:pb-0"
+                            className="relative flex gap-3 pb-4 last:pb-1"
                         >
                             {index < activities.length - 1 ? (
                                 <span
-                                    className="absolute left-[11px] top-6 h-[calc(100%-0.5rem)] w-px bg-[#e6e9ef] dark:bg-[#3b82f6]/30"
+                                    className="absolute left-[11px] top-6 h-[calc(100%-0.35rem)] w-px bg-[#e6e9ef] dark:bg-[#3b82f6]/30"
                                     aria-hidden
                                 />
                             ) : null}
@@ -672,7 +672,7 @@ function ActivityLogsSection({ embedded = false }) {
                                     </time>
                                 </div>
                                 {activity.description ? (
-                                    <p className="mt-2 rounded-lg bg-[#fafbfc] px-3 py-2 text-sm text-[#323338] ring-1 ring-[#e6e9ef] dark:border dark:border-[#3b82f6]/30 dark:bg-[#151622] dark:text-slate-200 dark:ring-0">
+                                    <p className="mt-1.5 rounded-lg bg-[#fafbfc] px-2.5 py-1.5 text-xs leading-relaxed text-[#323338] ring-1 ring-[#e6e9ef] dark:border dark:border-[#3b82f6]/30 dark:bg-[#151622] dark:text-slate-200 dark:ring-0">
                                         {activity.description}
                                     </p>
                                 ) : null}
