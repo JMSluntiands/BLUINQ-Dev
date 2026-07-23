@@ -27,7 +27,7 @@ class DraftingRequestSubmissionService
         return DB::transaction(function () use ($request, $user, $validated, $reviewStatus, $workflowStage) {
             $draftingRequest = DraftingRequest::query()->create([
                 'user_id' => $user?->id,
-                'status' => DraftingRequest::STATUS_NEW,
+                'status' => DraftingRequest::STATUS_FOR_QUOTES,
                 'review_status' => $reviewStatus,
                 'workflow_stage' => $workflowStage,
                 ...$validated,
@@ -138,7 +138,7 @@ class DraftingRequestSubmissionService
                 'review_status' => DraftingRequest::REVIEW_ACCEPTED,
                 'reviewed_by' => $reviewer->id,
                 'reviewed_at' => now('UTC'),
-                'status' => DraftingRequest::STATUS_NEW,
+                'status' => DraftingRequest::STATUS_FOR_QUOTES,
                 'workflow_stage' => DraftingRequest::STAGE_MASTERLIST,
             ]);
 
@@ -191,7 +191,7 @@ class DraftingRequestSubmissionService
                     'category' => $category,
                     'drafter_user_id' => $actor->id,
                     'drafter_initials' => $actor->badgeInitials(),
-                    'status' => DraftingRequest::STATUS_NEW,
+                    'status' => DraftingRequest::STATUS_FOR_QUOTES,
                 ]);
             }
 

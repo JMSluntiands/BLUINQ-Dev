@@ -1,12 +1,19 @@
 /** @type {Record<string, string>} */
 export const JOB_STATUS_STYLES = {
+    drafting_wip:
+        'border border-rose-300 bg-rose-100 !text-rose-900 dark:border-rose-400 dark:!bg-[#f08080] dark:!text-white',
+    design_wip:
+        'border border-fuchsia-300 bg-fuchsia-100 !text-fuchsia-900 dark:border-fuchsia-400 dark:!bg-fuchsia-600 dark:!text-white',
+    for_quotes:
+        'border border-indigo-300 bg-indigo-100 !text-indigo-900 dark:border-indigo-400 dark:!bg-indigo-600 dark:!text-white',
+    completed_projects:
+        'border border-emerald-300 bg-emerald-100 !text-emerald-900 dark:border-emerald-400 dark:!bg-emerald-600 dark:!text-white',
+    cancelled_jobs:
+        'border border-rose-300 bg-rose-100 !text-rose-900 dark:border-rose-400 dark:!bg-rose-600 dark:!text-white',
+    // Legacy keys (pre-APM section remap)
     new: 'border border-slate-300 bg-slate-100 !text-slate-800 dark:border-slate-500 dark:!bg-slate-600 dark:!text-white',
     assigned:
         'border border-blue-300 bg-blue-100 !text-blue-900 dark:border-blue-400 dark:!bg-blue-600 dark:!text-white',
-    design_wip:
-        'border border-fuchsia-300 bg-fuchsia-100 !text-fuchsia-900 dark:border-fuchsia-400 dark:!bg-fuchsia-600 dark:!text-white',
-    drafting_wip:
-        'border border-rose-300 bg-rose-100 !text-rose-900 dark:border-rose-400 dark:!bg-[#f08080] dark:!text-white',
     wip: 'border border-rose-300 bg-rose-100 !text-rose-900 dark:border-rose-400 dark:!bg-[#f08080] dark:!text-white',
     for_checking:
         'border border-cyan-300 bg-cyan-100 !text-cyan-900 dark:border-cyan-400 dark:!bg-cyan-600 dark:!text-white',
@@ -28,38 +35,32 @@ export const JOB_STATUS_STYLES = {
 
 /** @type {Record<string, string>} */
 export const JOB_STATUS_LABELS = {
-    new: 'New',
-    assigned: 'Assigned',
-    design_wip: 'Design WIP',
-    drafting_wip: 'Drafting WIP',
-    wip: 'WIP',
-    for_checking: 'For Checking',
-    query: 'Query',
-    submitted: 'Submitted',
-    on_hold: 'On Hold',
-    cancelled: 'Cancelled',
-    for_quote: 'For Quote',
-    quote_sent: 'Quote Sent',
-    invoiced: 'Invoiced',
-    paid: 'Paid',
+    drafting_wip: 'Drafting - Work In Progress',
+    design_wip: 'Design - Work In Progress',
+    for_quotes: 'For Quotes',
+    completed_projects: 'Completed Projects',
+    cancelled_jobs: 'Cancelled Jobs',
+    new: 'For Quotes',
+    assigned: 'Drafting - Work In Progress',
+    wip: 'Drafting - Work In Progress',
+    for_checking: 'Drafting - Work In Progress',
+    query: 'Drafting - Work In Progress',
+    submitted: 'Completed Projects',
+    on_hold: 'Drafting - Work In Progress',
+    cancelled: 'Cancelled Jobs',
+    for_quote: 'For Quotes',
+    quote_sent: 'For Quotes',
+    invoiced: 'Completed Projects',
+    paid: 'Completed Projects',
 };
 
 /** Board column order when jobs are split into status tables. */
 export const JOB_BOARD_STATUS_ORDER = [
-    'new',
-    'assigned',
-    'design_wip',
     'drafting_wip',
-    'wip',
-    'for_checking',
-    'query',
-    'submitted',
-    'on_hold',
-    'cancelled',
-    'for_quote',
-    'quote_sent',
-    'invoiced',
-    'paid',
+    'design_wip',
+    'for_quotes',
+    'completed_projects',
+    'cancelled_jobs',
 ];
 
 /** Job list page sections. */

@@ -63,7 +63,7 @@ class DraftingRequestSeeder extends Seeder
         $samples = [
             [
                 'email_key' => 'sample.alpha@example.com',
-                'status' => DraftingRequest::STATUS_NEW,
+                'status' => DraftingRequest::STATUS_FOR_QUOTES,
                 'is_priority' => true,
                 'requested_at' => now()->subDays(1),
                 'your_name' => 'Alex Rivera',
@@ -107,7 +107,7 @@ class DraftingRequestSeeder extends Seeder
             ],
             [
                 'email_key' => 'sample.charlie@example.com',
-                'status' => DraftingRequest::STATUS_FOR_CHECKING,
+                'status' => DraftingRequest::STATUS_DRAFTING_WIP,
                 'is_priority' => true,
                 'requested_at' => now()->subDays(8),
                 'your_name' => 'Casey Morgan',
@@ -129,7 +129,7 @@ class DraftingRequestSeeder extends Seeder
             ],
             [
                 'email_key' => 'sample.delta@example.com',
-                'status' => DraftingRequest::STATUS_ASSIGNED,
+                'status' => DraftingRequest::STATUS_DESIGN_WIP,
                 'is_priority' => false,
                 'requested_at' => now()->subDays(12),
                 'your_name' => 'Taylor Brooks',
@@ -151,7 +151,7 @@ class DraftingRequestSeeder extends Seeder
             ],
             [
                 'email_key' => 'sample.echo@example.com',
-                'status' => DraftingRequest::STATUS_ASSIGNED,
+                'status' => DraftingRequest::STATUS_DESIGN_WIP,
                 'is_priority' => false,
                 'requested_at' => now()->subDays(2),
                 'your_name' => 'Riley Chen',

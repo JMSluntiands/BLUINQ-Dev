@@ -47,7 +47,10 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard', [
             'boardPreviewJobs' => $user?->hasPermission('job.list.view')
                 ? $boardQuery
-                    ->where('status', DraftingRequest::STATUS_FOR_CHECKING)
+                    ->whereIn('status', [
+                        DraftingRequest::STATUS_DRAFTING_WIP,
+                        DraftingRequest::STATUS_DESIGN_WIP,
+                    ])
                     ->limit(5)
                     ->get()
                     ->map(function ($row) use ($request) {
@@ -78,10 +81,12 @@ class DashboardController extends Controller
                             ->reviewAccepted()
                             ->apm()
                             ->whereIn('status', [
-                                DraftingRequest::STATUS_NEW,
-                                DraftingRequest::STATUS_WIP,
+                                DraftingRequest::STATUS_FOR_QUOTES,
                                 DraftingRequest::STATUS_DESIGN_WIP,
                                 DraftingRequest::STATUS_DRAFTING_WIP,
+                                // Legacy rows before APM section remap
+                                DraftingRequest::STATUS_NEW,
+                                DraftingRequest::STATUS_WIP,
                                 DraftingRequest::STATUS_FOR_CHECKING,
                             ])
                             ->when(
