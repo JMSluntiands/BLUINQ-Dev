@@ -258,43 +258,13 @@ export default function DraftingShow({
                     archiveActions={archiveActions}
                     filesPanel={
                         viewFiles ? (
-                            fromMasterlist ? (
-                                <FilePanel
-                                    title="Documents"
-                                    files={documentFiles}
-                                    emptyLabel="No documents uploaded."
-                                    canEdit={editFiles}
-                                    onEdit={() => setFilesEditPanel('documents')}
-                                />
-                            ) : (
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                                    <FilePanel
-                                        title="Facade / plans"
-                                        files={facadeFiles}
-                                        emptyLabel="No facade or plan files."
-                                        canEdit={editFiles}
-                                        onEdit={() =>
-                                            setFilesEditPanel('facade')
-                                        }
-                                    />
-                                    <FilePanel
-                                        title="Documents"
-                                        files={documentFiles}
-                                        emptyLabel="No documents uploaded."
-                                        canEdit={editFiles}
-                                        onEdit={() =>
-                                            setFilesEditPanel('documents')
-                                        }
-                                    />
-                                    <FilePanel
-                                        title="Team uploads"
-                                        files={teamFiles}
-                                        emptyLabel="No team uploads yet."
-                                        canEdit={editFiles}
-                                        onEdit={() => setFilesEditPanel('team')}
-                                    />
-                                </div>
-                            )
+                            <FilePanel
+                                title="Documents"
+                                files={documentFiles}
+                                emptyLabel="No documents uploaded."
+                                canEdit={editFiles}
+                                onEdit={() => setFilesEditPanel('documents')}
+                            />
                         ) : null
                     }
                     commentsPanel={
