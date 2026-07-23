@@ -37,6 +37,8 @@ const CHECKING_SLOTS = 1;
  *   revisions?: Array<{ id: number; code: string; status?: string | null; status_label?: string | null }>;
  *   date_in: string;
  *   eta: string;
+ *   start_date?: string | null;
+ *   start_date_label?: string | null;
  *   progress_segments?: ProgressSegment[];
  *   drafting: (StaffAssignment | null)[];
  *   checking: (StaffAssignment | null)[];
@@ -164,10 +166,18 @@ function EditableStatusSelect({ job, statusOptions = [], disabled = false }) {
     );
 }
 
-function EditableDateOut({ job, disabled = false }) {
+function EditableBoardDate({
+    job,
+    field,
+    labelKey,
+    ariaName,
+    emptyTitle,
+    disabled = false,
+}) {
     const [busy, setBusy] = useState(false);
     const inputRef = useRef(null);
-    const label = job.date_out_label ?? '—';
+    const value = job[field] ?? null;
+    const label = job[labelKey] ?? '—';
 
     if (disabled) {
         return (
@@ -199,12 +209,8 @@ function EditableDateOut({ job, disabled = false }) {
                 type="button"
                 disabled={busy}
                 onClick={openPicker}
-                title={
-                    job.date_out
-                        ? `Date out: ${label}`
-                        : 'Set date out'
-                }
-                aria-label={`Date out for ${job.job_no}`}
+                title={value ? `${ariaName}: ${label}` : emptyTitle}
+                aria-label={`${ariaName} for ${job.job_no}`}
                 className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[#c5c7d0] bg-white text-[#676879] transition-colors hover:border-[#0073ea] hover:bg-[#e6e9ef] hover:text-[#0073ea] focus:outline-none focus:ring-2 focus:ring-[#0073ea] focus:ring-offset-1 disabled:opacity-50 dark:border-[#2f3347] dark:bg-[#151622] dark:text-slate-300 dark:hover:bg-[#1c1e2e]"
             >
                 <CalendarDaysIcon className="h-4 w-4" />
@@ -215,13 +221,13 @@ function EditableDateOut({ job, disabled = false }) {
             <input
                 ref={inputRef}
                 type="date"
-                value={job.date_out ?? ''}
+                value={value ?? ''}
                 disabled={busy}
                 onChange={(event) => {
                     setBusy(true);
                     router.patch(
                         route('job.drafting.board.update', job.id),
-                        { date_out: event.target.value || null },
+                        { [field]: event.target.value || null },
                         {
                             preserveScroll: true,
                             onFinish: () => setBusy(false),
@@ -233,6 +239,32 @@ function EditableDateOut({ job, disabled = false }) {
                 aria-hidden="true"
             />
         </div>
+    );
+}
+
+function EditableDateOut({ job, disabled = false }) {
+    return (
+        <EditableBoardDate
+            job={job}
+            field="date_out"
+            labelKey="date_out_label"
+            ariaName="Date out"
+            emptyTitle="Set date out"
+            disabled={disabled}
+        />
+    );
+}
+
+function EditableStartDate({ job, disabled = false }) {
+    return (
+        <EditableBoardDate
+            job={job}
+            field="start_date"
+            labelKey="start_date_label"
+            ariaName="Start date"
+            emptyTitle="Set start date"
+            disabled={disabled}
+        />
     );
 }
 
@@ -339,7 +371,7 @@ function JobBoardTableHead({
         return (
             <thead className="bg-[#fafbfc] dark:bg-[#151622]">
                 <tr>
-                    <th className={thClass}>Job</th>
+                    <th className={thClass}>Site Address</th>
                     <th className={thClass + ' w-10'} />
                     <th className={thClass}>Lead No.</th>
                     <th className={thClass}>Client Name</th>
@@ -369,7 +401,7 @@ function JobBoardTableHead({
     return (
         <thead className="bg-[#fafbfc] dark:bg-[#151622]">
             <tr>
-                <th className={thClass}>Job</th>
+                <th className={thClass}>Site Address</th>
                 <th className={thClass + ' w-10'} />
                 <th className={thClass}>Lead No.</th>
                 <th className={thClass}>Client Name</th>
@@ -377,9 +409,11 @@ function JobBoardTableHead({
                 <th className={thClass}>House Type</th>
                 <th className={thClass}>Date In</th>
                 <th className={thClass}>ETA</th>
+                <th className={thClass}>Start Date</th>
                 {draftingHeaders}
                 {checkingHeaders}
                 <th className={thClass}>Total hrs</th>
+                <th className={thClass}>Areas</th>
                 <th className={thClass}>Date Out</th>
                 {!hideStatus && <th className={thClass}>Status</th>}
                 <th className={thClass + ' w-10'}>Priority</th>
@@ -589,6 +623,12 @@ function JobBoardTableBody({
                                     >
                                         {job.eta}
                                     </td>
+                                    <td className={tdClass}>
+                                        <EditableStartDate
+                                            job={job}
+                                            disabled={!job.can_assign}
+                                        />
+                                    </td>
                                     {Array.from(
                                         { length: DRAFTING_SLOTS },
                                         (_, index) => (
@@ -658,6 +698,14 @@ function JobBoardTableBody({
                                         {job.total_hours != null
                                             ? `${job.total_hours} h`
                                             : '—'}
+                                    </td>
+                                    <td
+                                        className={
+                                            tdClass +
+                                            ' whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400'
+                                        }
+                                    >
+                                        {job.area ?? '—'}
                                     </td>
                                     <td className={tdClass}>
                                         <EditableDateOut
@@ -825,7 +873,7 @@ function JobBoardStatusSection({
                                 'w-full border-collapse text-left ' +
                                 (variant === 'masterlist'
                                     ? 'min-w-[64rem]'
-                                    : 'min-w-[96rem]')
+                                    : 'min-w-[108rem]')
                             }
                         >
                             <JobBoardTableHead
@@ -931,7 +979,7 @@ export default function JobBoardGrid({
     }
 
     const tableMinWidth =
-        variant === 'masterlist' ? 'min-w-[64rem]' : 'min-w-[96rem]';
+        variant === 'masterlist' ? 'min-w-[64rem]' : 'min-w-[108rem]';
 
     return (
         <>

@@ -239,6 +239,12 @@ class JobBoardController extends Controller
             }
         }
 
+        if (array_key_exists('start_date', $validated)) {
+            $draftingRequest->update([
+                'start_date' => $validated['start_date'],
+            ]);
+        }
+
         if (array_key_exists('date_out', $validated)) {
             $draftingRequest->update([
                 'date_out' => $validated['date_out'],

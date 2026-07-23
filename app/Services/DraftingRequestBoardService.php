@@ -170,6 +170,8 @@ class DraftingRequestBoardService
             'revisions' => $revisions,
             'date_in' => $row->requested_at?->timezone($tz)->format('M j') ?? '—',
             'eta' => '—',
+            'start_date' => $row->start_date?->format('Y-m-d'),
+            'start_date_label' => $row->start_date?->format('M j') ?? '—',
             'progress_segments' => $this->buildProgressSegments($boardStatus, $drafting, $checking),
             'drafting' => $drafting,
             'checking' => $checking,

@@ -8,9 +8,14 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {
     ArrowDownTrayIcon,
+    ArrowTopRightOnSquareIcon,
+    CalendarDaysIcon,
+    DocumentTextIcon,
     PencilSquareIcon,
     PlusIcon,
+    TagIcon,
     TrashIcon,
+    XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { createColumnHelper } from '@tanstack/react-table';
 import { Head, router } from '@inertiajs/react';
@@ -58,22 +63,95 @@ function MemoDescriptionModal({ memo, onClose }) {
         return null;
     }
 
+    const tags = memo.tags ?? [];
+    const hasMeta = Boolean(memo.reference_url) || Boolean(memo.has_attachment);
+
     return (
-        <Modal show={Boolean(memo)} onClose={onClose} maxWidth="2xl">
-            <div className="p-6">
-                <h2 className="text-lg font-semibold text-[#323338] dark:text-white">
-                    {memo.client_name}
-                </h2>
-                <p className="mt-1 text-sm text-[#676879] dark:text-slate-400">
-                    {memo.memo_date}
-                </p>
-                <div
-                    className="rich-text-content mt-4 max-h-[28rem] overflow-y-auto text-sm text-[#323338] dark:text-slate-200 [&_img]:max-h-64 [&_img]:rounded-md [&_p]:mb-2"
-                    dangerouslySetInnerHTML={{
-                        __html: memo.description || '<p>—</p>',
-                    }}
-                />
-                <div className="mt-6 flex justify-end">
+        <Modal show={Boolean(memo)} onClose={onClose} maxWidth="3xl">
+            <div className="flex max-h-[min(90vh,52rem)] flex-col">
+                <div className="flex items-start justify-between gap-4 border-b border-[#e6e9ef] px-5 py-4 dark:border-[#2f3347] sm:px-6">
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400">
+                            <DocumentTextIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                            Drafting memo
+                        </div>
+                        <h2 className="mt-1.5 text-xl font-semibold leading-snug tracking-tight text-[#323338] dark:text-white">
+                            {memo.client_name}
+                        </h2>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-[#676879] dark:text-slate-400">
+                            <span className="inline-flex items-center gap-1.5 tabular-nums">
+                                <CalendarDaysIcon className="h-4 w-4 shrink-0" aria-hidden />
+                                {memo.memo_date}
+                            </span>
+                            {memo.author && memo.author !== '—' && (
+                                <span className="text-[#c5c7d0] dark:text-slate-600">·</span>
+                            )}
+                            {memo.author && memo.author !== '—' && (
+                                <span>Logged by {memo.author}</span>
+                            )}
+                        </div>
+                        {tags.length > 0 && (
+                            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                                <TagIcon
+                                    className="h-3.5 w-3.5 text-[#676879] dark:text-slate-500"
+                                    aria-hidden
+                                />
+                                {tags.map((tag) => (
+                                    <span key={tag.id} className={tagPillClass}>
+                                        {tag.name}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className={iconBtn}
+                        aria-label="Close memo"
+                    >
+                        <XMarkIcon className="h-5 w-5" />
+                    </button>
+                </div>
+
+                {hasMeta && (
+                    <div className="flex flex-wrap gap-2 border-b border-[#e6e9ef] bg-[#fafbfc] px-5 py-3 dark:border-[#2f3347] dark:bg-[#151622] sm:px-6">
+                        {memo.reference_url && (
+                            <a
+                                href={memo.reference_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1.5 rounded-md border border-[#c5c7d0] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#0073ea] transition hover:border-[#0073ea] hover:bg-[#e6f4ff] dark:border-[#2f3347] dark:bg-[#1a1b2e] dark:text-[#1890ff] dark:hover:bg-[#243044]"
+                            >
+                                <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" aria-hidden />
+                                Reference link
+                            </a>
+                        )}
+                        {memo.has_attachment && (
+                            <a
+                                href={memo.attachment_url}
+                                className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-[#c5c7d0] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#323338] transition hover:border-[#0073ea] dark:border-[#2f3347] dark:bg-[#1a1b2e] dark:text-slate-200"
+                                title={memo.attachment_name}
+                            >
+                                <ArrowDownTrayIcon className="h-3.5 w-3.5 shrink-0 text-[#0073ea]" aria-hidden />
+                                <span className="truncate">{memo.attachment_name}</span>
+                            </a>
+                        )}
+                    </div>
+                )}
+
+                <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+                    <div className="memo-view-paper rounded-xl border border-[#e6e9ef] px-4 py-4 sm:px-5 sm:py-5">
+                        <div
+                            className="memo-view-richtext rich-text-content text-sm leading-relaxed"
+                            dangerouslySetInnerHTML={{
+                                __html: memo.description || '<p>—</p>',
+                            }}
+                        />
+                    </div>
+                </div>
+
+                <div className="flex justify-end border-t border-[#e6e9ef] px-5 py-3 dark:border-[#2f3347] sm:px-6">
                     <SecondaryButton
                         type="button"
                         onClick={onClose}

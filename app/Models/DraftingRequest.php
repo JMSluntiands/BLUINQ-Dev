@@ -105,6 +105,7 @@ class DraftingRequest extends Model
         'status',
         'is_priority',
         'requested_at',
+        'start_date',
         'date_out',
         'your_name',
         'company_name',
@@ -190,6 +191,7 @@ class DraftingRequest extends Model
     {
         return [
             'requested_at' => 'datetime',
+            'start_date' => 'date',
             'date_out' => 'date',
             'archived_at' => 'datetime',
             'max_building_area_sqm' => 'decimal:2',
