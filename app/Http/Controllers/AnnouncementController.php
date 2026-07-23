@@ -177,9 +177,11 @@ class AnnouncementController extends Controller
     }
 
     /**
+     * Active announcements for the dashboard featured panel + previous list.
+     *
      * @return list<array<string, mixed>>
      */
-    public static function latestForDashboard(int $limit = 1): array
+    public static function latestForDashboard(int $limit = 12): array
     {
         return Announcement::query()
             ->active()
