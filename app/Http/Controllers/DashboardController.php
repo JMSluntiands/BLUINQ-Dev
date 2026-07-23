@@ -78,10 +78,11 @@ class DashboardController extends Controller
                             ->reviewAccepted()
                             ->apm()
                             ->whereIn('status', [
+                                DraftingRequest::STATUS_NEW,
                                 DraftingRequest::STATUS_WIP,
-                                DraftingRequest::STATUS_ASSIGNED,
+                                DraftingRequest::STATUS_DESIGN_WIP,
+                                DraftingRequest::STATUS_DRAFTING_WIP,
                                 DraftingRequest::STATUS_FOR_CHECKING,
-                                DraftingRequest::STATUS_ON_HOLD,
                             ])
                             ->when(
                                 ! $user->isAdmin(),
