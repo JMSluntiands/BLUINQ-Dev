@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CalendarEventController;
 use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\AnnouncementImageController;
 use App\Http\Controllers\BrandLogoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LeaveRequestController;
@@ -105,6 +106,8 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('announcements.archive');
     Route::get('/announcements/{announcement}', [AnnouncementController::class, 'show'])
         ->name('announcements.show');
+    Route::get('/announcements/{announcement}/image', [AnnouncementImageController::class, 'show'])
+        ->name('announcements.image');
     Route::get('/announcements/{announcement}/edit', [AnnouncementController::class, 'edit'])
         ->name('announcements.edit');
     Route::patch('/announcements/{announcement}', [AnnouncementController::class, 'update'])

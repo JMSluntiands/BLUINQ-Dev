@@ -23,6 +23,7 @@ function filterQueryString(filters) {
 export default function Edit({ announcement, listFilters = {} }) {
     const listQs = filterQueryString(listFilters);
     const [imagePreview, setImagePreview] = useState(null);
+    const [coverBroken, setCoverBroken] = useState(false);
 
     const form = useForm({
         title: announcement.title,
@@ -44,6 +45,10 @@ export default function Edit({ announcement, listFilters = {} }) {
     }, [form.data.image]);
 
     const displayImage = imagePreview || announcement.image_url || null;
+
+    useEffect(() => {
+        setCoverBroken(false);
+    }, [displayImage]);
 
     const submit = (e) => {
         e.preventDefault();
@@ -92,16 +97,23 @@ export default function Edit({ announcement, listFilters = {} }) {
                     <div>
                         <InputLabel htmlFor="image" value="Cover image" />
                         <div className="mt-1.5 space-y-3">
-                            {displayImage && (
+                            {displayImage && !coverBroken ? (
                                 <img
                                     src={displayImage}
                                     alt=""
                                     className="h-40 w-full rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                                    onError={() => setCoverBroken(true)}
                                 />
+                            ) : (
+                                <div className="flex h-40 w-full items-center justify-center rounded-xl bg-slate-100 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+                                    <PhotoIcon className="h-10 w-10 text-slate-400 dark:text-slate-500" />
+                                </div>
                             )}
                             <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-sky-500 hover:text-sky-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-sky-500 dark:hover:text-sky-400">
                                 <PhotoIcon className="h-4 w-4" />
-                                {displayImage ? 'Change image' : 'Upload image'}
+                                {displayImage && !coverBroken
+                                    ? 'Change image'
+                                    : 'Upload image'}
                                 <input
                                     id="image"
                                     type="file"

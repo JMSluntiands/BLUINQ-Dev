@@ -66,6 +66,8 @@ class Announcement extends Model
 
     /**
      * Public URL for the stored announcement image, or null.
+     * Falls back to a controller route when public/storage is not linked
+     * (common on shared hosts that block symlinks).
      */
     protected function imageUrl(): Attribute
     {
@@ -76,13 +78,17 @@ class Announcement extends Model
 
             $relativePath = str_replace('/', DIRECTORY_SEPARATOR, $this->image);
             $publicPath = public_path('storage'.DIRECTORY_SEPARATOR.$relativePath);
-            $storedPath = storage_path('app/public/'.$relativePath);
 
-            if (! is_file($publicPath) && ! is_file($storedPath)) {
-                return null;
+            if (is_file($publicPath)) {
+                return asset('storage/'.ltrim(str_replace('\\', '/', $this->image), '/'));
             }
 
-            return '/storage/'.ltrim(str_replace('\\', '/', $this->image), '/');
+            $storedPath = storage_path('app/public/'.$relativePath);
+            if (is_file($storedPath)) {
+                return route('announcements.image', $this->id);
+            }
+
+            return null;
         });
     }
 }
