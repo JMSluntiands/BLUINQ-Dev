@@ -137,6 +137,13 @@
     color: rgb(241 245 249);
 }
 
+/* Status selects on the job board keep their own status colors. */
+.dark select.job-board-status-select {
+    border-color: inherit;
+    background-color: inherit;
+    color: inherit;
+}
+
 .dark input::placeholder,
 .dark textarea::placeholder {
     color: rgb(100 116 139);

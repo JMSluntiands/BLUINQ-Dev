@@ -148,7 +148,7 @@ function EditableStatusSelect({ job, statusOptions = [], disabled = false }) {
                 );
             }}
             className={
-                'max-w-[8.5rem] rounded-md border-0 px-2 py-1 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-[#0073ea] disabled:opacity-50 ' +
+                'job-board-status-select max-w-[8.5rem] rounded-md border px-2 py-1 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-[#0073ea] disabled:opacity-50 ' +
                 (JOB_STATUS_STYLES[job.status] ?? JOB_STATUS_STYLES.new)
             }
             aria-label={`Status for ${job.job_no}`}

@@ -3,9 +3,14 @@ export const DRAFTING_STATUS_PILL_STYLES = {
     new: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-500 dark:bg-[#1a222e] dark:text-slate-300',
     assigned:
         'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-400/60 dark:bg-[#1a222e] dark:text-blue-300',
+    design_wip:
+        'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800 dark:border-fuchsia-400/60 dark:bg-[#1a222e] dark:text-fuchsia-300',
+    drafting_wip:
+        'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-400/60 dark:bg-[#1a222e] dark:text-rose-300',
     wip: 'border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-400/60 dark:bg-[#1a222e] dark:text-violet-300',
     for_checking:
         'border-cyan-200 bg-cyan-50 text-cyan-800 dark:border-cyan-400/60 dark:bg-[#1a222e] dark:text-cyan-300',
+    query: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-400/60 dark:bg-[#1a222e] dark:text-amber-300',
     submitted:
         'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-400/60 dark:bg-[#1a222e] dark:text-emerald-300',
     on_hold:
