@@ -66,7 +66,7 @@ class MasterlistController extends Controller
                 'search' => $search,
                 'per_page' => $perPage,
             ],
-            'canForwardToApm' => $user?->hasPermission('job.masterlist.forward') ?? false,
+            'canForwardToApm' => $user?->hasPermission('job.list.view') ?? false,
         ]);
     }
 
@@ -165,7 +165,7 @@ class MasterlistController extends Controller
     public function forward(Request $request, DraftingRequest $draftingRequest): RedirectResponse
     {
         abort_unless(
-            $request->user()?->hasPermission('job.masterlist.forward'),
+            $request->user()?->hasPermission('job.list.view'),
             403,
         );
 

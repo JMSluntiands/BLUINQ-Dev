@@ -41,7 +41,7 @@ class JobBoardController extends Controller
 
         $user = $request->user();
         $canReviewPublicRequests = $user?->hasPermission('job.drafting-request.review') ?? false;
-        $canForwardFromMasterlist = $user?->hasPermission('job.masterlist.forward') ?? false;
+        $canForwardFromMasterlist = $user?->hasPermission('job.list.view') ?? false;
 
         return Inertia::render('Job/Board', [
             'jobs' => $query

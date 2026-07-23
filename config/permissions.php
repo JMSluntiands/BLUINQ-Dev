@@ -70,7 +70,7 @@ return [
         'job.masterlist.show' => 'job.drafting-request.view',
         'job.masterlist.edit' => 'job.drafting-request.view',
         'job.masterlist.update' => 'job.drafting-request.view',
-        'job.masterlist.forward' => 'job.masterlist.forward',
+        'job.masterlist.forward' => 'job.list.view',
         'job.drafting-requests.pending' => 'job.drafting-request.review',
         'job.drafting-requests.accept' => 'job.drafting-request.review',
         'crm.quote-form' => 'dashboard.view',
