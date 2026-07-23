@@ -16,11 +16,12 @@ class CrmCategoryController extends Controller
     {
         [$search, $perPage] = $this->tableFilters($request);
 
-        $query = CrmCategory::query()->active()->orderBy('name');
+        $query = CrmCategory::query()->active()->orderBy('code')->orderBy('name');
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', '%'.$search.'%')
+                $q->where('code', 'like', '%'.$search.'%')
+                    ->orWhere('name', 'like', '%'.$search.'%')
                     ->orWhere('status', 'like', '%'.$search.'%');
             });
         }
@@ -31,6 +32,7 @@ class CrmCategoryController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
+            'code' => ['required', 'string', 'max:64', 'unique:crm_categories,code'],
             'name' => ['required', 'string', 'max:255'],
             'status' => ['required', 'string', 'in:active,inactive'],
         ]);
@@ -56,6 +58,7 @@ class CrmCategoryController extends Controller
         }
 
         $validated = $request->validate([
+            'code' => ['required', 'string', 'max:64', 'unique:crm_categories,code,'.$crmCategory->id],
             'name' => ['required', 'string', 'max:255'],
             'status' => ['required', 'string', 'in:active,inactive'],
         ]);
@@ -84,7 +87,8 @@ class CrmCategoryController extends Controller
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', '%'.$search.'%')
+                $q->where('code', 'like', '%'.$search.'%')
+                    ->orWhere('name', 'like', '%'.$search.'%')
                     ->orWhere('status', 'like', '%'.$search.'%');
             });
         }

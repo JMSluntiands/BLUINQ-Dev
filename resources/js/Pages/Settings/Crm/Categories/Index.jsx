@@ -63,6 +63,18 @@ export default function CrmCategoriesIndex({ crmCategories, filters = {} }) {
 
     const columns = useMemo(
         () => [
+            columnHelper.accessor('code', {
+                header: ({ column }) => (
+                    <DataTableSortHeader column={column}>
+                        Code
+                    </DataTableSortHeader>
+                ),
+                cell: ({ getValue }) => (
+                    <span className="font-semibold text-[#323338]">
+                        {getValue() || '—'}
+                    </span>
+                ),
+            }),
             columnHelper.accessor('name', {
                 header: ({ column }) => (
                     <DataTableSortHeader column={column}>
@@ -70,9 +82,7 @@ export default function CrmCategoriesIndex({ crmCategories, filters = {} }) {
                     </DataTableSortHeader>
                 ),
                 cell: ({ getValue }) => (
-                    <span className="font-medium text-[#323338]">
-                        {getValue()}
-                    </span>
+                    <span className="text-[#323338]">{getValue()}</span>
                 ),
             }),
             columnHelper.accessor('status', {
@@ -107,19 +117,21 @@ export default function CrmCategoriesIndex({ crmCategories, filters = {} }) {
                                 }
                                 className={iconBtn}
                                 title="Edit"
-                                aria-label={`Edit ${r.name}`}
+                                aria-label={`Edit ${r.code || r.name}`}
                             >
                                 <PencilSquareIcon className="h-5 w-5" />
                             </Link>
                             <button
                                 type="button"
-                                onClick={() => requestArchive(r.id, r.name)}
+                                onClick={() =>
+                                    requestArchive(r.id, r.code || r.name)
+                                }
                                 className={
                                     iconBtn +
                                     ' hover:text-[#e44258] focus:ring-[#e44258]'
                                 }
                                 title="Archive"
-                                aria-label={`Archive ${r.name}`}
+                                aria-label={`Archive ${r.code || r.name}`}
                             >
                                 <ArchiveBoxArrowDownIcon className="h-5 w-5" />
                             </button>

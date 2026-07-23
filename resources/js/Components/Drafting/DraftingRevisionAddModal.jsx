@@ -62,10 +62,15 @@ export default function DraftingRevisionAddModal({
         categoryOptions.length > 0 ? categoryOptions : pageCategoryOptions;
 
     const categorySelectOptions = useMemo(() => {
-        const items = categories.map((option) => ({
-            value: option.name,
-            label: option.name,
-        }));
+        const items = categories.map((option) => {
+            const code = option.code || option.name;
+            return {
+                value: code,
+                label: option.name && option.name !== code
+                    ? `${code} — ${option.name}`
+                    : code,
+            };
+        });
 
         if (
             entry?.category &&

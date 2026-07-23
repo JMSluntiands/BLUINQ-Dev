@@ -21,6 +21,7 @@ export default function CrmCategoriesEdit({ crmCategory, listFilters = {} }) {
     const listQs = filterQueryString(listFilters);
 
     const form = useForm({
+        code: crmCategory.code ?? '',
         name: crmCategory.name,
         status: crmCategory.status,
     });
@@ -54,6 +55,22 @@ export default function CrmCategoriesEdit({ crmCategory, listFilters = {} }) {
 
             <div className="max-w-xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
                 <form onSubmit={submit} className="space-y-6">
+                    <div>
+                        <InputLabel htmlFor="code" value="Code (short)" />
+                        <TextInput
+                            id="code"
+                            className="mt-1 block w-full"
+                            value={form.data.code}
+                            onChange={(e) => form.setData('code', e.target.value)}
+                            placeholder="e.g. WD"
+                            required
+                        />
+                        <p className="mt-1 text-xs text-slate-500">
+                            Use only the short code when input in system.
+                        </p>
+                        <InputError className="mt-2" message={form.errors.code} />
+                    </div>
+
                     <div>
                         <InputLabel htmlFor="name" value="Name" />
                         <TextInput

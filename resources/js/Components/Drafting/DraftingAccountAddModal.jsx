@@ -32,10 +32,14 @@ const KIND_CONFIG = {
         submitLabel: 'Add quote',
         editSubmitLabel: 'Save quote',
         defaultStatuses: [
-            'QUOTE SENT',
-            'DECLINED',
-            'ACCEPTED',
-            'REVISED',
+            'For Quote',
+            'Quote Sent',
+            'Quote Accepted',
+            'Declined',
+            'Revised',
+            'Invoiced',
+            'Paid',
+            'Overdue',
         ],
     },
     invoice: {
@@ -46,7 +50,16 @@ const KIND_CONFIG = {
         numberPlaceholder: 'e.g. INV-2091',
         submitLabel: 'Add invoice',
         editSubmitLabel: 'Save invoice',
-        defaultStatuses: ['INVOICED', 'PAID'],
+        defaultStatuses: [
+            'For Quote',
+            'Quote Sent',
+            'Quote Accepted',
+            'Declined',
+            'Revised',
+            'Invoiced',
+            'Paid',
+            'Overdue',
+        ],
     },
 };
 

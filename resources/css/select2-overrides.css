@@ -144,3 +144,39 @@
     .select2-selection__placeholder {
     color: #94a3b8;
 }
+
+/* Compact select inside Add-from-masterlist control group */
+.add-from-masterlist-select .select2-container .select2-selection--single {
+    height: 2.25rem !important;
+    min-height: 2.25rem;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background-color: transparent !important;
+}
+
+.add-from-masterlist-select
+    .select2-container.select2-container--focus
+    .select2-selection--single,
+.add-from-masterlist-select
+    .select2-container.select2-container--open
+    .select2-selection--single {
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+.add-from-masterlist-select
+    .select2-container
+    .select2-selection--single
+    .select2-selection__rendered {
+    font-size: 0.8125rem;
+    padding-left: 0.75rem;
+    padding-right: 1.75rem;
+}
+
+.add-from-masterlist-select
+    .select2-container
+    .select2-selection--single
+    .select2-selection__arrow {
+    right: 0.5rem;
+}

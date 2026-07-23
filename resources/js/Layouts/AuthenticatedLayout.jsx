@@ -90,6 +90,10 @@ export default function AuthenticatedLayout({ header, children }) {
     const permissions = user?.permissions ?? [];
     const can = (slug) => permissions.includes(slug);
     const canBuildingType = can('settings.building-type.view');
+    const canStoreyLevel = can('settings.storey-level.view');
+    const canSdaType = can('settings.sda-type.view');
+    const canBuildingClass = can('settings.building-class.view');
+    const canWorkflowStatus = can('settings.workflow-status.view');
     const canServiceEngaging = can('settings.service-engaging.view');
     const canExternalWallConstruction = can(
         'settings.external-wall-construction.view',
@@ -179,6 +183,10 @@ export default function AuthenticatedLayout({ header, children }) {
 
     const showSettingsBlock =
         canBuildingType ||
+        canStoreyLevel ||
+        canSdaType ||
+        canBuildingClass ||
+        canWorkflowStatus ||
         canServiceEngaging ||
         canExternalWallConstruction ||
         canRoofType ||
@@ -201,6 +209,10 @@ export default function AuthenticatedLayout({ header, children }) {
         canScopeOfWork ||
         canDeliverables ||
         canBuildingType ||
+        canStoreyLevel ||
+        canSdaType ||
+        canBuildingClass ||
+        canWorkflowStatus ||
         canArrivalInputFiles ||
         canCrmCategories ||
         canLevelOfDifficulty;

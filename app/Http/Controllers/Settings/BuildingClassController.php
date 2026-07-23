@@ -1,0 +1,189 @@
+<?php
+
+namespace App\Http\Controllers\Settings;
+
+use App\Http\Controllers\Controller;
+use App\Models\BuildingClass;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class BuildingClassController extends Controller
+{
+    public function index(Request $request): Response
+    {
+        [$search, $perPage] = $this->resolveListFilters($request);
+
+        $query = BuildingClass::query()->active()->orderBy('code')->orderBy('name');
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('code', 'like', '%'.$search.'%')
+                    ->orWhere('name', 'like', '%'.$search.'%')
+                    ->orWhere('status', 'like', '%'.$search.'%');
+            });
+        }
+
+        return Inertia::render('Settings/BuildingClass/Index', [
+            'buildingClasss' => $query
+                ->paginate($perPage)
+                ->withQueryString(),
+            'filters' => [
+                'search' => $search,
+                'per_page' => $perPage,
+            ],
+        ]);
+    }
+
+    public function create(): Response
+    {
+        return Inertia::render('Settings/BuildingClass/Create');
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'code' => ['required', 'string', 'max:64', Rule::unique('building_classes', 'code')],
+            'name' => ['required', 'string', 'max:255'],
+            'status' => ['required', 'string', 'in:active,inactive'],
+        ]);
+
+        BuildingClass::query()->create([
+            'code' => $validated['code'],
+            'name' => $validated['name'],
+            'status' => $validated['status'],
+        ]);
+
+        return redirect()
+            ->route('settings.building-class.index', $this->redirectQuery($request))
+            ->with('status', 'building-class-created');
+    }
+
+    public function edit(Request $request, BuildingClass $buildingClass): Response
+    {
+        if ($buildingClass->archived_at !== null) {
+            abort(404);
+        }
+
+        return Inertia::render('Settings/BuildingClass/Edit', [
+            'buildingClass' => $buildingClass->only(['id', 'code', 'name', 'status']),
+            'listFilters' => $this->redirectQuery($request),
+        ]);
+    }
+
+    public function update(Request $request, BuildingClass $buildingClass): RedirectResponse
+    {
+        if ($buildingClass->archived_at !== null) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'code' => [
+                'required',
+                'string',
+                'max:64',
+                Rule::unique('building_classes', 'code')->ignore($buildingClass->id),
+            ],
+            'name' => ['required', 'string', 'max:255'],
+            'status' => ['required', 'string', 'in:active,inactive'],
+        ]);
+
+        $buildingClass->update($validated);
+
+        return redirect()
+            ->route('settings.building-class.index', $this->redirectQuery($request))
+            ->with('status', 'building-class-updated');
+    }
+
+    public function destroy(Request $request, BuildingClass $buildingClass): RedirectResponse
+    {
+        if ($buildingClass->archived_at !== null) {
+            return redirect()
+                ->route('settings.building-class.archive', $this->redirectQuery($request))
+                ->with('status', 'building-class-already-archived');
+        }
+
+        $buildingClass->forceFill(['archived_at' => now()])->save();
+
+        return redirect()
+            ->route('settings.building-class.index', $this->redirectQuery($request))
+            ->with('status', 'building-class-archived');
+    }
+
+    public function archive(Request $request): Response
+    {
+        [$search, $perPage] = $this->resolveListFilters($request);
+
+        $query = BuildingClass::query()->archived()->orderByDesc('archived_at');
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('code', 'like', '%'.$search.'%')
+                    ->orWhere('name', 'like', '%'.$search.'%')
+                    ->orWhere('status', 'like', '%'.$search.'%');
+            });
+        }
+
+        return Inertia::render('Settings/BuildingClass/Archive', [
+            'buildingClasss' => $query
+                ->paginate($perPage)
+                ->withQueryString(),
+            'filters' => [
+                'search' => $search,
+                'per_page' => $perPage,
+            ],
+        ]);
+    }
+
+    public function restore(Request $request, BuildingClass $buildingClass): RedirectResponse
+    {
+        if ($buildingClass->archived_at === null) {
+            return redirect()
+                ->route('settings.building-class.index', $this->redirectQuery($request))
+                ->with('status', 'building-class-not-archived');
+        }
+
+        $buildingClass->forceFill(['archived_at' => null])->save();
+
+        return redirect()
+            ->route('settings.building-class.archive', $this->redirectQuery($request))
+            ->with('status', 'building-class-restored');
+    }
+
+    /**
+     * @return array{0: string, 1: int}
+     */
+    private function resolveListFilters(Request $request): array
+    {
+        $search = Str::limit(trim((string) $request->input('search', '')), 255);
+        $perPage = (int) $request->input('per_page', 10);
+        if ($perPage < 5 || $perPage > 50) {
+            $perPage = 10;
+        }
+
+        return [$search, $perPage];
+    }
+
+    /**
+     * @return array<string, int|string>
+     */
+    private function redirectQuery(Request $request): array
+    {
+        $out = [];
+        $search = trim((string) $request->input('search', ''));
+        if ($search !== '') {
+            $out['search'] = Str::limit($search, 255);
+        }
+        if ($request->filled('per_page')) {
+            $p = (int) $request->input('per_page');
+            if ($p >= 5 && $p <= 50) {
+                $out['per_page'] = $p;
+            }
+        }
+
+        return $out;
+    }
+}

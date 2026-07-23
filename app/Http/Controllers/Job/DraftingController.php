@@ -268,10 +268,11 @@ class DraftingController extends Controller
             'categoryOptions' => CrmCategory::query()
                 ->active()
                 ->where('status', 'active')
-                ->orderBy('name')
-                ->get(['id', 'name'])
+                ->orderBy('code')
+                ->get(['id', 'code', 'name'])
                 ->map(fn (CrmCategory $row) => [
                     'id' => $row->id,
+                    'code' => $row->code ?: $row->name,
                     'name' => $row->name,
                 ])
                 ->values()

@@ -7,6 +7,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 
 export default function CrmCategoriesCreate() {
     const form = useForm({
+        code: '',
         name: '',
         status: 'active',
     });
@@ -37,12 +38,29 @@ export default function CrmCategoriesCreate() {
             <div className="max-w-xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
                 <form onSubmit={submit} className="space-y-6">
                     <div>
+                        <InputLabel htmlFor="code" value="Code (short)" />
+                        <TextInput
+                            id="code"
+                            className="mt-1 block w-full"
+                            value={form.data.code}
+                            onChange={(e) => form.setData('code', e.target.value)}
+                            placeholder="e.g. WD"
+                            required
+                        />
+                        <p className="mt-1 text-xs text-slate-500">
+                            Use only the short code when input in system.
+                        </p>
+                        <InputError className="mt-2" message={form.errors.code} />
+                    </div>
+
+                    <div>
                         <InputLabel htmlFor="name" value="Name" />
                         <TextInput
                             id="name"
                             className="mt-1 block w-full"
                             value={form.data.name}
                             onChange={(e) => form.setData('name', e.target.value)}
+                            placeholder="e.g. Working / Construction Drawings"
                             required
                         />
                         <InputError className="mt-2" message={form.errors.name} />

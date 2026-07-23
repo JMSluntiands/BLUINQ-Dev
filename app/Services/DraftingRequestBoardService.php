@@ -138,7 +138,7 @@ class DraftingRequestBoardService
         $accounting = $row->relationLoaded('accountEntries')
             ? $row->accountEntries->first()?->status
             : null;
-        $statusOptions = DraftingRequest::statusOptions();
+        $statusOptions = DraftingRequest::statusLabels();
         $revisions = $row->revisions
             ->sortBy('id')
             ->values()

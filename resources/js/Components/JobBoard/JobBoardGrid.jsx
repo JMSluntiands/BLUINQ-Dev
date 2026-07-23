@@ -10,13 +10,14 @@ import JobBoardCommentsModal, {
 } from '@/Components/JobBoard/JobBoardCommentsModal';
 import JobBoardAssignmentModal from '@/Components/JobBoard/JobBoardAssignmentModal';
 import {
+    CalendarDaysIcon,
     ChevronDownIcon,
     ChevronRightIcon,
     FlagIcon,
 } from '@heroicons/react/24/outline';
 import { FlagIcon as FlagIconSolid } from '@heroicons/react/24/solid';
 import { Link, router } from '@inertiajs/react';
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useMemo, useRef, useState } from 'react';
 
 const DRAFTING_SLOTS = 1;
 const CHECKING_SLOTS = 1;
@@ -165,34 +166,73 @@ function EditableStatusSelect({ job, statusOptions = [], disabled = false }) {
 
 function EditableDateOut({ job, disabled = false }) {
     const [busy, setBusy] = useState(false);
+    const inputRef = useRef(null);
+    const label = job.date_out_label ?? '—';
 
     if (disabled) {
         return (
             <span className="whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400">
-                {job.date_out_label ?? '—'}
+                {label}
             </span>
         );
     }
 
+    const openPicker = () => {
+        const input = inputRef.current;
+        if (!input || busy) {
+            return;
+        }
+        if (typeof input.showPicker === 'function') {
+            try {
+                input.showPicker();
+                return;
+            } catch {
+                // Fall through to click() for browsers that block showPicker.
+            }
+        }
+        input.click();
+    };
+
     return (
-        <input
-            type="date"
-            value={job.date_out ?? ''}
-            disabled={busy}
-            onChange={(event) => {
-                setBusy(true);
-                router.patch(
-                    route('job.drafting.board.update', job.id),
-                    { date_out: event.target.value || null },
-                    {
-                        preserveScroll: true,
-                        onFinish: () => setBusy(false),
-                    },
-                );
-            }}
-            className="w-[8.5rem] rounded-md border border-[#c5c7d0] bg-white px-1.5 py-1 text-[11px] tabular-nums text-[#323338] focus:border-[#0073ea] focus:outline-none focus:ring-1 focus:ring-[#0073ea] disabled:opacity-50 dark:border-[#2f3347] dark:bg-[#151622] dark:text-slate-200"
-            aria-label={`Date out for ${job.job_no}`}
-        />
+        <div className="inline-flex items-center gap-1.5">
+            <button
+                type="button"
+                disabled={busy}
+                onClick={openPicker}
+                title={
+                    job.date_out
+                        ? `Date out: ${label}`
+                        : 'Set date out'
+                }
+                aria-label={`Date out for ${job.job_no}`}
+                className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[#c5c7d0] bg-white text-[#676879] transition-colors hover:border-[#0073ea] hover:bg-[#e6e9ef] hover:text-[#0073ea] focus:outline-none focus:ring-2 focus:ring-[#0073ea] focus:ring-offset-1 disabled:opacity-50 dark:border-[#2f3347] dark:bg-[#151622] dark:text-slate-300 dark:hover:bg-[#1c1e2e]"
+            >
+                <CalendarDaysIcon className="h-4 w-4" />
+            </button>
+            <span className="whitespace-nowrap tabular-nums text-[11px] text-[#676879] dark:text-slate-400">
+                {label}
+            </span>
+            <input
+                ref={inputRef}
+                type="date"
+                value={job.date_out ?? ''}
+                disabled={busy}
+                onChange={(event) => {
+                    setBusy(true);
+                    router.patch(
+                        route('job.drafting.board.update', job.id),
+                        { date_out: event.target.value || null },
+                        {
+                            preserveScroll: true,
+                            onFinish: () => setBusy(false),
+                        },
+                    );
+                }}
+                className="pointer-events-none absolute h-0 w-0 opacity-0"
+                tabIndex={-1}
+                aria-hidden="true"
+            />
+        </div>
     );
 }
 

@@ -7,6 +7,7 @@ use App\Models\CrmCategory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -16,11 +17,12 @@ class CrmCategoryController extends Controller
     {
         [$search, $perPage] = $this->resolveListFilters($request);
 
-        $query = CrmCategory::query()->active()->orderBy('name');
+        $query = CrmCategory::query()->active()->orderBy('code')->orderBy('name');
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', '%'.$search.'%')
+                $q->where('code', 'like', '%'.$search.'%')
+                    ->orWhere('name', 'like', '%'.$search.'%')
                     ->orWhere('status', 'like', '%'.$search.'%');
             });
         }
@@ -44,11 +46,13 @@ class CrmCategoryController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'code' => ['required', 'string', 'max:64', Rule::unique('crm_categories', 'code')],
             'name' => ['required', 'string', 'max:255'],
             'status' => ['required', 'string', 'in:active,inactive'],
         ]);
 
         CrmCategory::query()->create([
+            'code' => $validated['code'],
             'name' => $validated['name'],
             'status' => $validated['status'],
         ]);
@@ -65,7 +69,7 @@ class CrmCategoryController extends Controller
         }
 
         return Inertia::render('Settings/Crm/Categories/Edit', [
-            'crmCategory' => $crmCategory->only(['id', 'name', 'status']),
+            'crmCategory' => $crmCategory->only(['id', 'code', 'name', 'status']),
             'listFilters' => $this->redirectQuery($request),
         ]);
     }
@@ -77,6 +81,12 @@ class CrmCategoryController extends Controller
         }
 
         $validated = $request->validate([
+            'code' => [
+                'required',
+                'string',
+                'max:64',
+                Rule::unique('crm_categories', 'code')->ignore($crmCategory->id),
+            ],
             'name' => ['required', 'string', 'max:255'],
             'status' => ['required', 'string', 'in:active,inactive'],
         ]);
@@ -111,7 +121,8 @@ class CrmCategoryController extends Controller
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', '%'.$search.'%')
+                $q->where('code', 'like', '%'.$search.'%')
+                    ->orWhere('name', 'like', '%'.$search.'%')
                     ->orWhere('status', 'like', '%'.$search.'%');
             });
         }
@@ -121,6 +132,7 @@ class CrmCategoryController extends Controller
                 ->paginate($perPage)
                 ->through(fn (CrmCategory $c) => [
                     'id' => $c->id,
+                    'code' => $c->code,
                     'name' => $c->name,
                     'status' => $c->status,
                     'archived_at' => $c->archived_at?->toIso8601String(),

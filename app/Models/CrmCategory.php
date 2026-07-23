@@ -10,6 +10,7 @@ class CrmCategory extends Model
     protected $table = 'crm_categories';
 
     protected $fillable = [
+        'code',
         'name',
         'status',
         'archived_at',

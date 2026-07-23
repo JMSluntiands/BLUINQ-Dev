@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             RoleUserSeeder::class,
+            WorkflowSettingsSeeder::class,
             DraftingRequestSeeder::class,
         ]);
     }

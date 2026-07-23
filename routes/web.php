@@ -17,7 +17,10 @@ use App\Http\Controllers\ProfileImageController;
 use App\Http\Controllers\WeeklyTimesheetController;
 use App\Http\Controllers\Public\PublicDraftingRequestFormController;
 use App\Http\Controllers\Settings\ActivityLogController;
+use App\Http\Controllers\Settings\BuildingClassController;
 use App\Http\Controllers\Settings\BuildingTypeController;
+use App\Http\Controllers\Settings\SdaTypeController;
+use App\Http\Controllers\Settings\StoreyLevelController;
 use App\Http\Controllers\Crm\CrmQuoteController;
 use App\Http\Controllers\Crm\CrmQuoteFormController;
 use App\Http\Controllers\Settings\Crm\ArrivalInputFileController;
@@ -34,6 +37,7 @@ use App\Http\Controllers\Settings\ServiceEngagingController;
 use App\Http\Controllers\Settings\UserAccountController;
 use App\Http\Controllers\UserMilestoneController;
 use App\Http\Controllers\Settings\WorkflowSettingsController;
+use App\Http\Controllers\Settings\WorkflowStatusController;
 use App\Http\Controllers\TimesheetController;
 use App\Support\PublicDraftingFormUrl;
 use Illuminate\Support\Facades\Route;
@@ -266,6 +270,66 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         Route::delete('/{buildingType}', [BuildingTypeController::class, 'destroy'])
             ->name('destroy');
         Route::post('/{buildingType}/restore', [BuildingTypeController::class, 'restore'])
+            ->name('restore');
+    });
+
+    Route::prefix('settings/storey-level')->name('settings.storey-level.')->group(function () {
+        Route::get('/', [StoreyLevelController::class, 'index'])->name('index');
+        Route::get('/create', [StoreyLevelController::class, 'create'])->name('create');
+        Route::post('/', [StoreyLevelController::class, 'store'])->name('store');
+        Route::get('/archive', [StoreyLevelController::class, 'archive'])->name('archive');
+        Route::get('/{storeyLevel}/edit', [StoreyLevelController::class, 'edit'])
+            ->name('edit');
+        Route::patch('/{storeyLevel}', [StoreyLevelController::class, 'update'])
+            ->name('update');
+        Route::delete('/{storeyLevel}', [StoreyLevelController::class, 'destroy'])
+            ->name('destroy');
+        Route::post('/{storeyLevel}/restore', [StoreyLevelController::class, 'restore'])
+            ->name('restore');
+    });
+
+    Route::prefix('settings/sda-type')->name('settings.sda-type.')->group(function () {
+        Route::get('/', [SdaTypeController::class, 'index'])->name('index');
+        Route::get('/create', [SdaTypeController::class, 'create'])->name('create');
+        Route::post('/', [SdaTypeController::class, 'store'])->name('store');
+        Route::get('/archive', [SdaTypeController::class, 'archive'])->name('archive');
+        Route::get('/{sdaType}/edit', [SdaTypeController::class, 'edit'])
+            ->name('edit');
+        Route::patch('/{sdaType}', [SdaTypeController::class, 'update'])
+            ->name('update');
+        Route::delete('/{sdaType}', [SdaTypeController::class, 'destroy'])
+            ->name('destroy');
+        Route::post('/{sdaType}/restore', [SdaTypeController::class, 'restore'])
+            ->name('restore');
+    });
+
+    Route::prefix('settings/building-class')->name('settings.building-class.')->group(function () {
+        Route::get('/', [BuildingClassController::class, 'index'])->name('index');
+        Route::get('/create', [BuildingClassController::class, 'create'])->name('create');
+        Route::post('/', [BuildingClassController::class, 'store'])->name('store');
+        Route::get('/archive', [BuildingClassController::class, 'archive'])->name('archive');
+        Route::get('/{buildingClass}/edit', [BuildingClassController::class, 'edit'])
+            ->name('edit');
+        Route::patch('/{buildingClass}', [BuildingClassController::class, 'update'])
+            ->name('update');
+        Route::delete('/{buildingClass}', [BuildingClassController::class, 'destroy'])
+            ->name('destroy');
+        Route::post('/{buildingClass}/restore', [BuildingClassController::class, 'restore'])
+            ->name('restore');
+    });
+
+    Route::prefix('settings/workflow-status')->name('settings.workflow-status.')->group(function () {
+        Route::get('/', [WorkflowStatusController::class, 'index'])->name('index');
+        Route::get('/create', [WorkflowStatusController::class, 'create'])->name('create');
+        Route::post('/', [WorkflowStatusController::class, 'store'])->name('store');
+        Route::get('/archive', [WorkflowStatusController::class, 'archive'])->name('archive');
+        Route::get('/{workflowStatus}/edit', [WorkflowStatusController::class, 'edit'])
+            ->name('edit');
+        Route::patch('/{workflowStatus}', [WorkflowStatusController::class, 'update'])
+            ->name('update');
+        Route::delete('/{workflowStatus}', [WorkflowStatusController::class, 'destroy'])
+            ->name('destroy');
+        Route::post('/{workflowStatus}/restore', [WorkflowStatusController::class, 'restore'])
             ->name('restore');
     });
 

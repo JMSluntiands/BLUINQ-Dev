@@ -11,17 +11,38 @@ class DraftingRequestAccountEntry extends Model
 
     public const KIND_INVOICE = 'invoice';
 
-    public const QUOTE_STATUS_SENT = 'QUOTE SENT';
+    public const QUOTE_STATUS_FOR_QUOTE = 'For Quote';
 
-    public const QUOTE_STATUS_DECLINED = 'DECLINED';
+    public const QUOTE_STATUS_SENT = 'Quote Sent';
 
-    public const QUOTE_STATUS_ACCEPTED = 'ACCEPTED';
+    public const QUOTE_STATUS_ACCEPTED = 'Quote Accepted';
 
-    public const QUOTE_STATUS_REVISED = 'REVISED';
+    public const QUOTE_STATUS_DECLINED = 'Declined';
 
-    public const INVOICE_STATUS_INVOICED = 'INVOICED';
+    public const QUOTE_STATUS_REVISED = 'Revised';
 
-    public const INVOICE_STATUS_PAID = 'PAID';
+    public const INVOICE_STATUS_INVOICED = 'Invoiced';
+
+    public const INVOICE_STATUS_PAID = 'Paid';
+
+    public const INVOICE_STATUS_OVERDUE = 'Overdue';
+
+    /** @deprecated Legacy stored values */
+    public const LEGACY_QUOTE_STATUS_FOR_QUOTE = 'FOR QUOTE';
+
+    public const LEGACY_QUOTE_STATUS_SENT = 'QUOTE SENT';
+
+    public const LEGACY_QUOTE_STATUS_ACCEPTED = 'ACCEPTED';
+
+    public const LEGACY_QUOTE_STATUS_DECLINED = 'DECLINED';
+
+    public const LEGACY_QUOTE_STATUS_REVISED = 'REVISED';
+
+    public const LEGACY_INVOICE_STATUS_INVOICED = 'INVOICED';
+
+    public const LEGACY_INVOICE_STATUS_PAID = 'PAID';
+
+    public const LEGACY_INVOICE_STATUS_OVERDUE = 'OVERDUE';
 
     protected $fillable = [
         'drafting_request_id',
@@ -34,16 +55,36 @@ class DraftingRequestAccountEntry extends Model
     ];
 
     /**
+     * Status (Accounts) from workflow_statuses — full list for both quote & invoice UI.
+     *
+     * @return list<string>
+     */
+    public static function accountStatusOptions(): array
+    {
+        $fromDb = WorkflowStatus::namesForKind(WorkflowStatus::KIND_ACCOUNTS);
+
+        if ($fromDb !== []) {
+            return $fromDb;
+        }
+
+        return [
+            self::QUOTE_STATUS_FOR_QUOTE,
+            self::QUOTE_STATUS_SENT,
+            self::QUOTE_STATUS_ACCEPTED,
+            self::QUOTE_STATUS_DECLINED,
+            self::QUOTE_STATUS_REVISED,
+            self::INVOICE_STATUS_INVOICED,
+            self::INVOICE_STATUS_PAID,
+            self::INVOICE_STATUS_OVERDUE,
+        ];
+    }
+
+    /**
      * @return list<string>
      */
     public static function quoteStatusOptions(): array
     {
-        return [
-            self::QUOTE_STATUS_SENT,
-            self::QUOTE_STATUS_DECLINED,
-            self::QUOTE_STATUS_ACCEPTED,
-            self::QUOTE_STATUS_REVISED,
-        ];
+        return self::accountStatusOptions();
     }
 
     /**
@@ -51,20 +92,27 @@ class DraftingRequestAccountEntry extends Model
      */
     public static function invoiceStatusOptions(): array
     {
-        return [
-            self::INVOICE_STATUS_INVOICED,
-            self::INVOICE_STATUS_PAID,
-        ];
+        return self::accountStatusOptions();
     }
 
     /**
+     * Accepted values for validation (DB list + legacy uppercase).
+     *
      * @return list<string>
      */
     public static function statusOptionsFor(string $kind): array
     {
-        return $kind === self::KIND_INVOICE
-            ? self::invoiceStatusOptions()
-            : self::quoteStatusOptions();
+        return [
+            ...self::accountStatusOptions(),
+            self::LEGACY_QUOTE_STATUS_FOR_QUOTE,
+            self::LEGACY_QUOTE_STATUS_SENT,
+            self::LEGACY_QUOTE_STATUS_ACCEPTED,
+            self::LEGACY_QUOTE_STATUS_DECLINED,
+            self::LEGACY_QUOTE_STATUS_REVISED,
+            self::LEGACY_INVOICE_STATUS_INVOICED,
+            self::LEGACY_INVOICE_STATUS_PAID,
+            self::LEGACY_INVOICE_STATUS_OVERDUE,
+        ];
     }
 
     /**

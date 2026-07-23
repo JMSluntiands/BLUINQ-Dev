@@ -33,8 +33,9 @@ class CrmQuoteFormController extends Controller
                 ->get(['id', 'name']),
             'categories' => CrmCategory::query()
                 ->active()
+                ->orderBy('code')
                 ->orderBy('name')
-                ->get(['id', 'name']),
+                ->get(['id', 'code', 'name']),
             'levelsOfDifficulty' => LevelOfDifficulty::query()
                 ->active()
                 ->orderBy('name')

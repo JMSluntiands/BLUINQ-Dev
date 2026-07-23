@@ -20,9 +20,9 @@ class DraftingRequestSeeder extends Seeder
         $userId = User::query()->where('email', 'admin@bluinq.local')->value('id')
             ?? User::query()->value('id');
 
-        $residentialId = BuildingType::query()->where('name', 'Residential')->value('id')
+        $residentialId = BuildingType::query()->where('name', 'Single Dwellings')->value('id')
             ?? BuildingType::query()->value('id');
-        $commercialId = BuildingType::query()->where('name', 'Commercial')->value('id')
+        $commercialId = BuildingType::query()->where('name', 'Commercial Building')->value('id')
             ?? $residentialId;
 
         if ($residentialId === null) {
@@ -47,7 +47,7 @@ class DraftingRequestSeeder extends Seeder
             ['status' => 'active'],
         )->id;
         $hebelId = ExternalWallConstruction::query()->firstOrCreate(
-            ['name' => 'Hebel'],
+            ['name' => 'Hebel / AAC Panels'],
             ['status' => 'active'],
         )->id;
 
@@ -85,7 +85,7 @@ class DraftingRequestSeeder extends Seeder
             ],
             [
                 'email_key' => 'sample.bravo@example.com',
-                'status' => DraftingRequest::STATUS_WIP,
+                'status' => DraftingRequest::STATUS_DRAFTING_WIP,
                 'is_priority' => false,
                 'requested_at' => now()->subDays(4),
                 'your_name' => 'Jordan Lee',
@@ -129,7 +129,7 @@ class DraftingRequestSeeder extends Seeder
             ],
             [
                 'email_key' => 'sample.delta@example.com',
-                'status' => DraftingRequest::STATUS_FOR_QUOTE,
+                'status' => DraftingRequest::STATUS_ASSIGNED,
                 'is_priority' => false,
                 'requested_at' => now()->subDays(12),
                 'your_name' => 'Taylor Brooks',

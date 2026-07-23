@@ -18,7 +18,7 @@ class DraftingJobShowService
             ->get()
             ->map(function (DraftingRequestRevision $revision) {
                 $status = $revision->status;
-                $statusOptions = DraftingRequest::statusOptions();
+                $statusOptions = DraftingRequest::statusLabels();
 
                 return [
                 'id' => $revision->id,

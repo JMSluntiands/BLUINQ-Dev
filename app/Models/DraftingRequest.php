@@ -14,13 +14,20 @@ class DraftingRequest extends Model
 
     public const STATUS_ASSIGNED = 'assigned';
 
+    public const STATUS_DESIGN_WIP = 'design_wip';
+
+    public const STATUS_DRAFTING_WIP = 'drafting_wip';
+
+    /** @deprecated Prefer STATUS_DRAFTING_WIP — kept for existing rows */
     public const STATUS_WIP = 'wip';
 
     public const STATUS_FOR_CHECKING = 'for_checking';
 
-    public const STATUS_SUBMITTED = 'submitted';
-
     public const STATUS_ON_HOLD = 'on_hold';
+
+    public const STATUS_QUERY = 'query';
+
+    public const STATUS_SUBMITTED = 'submitted';
 
     public const STATUS_CANCELLED = 'cancelled';
 
@@ -43,18 +50,41 @@ class DraftingRequest extends Model
     public const STAGE_APM = 'apm';
 
     /**
+     * Status (Archi) — from workflow_statuses (kind=archi), with PDF fallback.
+     *
      * @return array<string, string>
      */
     public static function statusOptions(): array
     {
+        $fromDb = WorkflowStatus::optionsForKind(WorkflowStatus::KIND_ARCHI);
+
+        if ($fromDb !== []) {
+            return $fromDb;
+        }
+
         return [
             self::STATUS_NEW => 'New',
             self::STATUS_ASSIGNED => 'Assigned',
-            self::STATUS_WIP => 'WIP',
+            self::STATUS_DESIGN_WIP => 'Design WIP',
+            self::STATUS_DRAFTING_WIP => 'Drafting WIP',
             self::STATUS_FOR_CHECKING => 'For Checking',
-            self::STATUS_SUBMITTED => 'Submitted',
             self::STATUS_ON_HOLD => 'On Hold',
+            self::STATUS_QUERY => 'Query',
+            self::STATUS_SUBMITTED => 'Submitted',
             self::STATUS_CANCELLED => 'Cancelled',
+        ];
+    }
+
+    /**
+     * Labels for dropdowns + legacy rows (old WIP / accounting statuses).
+     *
+     * @return array<string, string>
+     */
+    public static function statusLabels(): array
+    {
+        return [
+            ...self::statusOptions(),
+            self::STATUS_WIP => 'Drafting WIP',
             self::STATUS_FOR_QUOTE => 'For Quote',
             self::STATUS_QUOTE_SENT => 'Quote Sent',
             self::STATUS_INVOICED => 'Invoiced',
@@ -348,7 +378,7 @@ class DraftingRequest extends Model
             return self::statusOptions()[self::STATUS_NEW];
         }
 
-        return self::statusOptions()[$this->status]
+        return self::statusLabels()[$this->status]
             ?? ucfirst(str_replace('_', ' ', $this->status));
     }
 }

@@ -66,6 +66,18 @@ export default function CrmCategoriesArchive({ crmCategories, filters = {} }) {
 
     const columns = useMemo(
         () => [
+            columnHelper.accessor('code', {
+                header: ({ column }) => (
+                    <DataTableSortHeader column={column}>
+                        Code
+                    </DataTableSortHeader>
+                ),
+                cell: ({ getValue }) => (
+                    <span className="font-semibold text-[#323338]">
+                        {getValue() || '—'}
+                    </span>
+                ),
+            }),
             columnHelper.accessor('name', {
                 header: ({ column }) => (
                     <DataTableSortHeader column={column}>

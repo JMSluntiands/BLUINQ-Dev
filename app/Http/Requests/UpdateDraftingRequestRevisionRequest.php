@@ -62,23 +62,27 @@ class UpdateDraftingRequestRevisionRequest extends FormRequest
         /** @var DraftingRequestRevision|null $revision */
         $revision = $this->route('revision');
 
-        $categoryNames = CrmCategory::query()
+        $categoryCodes = CrmCategory::query()
             ->active()
             ->where('status', 'active')
-            ->orderBy('name')
-            ->pluck('name')
+            ->orderBy('code')
+            ->get(['code', 'name'])
+            ->flatMap(fn (CrmCategory $row) => array_filter([
+                $row->code,
+                $row->name,
+            ]))
             ->all();
 
         if ($revision?->category) {
-            $categoryNames[] = $revision->category;
+            $categoryCodes[] = $revision->category;
         }
 
-        $categoryNames = array_values(array_unique($categoryNames));
+        $categoryCodes = array_values(array_unique($categoryCodes));
 
         return [
             'code' => ['required', 'string', 'max:64', 'regex:/^\d{5}(-\d{2})?$/'],
             'log_date' => ['required', 'date'],
-            'category' => ['required', 'string', 'max:255', Rule::in($categoryNames)],
+            'category' => ['required', 'string', 'max:255', Rule::in($categoryCodes)],
             'drafter_user_id' => [
                 'required',
                 'integer',
