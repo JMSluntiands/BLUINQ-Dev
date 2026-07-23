@@ -82,18 +82,20 @@ function JobDetailField({ label, children, value, hint = null }) {
         (value === null || value === undefined || value === '' ? '—' : value);
 
     return (
-        <div className="border-b border-[#e6e9ef] px-4 py-3 last:border-b-0 dark:border-[#2f3347]">
-            <dt className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400">
+        <div className="flex flex-col gap-1 border-b border-[#e6e9ef] px-4 py-3 last:border-b-0 dark:border-[#2f3347] md:flex-row md:items-start md:gap-0">
+            <dt className="w-full shrink-0 text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400 md:w-4/12 md:pr-4">
                 {label}
             </dt>
-            <dd className="mt-1 whitespace-pre-wrap text-sm text-[#323338] dark:text-slate-200">
-                {display}
+            <dd className="w-full min-w-0 md:w-8/12">
+                <div className="whitespace-pre-wrap text-sm font-medium text-[#323338] dark:text-slate-100">
+                    {display}
+                </div>
+                {hint ? (
+                    <p className="mt-1 text-[11px] text-[#676879] dark:text-slate-500">
+                        {hint}
+                    </p>
+                ) : null}
             </dd>
-            {hint ? (
-                <p className="mt-1 text-[11px] text-[#676879] dark:text-slate-500">
-                    {hint}
-                </p>
-            ) : null}
         </div>
     );
 }
@@ -655,9 +657,6 @@ export default function DraftingJobShowLayout({
                     {draftingRequest.is_archived ? ' · Archived' : ''}
                 </p>
             </div>
-            {!isMasterlist && archiveActions ? (
-                <div className="flex flex-wrap gap-2">{archiveActions}</div>
-            ) : null}
         </div>
     );
 
@@ -985,49 +984,52 @@ export default function DraftingJobShowLayout({
             {pageHeader}
             {archivedBanner}
 
-            <div className="space-y-6">
-                <section aria-label="Project info">
-                    <p className={sectionLabelClass}>1. Project info</p>
-                    {clientDetailsPanel}
-                </section>
-
-                {canViewRevision || canViewAccounts ? (
-                    <section aria-label="Project and accounts">
-                        <p className={sectionLabelClass}>
-                            2. Project & accounts
-                        </p>
-                        <div className="grid grid-cols-1 gap-4">
-                            {revisionsPanel}
-                            {accountsPanel}
-                        </div>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+                <aside className="space-y-4 lg:col-span-4">
+                    <section aria-label="Project info">
+                        <p className={sectionLabelClass}>1. Project info</p>
+                        {clientDetailsPanel}
                     </section>
-                ) : null}
+                    {activityPanel ? (
+                        <section aria-label="Activity log">
+                            <p className={sectionLabelClass}>Activity log</p>
+                            {activityPanel}
+                        </section>
+                    ) : null}
+                    {filesPanel ? (
+                        <section aria-label="Files">
+                            <p className={sectionLabelClass}>Files</p>
+                            {filesPanel}
+                        </section>
+                    ) : null}
+                    {commentsPanel ? (
+                        <section aria-label="Comments">
+                            <p className={sectionLabelClass}>Comments</p>
+                            {commentsBlock}
+                        </section>
+                    ) : null}
+                    {archiveActions ? (
+                        <div className="flex flex-wrap gap-2">{archiveActions}</div>
+                    ) : null}
+                </aside>
 
-                <section aria-label="Drawing status">
-                    <p className={sectionLabelClass}>3. Drawing status</p>
-                    {drawingPanel}
-                </section>
-
-                {filesPanel ? (
-                    <section aria-label="Files">
-                        <p className={sectionLabelClass}>4. Files</p>
-                        {filesPanel}
+                <div className="space-y-4 lg:col-span-8">
+                    {canViewRevision || canViewAccounts ? (
+                        <section aria-label="Project and accounts">
+                            <p className={sectionLabelClass}>
+                                2. Project & accounts
+                            </p>
+                            <div className="space-y-4">
+                                {revisionsPanel}
+                                {accountsPanel}
+                            </div>
+                        </section>
+                    ) : null}
+                    <section aria-label="Drawing status">
+                        <p className={sectionLabelClass}>3. Drawing status</p>
+                        {drawingPanel}
                     </section>
-                ) : null}
-
-                {commentsPanel ? (
-                    <section aria-label="Comments">
-                        <p className={sectionLabelClass}>5. Comments</p>
-                        {commentsBlock}
-                    </section>
-                ) : null}
-
-                {activityPanel ? (
-                    <section aria-label="Activity log">
-                        <p className={sectionLabelClass}>6. Activity log</p>
-                        {activityPanel}
-                    </section>
-                ) : null}
+                </div>
             </div>
         </div>
     );
