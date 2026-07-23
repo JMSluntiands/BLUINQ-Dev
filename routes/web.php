@@ -110,7 +110,7 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('announcements.image');
     Route::get('/announcements/{announcement}/edit', [AnnouncementController::class, 'edit'])
         ->name('announcements.edit');
-    Route::patch('/announcements/{announcement}', [AnnouncementController::class, 'update'])
+    Route::match(['patch', 'post'], '/announcements/{announcement}', [AnnouncementController::class, 'update'])
         ->name('announcements.update');
     Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroy'])
         ->name('announcements.destroy');

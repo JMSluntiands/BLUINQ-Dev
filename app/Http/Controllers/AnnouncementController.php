@@ -107,12 +107,13 @@ class AnnouncementController extends Controller
             'description' => $request->sanitizedDescription(),
         ];
 
-        if ($request->hasFile('image')) {
+        $image = $request->file('image');
+        if ($image !== null && $image->isValid()) {
             if ($announcement->image) {
                 Storage::disk('public')->delete($announcement->image);
             }
 
-            $data['image'] = $request->file('image')->store('announcement-images', 'public');
+            $data['image'] = $image->store('announcement-images', 'public');
         }
 
         $announcement->update($data);

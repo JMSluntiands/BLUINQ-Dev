@@ -78,17 +78,25 @@ class Announcement extends Model
 
             $relativePath = str_replace('/', DIRECTORY_SEPARATOR, $this->image);
             $publicPath = public_path('storage'.DIRECTORY_SEPARATOR.$relativePath);
+            $storedPath = storage_path('app/public/'.$relativePath);
+
+            if (! is_file($publicPath) && ! is_file($storedPath)) {
+                return null;
+            }
+
+            // Bust browser cache when the cover is replaced (same /image route otherwise).
+            $version = $this->updated_at?->getTimestamp()
+                ?? (is_file($storedPath) ? (int) filemtime($storedPath) : time());
 
             if (is_file($publicPath)) {
-                return asset('storage/'.ltrim(str_replace('\\', '/', $this->image), '/'));
+                return asset('storage/'.ltrim(str_replace('\\', '/', $this->image), '/'))
+                    .'?v='.$version;
             }
 
-            $storedPath = storage_path('app/public/'.$relativePath);
-            if (is_file($storedPath)) {
-                return route('announcements.image', $this->id);
-            }
-
-            return null;
+            return route('announcements.image', [
+                'announcement' => $this->id,
+                'v' => $version,
+            ]);
         });
     }
 }

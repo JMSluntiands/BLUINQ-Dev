@@ -23,8 +23,12 @@ class AnnouncementImageController extends Controller
             abort(404);
         }
 
+        $mtime = (int) filemtime($path);
+
         return response()->file($path, [
-            'Cache-Control' => 'private, max-age=3600',
+            'Cache-Control' => 'private, no-cache, must-revalidate',
+            'Last-Modified' => gmdate('D, d M Y H:i:s', $mtime).' GMT',
+            'ETag' => '"'.md5($announcement->image.'|'.$mtime).'"',
         ]);
     }
 }
