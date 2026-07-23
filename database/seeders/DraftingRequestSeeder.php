@@ -63,7 +63,7 @@ class DraftingRequestSeeder extends Seeder
         $samples = [
             [
                 'email_key' => 'sample.alpha@example.com',
-                'status' => DraftingRequest::STATUS_FOR_QUOTES,
+                'status' => DraftingRequest::STATUS_NEW,
                 'is_priority' => true,
                 'requested_at' => now()->subDays(1),
                 'your_name' => 'Alex Rivera',

@@ -244,11 +244,15 @@ class WorkflowSettingsSeeder extends Seeder
     private function seedWorkflowStatuses(): void
     {
         $archi = [
-            'drafting_wip' => 'Drafting - Work In Progress',
-            'design_wip' => 'Design - Work In Progress',
-            'for_quotes' => 'For Quotes',
-            'completed_projects' => 'Completed Projects',
-            'cancelled_jobs' => 'Cancelled Jobs',
+            'new' => 'New',
+            'assigned' => 'Assigned',
+            'design_wip' => 'Design WIP',
+            'drafting_wip' => 'Drafting WIP',
+            'for_checking' => 'For Checking',
+            'on_hold' => 'On Hold',
+            'query' => 'Query',
+            'submitted' => 'Submitted',
+            'cancelled' => 'Cancelled',
         ];
 
         foreach ($archi as $code => $name) {
@@ -272,15 +276,8 @@ class WorkflowSettingsSeeder extends Seeder
 
         $keepCodes = array_merge(array_keys($archi), $accounts);
         WorkflowStatus::query()
-            ->where('kind', WorkflowStatus::KIND_ARCHI)
             ->whereNull('archived_at')
-            ->whereNotIn('code', array_keys($archi))
-            ->update(['archived_at' => now()]);
-
-        WorkflowStatus::query()
-            ->where('kind', WorkflowStatus::KIND_ACCOUNTS)
-            ->whereNull('archived_at')
-            ->whereNotIn('code', $accounts)
+            ->whereNotIn('code', $keepCodes)
             ->update(['archived_at' => now()]);
     }
 

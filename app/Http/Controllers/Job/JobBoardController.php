@@ -77,9 +77,7 @@ class JobBoardController extends Controller
                 ->values()
                 ->all(),
             'groupByStatus' => $groupByStatus,
-            'jobListSections' => $groupByStatus
-                ? $this->board->jobListSectionLabels()
-                : [],
+            'jobListSections' => [],
         ]);
     }
 

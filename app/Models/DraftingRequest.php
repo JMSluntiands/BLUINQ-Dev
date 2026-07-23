@@ -10,51 +10,33 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DraftingRequest extends Model
 {
-    /** APM board section statuses (Archi). */
-    public const STATUS_DRAFTING_WIP = 'drafting_wip';
+    public const STATUS_NEW = 'new';
+
+    public const STATUS_ASSIGNED = 'assigned';
 
     public const STATUS_DESIGN_WIP = 'design_wip';
 
-    public const STATUS_FOR_QUOTES = 'for_quotes';
-
-    public const STATUS_COMPLETED_PROJECTS = 'completed_projects';
-
-    public const STATUS_CANCELLED_JOBS = 'cancelled_jobs';
-
-    /** @deprecated Legacy — remapped to APM section statuses */
-    public const STATUS_NEW = 'new';
-
-    /** @deprecated Legacy — remapped to drafting_wip */
-    public const STATUS_ASSIGNED = 'assigned';
+    public const STATUS_DRAFTING_WIP = 'drafting_wip';
 
     /** @deprecated Prefer STATUS_DRAFTING_WIP — kept for existing rows */
     public const STATUS_WIP = 'wip';
 
-    /** @deprecated Legacy — remapped to drafting_wip */
     public const STATUS_FOR_CHECKING = 'for_checking';
 
-    /** @deprecated Legacy — remapped to drafting_wip */
     public const STATUS_ON_HOLD = 'on_hold';
 
-    /** @deprecated Legacy — remapped to drafting_wip */
     public const STATUS_QUERY = 'query';
 
-    /** @deprecated Legacy — remapped to completed_projects */
     public const STATUS_SUBMITTED = 'submitted';
 
-    /** @deprecated Prefer STATUS_CANCELLED_JOBS */
     public const STATUS_CANCELLED = 'cancelled';
 
-    /** @deprecated Prefer STATUS_FOR_QUOTES */
     public const STATUS_FOR_QUOTE = 'for_quote';
 
-    /** @deprecated Legacy — remapped to for_quotes */
     public const STATUS_QUOTE_SENT = 'quote_sent';
 
-    /** @deprecated Legacy — remapped to completed_projects */
     public const STATUS_INVOICED = 'invoiced';
 
-    /** @deprecated Legacy — remapped to completed_projects */
     public const STATUS_PAID = 'paid';
 
     public const REVIEW_PENDING = 'pending';
@@ -68,7 +50,7 @@ class DraftingRequest extends Model
     public const STAGE_APM = 'apm';
 
     /**
-     * Status (Archi) — from workflow_statuses (kind=archi), with PDF fallback.
+     * Status (Archi) — from workflow_statuses (kind=archi), with Workflows.pdf fallback.
      *
      * @return array<string, string>
      */
@@ -81,16 +63,20 @@ class DraftingRequest extends Model
         }
 
         return [
-            self::STATUS_DRAFTING_WIP => 'Drafting - Work In Progress',
-            self::STATUS_DESIGN_WIP => 'Design - Work In Progress',
-            self::STATUS_FOR_QUOTES => 'For Quotes',
-            self::STATUS_COMPLETED_PROJECTS => 'Completed Projects',
-            self::STATUS_CANCELLED_JOBS => 'Cancelled Jobs',
+            self::STATUS_NEW => 'New',
+            self::STATUS_ASSIGNED => 'Assigned',
+            self::STATUS_DESIGN_WIP => 'Design WIP',
+            self::STATUS_DRAFTING_WIP => 'Drafting WIP',
+            self::STATUS_FOR_CHECKING => 'For Checking',
+            self::STATUS_ON_HOLD => 'On Hold',
+            self::STATUS_QUERY => 'Query',
+            self::STATUS_SUBMITTED => 'Submitted',
+            self::STATUS_CANCELLED => 'Cancelled',
         ];
     }
 
     /**
-     * Labels for dropdowns + legacy rows (pre-APM-section statuses).
+     * Labels for dropdowns + legacy rows (old WIP / accounting statuses).
      *
      * @return array<string, string>
      */
@@ -98,18 +84,11 @@ class DraftingRequest extends Model
     {
         return [
             ...self::statusOptions(),
-            self::STATUS_NEW => 'For Quotes',
-            self::STATUS_ASSIGNED => 'Drafting - Work In Progress',
-            self::STATUS_WIP => 'Drafting - Work In Progress',
-            self::STATUS_FOR_CHECKING => 'Drafting - Work In Progress',
-            self::STATUS_ON_HOLD => 'Drafting - Work In Progress',
-            self::STATUS_QUERY => 'Drafting - Work In Progress',
-            self::STATUS_SUBMITTED => 'Completed Projects',
-            self::STATUS_CANCELLED => 'Cancelled Jobs',
-            self::STATUS_FOR_QUOTE => 'For Quotes',
-            self::STATUS_QUOTE_SENT => 'For Quotes',
-            self::STATUS_INVOICED => 'Completed Projects',
-            self::STATUS_PAID => 'Completed Projects',
+            self::STATUS_WIP => 'Drafting WIP',
+            self::STATUS_FOR_QUOTE => 'For Quote',
+            self::STATUS_QUOTE_SENT => 'Quote Sent',
+            self::STATUS_INVOICED => 'Invoiced',
+            self::STATUS_PAID => 'Paid',
         ];
     }
 
@@ -398,9 +377,7 @@ class DraftingRequest extends Model
     public function statusLabel(): string
     {
         if ($this->status === null || $this->status === '') {
-            return self::statusOptions()[self::STATUS_FOR_QUOTES]
-                ?? self::statusLabels()[self::STATUS_FOR_QUOTES]
-                ?? 'For Quotes';
+            return self::statusOptions()[self::STATUS_NEW] ?? 'New';
         }
 
         return self::statusLabels()[$this->status]

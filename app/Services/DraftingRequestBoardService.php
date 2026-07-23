@@ -103,7 +103,7 @@ class DraftingRequestBoardService
             $area = $areaValue.' m²';
         }
 
-        $actualStatus = $row->status ?? DraftingRequest::STATUS_FOR_QUOTES;
+        $actualStatus = $row->status ?? DraftingRequest::STATUS_NEW;
         $boardStatus = $this->mapBoardStatus($actualStatus);
         $draftingSlots = $this->draftingSlotCount();
         $checkingSlots = $this->checkingSlotCount();
@@ -208,18 +208,17 @@ class DraftingRequestBoardService
         ]);
 
         $counts = [
-            'drafting_wip' => 0,
-            'design_wip' => 0,
-            'for_quotes' => 0,
-            'completed_projects' => 0,
-            'cancelled_jobs' => 0,
+            'on_hold' => 0,
+            'for_checking' => 0,
+            'new' => 0,
+            'wip' => 0,
         ];
 
         foreach ($query->pluck('status') as $status) {
-            $section = $this->mapBoardStatus($status);
+            $boardStatus = $this->mapBoardStatus($status);
 
-            if (array_key_exists($section, $counts)) {
-                $counts[$section]++;
+            if (array_key_exists($boardStatus, $counts)) {
+                $counts[$boardStatus]++;
             }
         }
 
@@ -792,33 +791,26 @@ class DraftingRequestBoardService
      */
     public function formatJobStatusChartData(array $counts): array
     {
-        $labels = config('drafting.job_list_sections', []);
-
         return [
             [
-                'status' => $labels['drafting_wip'] ?? 'Drafting - Work In Progress',
-                'count' => $counts['drafting_wip'] ?? 0,
-                'color' => '#f08080',
+                'status' => 'On Hold',
+                'count' => $counts['on_hold'],
+                'color' => '#8b5cf6',
             ],
             [
-                'status' => $labels['design_wip'] ?? 'Design - Work In Progress',
-                'count' => $counts['design_wip'] ?? 0,
-                'color' => '#c026d3',
+                'status' => 'For Checking',
+                'count' => $counts['for_checking'],
+                'color' => '#3b82f6',
             ],
             [
-                'status' => $labels['for_quotes'] ?? 'For Quotes',
-                'count' => $counts['for_quotes'] ?? 0,
-                'color' => '#6366f1',
+                'status' => 'New',
+                'count' => $counts['new'],
+                'color' => '#94a3b8',
             ],
             [
-                'status' => $labels['completed_projects'] ?? 'Completed Projects',
-                'count' => $counts['completed_projects'] ?? 0,
-                'color' => '#10b981',
-            ],
-            [
-                'status' => $labels['cancelled_jobs'] ?? 'Cancelled Jobs',
-                'count' => $counts['cancelled_jobs'] ?? 0,
-                'color' => '#e11d48',
+                'status' => 'WIP',
+                'count' => $counts['wip'],
+                'color' => '#f87171',
             ],
         ];
     }
@@ -826,32 +818,23 @@ class DraftingRequestBoardService
     public function mapBoardStatus(?string $status): string
     {
         return match ($status) {
-            DraftingRequest::STATUS_DESIGN_WIP => 'design_wip',
-            DraftingRequest::STATUS_DRAFTING_WIP,
             DraftingRequest::STATUS_WIP,
             DraftingRequest::STATUS_ASSIGNED,
+            DraftingRequest::STATUS_DESIGN_WIP,
+            DraftingRequest::STATUS_DRAFTING_WIP,
+            DraftingRequest::STATUS_QUERY => 'wip',
             DraftingRequest::STATUS_FOR_CHECKING,
+            DraftingRequest::STATUS_SUBMITTED => 'for_checking',
             DraftingRequest::STATUS_ON_HOLD,
-            DraftingRequest::STATUS_QUERY => 'drafting_wip',
-            DraftingRequest::STATUS_COMPLETED_PROJECTS,
-            DraftingRequest::STATUS_SUBMITTED,
-            DraftingRequest::STATUS_INVOICED,
-            DraftingRequest::STATUS_PAID => 'completed_projects',
-            DraftingRequest::STATUS_CANCELLED_JOBS,
-            DraftingRequest::STATUS_CANCELLED => 'cancelled_jobs',
-            DraftingRequest::STATUS_FOR_QUOTES,
-            DraftingRequest::STATUS_FOR_QUOTE,
-            DraftingRequest::STATUS_QUOTE_SENT,
-            DraftingRequest::STATUS_NEW => 'for_quotes',
-            default => 'for_quotes',
+            DraftingRequest::STATUS_CANCELLED => 'on_hold',
+            DraftingRequest::STATUS_NEW => 'new',
+            default => 'new',
         };
     }
 
     public function boardStatusLabel(string $boardStatus, string $fallback): string
     {
-        $labels = config('drafting.job_list_sections', []);
-
-        return $labels[$boardStatus] ?? match ($boardStatus) {
+        return match ($boardStatus) {
             'for_checking' => 'For Checking',
             'wip' => 'WIP',
             'new' => 'New',
@@ -862,26 +845,17 @@ class DraftingRequestBoardService
 
     public function mapJobListGroup(DraftingRequest $row): string
     {
-        $status = $row->status ?? DraftingRequest::STATUS_FOR_QUOTES;
-        $sections = array_keys(config('drafting.job_list_sections', []));
-
-        if (in_array($status, $sections, true)) {
-            return $status;
-        }
+        $status = $row->status ?? DraftingRequest::STATUS_NEW;
 
         if (in_array($status, [
             DraftingRequest::STATUS_PAID,
             DraftingRequest::STATUS_INVOICED,
             DraftingRequest::STATUS_SUBMITTED,
-            DraftingRequest::STATUS_COMPLETED_PROJECTS,
         ], true)) {
             return 'completed_projects';
         }
 
-        if (in_array($status, [
-            DraftingRequest::STATUS_CANCELLED,
-            DraftingRequest::STATUS_CANCELLED_JOBS,
-        ], true)) {
+        if ($status === DraftingRequest::STATUS_CANCELLED) {
             return 'cancelled_jobs';
         }
 
@@ -889,7 +863,6 @@ class DraftingRequestBoardService
             DraftingRequest::STATUS_FOR_QUOTE,
             DraftingRequest::STATUS_QUOTE_SENT,
             DraftingRequest::STATUS_NEW,
-            DraftingRequest::STATUS_FOR_QUOTES,
         ], true)) {
             return 'for_quotes';
         }

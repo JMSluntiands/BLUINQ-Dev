@@ -338,6 +338,53 @@ const tdClass =
     'border-r border-[#e6e9ef] px-2 py-1.5 align-middle text-xs text-[#323338] last:border-r-0 dark:border-[#2a2d42] dark:text-slate-200';
 
 /**
+ * Group jobs by Archi workflow status (Workflows.pdf Status list).
+ *
+ * @param {JobBoardRow[]} jobs
+ * @param {Array<{ value: string, label: string }>} statusOptions
+ * @returns {Array<{ status: string; label: string; jobs: JobBoardRow[]; listSection: boolean }>}
+ */
+function groupJobsByWorkflowStatus(jobs, statusOptions) {
+    /** @type {Map<string, JobBoardRow[]>} */
+    const buckets = new Map();
+
+    for (const job of jobs) {
+        const key = job.status || 'new';
+        const existing = buckets.get(key) ?? [];
+        existing.push(job);
+        buckets.set(key, existing);
+    }
+
+    const known = new Set();
+    const groups = (statusOptions ?? []).map((option) => {
+        known.add(option.value);
+
+        return {
+            status: option.value,
+            label: option.label,
+            jobs: buckets.get(option.value) ?? [],
+            listSection: false,
+        };
+    });
+
+    // Surface legacy / unexpected statuses so jobs never disappear.
+    for (const [status, statusJobs] of buckets.entries()) {
+        if (known.has(status)) {
+            continue;
+        }
+
+        groups.push({
+            status,
+            label: statusJobs[0]?.status_label ?? status,
+            jobs: statusJobs,
+            listSection: false,
+        });
+    }
+
+    return groups;
+}
+
+/**
  * @param {JobBoardRow[]} jobs
  * @param {Record<string, string>} sectionLabels
  * @returns {Array<{ status: string; label: string; jobs: JobBoardRow[]; listSection: boolean }>}
@@ -955,8 +1002,14 @@ export default function JobBoardGrid({
             return groupJobsByListSection(jobs, jobListSections);
         }
 
-        return [];
-    }, [groupByStatus, useListSections, jobs, jobListSections]);
+        return groupJobsByWorkflowStatus(jobs, statusOptions);
+    }, [
+        groupByStatus,
+        useListSections,
+        jobs,
+        jobListSections,
+        statusOptions,
+    ]);
 
     const toggleStatusSection = (status) => {
         setCollapsedStatuses((current) => {
@@ -970,7 +1023,7 @@ export default function JobBoardGrid({
         });
     };
 
-    if (!jobs.length && !useListSections) {
+    if (!jobs.length && !groupByStatus) {
         return (
             <div className="border-t border-[#e6e9ef] bg-white px-6 py-12 text-center text-sm text-[#676879] dark:border-[#2f3347] dark:bg-[#1a1b2e] dark:text-slate-400">
                 {emptyMessage}
