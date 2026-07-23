@@ -337,6 +337,33 @@ const thClass =
 const tdClass =
     'border-r border-[#e6e9ef] px-2 py-1.5 align-middle text-xs text-[#323338] last:border-r-0 dark:border-[#2a2d42] dark:text-slate-200';
 
+/** Map legacy / accounting codes onto the 9 Archi statuses. */
+const LEGACY_STATUS_TO_ARCHI = {
+    wip: 'drafting_wip',
+    for_quote: 'new',
+    quote_sent: 'submitted',
+    invoiced: 'submitted',
+    paid: 'submitted',
+    for_quotes: 'new',
+    completed_projects: 'submitted',
+    cancelled_jobs: 'cancelled',
+};
+
+/**
+ * @param {string | null | undefined} status
+ * @param {Set<string>} known
+ */
+function normalizeArchiStatus(status, known) {
+    const raw = status || 'new';
+    const mapped = LEGACY_STATUS_TO_ARCHI[raw] ?? raw;
+
+    if (known.has(mapped)) {
+        return mapped;
+    }
+
+    return known.has('new') ? 'new' : mapped;
+}
+
 /**
  * Group jobs by Archi workflow status (Workflows.pdf Status list).
  *
@@ -345,43 +372,25 @@ const tdClass =
  * @returns {Array<{ status: string; label: string; jobs: JobBoardRow[]; listSection: boolean }>}
  */
 function groupJobsByWorkflowStatus(jobs, statusOptions) {
+    const options = statusOptions ?? [];
+    const known = new Set(options.map((option) => option.value));
+
     /** @type {Map<string, JobBoardRow[]>} */
     const buckets = new Map();
 
     for (const job of jobs) {
-        const key = job.status || 'new';
+        const key = normalizeArchiStatus(job.status, known);
         const existing = buckets.get(key) ?? [];
         existing.push(job);
         buckets.set(key, existing);
     }
 
-    const known = new Set();
-    const groups = (statusOptions ?? []).map((option) => {
-        known.add(option.value);
-
-        return {
-            status: option.value,
-            label: option.label,
-            jobs: buckets.get(option.value) ?? [],
-            listSection: false,
-        };
-    });
-
-    // Surface legacy / unexpected statuses so jobs never disappear.
-    for (const [status, statusJobs] of buckets.entries()) {
-        if (known.has(status)) {
-            continue;
-        }
-
-        groups.push({
-            status,
-            label: statusJobs[0]?.status_label ?? status,
-            jobs: statusJobs,
-            listSection: false,
-        });
-    }
-
-    return groups;
+    return options.map((option) => ({
+        status: option.value,
+        label: option.label,
+        jobs: buckets.get(option.value) ?? [],
+        listSection: false,
+    }));
 }
 
 /**
