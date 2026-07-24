@@ -28,7 +28,7 @@ class BuildingClassController extends Controller
         }
 
         return Inertia::render('Settings/BuildingClass/Index', [
-            'buildingClasss' => $query
+            'buildingClasses' => $query
                 ->paginate($perPage)
                 ->withQueryString(),
             'filters' => [
@@ -128,7 +128,7 @@ class BuildingClassController extends Controller
         }
 
         return Inertia::render('Settings/BuildingClass/Archive', [
-            'buildingClasss' => $query
+            'buildingClasses' => $query
                 ->paginate($perPage)
                 ->withQueryString(),
             'filters' => [

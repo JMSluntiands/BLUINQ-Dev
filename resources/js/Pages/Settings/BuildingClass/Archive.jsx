@@ -173,7 +173,7 @@ export default function BuildingClassArchive({ buildingClasses, filters = {} }) 
             >
                 <div className="p-6">
                     <h2 className="text-lg font-semibold text-[#323338]">
-                        Restore typical storey & level?
+                        Restore building class?
                     </h2>
                     <p className="mt-2 text-sm leading-relaxed text-[#676879]">
                         <span className="font-medium text-[#323338]">
@@ -218,7 +218,7 @@ export default function BuildingClassArchive({ buildingClasses, filters = {} }) 
                         emptyMessage={
                             hasSearch
                                 ? 'No archived items match your search.'
-                                : 'No archived typical storeys & levels.'
+                                : 'No archived building classes.'
                         }
                     />
                     <Pagination pagination={buildingClasses} />

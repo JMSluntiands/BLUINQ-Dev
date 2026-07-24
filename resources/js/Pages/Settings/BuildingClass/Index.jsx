@@ -155,7 +155,7 @@ export default function BuildingClassIndex({ buildingClasses, filters = {} }) {
                             href={route('settings.building-class.create')}
                             className="inline-flex items-center rounded-lg bg-[#0073ea] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0060c4]"
                         >
-                            Add typical storey & level
+                            Add building class
                         </Link>
                         <Link
                             href={
@@ -181,7 +181,7 @@ export default function BuildingClassIndex({ buildingClasses, filters = {} }) {
             >
                 <div className="p-6">
                     <h2 className="text-lg font-semibold text-[#323338]">
-                        Archive typical storey & level?
+                        Archive building class?
                     </h2>
                     <p className="mt-2 text-sm leading-relaxed text-[#676879]">
                         <span className="font-medium text-[#323338]">
@@ -220,8 +220,8 @@ export default function BuildingClassIndex({ buildingClasses, filters = {} }) {
                         columns={columns}
                         emptyMessage={
                             hasSearch
-                                ? 'No typical storeys & levels match your search.'
-                                : 'No typical storeys & levels yet. Add one to get started.'
+                                ? 'No building classes match your search.'
+                                : 'No building classes yet. Add one to get started.'
                         }
                     />
                     <Pagination pagination={buildingClasses} />

@@ -155,7 +155,7 @@ export default function SdaTypeIndex({ sdaTypes, filters = {} }) {
                             href={route('settings.sda-type.create')}
                             className="inline-flex items-center rounded-lg bg-[#0073ea] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0060c4]"
                         >
-                            Add typical storey & level
+                            Add SDA type
                         </Link>
                         <Link
                             href={
@@ -181,7 +181,7 @@ export default function SdaTypeIndex({ sdaTypes, filters = {} }) {
             >
                 <div className="p-6">
                     <h2 className="text-lg font-semibold text-[#323338]">
-                        Archive typical storey & level?
+                        Archive SDA type?
                     </h2>
                     <p className="mt-2 text-sm leading-relaxed text-[#676879]">
                         <span className="font-medium text-[#323338]">
@@ -220,8 +220,8 @@ export default function SdaTypeIndex({ sdaTypes, filters = {} }) {
                         columns={columns}
                         emptyMessage={
                             hasSearch
-                                ? 'No typical storeys & levels match your search.'
-                                : 'No typical storeys & levels yet. Add one to get started.'
+                                ? 'No SDA types match your search.'
+                                : 'No SDA types yet. Add one to get started.'
                         }
                     />
                     <Pagination pagination={sdaTypes} />
