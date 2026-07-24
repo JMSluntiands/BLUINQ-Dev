@@ -10,6 +10,7 @@ use App\Models\DraftingRequestActivity;
 use App\Models\DraftingRequestAssignment;
 use App\Services\DraftingRequestBoardService;
 use App\Services\DraftingRequestReviewService;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -247,6 +248,27 @@ class JobBoardController extends Controller
             $draftingRequest->update([
                 'date_out' => $validated['date_out'],
             ]);
+        }
+
+        if (array_key_exists('eta', $validated)) {
+            $draftingRequest->update([
+                'eta' => $validated['eta'],
+            ]);
+        }
+
+        if (array_key_exists('date_in', $validated)) {
+            if ($validated['date_in'] === null) {
+                $draftingRequest->update(['requested_at' => null]);
+            } else {
+                $tz = config('app.timezone');
+                $existing = $draftingRequest->requested_at?->timezone($tz);
+                $next = Carbon::parse($validated['date_in'], $tz)->setTime(
+                    $existing?->hour ?? 0,
+                    $existing?->minute ?? 0,
+                    $existing?->second ?? 0,
+                );
+                $draftingRequest->update(['requested_at' => $next]);
+            }
         }
 
         return back();

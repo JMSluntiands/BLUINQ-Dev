@@ -35,8 +35,10 @@ const CHECKING_SLOTS = 1;
  *   latest_revision?: string;
  *   accounting?: string;
  *   revisions?: Array<{ id: number; code: string; status?: string | null; status_label?: string | null }>;
- *   date_in: string;
- *   eta: string;
+ *   date_in?: string | null;
+ *   date_in_label?: string | null;
+ *   eta?: string | null;
+ *   eta_label?: string | null;
  *   start_date?: string | null;
  *   start_date_label?: string | null;
  *   progress_segments?: ProgressSegment[];
@@ -261,6 +263,32 @@ function EditableStartDate({ job, disabled = false }) {
             labelKey="start_date_label"
             ariaName="Start date"
             emptyTitle="Set start date"
+            disabled={disabled}
+        />
+    );
+}
+
+function EditableDateIn({ job, disabled = false }) {
+    return (
+        <EditableBoardDate
+            job={job}
+            field="date_in"
+            labelKey="date_in_label"
+            ariaName="Date in"
+            emptyTitle="Set date in"
+            disabled={disabled}
+        />
+    );
+}
+
+function EditableEta({ job, disabled = false }) {
+    return (
+        <EditableBoardDate
+            job={job}
+            field="eta"
+            labelKey="eta_label"
+            ariaName="ETA"
+            emptyTitle="Set ETA"
             disabled={disabled}
         />
     );
@@ -669,21 +697,17 @@ function JobBoardTableBody({
                                             {job.storey_level}
                                         </TagPill>
                                     </td>
-                                    <td
-                                        className={
-                                            tdClass +
-                                            ' whitespace-nowrap tabular-nums'
-                                        }
-                                    >
-                                        {job.date_in}
+                                    <td className={tdClass}>
+                                        <EditableDateIn
+                                            job={job}
+                                            disabled={!job.can_assign}
+                                        />
                                     </td>
-                                    <td
-                                        className={
-                                            tdClass +
-                                            ' whitespace-nowrap tabular-nums'
-                                        }
-                                    >
-                                        {job.eta}
+                                    <td className={tdClass}>
+                                        <EditableEta
+                                            job={job}
+                                            disabled={!job.can_assign}
+                                        />
                                     </td>
                                     <td className={tdClass}>
                                         <EditableStartDate

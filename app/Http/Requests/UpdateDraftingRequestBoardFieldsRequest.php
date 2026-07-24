@@ -15,12 +15,10 @@ class UpdateDraftingRequestBoardFieldsRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        if ($this->input('date_out') === '') {
-            $this->merge(['date_out' => null]);
-        }
-
-        if ($this->input('start_date') === '') {
-            $this->merge(['start_date' => null]);
+        foreach (['date_out', 'start_date', 'date_in', 'eta'] as $key) {
+            if ($this->input($key) === '') {
+                $this->merge([$key => null]);
+            }
         }
     }
 
@@ -33,6 +31,8 @@ class UpdateDraftingRequestBoardFieldsRequest extends FormRequest
             'status' => ['sometimes', 'required', 'string', Rule::in(DraftingRequest::statusValues())],
             'start_date' => ['sometimes', 'nullable', 'date'],
             'date_out' => ['sometimes', 'nullable', 'date'],
+            'date_in' => ['sometimes', 'nullable', 'date'],
+            'eta' => ['sometimes', 'nullable', 'date'],
         ];
     }
 }
