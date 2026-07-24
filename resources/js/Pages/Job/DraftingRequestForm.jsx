@@ -653,7 +653,6 @@ export default function DraftingRequestForm({
 
                             <FormRow>
                                 <FieldBlock
-                                    className="lg:col-span-2"
                                     label={
                                         <InputLabel htmlFor="sda_type_ids">
                                             12. NDIS – SDA Dwelling (Class 3)
@@ -683,9 +682,7 @@ export default function DraftingRequestForm({
                                         </p>
                                     ) : null}
                                 </FieldBlock>
-                            </FormRow>
 
-                            <FormRow>
                                 <FieldBlock
                                     label={
                                         <InputLabel htmlFor="external_wall_construction_id">
