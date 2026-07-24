@@ -9,7 +9,7 @@ class StoreLeaveCreditsRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasPermission('leave.credits.manage') ?? false;
+        return $this->user()?->hasPermission('leave.credits.edit') ?? false;
     }
 
     /**

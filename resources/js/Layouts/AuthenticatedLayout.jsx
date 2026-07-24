@@ -121,7 +121,8 @@ export default function AuthenticatedLayout({ header, children }) {
     const canAnnouncementsManage = can('announcements.manage');
     const canTimesheet = can('timesheet.view');
     const canManageLeave = can('leave.manage');
-    const canManageLeaveCredits = can('leave.credits.manage');
+    const canViewLeaveCredits =
+        can('leave.credits.view') || can('leave.credits.edit');
     const canManageUserMilestones = can('profile.milestones.manage');
     const canDraftingMemos = can('drafting-memos.view');
     const canDraftingArchive = can('job.drafting.archive');
@@ -200,7 +201,7 @@ export default function AuthenticatedLayout({ header, children }) {
         canActivityLogs ||
         canRoles ||
         canManageLeave ||
-        canManageLeaveCredits ||
+        canViewLeaveCredits ||
         canManageUserMilestones;
     const showWorkflowSettings =
         canServiceEngaging ||
@@ -470,7 +471,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                 </NavItem>
                             )}
                             {(canManageLeave ||
-                                canManageLeaveCredits ||
+                                canViewLeaveCredits ||
                                 canManageUserMilestones) && (
                                 <>
                                     <p
@@ -505,7 +506,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                             </span>
                                         </NavItem>
                                     )}
-                                    {canManageLeaveCredits && (
+                                    {canViewLeaveCredits && (
                                         <NavItem
                                             href={route('leave.credits.index')}
                                             active={isLeaveCredits}
@@ -549,7 +550,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                             'px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 ' +
                                             (showWorkflowSettings ||
                                             canManageLeave ||
-                                            canManageLeaveCredits ||
+                                            canViewLeaveCredits ||
                                             canManageUserMilestones
                                                 ? 'pt-3'
                                                 : 'pt-1')

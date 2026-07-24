@@ -125,7 +125,7 @@ function AddCreditsModal({ employee, onClose }) {
     );
 }
 
-export default function Index({ employees, filters = {} }) {
+export default function Index({ employees, filters = {}, canEdit = false }) {
     const rows = employees?.data ?? [];
     const [selectedEmployee, setSelectedEmployee] = useState(null);
 
@@ -153,9 +153,9 @@ export default function Index({ employees, filters = {} }) {
             <div className="rounded-2xl border border-slate-200/90 bg-white shadow-sm dark:border-slate-700/70 dark:bg-slate-900/90">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
                     <p className="text-sm text-slate-500 dark:text-slate-400">
-                        Manage AL and SL balances. Monthly AL accrual and yearly
-                        SL refresh run automatically. Carry-over AL expires end
-                        of June.
+                        {canEdit
+                            ? 'Manage AL and SL balances. Monthly AL accrual and yearly SL refresh run automatically. Carry-over AL expires end of June.'
+                            : 'View AL and SL balances. Monthly AL accrual and yearly SL refresh run automatically. Carry-over AL expires end of June.'}
                     </p>
                     <form onSubmit={handleSearch} className="flex gap-2">
                         <input
@@ -221,14 +221,18 @@ export default function Index({ employees, filters = {} }) {
                                         </p>
                                     </div>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedEmployee(employee)}
-                                    className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-sky-500"
-                                >
-                                    <PlusIcon className="h-4 w-4" />
-                                    Add credits
-                                </button>
+                                {canEdit && (
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setSelectedEmployee(employee)
+                                        }
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-sky-500"
+                                    >
+                                        <PlusIcon className="h-4 w-4" />
+                                        Add credits
+                                    </button>
+                                )}
                             </li>
                         ))}
                     </ul>
@@ -241,7 +245,7 @@ export default function Index({ employees, filters = {} }) {
                 )}
             </div>
 
-            {selectedEmployee && (
+            {canEdit && selectedEmployee && (
                 <AddCreditsModal
                     employee={selectedEmployee}
                     onClose={() => setSelectedEmployee(null)}

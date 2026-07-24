@@ -18,7 +18,11 @@ class LeaveCreditsController extends Controller
 
     public function index(Request $request): Response
     {
-        abort_unless($request->user()?->hasPermission('leave.credits.manage'), 403);
+        $user = $request->user();
+        $canView = $user?->hasPermission('leave.credits.view') ?? false;
+        $canEdit = $user?->hasPermission('leave.credits.edit') ?? false;
+
+        abort_unless($canView || $canEdit, 403);
 
         $search = trim((string) $request->input('search', ''));
 
@@ -38,20 +42,21 @@ class LeaveCreditsController extends Controller
             'employees' => $query
                 ->paginate(15)
                 ->withQueryString()
-                ->through(fn (User $user) => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'job_title' => $user->job_title,
-                    'role' => $user->role?->name ?? $user->role?->slug,
-                    'profile_image_url' => $user->profile_image_url,
-                    'employment_status' => $user->employment_status ?? 'regular',
-                    'leave_credits' => $this->leave->creditsForUser($user),
-                    'balances' => $this->leave->balancesForUser($user),
+                ->through(fn (User $row) => [
+                    'id' => $row->id,
+                    'name' => $row->name,
+                    'email' => $row->email,
+                    'job_title' => $row->job_title,
+                    'role' => $row->role?->name ?? $row->role?->slug,
+                    'profile_image_url' => $row->profile_image_url,
+                    'employment_status' => $row->employment_status ?? 'regular',
+                    'leave_credits' => $this->leave->creditsForUser($row),
+                    'balances' => $this->leave->balancesForUser($row),
                 ]),
             'filters' => [
                 'search' => $search,
             ],
+            'canEdit' => $canEdit,
         ]);
     }
 

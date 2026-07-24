@@ -24,16 +24,20 @@ class EnsureRoutePermission
         }
 
         $map = config('permissions.routes', []);
-        $slug = $map[$routeName] ?? null;
-        if ($slug === null) {
+        $required = $map[$routeName] ?? null;
+        if ($required === null) {
             return $next($request);
         }
 
+        $requiredSlugs = is_array($required) ? $required : [$required];
         $slugs = Permission::slugsForRole($user->role->slug);
-        if (! in_array($slug, $slugs, true)) {
-            abort(Response::HTTP_FORBIDDEN);
+
+        foreach ($requiredSlugs as $slug) {
+            if (in_array($slug, $slugs, true)) {
+                return $next($request);
+            }
         }
 
-        return $next($request);
+        abort(Response::HTTP_FORBIDDEN);
     }
 }
