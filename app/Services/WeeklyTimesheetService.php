@@ -115,7 +115,7 @@ class WeeklyTimesheetService
     public function storeDashboardActivity(
         User $user,
         string $activity,
-        int $projectId,
+        ?int $projectId,
         Carbon $workDate,
         int $hours,
         int $minutes,
@@ -126,11 +126,23 @@ class WeeklyTimesheetService
             ]);
         }
 
-        $project = $this->findActivityProject($user, $projectId);
-        if ($project === null) {
-            throw ValidationException::withMessages([
-                'project_id' => 'The selected project is not available.',
-            ]);
+        $requiresProject = $activity === TimesheetEntry::TASK_DRAFTING;
+
+        if ($requiresProject) {
+            if ($projectId === null) {
+                throw ValidationException::withMessages([
+                    'project_id' => 'Select a project.',
+                ]);
+            }
+
+            $project = $this->findActivityProject($user, $projectId);
+            if ($project === null) {
+                throw ValidationException::withMessages([
+                    'project_id' => 'The selected project is not available.',
+                ]);
+            }
+        } else {
+            $projectId = null;
         }
 
         $duration = max(0, min(24, round(($hours + ($minutes / 60)) * 2) / 2));
@@ -142,13 +154,19 @@ class WeeklyTimesheetService
 
         $weekStart = $workDate->copy()->startOfWeek(Carbon::MONDAY);
 
-        $entry = TimesheetEntry::query()
+        $entryQuery = TimesheetEntry::query()
             ->where('user_id', $user->id)
             ->whereDate('week_start', $weekStart)
             ->where('task_type', $activity)
-            ->where('drafting_request_id', $projectId)
-            ->whereNull('drafting_request_revision_id')
-            ->first();
+            ->whereNull('drafting_request_revision_id');
+
+        if ($projectId === null) {
+            $entryQuery->whereNull('drafting_request_id');
+        } else {
+            $entryQuery->where('drafting_request_id', $projectId);
+        }
+
+        $entry = $entryQuery->first();
 
         if ($entry === null) {
             $entry = TimesheetEntry::query()->create([

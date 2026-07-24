@@ -18,6 +18,8 @@ class StoreDashboardActivityRequest extends FormRequest
      */
     public function rules(): array
     {
+        $isDrafting = $this->input('activity') === TimesheetEntry::TASK_DRAFTING;
+
         return [
             'activity' => [
                 'required',
@@ -25,7 +27,8 @@ class StoreDashboardActivityRequest extends FormRequest
                 Rule::in(array_keys(TimesheetEntry::ACTIVITY_TASK_LABELS)),
             ],
             'project_id' => [
-                'required',
+                Rule::requiredIf($isDrafting),
+                'nullable',
                 'integer',
                 'exists:drafting_requests,id',
             ],
@@ -34,6 +37,13 @@ class StoreDashboardActivityRequest extends FormRequest
             'minutes' => ['required', 'integer', 'min:0', 'max:59'],
             'note' => ['nullable', 'string', 'max:2000'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->input('project_id') === '' || $this->input('project_id') === null) {
+            $this->merge(['project_id' => null]);
+        }
     }
 
     public function withValidator($validator): void

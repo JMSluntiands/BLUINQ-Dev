@@ -177,7 +177,7 @@ class DashboardController extends Controller
         $this->timesheet->storeDashboardActivity(
             $request->user(),
             $validated['activity'],
-            (int) $validated['project_id'],
+            isset($validated['project_id']) ? (int) $validated['project_id'] : null,
             Carbon::parse($validated['date']),
             (int) $validated['hours'],
             (int) $validated['minutes'],

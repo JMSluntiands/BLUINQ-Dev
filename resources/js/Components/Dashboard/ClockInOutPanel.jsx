@@ -439,8 +439,11 @@ export default function ClockInOutPanel({
         }
     }, [clock.current_local_time_hm, nowMs, selectedTimezone]);
 
+    const clockInNeedsProject = clockInForm.activity === 'drafting';
     const clockInCanSubmit = Boolean(
-        clockInForm.activity && clockInForm.project && !clockInSaving,
+        clockInForm.activity &&
+            (!clockInNeedsProject || clockInForm.project) &&
+            !clockInSaving,
     );
 
     const openClockInModal = () => {
@@ -455,7 +458,13 @@ export default function ClockInOutPanel({
     };
 
     const updateClockInField = (field, value) => {
-        setClockInForm((current) => ({ ...current, [field]: value }));
+        setClockInForm((current) => {
+            const next = { ...current, [field]: value };
+            if (field === 'activity' && value !== 'drafting') {
+                next.project = '';
+            }
+            return next;
+        });
     };
 
     const submitClockIn = (event) => {
@@ -530,7 +539,13 @@ export default function ClockInOutPanel({
     };
 
     const updateActivityField = (field, value) => {
-        setActivityForm((current) => ({ ...current, [field]: value }));
+        setActivityForm((current) => {
+            const next = { ...current, [field]: value };
+            if (field === 'activity' && value !== 'drafting') {
+                next.project = '';
+            }
+            return next;
+        });
     };
 
     const saveActivity = (event) => {
@@ -543,8 +558,9 @@ export default function ClockInOutPanel({
         );
         const activityValue = activityForm.activity;
         const projectValue = activityForm.project;
+        const needsProject = activityValue === 'drafting';
 
-        if (!activityValue || !projectValue) {
+        if (!activityValue || (needsProject && !projectValue)) {
             return;
         }
 
@@ -572,7 +588,7 @@ export default function ClockInOutPanel({
             route('dashboard.activities.store'),
             {
                 activity: activityValue,
-                project_id: Number(projectValue),
+                project_id: needsProject ? Number(projectValue) : null,
                 date: activityForm.date,
                 hours,
                 minutes,
@@ -601,12 +617,14 @@ export default function ClockInOutPanel({
                             date: activityForm.date,
                             activity: activityValue,
                             activityLabel,
-                            project: projectValue,
-                            projectLabel,
+                            project: needsProject ? projectValue : '',
+                            projectLabel: needsProject ? projectLabel : '',
                             note,
-                            text: `${durationLabel} · ${activityLabel} · ${projectLabel}${
-                                note ? ` — ${note}` : ''
-                            }`,
+                            text: `${durationLabel} · ${activityLabel}${
+                                needsProject && projectLabel
+                                    ? ` · ${projectLabel}`
+                                    : ''
+                            }${note ? ` — ${note}` : ''}`,
                             at: new Date().toISOString(),
                             dateLabel,
                         },
@@ -905,24 +923,26 @@ export default function ClockInOutPanel({
                             ))}
                         </select>
 
-                        <select
-                            value={clockInForm.project}
-                            onChange={(event) =>
-                                updateClockInField(
-                                    'project',
-                                    event.target.value,
-                                )
-                            }
-                            required
-                            className="block w-full rounded-lg border-slate-200 bg-white text-sm text-slate-800 focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                        >
-                            <option value="">Select a project</option>
-                            {projectOptions.map((item) => (
-                                <option key={item.value} value={item.value}>
-                                    {item.label}
-                                </option>
-                            ))}
-                        </select>
+                        {clockInNeedsProject ? (
+                            <select
+                                value={clockInForm.project}
+                                onChange={(event) =>
+                                    updateClockInField(
+                                        'project',
+                                        event.target.value,
+                                    )
+                                }
+                                required
+                                className="block w-full rounded-lg border-slate-200 bg-white text-sm text-slate-800 focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                            >
+                                <option value="">Select a project</option>
+                                {projectOptions.map((item) => (
+                                    <option key={item.value} value={item.value}>
+                                        {item.label}
+                                    </option>
+                                ))}
+                            </select>
+                        ) : null}
 
                         <textarea
                             value={clockInForm.note}
@@ -1053,24 +1073,26 @@ export default function ClockInOutPanel({
                             ))}
                         </select>
 
-                        <select
-                            value={activityForm.project}
-                            onChange={(event) =>
-                                updateActivityField(
-                                    'project',
-                                    event.target.value,
-                                )
-                            }
-                            required
-                            className="block w-full rounded-lg border-slate-200 bg-white text-sm text-slate-800 focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                        >
-                            <option value="">Select a project</option>
-                            {projectOptions.map((item) => (
-                                <option key={item.value} value={item.value}>
-                                    {item.label}
-                                </option>
-                            ))}
-                        </select>
+                        {activityForm.activity === 'drafting' ? (
+                            <select
+                                value={activityForm.project}
+                                onChange={(event) =>
+                                    updateActivityField(
+                                        'project',
+                                        event.target.value,
+                                    )
+                                }
+                                required
+                                className="block w-full rounded-lg border-slate-200 bg-white text-sm text-slate-800 focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                            >
+                                <option value="">Select a project</option>
+                                {projectOptions.map((item) => (
+                                    <option key={item.value} value={item.value}>
+                                        {item.label}
+                                    </option>
+                                ))}
+                            </select>
+                        ) : null}
 
                         <textarea
                             value={activityForm.note}
