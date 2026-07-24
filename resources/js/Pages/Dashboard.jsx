@@ -51,7 +51,12 @@ function DashboardPanel({
                     {title}
                 </h3>
             </div>
-            <div className={'min-h-0 flex-1 overflow-hidden p-5 ' + bodyClassName}>
+            <div
+                className={
+                    'min-h-0 flex-1 p-5 ' +
+                    (bodyClassName || 'overflow-hidden')
+                }
+            >
                 {children}
             </div>
         </div>
@@ -298,6 +303,8 @@ export default function Dashboard() {
     } = usePage().props;
     const absentEmployees = attendance.absent ?? [];
     const absentAfterNine = Boolean(attendance.absent_after_nine);
+    const announcementPanelRef = useRef(null);
+    const [sidePanelHeight, setSidePanelHeight] = useState(null);
     const [selectedAnnouncementId, setSelectedAnnouncementId] = useState(
         announcements[0]?.id ?? null,
     );
@@ -313,12 +320,49 @@ export default function Dashboard() {
         }
     }, [announcements, selectedAnnouncementId]);
 
+    useEffect(() => {
+        if (!canViewAnnouncements) {
+            setSidePanelHeight(null);
+            return undefined;
+        }
+
+        const panel = announcementPanelRef.current;
+        if (!panel || typeof ResizeObserver === 'undefined') {
+            return undefined;
+        }
+
+        const syncHeight = () => {
+            const next = Math.round(panel.getBoundingClientRect().height);
+            if (next > 0) {
+                setSidePanelHeight(next);
+            }
+        };
+
+        syncHeight();
+        const observer = new ResizeObserver(syncHeight);
+        observer.observe(panel);
+        window.addEventListener('resize', syncHeight);
+
+        return () => {
+            observer.disconnect();
+            window.removeEventListener('resize', syncHeight);
+        };
+    }, [canViewAnnouncements, announcements.length, selectedAnnouncementId]);
+
     const featuredAnnouncement =
         announcements.find(
             (announcement) => announcement.id === selectedAnnouncementId,
         ) ??
         announcements[0] ??
         null;
+
+    const sidePanelStyle =
+        sidePanelHeight != null
+            ? {
+                  height: `${sidePanelHeight}px`,
+                  maxHeight: `${sidePanelHeight}px`,
+              }
+            : undefined;
 
     return (
         <AuthenticatedLayout
