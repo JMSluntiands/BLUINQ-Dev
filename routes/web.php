@@ -150,6 +150,8 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('job.status-chart');
     Route::get('/job/board', [JobBoardController::class, 'index'])
         ->name('job.board');
+    Route::post('/job/board/add/{draftingRequest}', [JobBoardController::class, 'addToBoard'])
+        ->name('job.board.add');
     Route::get('/job/drafting', [JobBoardController::class, 'redirectFromLegacyList'])
         ->name('job.drafting');
     Route::get('/job/drafting/archive', [DraftingController::class, 'archive'])

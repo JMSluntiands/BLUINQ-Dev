@@ -273,6 +273,34 @@ class DraftingRequest extends Model
     }
 
     /**
+     * Next revision code for this job (e.g. 26008-02).
+     * Bare legacy codes equal to the job number count as -01.
+     */
+    public function suggestNextRevisionCode(): string
+    {
+        $base = $this->jobNumber();
+        $maxSuffix = 0;
+
+        $codes = $this->relationLoaded('revisions')
+            ? $this->revisions->pluck('code')
+            : $this->revisions()->pluck('code');
+
+        foreach ($codes as $code) {
+            $code = trim((string) $code);
+            if (preg_match('/^'.preg_quote($base, '/').'-(\d{2})$/', $code, $match)) {
+                $maxSuffix = max($maxSuffix, (int) $match[1]);
+                continue;
+            }
+
+            if ($code === $base) {
+                $maxSuffix = max($maxSuffix, 1);
+            }
+        }
+
+        return sprintf('%s-%02d', $base, $maxSuffix + 1);
+    }
+
+    /**
      * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo

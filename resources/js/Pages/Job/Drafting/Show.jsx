@@ -38,19 +38,6 @@ function listQueryString(listFilters = {}) {
     return s ? `?${s}` : '';
 }
 
-const FLASH_MESSAGES = {
-    'drf-archived': 'Drafting request moved to archive.',
-    'drf-restored': 'Drafting request restored to the list.',
-    'drf-updated': 'Details saved.',
-    'drf-files-updated': 'Files updated.',
-    'drf-revision-added': 'Revision added.',
-    'drf-revision-updated': 'Revision updated.',
-    'drf-quote-added': 'Quote added.',
-    'drf-invoice-added': 'Invoice added.',
-    'drf-quote-updated': 'Quote updated.',
-    'drf-invoice-updated': 'Invoice updated.',
-};
-
 const cardClass =
     'overflow-hidden rounded-xl border border-[#e6e9ef] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)] dark:border-[#2f3347] dark:bg-[#1a1b2e]';
 
@@ -67,6 +54,24 @@ export default function DraftingShow({
     formOptions = {},
     drafterUsers = [],
 }) {
+    const revisionCode = usePage().props.flash?.revision_code ?? null;
+    const flashMessages = {
+        'drf-archived': 'Drafting request moved to archive.',
+        'drf-restored': 'Drafting request restored to the list.',
+        'drf-updated': 'Details saved.',
+        'drf-files-updated': 'Files updated.',
+        'drf-revision-added': 'Revision added.',
+        'drf-revision-updated': 'Revision updated.',
+        'drf-quote-added': 'Quote added.',
+        'drf-invoice-added': 'Invoice added.',
+        'drf-quote-updated': 'Quote updated.',
+        'drf-invoice-updated': 'Invoice updated.',
+        'masterlist-forwarded':
+            'Project added to Archi Project Management from the masterlist.',
+        'board-reopened': revisionCode
+            ? `Project reopened on board with revision ${revisionCode}.`
+            : 'Project reopened on board with a new revision.',
+    };
     const {
         editJobDetails = false,
         editBuildingArea = false,
@@ -159,7 +164,7 @@ export default function DraftingShow({
             />
 
             <div className="mx-auto max-w-[1400px] space-y-6 pb-10">
-                <FlashNoticeModal messages={FLASH_MESSAGES} />
+                <FlashNoticeModal messages={flashMessages} />
 
                 <ArchiveModals
                     archiveOpen={archiveOpen}

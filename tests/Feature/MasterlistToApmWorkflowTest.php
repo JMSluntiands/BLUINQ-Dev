@@ -103,6 +103,121 @@ class MasterlistToApmWorkflowTest extends TestCase
         $second->assertNotFound();
     }
 
+    public function test_board_add_reopens_submitted_apm_with_next_revision(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $row = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_APM,
+            'requested_at' => now(),
+            'your_name' => 'Nikaia',
+            'company_name' => 'Nikaia Co',
+            'email' => 'nikaia@example.com',
+            'site_address' => '8 Submitted St',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $row->id,
+            'user_id' => $user->id,
+            'code' => $row->jobNumber().'-01',
+            'log_date' => now()->toDateString(),
+            'category' => 'WD',
+            'drafter_user_id' => $user->id,
+            'drafter_initials' => 'AD',
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('job.board.add', $row));
+
+        $response->assertRedirect(route('job.drafting.show', $row));
+        $response->assertSessionHas('status', 'board-reopened');
+        $response->assertSessionHas('revision_code', $row->jobNumber().'-02');
+
+        $row->refresh();
+        $this->assertSame(DraftingRequest::STATUS_NEW, $row->status);
+        $this->assertSame(DraftingRequest::STAGE_APM, $row->workflow_stage);
+
+        $this->assertTrue(
+            DraftingRequestRevision::query()
+                ->where('drafting_request_id', $row->id)
+                ->where('code', $row->jobNumber().'-02')
+                ->where('status', DraftingRequest::STATUS_NEW)
+                ->exists(),
+        );
+
+        $this->actingAs($user)
+            ->get(route('job.board'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->has('jobs.data', 1)
+                ->where('jobs.data.0.status', DraftingRequest::STATUS_NEW));
+    }
+
+    public function test_board_add_forwards_masterlist_entry(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category, $client, $buildingClass] = $this->seedLookups();
+
+        $this->actingAs($user)->post(route('job.masterlist.store'), $this->validPayload(
+            $storeyLevel->id,
+            $category->id,
+            $client,
+            $buildingClass,
+        ));
+
+        $row = DraftingRequest::query()->firstOrFail();
+
+        $response = $this->actingAs($user)->post(route('job.board.add', $row));
+
+        $response->assertRedirect(route('job.drafting.show', $row));
+        $response->assertSessionHas('status', 'masterlist-forwarded');
+
+        $row->refresh();
+        $this->assertSame(DraftingRequest::STAGE_APM, $row->workflow_stage);
+    }
+
+    public function test_board_candidates_include_submitted_apm_jobs(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $submitted = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_APM,
+            'requested_at' => now(),
+            'your_name' => 'Submitted Client',
+            'company_name' => 'Submitted Co',
+            'email' => 'submitted@example.com',
+            'site_address' => '9 Done St',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('job.board'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->has('masterlistCandidates', 1)
+                ->where('masterlistCandidates.0.id', $submitted->id)
+                ->where('masterlistCandidates.0.source', 'apm'));
+    }
+
     public function test_public_accept_lands_on_masterlist_only(): void
     {
         $admin = $this->adminUser();

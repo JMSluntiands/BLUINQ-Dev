@@ -5,7 +5,7 @@ import { useState } from 'react';
 
 /**
  * @param {{
- *   candidates?: Array<{ id: number; value: string; label: string; lead_no: string }>;
+ *   candidates?: Array<{ id: number; value: string; label: string; lead_no: string; source?: string }>;
  * }} props
  */
 export default function AddFromMasterlistControl({ candidates = [] }) {
@@ -19,8 +19,8 @@ export default function AddFromMasterlistControl({ candidates = [] }) {
 
         setBusy(true);
         router.post(
-            route('job.masterlist.forward', selectedId),
-            { redirect: 'show' },
+            route('job.board.add', selectedId),
+            {},
             {
                 preserveScroll: true,
                 onFinish: () => setBusy(false),
@@ -43,7 +43,7 @@ export default function AddFromMasterlistControl({ candidates = [] }) {
                     aria-hidden
                 />
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400">
-                    Add from masterlist
+                    Add to board
                 </span>
                 {!empty && (
                     <span className="rounded-full bg-[#e6e9ef] px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-[#676879] dark:bg-[#2a2d3e] dark:text-slate-300">
@@ -62,7 +62,7 @@ export default function AddFromMasterlistControl({ candidates = [] }) {
                         placeholder={
                             empty
                                 ? 'No projects available'
-                                : 'Select project…'
+                                : 'Add project / reopen submitted…'
                         }
                         allowClear
                         disabled={busy || empty}

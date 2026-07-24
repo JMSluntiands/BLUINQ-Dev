@@ -168,10 +168,7 @@ class DraftingRequestSubmissionService
             ]);
 
             if (! $draftingRequest->revisions()->exists()) {
-                $category = $draftingRequest->serviceEngagings()
-                    ->orderBy('name')
-                    ->value('name')
-                    ?? 'Working Drawings';
+                $category = $this->revisionCategoryFor($draftingRequest);
 
                 DraftingRequestRevision::query()->create([
                     'drafting_request_id' => $draftingRequest->id,
@@ -195,6 +192,106 @@ class DraftingRequestSubmissionService
                 ),
             );
         });
+    }
+
+    /**
+     * Add a masterlist job to APM, or reopen an existing APM job with the next revision.
+     *
+     * @return array{action: 'forwarded'|'reopened', revision_code: string|null}
+     */
+    public function addOrReopenOnBoard(DraftingRequest $draftingRequest, User $actor): array
+    {
+        if ($draftingRequest->isArchived()) {
+            abort(404);
+        }
+
+        if ($draftingRequest->workflow_stage === DraftingRequest::STAGE_MASTERLIST) {
+            $this->forwardToApm($draftingRequest, $actor);
+
+            $code = DraftingRequestRevision::query()
+                ->where('drafting_request_id', $draftingRequest->id)
+                ->orderByDesc('id')
+                ->value('code');
+
+            return [
+                'action' => 'forwarded',
+                'revision_code' => $code !== null ? (string) $code : null,
+            ];
+        }
+
+        if ($draftingRequest->workflow_stage === DraftingRequest::STAGE_APM
+            && $draftingRequest->review_status === DraftingRequest::REVIEW_ACCEPTED) {
+            return $this->reopenOnBoard($draftingRequest, $actor);
+        }
+
+        abort(404);
+    }
+
+    /**
+     * @return array{action: 'reopened', revision_code: string}
+     */
+    private function reopenOnBoard(DraftingRequest $draftingRequest, User $actor): array
+    {
+        return DB::transaction(function () use ($draftingRequest, $actor) {
+            $draftingRequest->loadMissing(['crmCategory', 'serviceEngagings', 'revisions']);
+
+            $code = $draftingRequest->suggestNextRevisionCode();
+            $previousStatus = $draftingRequest->status;
+            $category = $this->revisionCategoryFor($draftingRequest);
+
+            $revision = DraftingRequestRevision::query()->create([
+                'drafting_request_id' => $draftingRequest->id,
+                'user_id' => $actor->id,
+                'code' => $code,
+                'log_date' => now(config('app.timezone'))->toDateString(),
+                'category' => $category,
+                'drafter_user_id' => $actor->id,
+                'drafter_initials' => $actor->badgeInitials(),
+                'status' => DraftingRequest::STATUS_NEW,
+            ]);
+
+            $draftingRequest->update([
+                'status' => DraftingRequest::STATUS_NEW,
+            ]);
+
+            DraftingRequestActivity::record(
+                $draftingRequest,
+                $actor,
+                DraftingRequestActivity::ACTION_REVISION_ADDED,
+                sprintf(
+                    'Reopened on Project Management board with revision %s.',
+                    $revision->code,
+                ),
+            );
+
+            if ($previousStatus !== DraftingRequest::STATUS_NEW) {
+                $options = DraftingRequest::statusLabels();
+                $fromLabel = $options[$previousStatus]
+                    ?? ($previousStatus ? ucfirst(str_replace('_', ' ', $previousStatus)) : 'New');
+
+                DraftingRequestActivity::record(
+                    $draftingRequest,
+                    $actor,
+                    DraftingRequestActivity::ACTION_STATUS_CHANGED,
+                    sprintf('Status changed from %s to New.', $fromLabel),
+                );
+            }
+
+            return [
+                'action' => 'reopened',
+                'revision_code' => $revision->code,
+            ];
+        });
+    }
+
+    private function revisionCategoryFor(DraftingRequest $draftingRequest): string
+    {
+        $draftingRequest->loadMissing(['crmCategory', 'serviceEngagings']);
+
+        return $draftingRequest->crmCategory?->code
+            ?: $draftingRequest->crmCategory?->name
+            ?: $draftingRequest->serviceEngagings->sortBy('name')->first()?->name
+            ?: 'Working Drawings';
     }
 
     private function storeUploadedFile(

@@ -36,6 +36,7 @@ return [
         'job.list' => 'job.list.view',
         'job.status-chart' => 'job.list.view',
         'job.board' => 'job.list.view',
+        'job.board.add' => 'job.list.view',
         'job.drafting' => 'job.list.view',
         'job.drafting.show' => 'job.drafting.view',
         'job.drafting.files.view' => 'job.drafting.files.view',

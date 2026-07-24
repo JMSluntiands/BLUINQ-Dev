@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 class WorkflowStatus extends Model
 {
@@ -64,6 +65,10 @@ class WorkflowStatus extends Model
      */
     public static function optionsForKind(string $kind): array
     {
+        if (! Schema::hasTable((new static)->getTable())) {
+            return [];
+        }
+
         return static::query()
             ->active()
             ->where('status', 'active')

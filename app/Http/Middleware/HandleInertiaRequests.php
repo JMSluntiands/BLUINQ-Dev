@@ -53,6 +53,7 @@ class HandleInertiaRequests extends Middleware
             'logo_url' => $this->resolveAppLogoUrl(),
             'flash' => [
                 'status' => $request->session()->get('status'),
+                'revision_code' => $request->session()->get('revision_code'),
             ],
             'pendingLeaveCount' => $user?->hasPermission('leave.manage')
                 ? app(LeaveService::class)->pendingCount()

@@ -7,19 +7,8 @@ import Pagination from '@/Components/Pagination';
 import TableSearchToolbar from '@/Components/TableSearchToolbar';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { PlusIcon } from '@heroicons/react/24/outline';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
-
-const FLASH_MESSAGES = {
-    'drf-submitted':
-        'Your drafting request was submitted successfully.',
-    'drf-archived': 'Drafting request moved to archive.',
-    'drf-accepted': 'Drafting request accepted and added to the masterlist.',
-    'drf-already-reviewed': 'This request was already reviewed.',
-    'masterlist-forwarded':
-        'Project added to Archi Project Management from the masterlist.',
-    'drf-revision-added': 'Revision added.',
-};
 
 export default function JobBoard({
     jobs,
@@ -35,6 +24,25 @@ export default function JobBoard({
     masterlistCandidates = [],
     pendingRequests = [],
 }) {
+    const revisionCode = usePage().props.flash?.revision_code ?? null;
+    const flashMessages = useMemo(
+        () => ({
+            'drf-submitted':
+                'Your drafting request was submitted successfully.',
+            'drf-archived': 'Drafting request moved to archive.',
+            'drf-accepted':
+                'Drafting request accepted and added to the masterlist.',
+            'drf-already-reviewed': 'This request was already reviewed.',
+            'masterlist-forwarded':
+                'Project added to Archi Project Management from the masterlist.',
+            'drf-revision-added': 'Revision added.',
+            'board-reopened': revisionCode
+                ? `Project reopened on board with revision ${revisionCode}.`
+                : 'Project reopened on board with a new revision.',
+        }),
+        [revisionCode],
+    );
+
     const rows = jobs?.data ?? [];
     const [liveSearch, setLiveSearch] = useState('');
     const [revisionJob, setRevisionJob] = useState(null);
@@ -68,6 +76,38 @@ export default function JobBoard({
         router.get(route(searchRoute), query, { replace: true });
     }, [searchRoute]);
 
+    useEffect(() => {
+        if (!canForwardFromMasterlist) {
+            return undefined;
+        }
+
+        const q = liveSearch.trim();
+        const handle = window.setTimeout(() => {
+            const params = Object.fromEntries(
+                new URLSearchParams(window.location.search).entries(),
+            );
+            const currentQ = params.q ?? '';
+            if (q === currentQ) {
+                return;
+            }
+
+            if (q) {
+                params.q = q;
+            } else {
+                delete params.q;
+            }
+
+            router.get(route(searchRoute), params, {
+                only: ['masterlistCandidates'],
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            });
+        }, 300);
+
+        return () => window.clearTimeout(handle);
+    }, [liveSearch, canForwardFromMasterlist, searchRoute]);
+
     return (
         <AuthenticatedLayout
             header={
@@ -90,7 +130,7 @@ export default function JobBoard({
         >
             <Head title={pageTitle} />
 
-            <FlashNoticeModal messages={FLASH_MESSAGES} />
+            <FlashNoticeModal messages={flashMessages} />
 
             <DraftingRevisionAddModal
                 show={revisionJob != null}
