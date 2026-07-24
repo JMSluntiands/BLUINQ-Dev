@@ -28,7 +28,7 @@ class StoreDraftingRequestFormRequest extends FormRequest
                 ),
             ],
             'company_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255'],
+            'email' => ['nullable', 'string', 'lowercase', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
             'service_engaging_ids' => ['required', 'array', 'min:1'],
             'service_engaging_ids.*' => [
@@ -117,6 +117,10 @@ class StoreDraftingRequestFormRequest extends FormRequest
 
         if ($this->input('phone') === '') {
             $normalized['phone'] = null;
+        }
+
+        if ($this->input('email') === '') {
+            $normalized['email'] = null;
         }
 
         if ($this->input('council_shire') === '') {

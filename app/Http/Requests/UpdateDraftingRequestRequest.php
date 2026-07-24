@@ -50,7 +50,7 @@ class UpdateDraftingRequestRequest extends FormRequest
                 'section' => ['required', 'string', 'in:client'],
                 'your_name' => ['required', 'string', 'max:255'],
                 'company_name' => ['required', 'string', 'max:255'],
-                'email' => ['required', 'string', 'lowercase', 'email', 'max:255'],
+                'email' => ['nullable', 'string', 'lowercase', 'email', 'max:255'],
             ],
             'job' => [
                 'section' => ['required', 'string', 'in:job'],
