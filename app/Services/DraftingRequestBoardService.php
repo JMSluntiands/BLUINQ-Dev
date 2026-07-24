@@ -23,6 +23,7 @@ class DraftingRequestBoardService
 
         $query = DraftingRequest::query()
             ->with([
+                'crmCategory:id,name,code',
                 'buildingType:id,name',
                 'storeyLevel:id,name,code',
                 'serviceEngagings:id,name',
@@ -91,9 +92,16 @@ class DraftingRequestBoardService
     public function formatBoardRow(DraftingRequest $row): array
     {
         $tz = config('app.timezone');
-        $services = $row->serviceEngagings->pluck('name')->values();
-        $categoryFull = $services->join(', ');
-        $category = $services->first() ?? '—';
+        if ($row->crmCategory) {
+            $categoryFull = $row->crmCategory->code
+                ? "{$row->crmCategory->code} — {$row->crmCategory->name}"
+                : $row->crmCategory->name;
+            $category = $row->crmCategory->code ?: $row->crmCategory->name;
+        } else {
+            $services = $row->serviceEngagings->pluck('name')->values();
+            $categoryFull = $services->join(', ');
+            $category = $services->first() ?? '—';
+        }
         if (mb_strlen($category) > 16) {
             $category = mb_substr($category, 0, 13).'...';
         }

@@ -6,11 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDraftingRequestFormRequest;
 use App\Models\BuildingClass;
 use App\Models\Client;
+use App\Models\CrmCategory;
 use App\Models\DraftingRequest;
 use App\Models\ExternalWallConstruction;
 use App\Models\RoofType;
 use App\Models\SdaType;
-use App\Models\ServiceEngaging;
 use App\Models\StoreyLevel;
 use App\Services\DraftingRequestBoardService;
 use App\Services\DraftingRequestSubmissionService;
@@ -36,6 +36,7 @@ class MasterlistController extends Controller
             ->with([
                 'buildingType:id,name',
                 'storeyLevel:id,name,code',
+                'crmCategory:id,name,code',
                 'serviceEngagings:id,name',
                 'assignments' => fn ($relation) => $relation
                     ->with('user:id,name')
@@ -149,6 +150,7 @@ class MasterlistController extends Controller
                 'email' => $draftingRequest->email,
                 'phone' => $draftingRequest->phone,
                 'service_engaging_ids' => $draftingRequest->serviceEngagings()->pluck('service_engagings.id')->all(),
+                'crm_category_id' => $draftingRequest->crm_category_id,
                 'site_address' => $draftingRequest->site_address,
                 'council_shire' => $draftingRequest->council_shire,
                 'site_owner_name' => $draftingRequest->site_owner_name,
@@ -214,7 +216,7 @@ class MasterlistController extends Controller
     /**
      * @return array{
      *     clients: \Illuminate\Support\Collection,
-     *     serviceEngagings: \Illuminate\Support\Collection,
+     *     categories: \Illuminate\Support\Collection,
      *     sdaTypes: \Illuminate\Support\Collection,
      *     storeyLevels: \Illuminate\Support\Collection,
      *     buildingClasses: \Illuminate\Support\Collection,
@@ -242,10 +244,11 @@ class MasterlistController extends Controller
 
         return [
             'clients' => $clients,
-            'serviceEngagings' => ServiceEngaging::query()
+            'categories' => CrmCategory::query()
                 ->active()
+                ->orderBy('code')
                 ->orderBy('name')
-                ->get(['id', 'name']),
+                ->get(['id', 'name', 'code']),
             'sdaTypes' => SdaType::query()
                 ->active()
                 ->orderBy('name')

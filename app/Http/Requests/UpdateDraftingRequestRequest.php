@@ -69,10 +69,17 @@ class UpdateDraftingRequestRequest extends FormRequest
                         fn ($q) => $q->whereNull('archived_at'),
                     ),
                 ],
+                'crm_category_id' => [
+                    'required',
+                    'integer',
+                    Rule::exists('crm_categories', 'id')->where(
+                        fn ($q) => $q->whereNull('archived_at'),
+                    ),
+                ],
                 'zoning' => ['nullable', 'string', 'max:255'],
                 'site_address' => ['required', 'string', 'max:2000'],
                 'site_owner_name' => ['nullable', 'string', 'max:255'],
-                'service_engaging_ids' => ['required', 'array', 'min:1'],
+                'service_engaging_ids' => ['nullable', 'array'],
                 'service_engaging_ids.*' => [
                     'integer',
                     Rule::exists('service_engagings', 'id')->where(
@@ -167,7 +174,7 @@ class UpdateDraftingRequestRequest extends FormRequest
                 ]);
             }
 
-            foreach (['external_wall_construction_id', 'roof_type_id', 'building_type_id', 'storey_level_id'] as $key) {
+            foreach (['external_wall_construction_id', 'roof_type_id', 'building_type_id', 'storey_level_id', 'crm_category_id'] as $key) {
                 if (! $this->has($key)) {
                     continue;
                 }

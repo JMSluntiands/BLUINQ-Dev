@@ -137,6 +137,14 @@ class DraftingJobShowService
 
     public function formattedServices(DraftingRequest $draftingRequest): ?string
     {
+        if ($draftingRequest->crmCategory) {
+            $category = $draftingRequest->crmCategory;
+
+            return $category->code
+                ? mb_strtoupper("{$category->code} — {$category->name}")
+                : mb_strtoupper($category->name);
+        }
+
         $names = $draftingRequest->serviceEngagings
             ->pluck('name')
             ->map(fn (string $name) => mb_strtoupper($name))

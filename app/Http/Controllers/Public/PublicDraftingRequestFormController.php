@@ -6,11 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePublicDraftingRequestFormRequest;
 use App\Models\BuildingClass;
 use App\Models\Client;
+use App\Models\CrmCategory;
 use App\Models\DraftingRequest;
 use App\Models\ExternalWallConstruction;
 use App\Models\RoofType;
 use App\Models\SdaType;
-use App\Models\ServiceEngaging;
 use App\Models\StoreyLevel;
 use App\Services\DraftingRequestSubmissionService;
 use App\Support\PublicDraftingFormUrl;
@@ -41,10 +41,11 @@ class PublicDraftingRequestFormController extends Controller
                 ->selectable()
                 ->orderBy('name')
                 ->get(['id', 'name', 'contact_name', 'email', 'phone']),
-            'serviceEngagings' => ServiceEngaging::query()
+            'categories' => CrmCategory::query()
                 ->active()
+                ->orderBy('code')
                 ->orderBy('name')
-                ->get(['id', 'name']),
+                ->get(['id', 'name', 'code']),
             'sdaTypes' => SdaType::query()
                 ->active()
                 ->orderBy('name')

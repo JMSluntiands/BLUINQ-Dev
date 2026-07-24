@@ -56,10 +56,10 @@ export default function DraftingEditModals({
         section: 'job',
         status: draftingRequest.status ?? 'new',
         storey_level_id: draftingRequest.storey_level_id ?? '',
+        crm_category_id: draftingRequest.crm_category_id ?? '',
         zoning: draftingRequest.zoning ?? '',
         site_address: draftingRequest.site_address ?? '',
         site_owner_name: draftingRequest.site_owner_name ?? '',
-        service_engaging_ids: draftingRequest.service_engaging_ids ?? [],
         ndis_sda: draftingRequest.ndis_sda ?? false,
         unit_development_count:
             draftingRequest.unit_development_count ?? 0,
@@ -85,10 +85,10 @@ export default function DraftingEditModals({
             section: 'job',
             status: draftingRequest.status ?? 'new',
             storey_level_id: draftingRequest.storey_level_id ?? '',
+            crm_category_id: draftingRequest.crm_category_id ?? '',
             zoning: draftingRequest.zoning ?? '',
             site_address: draftingRequest.site_address ?? '',
             site_owner_name: draftingRequest.site_owner_name ?? '',
-            service_engaging_ids: draftingRequest.service_engaging_ids ?? [],
             ndis_sda: draftingRequest.ndis_sda ?? false,
             unit_development_count:
                 draftingRequest.unit_development_count ?? 0,
@@ -128,19 +128,6 @@ export default function DraftingEditModals({
             preserveScroll: true,
             onSuccess: () => onClose(),
         });
-    };
-
-    const toggleService = (form, id) => {
-        const ids = form.data.service_engaging_ids;
-        const n = Number(id);
-        if (ids.includes(n)) {
-            form.setData(
-                'service_engaging_ids',
-                ids.filter((x) => x !== n),
-            );
-        } else {
-            form.setData('service_engaging_ids', [...ids, n]);
-        }
     };
 
     return (
@@ -363,36 +350,31 @@ export default function DraftingEditModals({
                             />
                         </div>
                         <div className="sm:col-span-2">
-                            <InputLabel value="Services" />
-                            <ul className="mt-1.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                                {(formOptions.serviceEngagings ?? []).map((row) => (
-                                    <li key={row.id}>
-                                        <label className="flex cursor-pointer items-start gap-1.5 rounded-md border border-[#e6e9ef] bg-[#fafbfc] px-2 py-1.5 dark:border-[#2f3347] dark:bg-[#151622]">
-                                            <input
-                                                type="checkbox"
-                                                className="mt-0.5 rounded border-[#c5c7d0] text-[#0073ea] focus:ring-[#0073ea]"
-                                                checked={jobForm.data.service_engaging_ids.some(
-                                                    (id) =>
-                                                        Number(id) ===
-                                                        Number(row.id),
-                                                )}
-                                                onChange={() =>
-                                                    toggleService(jobForm, row.id)
-                                                }
-                                            />
-                                            <span className="text-xs text-[#323338] dark:text-slate-200">
-                                                {row.name}
-                                            </span>
-                                        </label>
-                                    </li>
+                            <InputLabel htmlFor="edit-crm_category_id" value="Category" />
+                            <select
+                                id="edit-crm_category_id"
+                                className={selectClass}
+                                value={jobForm.data.crm_category_id}
+                                onChange={(e) =>
+                                    jobForm.setData(
+                                        'crm_category_id',
+                                        e.target.value,
+                                    )
+                                }
+                                required
+                            >
+                                <option value="">Select…</option>
+                                {(formOptions.categories ?? []).map((row) => (
+                                    <option key={row.id} value={row.id}>
+                                        {row.code
+                                            ? `${row.code} — ${row.name}`
+                                            : row.name}
+                                    </option>
                                 ))}
-                            </ul>
+                            </select>
                             <InputError
                                 className="mt-2"
-                                message={
-                                    jobForm.errors.service_engaging_ids ??
-                                    jobForm.errors['service_engaging_ids.0']
-                                }
+                                message={jobForm.errors.crm_category_id}
                             />
                         </div>
                         <div className="sm:col-span-2 border-t border-[#e6e9ef] pt-3 dark:border-[#2f3347]">

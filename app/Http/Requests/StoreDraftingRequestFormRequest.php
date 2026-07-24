@@ -30,10 +30,17 @@ class StoreDraftingRequestFormRequest extends FormRequest
             'company_name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'string', 'lowercase', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
-            'service_engaging_ids' => ['required', 'array', 'min:1'],
+            'service_engaging_ids' => ['nullable', 'array'],
             'service_engaging_ids.*' => [
                 'integer',
                 Rule::exists('service_engagings', 'id')->where(
+                    fn ($q) => $q->whereNull('archived_at'),
+                ),
+            ],
+            'crm_category_id' => [
+                'required',
+                'integer',
+                Rule::exists('crm_categories', 'id')->where(
                     fn ($q) => $q->whereNull('archived_at'),
                 ),
             ],
@@ -102,6 +109,7 @@ class StoreDraftingRequestFormRequest extends FormRequest
             'building_class_id',
             'building_type_id',
             'storey_level_id',
+            'crm_category_id',
         ];
 
         $normalized = [
@@ -154,6 +162,15 @@ class StoreDraftingRequestFormRequest extends FormRequest
         }
         $normalized['sda_type_ids'] = array_values(array_filter(
             $sdaIds,
+            fn ($id) => $id !== '' && $id !== null,
+        ));
+
+        $serviceIds = $this->input('service_engaging_ids', []);
+        if (! is_array($serviceIds)) {
+            $serviceIds = [];
+        }
+        $normalized['service_engaging_ids'] = array_values(array_filter(
+            $serviceIds,
             fn ($id) => $id !== '' && $id !== null,
         ));
 

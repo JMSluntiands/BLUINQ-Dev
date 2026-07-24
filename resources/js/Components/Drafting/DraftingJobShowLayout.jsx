@@ -738,9 +738,12 @@ export default function DraftingJobShowLayout({
                     )}
                 </JobDetailField>
                 <JobDetailField
-                    label="Services / category"
-                    value={draftingRequest.services_label}
-                    hint="From Project Management categories"
+                    label="Category"
+                    value={
+                        draftingRequest.crm_category ??
+                        draftingRequest.services_label
+                    }
+                    hint="From Workflow settings → Category"
                 />
                 <JobDetailField
                     label="NDIS / SDA"

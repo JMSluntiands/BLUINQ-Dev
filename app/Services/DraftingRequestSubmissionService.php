@@ -34,7 +34,7 @@ class DraftingRequestSubmissionService
             ]);
 
             $draftingRequest->serviceEngagings()->sync(
-                $request->validated('service_engaging_ids'),
+                $request->validated('service_engaging_ids') ?? [],
             );
 
             $draftingRequest->sdaTypes()->sync(
@@ -89,7 +89,7 @@ class DraftingRequestSubmissionService
             $draftingRequest->update($validated);
 
             $draftingRequest->serviceEngagings()->sync(
-                $request->validated('service_engaging_ids'),
+                $request->validated('service_engaging_ids') ?? [],
             );
 
             $draftingRequest->sdaTypes()->sync(

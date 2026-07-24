@@ -15,7 +15,6 @@ use App\Models\CrmCategory;
 use App\Models\DraftingRequest;
 use App\Models\ExternalWallConstruction;
 use App\Models\RoofType;
-use App\Models\ServiceEngaging;
 use App\Models\StoreyLevel;
 use App\Models\DraftingRequestActivity;
 use App\Models\DraftingRequestComment;
@@ -117,6 +116,7 @@ class DraftingController extends Controller
             'buildingType:id,name',
             'buildingClass:id,name,code',
             'storeyLevel:id,name,code',
+            'crmCategory:id,name,code',
             'externalWallConstruction:id,name',
             'roofType:id,name',
             'serviceEngagings:id,name',
@@ -152,6 +152,7 @@ class DraftingController extends Controller
                 'phone' => $draftingRequest->phone,
                 'building_type_id' => $draftingRequest->building_type_id,
                 'storey_level_id' => $draftingRequest->storey_level_id,
+                'crm_category_id' => $draftingRequest->crm_category_id,
                 'external_wall_construction_id' => $draftingRequest->external_wall_construction_id,
                 'roof_type_id' => $draftingRequest->roof_type_id,
                 'service_engaging_ids' => $draftingRequest->serviceEngagings
@@ -170,6 +171,11 @@ class DraftingController extends Controller
                     ? ($draftingRequest->storeyLevel->code
                         ? "{$draftingRequest->storeyLevel->code} — {$draftingRequest->storeyLevel->name}"
                         : $draftingRequest->storeyLevel->name)
+                    : null,
+                'crm_category' => $draftingRequest->crmCategory
+                    ? ($draftingRequest->crmCategory->code
+                        ? "{$draftingRequest->crmCategory->code} — {$draftingRequest->crmCategory->name}"
+                        : $draftingRequest->crmCategory->name)
                     : null,
                 'building_class' => $draftingRequest->buildingClass
                     ? ($draftingRequest->buildingClass->code
@@ -258,8 +264,8 @@ class DraftingController extends Controller
             'capabilities' => $capabilities,
             'canUseRunComments' => $user->isAdmin(),
             'formOptions' => $capabilities['editJobDetails'] ? [
+                'categories' => CrmCategory::query()->active()->orderBy('code')->orderBy('name')->get(['id', 'name', 'code']),
                 'storeyLevels' => StoreyLevel::query()->active()->orderBy('code')->orderBy('name')->get(['id', 'name', 'code']),
-                'serviceEngagings' => ServiceEngaging::query()->active()->orderBy('name')->get(['id', 'name']),
                 'externalWallConstructions' => ExternalWallConstruction::query()->active()->orderBy('name')->get(['id', 'name']),
                 'roofTypes' => RoofType::query()->active()->orderBy('name')->get(['id', 'name']),
             ] : null,

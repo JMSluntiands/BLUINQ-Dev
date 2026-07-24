@@ -120,6 +120,7 @@ class DraftingRequest extends Model
         'building_type_id',
         'building_class_id',
         'storey_level_id',
+        'crm_category_id',
         'zoning',
         'ndis_sda',
         'unit_development_count',
@@ -283,6 +284,14 @@ class DraftingRequest extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+
+    /**
+     * @return BelongsTo<CrmCategory, $this>
+     */
+    public function crmCategory(): BelongsTo
+    {
+        return $this->belongsTo(CrmCategory::class);
     }
 
     /**

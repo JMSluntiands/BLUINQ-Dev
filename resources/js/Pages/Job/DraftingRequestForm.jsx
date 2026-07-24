@@ -71,7 +71,7 @@ function DisplayValue({ value, emptyLabel = '—' }) {
 export default function DraftingRequestForm({
     applicant,
     clients = [],
-    serviceEngagings = [],
+    categories = [],
     sdaTypes = [],
     storeyLevels = [],
     buildingClasses = [],
@@ -105,7 +105,7 @@ export default function DraftingRequestForm({
         company_name: applicant.company_name ?? '',
         email: applicant.email ?? '',
         phone: applicant.phone ?? '',
-        service_engaging_ids: (applicant.service_engaging_ids ?? []).map(String),
+        crm_category_id: applicant.crm_category_id ?? '',
         site_address: applicant.site_address ?? '',
         council_shire: applicant.council_shire ?? '',
         site_owner_name: applicant.site_owner_name ?? '',
@@ -125,9 +125,6 @@ export default function DraftingRequestForm({
         if (!next.documents?.length) {
             delete next.documents;
         }
-        next.service_engaging_ids = (next.service_engaging_ids ?? []).map(
-            (id) => Number(id),
-        );
         next.sda_type_ids = (next.sda_type_ids ?? []).map((id) => Number(id));
         next.ndis_sda = next.sda_type_ids.length > 0;
         if (next.client_id === '' || next.client_id == null) {
@@ -146,15 +143,6 @@ export default function DraftingRequestForm({
                 label: client.name,
             })),
         [clients],
-    );
-
-    const serviceEngagingOptions = useMemo(
-        () =>
-            serviceEngagings.map((row) => ({
-                value: String(row.id),
-                label: row.name,
-            })),
-        [serviceEngagings],
     );
 
     const sdaTypeOptions = useMemo(
@@ -199,16 +187,6 @@ export default function DraftingRequestForm({
             });
         },
         [clients, setData, standalone],
-    );
-
-    const handleServiceEngagingChange = useCallback(
-        (values) => {
-            setData(
-                'service_engaging_ids',
-                Array.isArray(values) ? values.map(String) : [],
-            );
-        },
-        [setData],
     );
 
     const handleSdaTypeChange = useCallback(
@@ -409,41 +387,45 @@ export default function DraftingRequestForm({
                                 <FieldBlock
                                     className="lg:col-span-2"
                                     label={
-                                        <InputLabel htmlFor="service_engaging_ids">
-                                            4. Type of Service Engaging
+                                        <InputLabel htmlFor="crm_category_id">
+                                            4. Category
                                             <ReqMark />
                                         </InputLabel>
                                     }
-                                    hint="You can select multiple service types."
-                                    error={
-                                        errors.service_engaging_ids ??
-                                        errors['service_engaging_ids.0']
-                                    }
+                                    hint="Options from Workflow settings → Category."
+                                    error={errors.crm_category_id}
                                 >
-                                    <div className="select2-field w-full">
-                                        <Select2
-                                            id="service_engaging_ids"
-                                            multiple
-                                            value={data.service_engaging_ids}
-                                            onChange={
-                                                handleServiceEngagingChange
-                                            }
-                                            options={serviceEngagingOptions}
-                                            placeholder="Select service types…"
-                                        />
-                                    </div>
+                                    <select
+                                        id="crm_category_id"
+                                        className={selectClass}
+                                        value={data.crm_category_id}
+                                        onChange={(e) =>
+                                            setData(
+                                                'crm_category_id',
+                                                e.target.value,
+                                            )
+                                        }
+                                        required
+                                    >
+                                        <option value="">Select…</option>
+                                        {categories.map((row) => (
+                                            <option key={row.id} value={row.id}>
+                                                {row.code
+                                                    ? `${row.code} — ${row.name}`
+                                                    : row.name}
+                                            </option>
+                                        ))}
+                                    </select>
                                     <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                                         For job material documents/files —
                                         please email or upload them to
                                         SharePoint. Incomplete files can affect
                                         deliverable accuracy.
                                     </p>
-                                    {serviceEngagings.length === 0 ? (
+                                    {categories.length === 0 ? (
                                         <p className="text-sm text-amber-800 dark:text-amber-200">
-                                            No service types are configured yet.
-                                            Ask an administrator to add entries
-                                            under Workflow settings → Service
-                                            Engaging.
+                                            No categories configured. Add them
+                                            under Workflow settings → Category.
                                         </p>
                                     ) : null}
                                 </FieldBlock>
