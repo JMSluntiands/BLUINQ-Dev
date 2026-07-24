@@ -253,7 +253,7 @@ export default function DraftingShow({
                     onEditQuote={(row) => setEditingQuote(row)}
                     onEditInvoice={(row) => setEditingInvoice(row)}
                     canViewRevision={viewRevision}
-                    canAddRevision={false}
+                    canAddRevision={addRevision}
                     onAddRevision={() => setRevisionModalOpen(true)}
                     onEditRevision={
                         addRevision ? (row) => setEditingRevision(row) : undefined
