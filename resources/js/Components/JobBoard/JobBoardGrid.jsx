@@ -485,7 +485,7 @@ function JobBoardTableHead({
             <tr>
                 <th className={thClass}>Site Address</th>
                 <th className={thClass + ' w-10'} />
-                <th className={thClass}>Lead No.</th>
+                <th className={thClass}>Revision No.</th>
                 <th className={thClass}>Client Name</th>
                 <th className={thClass}>Category</th>
                 <th className={thClass}>Storey / Levels</th>

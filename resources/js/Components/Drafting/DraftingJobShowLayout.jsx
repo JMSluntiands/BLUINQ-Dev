@@ -647,7 +647,7 @@ export default function DraftingJobShowLayout({
                     {draftingRequest.site_address || 'Project info'}
                 </h1>
                 <p className="mt-1 text-sm text-[#676879] dark:text-slate-400">
-                    Lead number:{' '}
+                    {isMasterlist ? 'Lead number' : 'Revision number'}:{' '}
                     <span className="font-medium text-[#323338] dark:text-slate-200">
                         {draftingRequest.reference}
                     </span>
