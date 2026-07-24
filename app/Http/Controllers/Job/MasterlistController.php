@@ -47,7 +47,10 @@ class MasterlistController extends Controller
                 'accountEntries' => fn ($relation) => $relation->orderByDesc('id'),
             ])
             ->withCount(['files', 'comments'])
-            ->masterlist()
+            ->whereIn('workflow_stage', [
+                DraftingRequest::STAGE_MASTERLIST,
+                DraftingRequest::STAGE_APM,
+            ])
             ->reviewAccepted()
             ->active()
             ->orderByDesc('requested_at')
@@ -63,7 +66,14 @@ class MasterlistController extends Controller
         return Inertia::render('Job/Masterlist/Index', [
             'draftingRequests' => $query
                 ->paginate($perPage)
-                ->through(fn (DraftingRequest $row) => $this->board->formatBoardRow($row))
+                ->through(function (DraftingRequest $row) {
+                    $formatted = $this->board->formatBoardRow($row);
+                    $formatted['workflow_stage'] = $row->workflow_stage;
+                    $formatted['can_edit_masterlist'] =
+                        $row->workflow_stage === DraftingRequest::STAGE_MASTERLIST;
+
+                    return $formatted;
+                })
                 ->withQueryString(),
             'filters' => [
                 'search' => $search,
@@ -106,7 +116,7 @@ class MasterlistController extends Controller
 
     public function show(Request $request, DraftingRequest $draftingRequest): Response
     {
-        $this->authorizeMasterlist($request, $draftingRequest);
+        $this->authorizeMasterlistView($request, $draftingRequest);
 
         return $this->drafting->renderJobShow($request, $draftingRequest, [
             'from' => 'masterlist',
@@ -256,6 +266,30 @@ class MasterlistController extends Controller
                 ->orderBy('name')
                 ->get(['id', 'name']),
         ];
+    }
+
+    private function authorizeMasterlistView(Request $request, DraftingRequest $draftingRequest): void
+    {
+        $user = $request->user();
+
+        if ($user === null) {
+            abort(403);
+        }
+
+        $allowedStages = [
+            DraftingRequest::STAGE_MASTERLIST,
+            DraftingRequest::STAGE_APM,
+        ];
+
+        if (! in_array($draftingRequest->workflow_stage, $allowedStages, true)
+            || $draftingRequest->review_status !== DraftingRequest::REVIEW_ACCEPTED
+            || $draftingRequest->isArchived()) {
+            abort(404);
+        }
+
+        if (! $user->isAdmin() && $draftingRequest->user_id !== $user->id) {
+            abort(403);
+        }
     }
 
     private function authorizeMasterlist(Request $request, DraftingRequest $draftingRequest): void

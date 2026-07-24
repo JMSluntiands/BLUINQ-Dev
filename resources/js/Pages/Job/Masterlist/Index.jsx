@@ -90,16 +90,22 @@ export default function Index({ draftingRequests, filters = {} }) {
                             preserveScroll: true,
                         })
                     }
-                    renderActions={(job) => (
-                        <Link
-                            href={route('job.masterlist.edit', job.id) + q}
-                            className={iconBtn}
-                            title="Edit"
-                            aria-label={`Edit ${job.job_no}`}
-                        >
-                            <PencilSquareIcon className="h-4 w-4" />
-                        </Link>
-                    )}
+                    renderActions={(job) =>
+                        job.can_edit_masterlist ? (
+                            <Link
+                                href={route('job.masterlist.edit', job.id) + q}
+                                className={iconBtn}
+                                title="Edit"
+                                aria-label={`Edit ${job.job_no}`}
+                            >
+                                <PencilSquareIcon className="h-4 w-4" />
+                            </Link>
+                        ) : (
+                            <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                                Forwarded
+                            </span>
+                        )
+                    }
                 />
 
                 <Pagination pagination={draftingRequests} />

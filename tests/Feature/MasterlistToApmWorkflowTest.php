@@ -86,7 +86,9 @@ class MasterlistToApmWorkflowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Job/Masterlist/Index')
-                ->has('draftingRequests.data', 0));
+                ->has('draftingRequests.data', 1)
+                ->where('draftingRequests.data.0.workflow_stage', DraftingRequest::STAGE_APM)
+                ->where('draftingRequests.data.0.can_edit_masterlist', false));
 
         $this->actingAs($user)
             ->get(route('job.board'))
