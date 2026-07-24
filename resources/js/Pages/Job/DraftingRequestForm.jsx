@@ -289,7 +289,6 @@ export default function DraftingRequestForm({
                                     label={
                                         <InputLabel htmlFor="requested_at">
                                             1. Date
-                                            <ReqMark />
                                         </InputLabel>
                                     }
                                     error={errors.requested_at}
@@ -298,14 +297,13 @@ export default function DraftingRequestForm({
                                         id="requested_at"
                                         type="datetime-local"
                                         className={inputClass}
-                                        value={data.requested_at}
+                                        value={data.requested_at ?? ''}
                                         onChange={(e) =>
                                             setData(
                                                 'requested_at',
                                                 e.target.value,
                                             )
                                         }
-                                        required
                                     />
                                 </FieldBlock>
 

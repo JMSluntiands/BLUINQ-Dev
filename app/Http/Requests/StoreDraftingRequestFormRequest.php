@@ -18,7 +18,7 @@ class StoreDraftingRequestFormRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'requested_at' => ['required', 'date'],
+            'requested_at' => ['nullable', 'date'],
             'your_name' => ['required', 'string', 'max:255'],
             'client_id' => [
                 'required',
@@ -101,6 +101,13 @@ class StoreDraftingRequestFormRequest extends FormRequest
                 ->filter(fn ($id) => $id !== '' && $id !== null)
                 ->isNotEmpty(),
         ];
+
+        $requestedAt = $this->input('requested_at');
+        if ($requestedAt === '' || $requestedAt === null) {
+            $normalized['requested_at'] = now(config('app.timezone'))
+                ->seconds(0)
+                ->format('Y-m-d H:i:s');
+        }
 
         foreach ($nullableIds as $key) {
             $value = $this->input($key);
