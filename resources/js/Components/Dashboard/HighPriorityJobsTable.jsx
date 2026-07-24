@@ -14,7 +14,7 @@ export default function HighPriorityJobsTable({ boardPreviewJobs = [] }) {
                     </p>
                 </div>
                 <Link
-                    href={route('job.board')}
+                    href={route('job.list')}
                     className="shrink-0 text-sm font-medium text-[#1890ff] transition hover:text-[#1478e0] dark:text-[#1890ff]"
                 >
                     View full board

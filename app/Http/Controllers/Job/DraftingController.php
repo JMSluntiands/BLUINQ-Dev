@@ -487,7 +487,7 @@ class DraftingController extends Controller
         }
 
         return redirect()
-            ->route('job.board', $this->redirectQuery($request))
+            ->route('job.list', $this->redirectQuery($request))
             ->with('status', 'drf-archived');
     }
 
@@ -497,7 +497,7 @@ class DraftingController extends Controller
 
         if (! $draftingRequest->isArchived()) {
             return redirect()
-                ->route('job.board', $this->redirectQuery($request))
+                ->route('job.list', $this->redirectQuery($request))
                 ->with('status', 'drf-not-archived');
         }
 

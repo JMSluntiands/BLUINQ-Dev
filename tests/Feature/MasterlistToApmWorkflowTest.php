@@ -48,7 +48,7 @@ class MasterlistToApmWorkflowTest extends TestCase
                 ->has('draftingRequests.data', 1));
 
         $this->actingAs($user)
-            ->get(route('job.board'))
+            ->get(route('job.list'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Job/Board')
@@ -93,7 +93,7 @@ class MasterlistToApmWorkflowTest extends TestCase
                 ->where('draftingRequests.data.0.can_edit_masterlist', false));
 
         $this->actingAs($user)
-            ->get(route('job.board'))
+            ->get(route('job.list'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Job/Board')
@@ -155,7 +155,7 @@ class MasterlistToApmWorkflowTest extends TestCase
         );
 
         $this->actingAs($user)
-            ->get(route('job.board'))
+            ->get(route('job.list'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Job/Board')
@@ -209,7 +209,7 @@ class MasterlistToApmWorkflowTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('job.board'))
+            ->get(route('job.list'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Job/Board')

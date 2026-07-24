@@ -18,7 +18,7 @@ class PendingDraftingRequestController extends Controller
 
     public function index(Request $request): RedirectResponse
     {
-        return redirect()->route('job.board');
+        return redirect()->route('job.list');
     }
 
     public function accept(Request $request, DraftingRequest $draftingRequest): RedirectResponse

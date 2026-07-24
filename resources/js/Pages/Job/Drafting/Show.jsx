@@ -92,13 +92,13 @@ export default function DraftingShow({
     const fromMasterlist = listFilters.from === 'masterlist';
     const backHref = fromMasterlist
         ? route('job.masterlist') + listQs
-        : (fromArchive ? route('job.drafting.archive') : route('job.board')) +
+        : (fromArchive ? route('job.drafting.archive') : route('job.list')) +
           listQs;
     const backLabel = fromMasterlist
         ? '← Back to masterlist'
         : fromArchive
           ? '← Back to archive'
-          : '← Back to board';
+          : '← Back to Archi Project Management';
     const updateUrl =
         route('job.drafting.update', draftingRequest.id) + listQs;
     const [archiveOpen, setArchiveOpen] = useState(false);

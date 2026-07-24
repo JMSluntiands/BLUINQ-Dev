@@ -27,9 +27,9 @@ class JobBoardController extends Controller
         private DraftingRequestSubmissionService $submission,
     ) {}
 
-    public function index(Request $request): Response
+    public function index(Request $request): RedirectResponse
     {
-        return $this->renderBoard($request, groupByStatus: false);
+        return redirect()->route('job.list', $request->query());
     }
 
     public function list(Request $request): Response
@@ -303,7 +303,7 @@ class JobBoardController extends Controller
 
     public function redirectFromLegacyList(Request $request): RedirectResponse
     {
-        return redirect()->route('job.board', $request->query());
+        return redirect()->route('job.list', $request->query());
     }
 
     public function togglePriority(Request $request, DraftingRequest $draftingRequest): RedirectResponse

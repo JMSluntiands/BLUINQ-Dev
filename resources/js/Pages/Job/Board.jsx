@@ -47,17 +47,11 @@ export default function JobBoard({
     const [liveSearch, setLiveSearch] = useState('');
     const [revisionJob, setRevisionJob] = useState(null);
     const hasSearch = Boolean(liveSearch.trim());
-    const searchRoute = groupByStatus ? 'job.list' : 'job.board';
-    const pageTitle = groupByStatus
-        ? 'Archi Project Management'
-        : 'Archi Team — Job board';
-    const pageDescription = groupByStatus
-        ? canViewAllRequests
-            ? 'All jobs on the project board, grouped by status.'
-            : 'Your jobs on the project board, grouped by status.'
-        : canViewAllRequests
-          ? 'All submitted drafting requests in the project board.'
-          : 'Your submitted drafting requests on the project board.';
+    const searchRoute = 'job.list';
+    const pageTitle = 'Archi Project Management';
+    const pageDescription = canViewAllRequests
+        ? 'All jobs on the project board, grouped by status.'
+        : 'Your jobs on the project board, grouped by status.';
 
     const showAddRevisionActions = useMemo(
         () => rows.some((job) => job.can_add_revision),

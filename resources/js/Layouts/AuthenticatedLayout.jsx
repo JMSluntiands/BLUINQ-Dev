@@ -141,7 +141,8 @@ export default function AuthenticatedLayout({ header, children }) {
         route().current('announcements.create') ||
         route().current('announcements.edit') ||
         route().current('announcements.archive');
-    const isJobList = route().current('job.list');
+    const isJobList =
+        route().current('job.list') || route().current('job.board');
     const isJobStatusChart = route().current('job.status-chart');
     const isTimesheet = route().current('timesheet.index');
     const isLeaveApprovals = route().current('leave.approvals');
@@ -149,9 +150,9 @@ export default function AuthenticatedLayout({ header, children }) {
     const isUserMilestones =
         route().current('settings.user-milestones.index') ||
         route().current('settings.user-milestones.show');
-    const isJobBoard =
-        route().current('job.board') || route().current('job.drafting');
-    const isDraftingList = isJobBoard || route().current('job.drafting.show');
+    const isDraftingShow =
+        route().current('job.drafting') ||
+        route().current('job.drafting.show');
     const isDraftingMemos = route().current('drafting-memos.index');
     const isDraftingArchive = route().current('job.drafting.archive');
     const isMasterlist =
@@ -162,8 +163,7 @@ export default function AuthenticatedLayout({ header, children }) {
     const isArchiMenuSection =
         isDraftingMemos ||
         isJobList ||
-        isJobBoard ||
-        isDraftingList ||
+        isDraftingShow ||
         isDraftingArchive;
     const isUsersIndex = route().current('settings.users.index');
     const isUsersCreate = route().current('settings.users.create');
@@ -409,22 +409,13 @@ export default function AuthenticatedLayout({ header, children }) {
                                         {canJobList && (
                                             <SidebarSubLink
                                                 href={route('job.list')}
-                                                active={isJobList}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                Archi Project Management
-                                            </SidebarSubLink>
-                                        )}
-                                        {canJobList && (
-                                            <SidebarSubLink
-                                                href={route('job.board')}
                                                 active={
-                                                    isJobBoard || isDraftingList
+                                                    isJobList || isDraftingShow
                                                 }
                                                 onNavigate={closeSidebar}
                                             >
                                                 <span className="flex flex-1 items-center justify-between gap-2">
-                                                    New Jobs
+                                                    Archi Project Management
                                                     {canReviewDraftingRequests &&
                                                         pendingDraftingRequestCount >
                                                             0 && (

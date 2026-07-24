@@ -194,7 +194,7 @@ class ApmRevisionSyncTest extends TestCase
         $this->createApmJob($user, $storeyLevel, $category);
 
         $this->actingAs($user)
-            ->get(route('job.board'))
+            ->get(route('job.list'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Job/Board')
