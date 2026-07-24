@@ -923,7 +923,7 @@ function JobBoardStatusSection({
 
             {!collapsed &&
                 (jobs.length > 0 ? (
-                    <div id={sectionId} className="overflow-x-auto">
+                    <div id={sectionId} className="min-w-0 max-w-full overflow-x-auto">
                         <table
                             className={
                                 'w-full border-collapse text-left ' +
@@ -1045,7 +1045,7 @@ export default function JobBoardGrid({
 
     return (
         <>
-            <div className="bg-white dark:bg-[#1a1b2e]">
+            <div className="bg-white dark:bg-[#1a1b2e] min-w-0 max-w-full">
                 {groupByStatus ? (
                     statusGroups.map((group) => (
                         <JobBoardStatusSection
@@ -1071,7 +1071,7 @@ export default function JobBoardGrid({
                         />
                     ))
                 ) : (
-                    <div className="overflow-x-auto">
+                    <div className="min-w-0 max-w-full overflow-x-auto">
                         <table
                             className={
                                 'w-full border-collapse text-left ' +

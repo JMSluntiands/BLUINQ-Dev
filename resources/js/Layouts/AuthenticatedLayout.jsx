@@ -226,7 +226,7 @@ export default function AuthenticatedLayout({ header, children }) {
     }, [isArchiMenuSection]);
 
     return (
-        <div className="min-h-screen bg-slate-100 dark:bg-[#0a0c14]">
+        <div className="min-h-screen overflow-x-hidden bg-slate-100 dark:bg-[#0a0c14]">
             {/* Mobile sidebar backdrop */}
             <div
                 className={

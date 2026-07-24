@@ -3,9 +3,9 @@ import { Link, router } from '@inertiajs/react';
 
 export default function HighPriorityJobsTable({ boardPreviewJobs = [] }) {
     return (
-        <div className="mt-8">
+        <div className="mt-8 min-w-0 max-w-full">
             <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                     <h3 className="text-base font-semibold text-slate-900 dark:text-white">
                         For Checking
                     </h3>
@@ -20,7 +20,7 @@ export default function HighPriorityJobsTable({ boardPreviewJobs = [] }) {
                     View full board
                 </Link>
             </div>
-            <div className="overflow-hidden rounded-xl border border-[#2a2d3e] dark:border-[#2f3347]">
+            <div className="min-w-0 max-w-full overflow-x-auto rounded-xl border border-[#2a2d3e] dark:border-[#2f3347]">
                 <JobBoardGrid
                     jobs={boardPreviewJobs}
                     emptyMessage="No jobs for checking."

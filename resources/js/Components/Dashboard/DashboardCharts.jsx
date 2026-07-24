@@ -680,7 +680,7 @@ export default function DashboardCharts({
     calendarMonth,
 }) {
     return (
-        <div className="mt-8 grid grid-cols-1 gap-6">
+        <div className="mt-8 grid min-w-0 max-w-full grid-cols-1 gap-6">
             <DrafterLeaderboardChart
                 drafterLeaderboard={drafterLeaderboard}
                 calendarMonth={calendarMonth}

@@ -482,8 +482,8 @@ export default function Dashboard() {
                 <DashboardPanel
                     title="Attendance"
                     icon={UserMinusIcon}
-                    className="max-h-[28rem] w-full lg:col-span-3 lg:max-h-[var(--dashboard-side-h,28rem)] lg:h-[var(--dashboard-side-h,28rem)]"
-                    bodyClassName="overflow-y-auto overscroll-y-contain"
+                    className="max-h-[28rem] w-full min-w-0 lg:col-span-3 lg:max-h-[var(--dashboard-side-h,28rem)] lg:h-[var(--dashboard-side-h,28rem)]"
+                    bodyClassName="overflow-x-hidden overflow-y-auto overscroll-y-contain"
                     style={sidePanelStyle}
                 >
                     <div className="space-y-5">
@@ -540,8 +540,8 @@ export default function Dashboard() {
                 <DashboardPanel
                     title="Holidays & Birthday"
                     icon={CalendarDaysIcon}
-                    className="max-h-[28rem] w-full lg:col-span-3 lg:max-h-[var(--dashboard-side-h,28rem)] lg:h-[var(--dashboard-side-h,28rem)]"
-                    bodyClassName="overflow-y-auto overscroll-y-contain"
+                    className="max-h-[28rem] w-full min-w-0 lg:col-span-3 lg:max-h-[var(--dashboard-side-h,28rem)] lg:h-[var(--dashboard-side-h,28rem)]"
+                    bodyClassName="overflow-x-hidden overflow-y-auto overscroll-y-contain"
                     style={sidePanelStyle}
                 >
                     <div className="space-y-5">
