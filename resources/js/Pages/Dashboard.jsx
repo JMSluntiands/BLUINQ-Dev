@@ -23,7 +23,13 @@ const FLASH_MESSAGES = {
 
 const ANNOUNCEMENT_PREVIEW_LENGTH = 140;
 
-function DashboardPanel({ title, icon: Icon, children, className = '' }) {
+function DashboardPanel({
+    title,
+    icon: Icon,
+    children,
+    className = '',
+    bodyClassName = '',
+}) {
     return (
         <div
             className={
@@ -41,7 +47,13 @@ function DashboardPanel({ title, icon: Icon, children, className = '' }) {
                     {title}
                 </h3>
             </div>
-            <div className="min-h-0 flex-1 p-5">{children}</div>
+            <div
+                className={
+                    'min-h-0 flex-1 p-5 ' + bodyClassName
+                }
+            >
+                {children}
+            </div>
         </div>
     );
 }
@@ -426,7 +438,13 @@ export default function Dashboard() {
                 <DashboardPanel
                     title="Attendance"
                     icon={UserMinusIcon}
-                    className="lg:col-span-3"
+                    className={
+                        'lg:col-span-3' +
+                        (canViewAnnouncements
+                            ? ' lg:h-0 lg:min-h-full'
+                            : ' lg:max-h-[28rem]')
+                    }
+                    bodyClassName="overflow-y-auto"
                 >
                     <div className="space-y-5">
                         <div>
@@ -482,7 +500,13 @@ export default function Dashboard() {
                 <DashboardPanel
                     title="Holidays & Birthday"
                     icon={CalendarDaysIcon}
-                    className="lg:col-span-3"
+                    className={
+                        'lg:col-span-3' +
+                        (canViewAnnouncements
+                            ? ' lg:h-0 lg:min-h-full'
+                            : ' lg:max-h-[28rem]')
+                    }
+                    bodyClassName="overflow-y-auto"
                 >
                     <div className="space-y-5">
                         <div>
