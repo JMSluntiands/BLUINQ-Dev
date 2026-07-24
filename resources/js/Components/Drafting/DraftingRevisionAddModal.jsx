@@ -173,7 +173,7 @@ export default function DraftingRevisionAddModal({
         <Modal show={show} onClose={onClose} maxWidth="md">
             <form onSubmit={submit} className="p-6">
                 <h2 className="text-lg font-semibold text-[#323338] dark:text-white">
-                    {isEditing ? 'Edit item' : 'Add item'}
+                    {isEditing ? 'Edit item' : 'Add from masterlist'}
                 </h2>
                 <p className="mt-1 text-sm text-[#676879] dark:text-slate-400">
                     {isEditing
@@ -279,7 +279,7 @@ export default function DraftingRevisionAddModal({
                         loading={form.processing}
                         className="rounded-lg normal-case tracking-normal"
                     >
-                        {isEditing ? 'Save item' : 'Add item'}
+                        {isEditing ? 'Save item' : 'Add from masterlist'}
                     </PrimaryButton>
                 </div>
             </form>

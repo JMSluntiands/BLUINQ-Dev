@@ -853,7 +853,7 @@ export default function DraftingJobShowLayout({
             subtitle="Synced from Archi Project Management"
             canAdd={canAddRevision}
             onAdd={onAddRevision}
-            addLabel="Add Item"
+            addLabel="Add from masterlist"
         >
             <div className="p-4">
                 <DataTable
