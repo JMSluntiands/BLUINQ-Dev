@@ -176,7 +176,7 @@ class DraftingRequestSubmissionService
                 DraftingRequestRevision::query()->create([
                     'drafting_request_id' => $draftingRequest->id,
                     'user_id' => $actor->id,
-                    'code' => $draftingRequest->jobNumber(),
+                    'code' => $draftingRequest->jobNumber().'-01',
                     'log_date' => now(config('app.timezone'))->toDateString(),
                     'category' => $category,
                     'drafter_user_id' => $actor->id,

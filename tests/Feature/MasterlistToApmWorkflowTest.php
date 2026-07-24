@@ -79,7 +79,7 @@ class MasterlistToApmWorkflowTest extends TestCase
             ->first();
 
         $this->assertNotNull($revision);
-        $this->assertSame($row->jobNumber(), $revision->code);
+        $this->assertSame($row->jobNumber().'-01', $revision->code);
 
         $this->actingAs($user)
             ->get(route('job.masterlist'))

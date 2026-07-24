@@ -38,6 +38,12 @@ function suggestNextRevisionCode(jobNumber, revisions = []) {
         const match = code.match(suffixPattern);
         if (match) {
             maxSuffix = Math.max(maxSuffix, Number.parseInt(match[1], 10));
+            continue;
+        }
+
+        // Legacy first revisions were stored without "-01".
+        if (code === base) {
+            maxSuffix = Math.max(maxSuffix, 1);
         }
     }
 
