@@ -56,9 +56,16 @@ class UpdateDraftingRequestRequest extends FormRequest
                 'section' => ['required', 'string', 'in:job'],
                 'status' => ['required', 'string', Rule::in(DraftingRequest::statusValues())],
                 'building_type_id' => [
-                    'required',
+                    'nullable',
                     'integer',
                     Rule::exists('building_types', 'id')->where(
+                        fn ($q) => $q->whereNull('archived_at'),
+                    ),
+                ],
+                'storey_level_id' => [
+                    'required',
+                    'integer',
+                    Rule::exists('storey_levels', 'id')->where(
                         fn ($q) => $q->whereNull('archived_at'),
                     ),
                 ],
@@ -160,7 +167,7 @@ class UpdateDraftingRequestRequest extends FormRequest
                 ]);
             }
 
-            foreach (['external_wall_construction_id', 'roof_type_id'] as $key) {
+            foreach (['external_wall_construction_id', 'roof_type_id', 'building_type_id', 'storey_level_id'] as $key) {
                 if (! $this->has($key)) {
                     continue;
                 }

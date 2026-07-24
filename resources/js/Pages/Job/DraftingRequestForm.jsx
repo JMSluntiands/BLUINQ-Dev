@@ -73,7 +73,7 @@ export default function DraftingRequestForm({
     clients = [],
     serviceEngagings = [],
     sdaTypes = [],
-    buildingTypes = [],
+    storeyLevels = [],
     buildingClasses = [],
     externalWallConstructions = [],
     standalone = false,
@@ -110,8 +110,8 @@ export default function DraftingRequestForm({
         council_shire: applicant.council_shire ?? '',
         site_owner_name: applicant.site_owner_name ?? '',
         max_building_area_sqm: applicant.max_building_area_sqm ?? '',
-        building_type_id: applicant.building_type_id ?? '',
         building_class_id: applicant.building_class_id ?? '',
+        storey_level_id: applicant.storey_level_id ?? '',
         zoning: applicant.zoning ?? '',
         sda_type_ids: (applicant.sda_type_ids ?? []).map(String),
         ndis_sda: Boolean(applicant.ndis_sda),
@@ -590,38 +590,40 @@ export default function DraftingRequestForm({
 
                                 <FieldBlock
                                     label={
-                                        <InputLabel htmlFor="building_type_id">
-                                            10. House Type
+                                        <InputLabel htmlFor="storey_level_id">
+                                            10. Storey / Levels
                                             <ReqMark />
                                         </InputLabel>
                                     }
-                                    hint="Options from Workflow settings → Building type."
-                                    error={errors.building_type_id}
+                                    hint="Options from Workflow settings → Typical Storeys & Levels."
+                                    error={errors.storey_level_id}
                                 >
                                     <select
-                                        id="building_type_id"
+                                        id="storey_level_id"
                                         className={selectClass}
-                                        value={data.building_type_id}
+                                        value={data.storey_level_id}
                                         onChange={(e) =>
                                             setData(
-                                                'building_type_id',
+                                                'storey_level_id',
                                                 e.target.value,
                                             )
                                         }
                                         required
                                     >
                                         <option value="">Select…</option>
-                                        {buildingTypes.map((row) => (
+                                        {storeyLevels.map((row) => (
                                             <option key={row.id} value={row.id}>
-                                                {row.name}
+                                                {row.code
+                                                    ? `${row.code} — ${row.name}`
+                                                    : row.name}
                                             </option>
                                         ))}
                                     </select>
-                                    {buildingTypes.length === 0 ? (
+                                    {storeyLevels.length === 0 ? (
                                         <p className="text-sm text-amber-800 dark:text-amber-200">
-                                            No house types configured. Add them
-                                            under Workflow settings → Building
-                                            type.
+                                            No storey / levels configured. Add
+                                            them under Workflow settings →
+                                            Typical Storeys & Levels.
                                         </p>
                                     ) : null}
                                 </FieldBlock>

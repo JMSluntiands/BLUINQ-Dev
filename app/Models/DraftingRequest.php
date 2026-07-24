@@ -119,6 +119,7 @@ class DraftingRequest extends Model
         'design_requirements',
         'building_type_id',
         'building_class_id',
+        'storey_level_id',
         'zoning',
         'ndis_sda',
         'unit_development_count',
@@ -306,6 +307,14 @@ class DraftingRequest extends Model
     public function buildingClass(): BelongsTo
     {
         return $this->belongsTo(BuildingClass::class);
+    }
+
+    /**
+     * @return BelongsTo<StoreyLevel, $this>
+     */
+    public function storeyLevel(): BelongsTo
+    {
+        return $this->belongsTo(StoreyLevel::class);
     }
 
     /**

@@ -24,6 +24,7 @@ class DraftingRequestBoardService
         $query = DraftingRequest::query()
             ->with([
                 'buildingType:id,name',
+                'storeyLevel:id,name,code',
                 'serviceEngagings:id,name',
                 'assignments' => fn ($relation) => $relation
                     ->with('user:id,name')
@@ -164,7 +165,7 @@ class DraftingRequestBoardService
             'builder' => $row->company_name ?: ($row->your_name ?: '—'),
             'category' => $category,
             'category_full' => $categoryFull !== '' ? $categoryFull : '—',
-            'house_type' => $row->buildingType?->name ?? '—',
+            'storey_level' => $row->storeyLevel?->name ?? '—',
             'latest_revision' => $latestRevision ?: '—',
             'accounting' => $accounting ?: '—',
             'revisions' => $revisions,

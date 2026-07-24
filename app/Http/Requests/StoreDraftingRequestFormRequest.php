@@ -42,9 +42,16 @@ class StoreDraftingRequestFormRequest extends FormRequest
             'site_owner_name' => ['required', 'string', 'max:255'],
             'max_building_area_sqm' => ['nullable', 'numeric', 'min:0'],
             'building_type_id' => [
-                'required',
+                'nullable',
                 'integer',
                 Rule::exists('building_types', 'id')->where(
+                    fn ($q) => $q->whereNull('archived_at'),
+                ),
+            ],
+            'storey_level_id' => [
+                'required',
+                'integer',
+                Rule::exists('storey_levels', 'id')->where(
                     fn ($q) => $q->whereNull('archived_at'),
                 ),
             ],
@@ -94,6 +101,7 @@ class StoreDraftingRequestFormRequest extends FormRequest
             'client_id',
             'building_class_id',
             'building_type_id',
+            'storey_level_id',
         ];
 
         $normalized = [

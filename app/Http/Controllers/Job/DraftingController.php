@@ -11,12 +11,12 @@ use App\Http\Requests\StoreDraftingRequestRevisionRequest;
 use App\Http\Requests\UpdateDraftingRequestRevisionRequest;
 use App\Http\Requests\UpdateDraftingRequestRequest;
 use App\Http\Requests\UpdateDraftingRequestStatusRequest;
-use App\Models\BuildingType;
 use App\Models\CrmCategory;
 use App\Models\DraftingRequest;
 use App\Models\ExternalWallConstruction;
 use App\Models\RoofType;
 use App\Models\ServiceEngaging;
+use App\Models\StoreyLevel;
 use App\Models\DraftingRequestActivity;
 use App\Models\DraftingRequestComment;
 use App\Models\DraftingRequestFile;
@@ -116,6 +116,7 @@ class DraftingController extends Controller
         $draftingRequest->load([
             'buildingType:id,name',
             'buildingClass:id,name,code',
+            'storeyLevel:id,name,code',
             'externalWallConstruction:id,name',
             'roofType:id,name',
             'serviceEngagings:id,name',
@@ -150,6 +151,7 @@ class DraftingController extends Controller
                 'email' => $draftingRequest->email,
                 'phone' => $draftingRequest->phone,
                 'building_type_id' => $draftingRequest->building_type_id,
+                'storey_level_id' => $draftingRequest->storey_level_id,
                 'external_wall_construction_id' => $draftingRequest->external_wall_construction_id,
                 'roof_type_id' => $draftingRequest->roof_type_id,
                 'service_engaging_ids' => $draftingRequest->serviceEngagings
@@ -164,6 +166,11 @@ class DraftingController extends Controller
                     : null,
                 'design_requirements' => $draftingRequest->design_requirements,
                 'building_type' => $draftingRequest->buildingType?->name,
+                'storey_level' => $draftingRequest->storeyLevel
+                    ? ($draftingRequest->storeyLevel->code
+                        ? "{$draftingRequest->storeyLevel->code} — {$draftingRequest->storeyLevel->name}"
+                        : $draftingRequest->storeyLevel->name)
+                    : null,
                 'building_class' => $draftingRequest->buildingClass
                     ? ($draftingRequest->buildingClass->code
                         ? "{$draftingRequest->buildingClass->code} — {$draftingRequest->buildingClass->name}"
@@ -251,7 +258,7 @@ class DraftingController extends Controller
             'capabilities' => $capabilities,
             'canUseRunComments' => $user->isAdmin(),
             'formOptions' => $capabilities['editJobDetails'] ? [
-                'buildingTypes' => BuildingType::query()->active()->orderBy('name')->get(['id', 'name']),
+                'storeyLevels' => StoreyLevel::query()->active()->orderBy('code')->orderBy('name')->get(['id', 'name', 'code']),
                 'serviceEngagings' => ServiceEngaging::query()->active()->orderBy('name')->get(['id', 'name']),
                 'externalWallConstructions' => ExternalWallConstruction::query()->active()->orderBy('name')->get(['id', 'name']),
                 'roofTypes' => RoofType::query()->active()->orderBy('name')->get(['id', 'name']),

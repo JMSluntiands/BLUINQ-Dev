@@ -5,13 +5,13 @@ namespace App\Http\Controllers\Public;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePublicDraftingRequestFormRequest;
 use App\Models\BuildingClass;
-use App\Models\BuildingType;
 use App\Models\Client;
 use App\Models\DraftingRequest;
 use App\Models\ExternalWallConstruction;
 use App\Models\RoofType;
 use App\Models\SdaType;
 use App\Models\ServiceEngaging;
+use App\Models\StoreyLevel;
 use App\Services\DraftingRequestSubmissionService;
 use App\Support\PublicDraftingFormUrl;
 use Illuminate\Http\RedirectResponse;
@@ -49,10 +49,11 @@ class PublicDraftingRequestFormController extends Controller
                 ->active()
                 ->orderBy('name')
                 ->get(['id', 'name', 'code']),
-            'buildingTypes' => BuildingType::query()
+            'storeyLevels' => StoreyLevel::query()
                 ->active()
+                ->orderBy('code')
                 ->orderBy('name')
-                ->get(['id', 'name']),
+                ->get(['id', 'name', 'code']),
             'buildingClasses' => BuildingClass::query()
                 ->active()
                 ->orderBy('name')

@@ -705,12 +705,8 @@ export default function DraftingJobShowLayout({
                     value={draftingRequest.building_class}
                 />
                 <JobDetailField
-                    label="House type"
-                    value={
-                        draftingRequest.building_type
-                            ? String(draftingRequest.building_type).toUpperCase()
-                            : null
-                    }
+                    label="Storey / Levels"
+                    value={draftingRequest.storey_level}
                 />
                 <JobDetailField
                     label="Zoning"

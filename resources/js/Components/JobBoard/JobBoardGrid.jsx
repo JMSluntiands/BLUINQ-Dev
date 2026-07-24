@@ -31,7 +31,7 @@ const CHECKING_SLOTS = 1;
  *   job_no: string;
  *   builder: string;
  *   category: string;
- *   house_type: string;
+ *   storey_level: string;
  *   latest_revision?: string;
  *   accounting?: string;
  *   revisions?: Array<{ id: number; code: string; status?: string | null; status_label?: string | null }>;
@@ -429,7 +429,7 @@ function JobBoardTableHead({
                     <th className={thClass + ' w-10'} />
                     <th className={thClass}>Lead No.</th>
                     <th className={thClass}>Client Name</th>
-                    <th className={thClass}>House Type</th>
+                    <th className={thClass}>Storey / Levels</th>
                     <th className={thClass}>Latest Revision</th>
                     <th className={thClass}>Status</th>
                     <th className={thClass}>Accounting</th>
@@ -460,7 +460,7 @@ function JobBoardTableHead({
                 <th className={thClass}>Lead No.</th>
                 <th className={thClass}>Client Name</th>
                 <th className={thClass}>Category</th>
-                <th className={thClass}>House Type</th>
+                <th className={thClass}>Storey / Levels</th>
                 <th className={thClass}>Date In</th>
                 <th className={thClass}>ETA</th>
                 <th className={thClass}>Start Date</th>
@@ -629,8 +629,8 @@ function JobBoardTableBody({
                             {isMasterlist ? (
                                 <>
                                     <td className={tdClass}>
-                                        <TagPill title={job.house_type}>
-                                            {job.house_type}
+                                        <TagPill title={job.storey_level}>
+                                            {job.storey_level}
                                         </TagPill>
                                     </td>
                                     <td
@@ -665,8 +665,8 @@ function JobBoardTableBody({
                                         </TagPill>
                                     </td>
                                     <td className={tdClass}>
-                                        <TagPill title={job.house_type}>
-                                            {job.house_type}
+                                        <TagPill title={job.storey_level}>
+                                            {job.storey_level}
                                         </TagPill>
                                     </td>
                                     <td

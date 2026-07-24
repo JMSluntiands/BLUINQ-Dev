@@ -5,13 +5,13 @@ namespace App\Http\Controllers\Job;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDraftingRequestFormRequest;
 use App\Models\BuildingClass;
-use App\Models\BuildingType;
 use App\Models\Client;
 use App\Models\DraftingRequest;
 use App\Models\ExternalWallConstruction;
 use App\Models\RoofType;
 use App\Models\SdaType;
 use App\Models\ServiceEngaging;
+use App\Models\StoreyLevel;
 use App\Services\DraftingRequestBoardService;
 use App\Services\DraftingRequestSubmissionService;
 use Illuminate\Http\RedirectResponse;
@@ -35,6 +35,7 @@ class MasterlistController extends Controller
         $query = DraftingRequest::query()
             ->with([
                 'buildingType:id,name',
+                'storeyLevel:id,name,code',
                 'serviceEngagings:id,name',
                 'assignments' => fn ($relation) => $relation
                     ->with('user:id,name')
@@ -152,7 +153,7 @@ class MasterlistController extends Controller
                 'council_shire' => $draftingRequest->council_shire,
                 'site_owner_name' => $draftingRequest->site_owner_name,
                 'max_building_area_sqm' => $draftingRequest->max_building_area_sqm,
-                'building_type_id' => $draftingRequest->building_type_id,
+                'storey_level_id' => $draftingRequest->storey_level_id,
                 'building_class_id' => $draftingRequest->building_class_id,
                 'zoning' => $draftingRequest->zoning,
                 'sda_type_ids' => $draftingRequest->sdaTypes()->pluck('sda_types.id')->all(),
@@ -215,7 +216,7 @@ class MasterlistController extends Controller
      *     clients: \Illuminate\Support\Collection,
      *     serviceEngagings: \Illuminate\Support\Collection,
      *     sdaTypes: \Illuminate\Support\Collection,
-     *     buildingTypes: \Illuminate\Support\Collection,
+     *     storeyLevels: \Illuminate\Support\Collection,
      *     buildingClasses: \Illuminate\Support\Collection,
      *     externalWallConstructions: \Illuminate\Support\Collection,
      *     roofTypes: \Illuminate\Support\Collection
@@ -249,10 +250,11 @@ class MasterlistController extends Controller
                 ->active()
                 ->orderBy('name')
                 ->get(['id', 'name', 'code']),
-            'buildingTypes' => BuildingType::query()
+            'storeyLevels' => StoreyLevel::query()
                 ->active()
+                ->orderBy('code')
                 ->orderBy('name')
-                ->get(['id', 'name']),
+                ->get(['id', 'name', 'code']),
             'buildingClasses' => BuildingClass::query()
                 ->active()
                 ->orderBy('name')

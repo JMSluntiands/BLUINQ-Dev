@@ -55,7 +55,7 @@ export default function DraftingEditModals({
     const jobForm = useForm({
         section: 'job',
         status: draftingRequest.status ?? 'new',
-        building_type_id: draftingRequest.building_type_id ?? '',
+        storey_level_id: draftingRequest.storey_level_id ?? '',
         zoning: draftingRequest.zoning ?? '',
         site_address: draftingRequest.site_address ?? '',
         site_owner_name: draftingRequest.site_owner_name ?? '',
@@ -84,7 +84,7 @@ export default function DraftingEditModals({
         jobForm.setData({
             section: 'job',
             status: draftingRequest.status ?? 'new',
-            building_type_id: draftingRequest.building_type_id ?? '',
+            storey_level_id: draftingRequest.storey_level_id ?? '',
             zoning: draftingRequest.zoning ?? '',
             site_address: draftingRequest.site_address ?? '',
             site_owner_name: draftingRequest.site_owner_name ?? '',
@@ -263,29 +263,31 @@ export default function DraftingEditModals({
                             />
                         </div>
                         <div>
-                            <InputLabel htmlFor="edit-building_type_id" value="Building type" />
+                            <InputLabel htmlFor="edit-storey_level_id" value="Storey / Levels" />
                             <select
-                                id="edit-building_type_id"
+                                id="edit-storey_level_id"
                                 className={selectClass}
-                                value={jobForm.data.building_type_id}
+                                value={jobForm.data.storey_level_id}
                                 onChange={(e) =>
                                     jobForm.setData(
-                                        'building_type_id',
+                                        'storey_level_id',
                                         e.target.value,
                                     )
                                 }
                                 required
                             >
                                 <option value="">Select…</option>
-                                {(formOptions.buildingTypes ?? []).map((row) => (
+                                {(formOptions.storeyLevels ?? []).map((row) => (
                                     <option key={row.id} value={row.id}>
-                                        {row.name}
+                                        {row.code
+                                            ? `${row.code} — ${row.name}`
+                                            : row.name}
                                     </option>
                                 ))}
                             </select>
                             <InputError
                                 className="mt-2"
-                                message={jobForm.errors.building_type_id}
+                                message={jobForm.errors.storey_level_id}
                             />
                         </div>
                         <div>

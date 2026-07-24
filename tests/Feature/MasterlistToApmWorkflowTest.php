@@ -3,12 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\BuildingClass;
-use App\Models\BuildingType;
 use App\Models\Client;
 use App\Models\DraftingRequest;
 use App\Models\DraftingRequestRevision;
 use App\Models\Role;
 use App\Models\ServiceEngaging;
+use App\Models\StoreyLevel;
 use App\Models\User;
 use App\Services\DraftingRequestBoardService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,10 +22,10 @@ class MasterlistToApmWorkflowTest extends TestCase
     public function test_authenticated_store_appears_in_masterlist_not_board(): void
     {
         $user = $this->adminUser();
-        [$buildingType, $service, $client, $buildingClass] = $this->seedLookups();
+        [$storeyLevel, $service, $client, $buildingClass] = $this->seedLookups();
 
         $response = $this->actingAs($user)->post(route('job.masterlist.store'), $this->validPayload(
-            $buildingType->id,
+            $storeyLevel->id,
             $service->id,
             $client,
             $buildingClass,
@@ -37,6 +37,7 @@ class MasterlistToApmWorkflowTest extends TestCase
         $this->assertNotNull($row);
         $this->assertSame(DraftingRequest::STAGE_MASTERLIST, $row->workflow_stage);
         $this->assertSame(DraftingRequest::REVIEW_ACCEPTED, $row->review_status);
+        $this->assertSame($storeyLevel->id, $row->storey_level_id);
 
         $this->actingAs($user)
             ->get(route('job.masterlist'))
@@ -56,10 +57,10 @@ class MasterlistToApmWorkflowTest extends TestCase
     public function test_forward_moves_to_apm_and_seeds_revision_code(): void
     {
         $user = $this->adminUser();
-        [$buildingType, $service, $client, $buildingClass] = $this->seedLookups();
+        [$storeyLevel, $service, $client, $buildingClass] = $this->seedLookups();
 
         $this->actingAs($user)->post(route('job.masterlist.store'), $this->validPayload(
-            $buildingType->id,
+            $storeyLevel->id,
             $service->id,
             $client,
             $buildingClass,
@@ -104,7 +105,7 @@ class MasterlistToApmWorkflowTest extends TestCase
     public function test_public_accept_lands_on_masterlist_only(): void
     {
         $admin = $this->adminUser();
-        [$buildingType, $service] = $this->seedLookups();
+        [$storeyLevel, $service] = $this->seedLookups();
 
         $row = DraftingRequest::query()->create([
             'user_id' => null,
@@ -117,7 +118,7 @@ class MasterlistToApmWorkflowTest extends TestCase
             'email' => 'public@example.com',
             'site_address' => '1 Test St',
             'site_owner_name' => 'Owner',
-            'building_type_id' => $buildingType->id,
+            'storey_level_id' => $storeyLevel->id,
             'ceiling_heights' => '2700',
             'ndis_sda' => false,
         ]);
@@ -139,7 +140,7 @@ class MasterlistToApmWorkflowTest extends TestCase
     public function test_board_query_never_returns_masterlist_rows(): void
     {
         $user = $this->adminUser();
-        [$buildingType] = $this->seedLookups();
+        [$storeyLevel] = $this->seedLookups();
 
         $masterlist = DraftingRequest::query()->create([
             'user_id' => $user->id,
@@ -152,7 +153,7 @@ class MasterlistToApmWorkflowTest extends TestCase
             'email' => 'ml@example.com',
             'site_address' => '2 Test St',
             'site_owner_name' => 'Owner',
-            'building_type_id' => $buildingType->id,
+            'storey_level_id' => $storeyLevel->id,
             'ceiling_heights' => '2700',
             'ndis_sda' => false,
         ]);
@@ -168,7 +169,7 @@ class MasterlistToApmWorkflowTest extends TestCase
             'email' => 'apm@example.com',
             'site_address' => '3 Test St',
             'site_owner_name' => 'Owner',
-            'building_type_id' => $buildingType->id,
+            'storey_level_id' => $storeyLevel->id,
             'ceiling_heights' => '2700',
             'ndis_sda' => false,
         ]);
@@ -194,12 +195,13 @@ class MasterlistToApmWorkflowTest extends TestCase
     }
 
     /**
-     * @return array{0: BuildingType, 1: ServiceEngaging, 2: Client, 3: BuildingClass}
+     * @return array{0: StoreyLevel, 1: ServiceEngaging, 2: Client, 3: BuildingClass}
      */
     private function seedLookups(): array
     {
-        $buildingType = BuildingType::query()->create([
-            'name' => 'Residential',
+        $storeyLevel = StoreyLevel::query()->create([
+            'code' => '2s',
+            'name' => '2 storeys',
             'status' => 'active',
         ]);
 
@@ -222,14 +224,14 @@ class MasterlistToApmWorkflowTest extends TestCase
             'status' => 'active',
         ]);
 
-        return [$buildingType, $service, $client, $buildingClass];
+        return [$storeyLevel, $service, $client, $buildingClass];
     }
 
     /**
      * @return array<string, mixed>
      */
     private function validPayload(
-        int $buildingTypeId,
+        int $storeyLevelId,
         int $serviceId,
         Client $client,
         ?BuildingClass $buildingClass = null,
@@ -245,7 +247,7 @@ class MasterlistToApmWorkflowTest extends TestCase
             'site_address' => '10 Example Road',
             'council_shire' => 'Example Shire',
             'site_owner_name' => 'Site Owner',
-            'building_type_id' => $buildingTypeId,
+            'storey_level_id' => $storeyLevelId,
             'building_class_id' => $buildingClass?->id ?? BuildingClass::query()->value('id'),
             'ndis_sda' => false,
             'sda_type_ids' => [],
