@@ -245,7 +245,6 @@ class MasterlistToApmWorkflowTest extends TestCase
             'site_owner_name' => 'Site Owner',
             'building_type_id' => $buildingTypeId,
             'building_class_id' => $buildingClass?->id ?? BuildingClass::query()->value('id'),
-            'ceiling_heights' => '2700mm',
             'ndis_sda' => false,
             'sda_type_ids' => [],
         ];

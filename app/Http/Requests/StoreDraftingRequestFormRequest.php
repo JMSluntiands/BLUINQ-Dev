@@ -78,7 +78,7 @@ class StoreDraftingRequestFormRequest extends FormRequest
                     fn ($q) => $q->whereNull('archived_at'),
                 ),
             ],
-            'ceiling_heights' => ['required', 'string', 'max:2000'],
+            'ceiling_heights' => ['nullable', 'string', 'max:2000'],
             'first_floor_slab' => ['nullable', 'string', 'max:2000'],
             'additional_inclusions' => ['nullable', 'string', 'max:2000'],
             'documents' => ['nullable', 'array'],
@@ -121,6 +121,12 @@ class StoreDraftingRequestFormRequest extends FormRequest
 
         if ($this->input('council_shire') === '') {
             $normalized['council_shire'] = null;
+        }
+
+        foreach (['ceiling_heights', 'first_floor_slab', 'additional_inclusions'] as $key) {
+            if ($this->input($key) === '' || $this->input($key) === null) {
+                $normalized[$key] = null;
+            }
         }
 
         $sdaIds = $this->input('sda_type_ids', []);

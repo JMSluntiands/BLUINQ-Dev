@@ -47,9 +47,7 @@ const uploadZoneClass =
 
 const mutedTextClass = 'text-sm text-slate-600 dark:text-slate-300';
 
-const counterClass = 'text-right text-xs text-slate-500 dark:text-slate-400';
 const selectClass = inputClass;
-const textareaClass = inputClass + ' min-h-[120px]';
 
 const displayValueClass =
     'text-sm font-medium text-slate-900 dark:text-slate-100';
@@ -78,7 +76,6 @@ export default function DraftingRequestForm({
     buildingTypes = [],
     buildingClasses = [],
     externalWallConstructions = [],
-    roofTypes = [],
     standalone = false,
     submitted = false,
     submitUrl = null,
@@ -120,10 +117,6 @@ export default function DraftingRequestForm({
         ndis_sda: Boolean(applicant.ndis_sda),
         external_wall_construction_id:
             applicant.external_wall_construction_id ?? '',
-        roof_type_id: applicant.roof_type_id ?? '',
-        ceiling_heights: applicant.ceiling_heights ?? '',
-        first_floor_slab: applicant.first_floor_slab ?? '',
-        additional_inclusions: applicant.additional_inclusions ?? '',
         documents: [],
     });
 
@@ -234,8 +227,6 @@ export default function DraftingRequestForm({
             forceFormData: true,
         });
     };
-
-    const addIncLen = data.additional_inclusions?.length ?? 0;
 
     return (
         <Layout title={pageTitle}>
@@ -732,114 +723,13 @@ export default function DraftingRequestForm({
                                         )}
                                     </select>
                                 </FieldBlock>
-
-                                <FieldBlock
-                                    label={
-                                        <InputLabel htmlFor="roof_type_id">
-                                            14. Roof Type
-                                        </InputLabel>
-                                    }
-                                    hint="Options from Workflow settings → Roof type."
-                                    error={errors.roof_type_id}
-                                >
-                                    <select
-                                        id="roof_type_id"
-                                        className={selectClass}
-                                        value={data.roof_type_id}
-                                        onChange={(e) =>
-                                            setData(
-                                                'roof_type_id',
-                                                e.target.value,
-                                            )
-                                        }
-                                    >
-                                        <option value="">Select…</option>
-                                        {roofTypes.map((row) => (
-                                            <option key={row.id} value={row.id}>
-                                                {row.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </FieldBlock>
                             </FormRow>
-
-                            <FormRow>
-                                <FieldBlock
-                                    label={
-                                        <InputLabel htmlFor="ceiling_heights">
-                                            15. Ceiling Heights
-                                            <ReqMark />
-                                        </InputLabel>
-                                    }
-                                    hint="For any upper-floor dwelling, please advise ceiling height for each level."
-                                    error={errors.ceiling_heights}
-                                >
-                                    <TextInput
-                                        id="ceiling_heights"
-                                        className={inputClass}
-                                        value={data.ceiling_heights}
-                                        onChange={(e) =>
-                                            setData(
-                                                'ceiling_heights',
-                                                e.target.value,
-                                            )
-                                        }
-                                        required
-                                    />
-                                </FieldBlock>
-
-                                <FieldBlock
-                                    label={
-                                        <InputLabel htmlFor="first_floor_slab">
-                                            16. First Floor Slab/Construction
-                                        </InputLabel>
-                                    }
-                                    error={errors.first_floor_slab}
-                                >
-                                    <TextInput
-                                        id="first_floor_slab"
-                                        className={inputClass}
-                                        value={data.first_floor_slab}
-                                        onChange={(e) =>
-                                            setData(
-                                                'first_floor_slab',
-                                                e.target.value,
-                                            )
-                                        }
-                                    />
-                                </FieldBlock>
-                            </FormRow>
-
-                            <FieldBlock
-                                className="w-full"
-                                label={
-                                    <InputLabel htmlFor="additional_inclusions">
-                                        17. Additional Inclusions
-                                    </InputLabel>
-                                }
-                                hint="Kindly note all additional instructions to be drawn and to be included. e.g. add-ons Granny Flat/Ancillary area, loft, etc."
-                                error={errors.additional_inclusions}
-                            >
-                                <textarea
-                                    id="additional_inclusions"
-                                    className={textareaClass}
-                                    maxLength={2000}
-                                    value={data.additional_inclusions}
-                                    onChange={(e) =>
-                                        setData(
-                                            'additional_inclusions',
-                                            e.target.value,
-                                        )
-                                    }
-                                />
-                                <p className={counterClass}>{addIncLen}/2000</p>
-                            </FieldBlock>
 
                             <FieldBlock
                                 className="w-full"
                                 label={
                                     <InputLabel htmlFor="documents">
-                                        18. Upload documents
+                                        14. Upload documents
                                     </InputLabel>
                                 }
                                 hint={
