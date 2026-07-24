@@ -73,16 +73,16 @@ export const JOB_LIST_SECTIONS = [
 
 /** @type {string[]} */
 export const STAFF_BADGE_COLORS = [
-    'bg-violet-500',
-    'bg-pink-500',
-    'bg-fuchsia-500',
-    'bg-orange-500',
-    'bg-cyan-500',
-    'bg-amber-400',
-    'bg-emerald-500',
-    'bg-rose-500',
-    'bg-indigo-500',
-    'bg-teal-500',
+    'bg-violet-600',
+    'bg-pink-600',
+    'bg-fuchsia-600',
+    'bg-orange-600',
+    'bg-cyan-700',
+    'bg-amber-600',
+    'bg-emerald-600',
+    'bg-rose-600',
+    'bg-indigo-600',
+    'bg-teal-700',
 ];
 
 export function staffBadgeColor(initials) {

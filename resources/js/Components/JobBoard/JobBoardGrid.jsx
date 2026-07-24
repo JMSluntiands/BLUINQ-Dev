@@ -88,7 +88,7 @@ function StaffSlot({ assignment, editable = false, onClick }) {
         <div className="flex items-center gap-1">
             <span
                 className={
-                    'flex h-6 w-6 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white ' +
+                    'flex h-6 w-6 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white shadow-sm ring-1 ring-black/10 ' +
                     staffBadgeColor(assignment.initials)
                 }
                 title={assignment.name ?? assignment.initials}
