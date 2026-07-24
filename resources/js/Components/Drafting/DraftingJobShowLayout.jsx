@@ -552,7 +552,7 @@ export default function DraftingJobShowLayout({
             label: 'Date Out',
             render: (row) => row.submitted_date ?? '—',
         },
-        ...(canAddRevision && onEditRevision
+        ...(onEditRevision
             ? [
                   {
                       key: 'actions',
@@ -850,7 +850,7 @@ export default function DraftingJobShowLayout({
     const revisionsPanel = canViewRevision ? (
         <JobPanel
             title="Revisions"
-            subtitle="Visible to all job viewers"
+            subtitle="Synced from Archi Project Management"
             canAdd={canAddRevision}
             onAdd={onAddRevision}
             addLabel="Add Item"

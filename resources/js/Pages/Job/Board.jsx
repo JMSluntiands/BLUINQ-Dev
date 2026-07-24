@@ -1,12 +1,14 @@
 import JobBoardGrid from '@/Components/JobBoard/JobBoardGrid';
 import JobBoardPendingRequests from '@/Components/JobBoard/JobBoardPendingRequests';
 import AddFromMasterlistControl from '@/Components/JobBoard/AddFromMasterlistControl';
+import DraftingRevisionAddModal from '@/Components/Drafting/DraftingRevisionAddModal';
 import FlashNoticeModal from '@/Components/FlashNoticeModal';
 import Pagination from '@/Components/Pagination';
 import TableSearchToolbar from '@/Components/TableSearchToolbar';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { PlusIcon } from '@heroicons/react/24/outline';
 import { Head, router } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const FLASH_MESSAGES = {
     'drf-submitted':
@@ -16,6 +18,7 @@ const FLASH_MESSAGES = {
     'drf-already-reviewed': 'This request was already reviewed.',
     'masterlist-forwarded':
         'Project added to Archi Project Management from the masterlist.',
+    'drf-revision-added': 'Revision added.',
 };
 
 export default function JobBoard({
@@ -24,6 +27,7 @@ export default function JobBoard({
     canViewAllRequests = false,
     assignableUsers = [],
     statusOptions = [],
+    categoryOptions = [],
     groupByStatus = false,
     jobListSections = {},
     canReviewPublicRequests = false,
@@ -33,6 +37,7 @@ export default function JobBoard({
 }) {
     const rows = jobs?.data ?? [];
     const [liveSearch, setLiveSearch] = useState('');
+    const [revisionJob, setRevisionJob] = useState(null);
     const hasSearch = Boolean(liveSearch.trim());
     const searchRoute = groupByStatus ? 'job.list' : 'job.board';
     const pageTitle = groupByStatus
@@ -45,6 +50,11 @@ export default function JobBoard({
         : canViewAllRequests
           ? 'All submitted drafting requests in the project board.'
           : 'Your submitted drafting requests on the project board.';
+
+    const showAddRevisionActions = useMemo(
+        () => rows.some((job) => job.can_add_revision),
+        [rows],
+    );
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -81,6 +91,17 @@ export default function JobBoard({
             <Head title={pageTitle} />
 
             <FlashNoticeModal messages={FLASH_MESSAGES} />
+
+            <DraftingRevisionAddModal
+                show={revisionJob != null}
+                onClose={() => setRevisionJob(null)}
+                draftingRequestId={revisionJob?.id}
+                jobNumber={revisionJob?.job_no ?? revisionJob?.reference ?? ''}
+                revisions={revisionJob?.revisions ?? []}
+                statusOptions={statusOptions}
+                categoryOptions={categoryOptions}
+                defaultJobStatus={revisionJob?.status ?? 'new'}
+            />
 
             <div className="overflow-hidden rounded-xl border border-[#e6e9ef] bg-white shadow-sm dark:border-[#2f3347] dark:bg-[#1a1b2e] dark:shadow-none">
                 <TableSearchToolbar
@@ -123,6 +144,25 @@ export default function JobBoard({
                         })
                     }
                     jobListSections={jobListSections}
+                    renderActions={
+                        showAddRevisionActions
+                            ? (job) =>
+                                  job.can_add_revision ? (
+                                      <button
+                                          type="button"
+                                          onClick={() => setRevisionJob(job)}
+                                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-[#0073ea] transition hover:bg-[#e6f0ff] dark:text-[#1890ff] dark:hover:bg-[#1e3a5f]"
+                                          title="Add revision"
+                                          aria-label={`Add revision for ${job.job_no}`}
+                                      >
+                                          <PlusIcon className="h-4 w-4" />
+                                          <span className="hidden sm:inline">
+                                              Add
+                                          </span>
+                                      </button>
+                                  ) : null
+                            : null
+                    }
                 />
                 <Pagination pagination={jobs} />
             </div>

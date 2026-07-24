@@ -530,9 +530,12 @@ class DraftingController extends Controller
 
         $validated = $request->validated();
 
-        $drafter = User::query()
-            ->active()
-            ->findOrFail($validated['drafter_user_id']);
+        $drafter = null;
+        if (! empty($validated['drafter_user_id'])) {
+            $drafter = User::query()
+                ->active()
+                ->findOrFail($validated['drafter_user_id']);
+        }
 
         $checker = null;
         if (! empty($validated['checker_user_id'])) {
@@ -547,8 +550,8 @@ class DraftingController extends Controller
             'code' => trim($validated['code']),
             'log_date' => $validated['log_date'],
             'category' => trim($validated['category']),
-            'drafter_user_id' => $drafter->id,
-            'drafter_initials' => $drafter->badgeInitials(),
+            'drafter_user_id' => $drafter?->id,
+            'drafter_initials' => $drafter?->badgeInitials(),
             'checker_user_id' => $checker?->id,
             'checker_initials' => $checker?->badgeInitials(),
             'drafting_hours' => $validated['drafting_hours'] ?? null,
@@ -565,7 +568,9 @@ class DraftingController extends Controller
             $revision->checking_hours,
         );
 
-        $people = $drafter->name.($checker ? ' / '.$checker->name : '');
+        $people = $drafter
+            ? $drafter->name.($checker ? ' / '.$checker->name : '')
+            : ($checker?->name ?? 'unassigned');
 
         $description = sprintf(
             'Added revision %s (%s, %s%s).',
@@ -591,9 +596,7 @@ class DraftingController extends Controller
         $this->board->syncRevisionHoursToAssignments($draftingRequest, $revision);
         $this->timesheetSync->syncRevisionToTimesheet($revision->fresh());
 
-        return redirect()
-            ->route($this->jobShowRouteName($request), $this->jobShowRouteParams($draftingRequest, $request))
-            ->with('status', 'drf-revision-added');
+        return back()->with('status', 'drf-revision-added');
     }
 
     public function updateRevision(
@@ -603,40 +606,60 @@ class DraftingController extends Controller
     ): RedirectResponse {
         $validated = $request->validated();
 
-        $drafter = User::query()
-            ->active()
-            ->findOrFail($validated['drafter_user_id']);
-
-        $checker = null;
-        if (! empty($validated['checker_user_id'])) {
-            $checker = User::query()
-                ->active()
-                ->findOrFail($validated['checker_user_id']);
-        }
-
-        $revision->update([
+        $updates = [
             'code' => trim($validated['code']),
             'log_date' => $validated['log_date'],
             'category' => trim($validated['category']),
-            'drafter_user_id' => $drafter->id,
-            'drafter_initials' => $drafter->badgeInitials(),
-            'checker_user_id' => $checker?->id,
-            'checker_initials' => $checker?->badgeInitials(),
-            'drafting_hours' => $validated['drafting_hours'] ?? null,
-            'checking_hours' => $validated['checking_hours'] ?? null,
             'status' => $validated['status'],
-            'area_size' => isset($validated['area_size']) && $validated['area_size'] !== ''
-                ? trim($validated['area_size'])
-                : null,
-            'submitted_date' => $validated['submitted_date'] ?? null,
-        ]);
+        ];
+
+        if (array_key_exists('drafter_user_id', $validated)) {
+            $drafter = null;
+            if (! empty($validated['drafter_user_id'])) {
+                $drafter = User::query()
+                    ->active()
+                    ->findOrFail($validated['drafter_user_id']);
+            }
+            $updates['drafter_user_id'] = $drafter?->id;
+            $updates['drafter_initials'] = $drafter?->badgeInitials();
+        }
+
+        if (array_key_exists('checker_user_id', $validated)) {
+            $checker = null;
+            if (! empty($validated['checker_user_id'])) {
+                $checker = User::query()
+                    ->active()
+                    ->findOrFail($validated['checker_user_id']);
+            }
+            $updates['checker_user_id'] = $checker?->id;
+            $updates['checker_initials'] = $checker?->badgeInitials();
+        }
+
+        foreach (['drafting_hours', 'checking_hours', 'submitted_date'] as $field) {
+            if (array_key_exists($field, $validated)) {
+                $updates[$field] = $validated[$field];
+            }
+        }
+
+        if (array_key_exists('area_size', $validated)) {
+            $updates['area_size'] = $validated['area_size'] !== null && $validated['area_size'] !== ''
+                ? trim((string) $validated['area_size'])
+                : null;
+        }
+
+        $revision->update($updates);
+        $revision->refresh();
 
         $hoursLabel = $this->formatRevisionHoursLabel(
             $revision->drafting_hours,
             $revision->checking_hours,
         );
 
-        $people = $drafter->name.($checker ? ' / '.$checker->name : '');
+        $drafterName = $revision->drafter?->name;
+        $checkerName = $revision->checker?->name;
+        $people = $drafterName
+            ? $drafterName.($checkerName ? ' / '.$checkerName : '')
+            : ($checkerName ?? 'unassigned');
 
         $description = sprintf(
             'Updated revision %s (%s, %s%s).',
@@ -662,9 +685,7 @@ class DraftingController extends Controller
         $this->board->syncRevisionHoursToAssignments($draftingRequest, $revision->fresh());
         $this->timesheetSync->syncRevisionToTimesheet($revision->fresh());
 
-        return redirect()
-            ->route($this->jobShowRouteName($request), $this->jobShowRouteParams($draftingRequest, $request))
-            ->with('status', 'drf-revision-updated');
+        return back()->with('status', 'drf-revision-updated');
     }
 
     public function storeAccountEntry(

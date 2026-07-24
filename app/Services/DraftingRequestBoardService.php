@@ -647,7 +647,106 @@ class DraftingRequestBoardService
         }
     }
 
+    public function syncAssignmentToRevision(
+        DraftingRequest $draftingRequest,
+        string $role,
+        int $slot,
+        ?int $userId,
+        mixed $hours,
+    ): void {
+        if ($slot !== 0) {
+            if ($userId === null) {
+                return;
+            }
+
+            $this->syncHoursOntoMatchingRevision($draftingRequest, $role, $userId, $hours);
+
+            return;
+        }
+
+        $revision = $this->latestRevisionFor($draftingRequest);
+
+        if ($revision === null) {
+            if ($userId === null) {
+                return;
+            }
+
+            $revision = $this->ensurePrimaryRevision($draftingRequest);
+        }
+
+        $user = $userId !== null
+            ? User::query()->active()->find($userId)
+            : null;
+
+        if ($role === DraftingRequestAssignment::ROLE_CHECKING) {
+            $revision->update([
+                'checker_user_id' => $user?->id,
+                'checker_initials' => $user?->badgeInitials(),
+                'checking_hours' => $hours !== null && $hours !== '' ? $hours : null,
+            ]);
+
+            return;
+        }
+
+        $revision->update([
+            'drafter_user_id' => $user?->id,
+            'drafter_initials' => $user?->badgeInitials(),
+            'drafting_hours' => $hours !== null && $hours !== '' ? $hours : null,
+        ]);
+    }
+
+    /** @deprecated Use syncAssignmentToRevision */
     public function syncAssignmentHoursToRevision(
+        DraftingRequest $draftingRequest,
+        string $role,
+        int $userId,
+        mixed $hours,
+    ): void {
+        $this->syncAssignmentToRevision($draftingRequest, $role, 0, $userId, $hours);
+    }
+
+    public function syncBoardStatusToLatestRevision(
+        DraftingRequest $draftingRequest,
+        string $status,
+    ): void {
+        $revision = $this->latestRevisionFor($draftingRequest);
+        if ($revision === null) {
+            return;
+        }
+
+        $revision->update(['status' => $status]);
+    }
+
+    private function latestRevisionFor(DraftingRequest $draftingRequest): ?DraftingRequestRevision
+    {
+        return DraftingRequestRevision::query()
+            ->where('drafting_request_id', $draftingRequest->id)
+            ->orderByDesc('log_date')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    private function ensurePrimaryRevision(
+        DraftingRequest $draftingRequest,
+    ): DraftingRequestRevision {
+        $draftingRequest->loadMissing(['crmCategory', 'serviceEngagings']);
+
+        $category = $draftingRequest->crmCategory?->code
+            ?: $draftingRequest->crmCategory?->name
+            ?: $draftingRequest->serviceEngagings->sortBy('name')->first()?->name
+            ?: 'Working Drawings';
+
+        return DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $draftingRequest->id,
+            'user_id' => $draftingRequest->user_id,
+            'code' => $draftingRequest->jobNumber().'-01',
+            'log_date' => now(config('app.timezone'))->toDateString(),
+            'category' => $category,
+            'status' => $draftingRequest->status ?? DraftingRequest::STATUS_NEW,
+        ]);
+    }
+
+    private function syncHoursOntoMatchingRevision(
         DraftingRequest $draftingRequest,
         string $role,
         int $userId,
@@ -656,10 +755,13 @@ class DraftingRequestBoardService
         $column = $role === DraftingRequestAssignment::ROLE_CHECKING
             ? 'checking_hours'
             : 'drafting_hours';
+        $userColumn = $role === DraftingRequestAssignment::ROLE_CHECKING
+            ? 'checker_user_id'
+            : 'drafter_user_id';
 
         $revision = DraftingRequestRevision::query()
             ->where('drafting_request_id', $draftingRequest->id)
-            ->where('drafter_user_id', $userId)
+            ->where($userColumn, $userId)
             ->orderByDesc('log_date')
             ->orderByDesc('id')
             ->first();

@@ -23,7 +23,7 @@ function listQueryString(listFilters = {}) {
     return s ? `?${s}` : '';
 }
 
-function suggestNextRevisionCode(jobNumber, revisions = []) {
+export function suggestNextRevisionCode(jobNumber, revisions = []) {
     const base = String(jobNumber ?? '').trim();
     if (base === '') {
         return '';
@@ -50,12 +50,15 @@ function suggestNextRevisionCode(jobNumber, revisions = []) {
     return `${base}-${String(maxSuffix + 1).padStart(2, '0')}`;
 }
 
+/**
+ * Slim revision modal (APM-owned staffing fields live on the board).
+ * Fields: Revision Number, Category, Date In, Status.
+ */
 export default function DraftingRevisionAddModal({
     show = false,
     onClose,
     draftingRequestId,
     listFilters = {},
-    drafterUsers = [],
     entry = null,
     jobNumber = '',
     revisions = [],
@@ -63,7 +66,7 @@ export default function DraftingRevisionAddModal({
     categoryOptions = [],
     defaultJobStatus = 'new',
 }) {
-    const { auth, categoryOptions: pageCategoryOptions = [] } = usePage().props;
+    const { categoryOptions: pageCategoryOptions = [] } = usePage().props;
     const categories =
         categoryOptions.length > 0 ? categoryOptions : pageCategoryOptions;
 
@@ -72,9 +75,10 @@ export default function DraftingRevisionAddModal({
             const code = option.code || option.name;
             return {
                 value: code,
-                label: option.name && option.name !== code
-                    ? `${code} — ${option.name}`
-                    : code,
+                label:
+                    option.name && option.name !== code
+                        ? `${code} — ${option.name}`
+                        : code,
             };
         });
 
@@ -91,17 +95,6 @@ export default function DraftingRevisionAddModal({
         return items;
     }, [categories, entry?.category]);
 
-    const userSelectOptions = useMemo(
-        () =>
-            drafterUsers.map((user) => ({
-                value: String(user.id),
-                label: `${user.name}${
-                    user.initials ? ` (${user.initials})` : ''
-                }`,
-            })),
-        [drafterUsers],
-    );
-
     const statusSelectOptions = useMemo(
         () =>
             statusOptions.map((option) => ({
@@ -117,13 +110,7 @@ export default function DraftingRevisionAddModal({
         code: '',
         log_date: '',
         category: '',
-        drafter_user_id: '',
-        checker_user_id: '',
-        drafting_hours: '',
-        checking_hours: '',
         status: defaultJobStatus || 'new',
-        area_size: '',
-        submitted_date: '',
     });
 
     useEffect(() => {
@@ -138,42 +125,19 @@ export default function DraftingRevisionAddModal({
                 code: entry.code ?? '',
                 log_date: entry.log_date_value ?? '',
                 category: entry.category ?? '',
-                drafter_user_id: entry.drafter_user_id
-                    ? String(entry.drafter_user_id)
-                    : '',
-                checker_user_id: entry.checker_user_id
-                    ? String(entry.checker_user_id)
-                    : '',
-                drafting_hours: entry.drafting_hours ?? '',
-                checking_hours: entry.checking_hours ?? '',
                 status: entry.status ?? '',
-                area_size: entry.area_size ?? '',
-                submitted_date: entry.submitted_date_value ?? '',
             });
 
             return;
         }
 
-        const currentUserId = auth?.user?.id;
-        const defaultDrafter =
-            currentUserId &&
-            drafterUsers.some((user) => user.id === currentUserId)
-                ? String(currentUserId)
-                : '';
-
         form.setData({
             code: suggestNextRevisionCode(jobNumber, revisions),
             log_date: '',
             category: '',
-            drafter_user_id: defaultDrafter,
-            checker_user_id: '',
-            drafting_hours: '',
-            checking_hours: '',
             status: defaultJobStatus || 'new',
-            area_size: '',
-            submitted_date: '',
         });
-    }, [show, auth?.user?.id, drafterUsers, entry, jobNumber, revisions, defaultJobStatus]);
+    }, [show, entry, jobNumber, revisions, defaultJobStatus]);
 
     const submit = (e) => {
         e.preventDefault();
@@ -206,20 +170,23 @@ export default function DraftingRevisionAddModal({
     };
 
     return (
-        <Modal show={show} onClose={onClose} maxWidth="lg">
+        <Modal show={show} onClose={onClose} maxWidth="md">
             <form onSubmit={submit} className="p-6">
                 <h2 className="text-lg font-semibold text-[#323338] dark:text-white">
                     {isEditing ? 'Edit item' : 'Add item'}
                 </h2>
                 <p className="mt-1 text-sm text-[#676879] dark:text-slate-400">
                     {isEditing
-                        ? 'Update this revision entry for this job.'
-                        : 'Record a new revision entry. This will appear in the table and activity log.'}
+                        ? 'Update revision number, category, date in, and status. Drafter, hours, and date out are set on the board.'
+                        : 'Add a revision. Assign drafter, checker, and hours on the Project Management board.'}
                 </p>
 
                 <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <InputLabel htmlFor="revision-code" value="Job Number" />
+                        <InputLabel
+                            htmlFor="revision-code"
+                            value="Revision Number"
+                        />
                         <TextInput
                             id="revision-code"
                             value={form.data.code}
@@ -295,133 +262,6 @@ export default function DraftingRevisionAddModal({
                         </div>
                         <InputError
                             message={form.errors.status}
-                            className="mt-1"
-                        />
-                    </div>
-
-                    <div>
-                        <InputLabel htmlFor="revision-drafter" value="Drafter" />
-                        <div className="mt-1 select2-field">
-                            <Select2
-                                id="revision-drafter"
-                                value={form.data.drafter_user_id}
-                                onChange={(value) =>
-                                    form.setData('drafter_user_id', value)
-                                }
-                                options={userSelectOptions}
-                                placeholder="Select drafter…"
-                                enabled={show}
-                                required
-                            />
-                        </div>
-                        <InputError
-                            message={form.errors.drafter_user_id}
-                            className="mt-1"
-                        />
-                    </div>
-
-                    <div>
-                        <InputLabel
-                            htmlFor="revision-drafting-hours"
-                            value="Drafting Hours"
-                        />
-                        <TextInput
-                            id="revision-drafting-hours"
-                            type="number"
-                            min="0"
-                            step="0.25"
-                            value={form.data.drafting_hours}
-                            onChange={(e) =>
-                                form.setData('drafting_hours', e.target.value)
-                            }
-                            className="mt-1 block w-full"
-                            placeholder="Optional"
-                        />
-                        <InputError
-                            message={form.errors.drafting_hours}
-                            className="mt-1"
-                        />
-                    </div>
-
-                    <div>
-                        <InputLabel htmlFor="revision-checker" value="Checker" />
-                        <div className="mt-1 select2-field">
-                            <Select2
-                                id="revision-checker"
-                                value={form.data.checker_user_id}
-                                onChange={(value) =>
-                                    form.setData('checker_user_id', value)
-                                }
-                                options={userSelectOptions}
-                                placeholder="Select checker…"
-                                enabled={show}
-                            />
-                        </div>
-                        <InputError
-                            message={form.errors.checker_user_id}
-                            className="mt-1"
-                        />
-                    </div>
-
-                    <div>
-                        <InputLabel
-                            htmlFor="revision-checking-hours"
-                            value="Checking Hours"
-                        />
-                        <TextInput
-                            id="revision-checking-hours"
-                            type="number"
-                            min="0"
-                            step="0.25"
-                            value={form.data.checking_hours}
-                            onChange={(e) =>
-                                form.setData('checking_hours', e.target.value)
-                            }
-                            className="mt-1 block w-full"
-                            placeholder="Optional"
-                        />
-                        <InputError
-                            message={form.errors.checking_hours}
-                            className="mt-1"
-                        />
-                    </div>
-
-                    <div>
-                        <InputLabel
-                            htmlFor="revision-area-size"
-                            value="Area Size"
-                        />
-                        <TextInput
-                            id="revision-area-size"
-                            value={form.data.area_size}
-                            onChange={(e) =>
-                                form.setData('area_size', e.target.value)
-                            }
-                            className="mt-1 block w-full"
-                            placeholder="e.g. 32 SQM"
-                        />
-                        <InputError
-                            message={form.errors.area_size}
-                            className="mt-1"
-                        />
-                    </div>
-
-                    <div>
-                        <InputLabel
-                            htmlFor="revision-submitted-date"
-                            value="Date Out"
-                        />
-                        <TextInput
-                            id="revision-submitted-date"
-                            type="date"
-                            value={form.data.submitted_date}
-                            onChange={(e) =>
-                                form.setData('submitted_date', e.target.value)
-                            }
-                            className="mt-1 block w-full"
-                        />
-                        <InputError
-                            message={form.errors.submitted_date}
                             className="mt-1"
                         />
                     </div>

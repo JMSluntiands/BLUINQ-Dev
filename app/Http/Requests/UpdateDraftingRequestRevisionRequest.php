@@ -49,8 +49,10 @@ class UpdateDraftingRequestRevisionRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        if ($this->input('checker_user_id') === '') {
-            $this->merge(['checker_user_id' => null]);
+        foreach (['checker_user_id', 'drafter_user_id', 'drafting_hours', 'checking_hours', 'area_size', 'submitted_date'] as $key) {
+            if ($this->input($key) === '') {
+                $this->merge([$key => null]);
+            }
         }
     }
 
@@ -84,7 +86,7 @@ class UpdateDraftingRequestRevisionRequest extends FormRequest
             'log_date' => ['required', 'date'],
             'category' => ['required', 'string', 'max:255', Rule::in($categoryCodes)],
             'drafter_user_id' => [
-                'required',
+                'nullable',
                 'integer',
                 Rule::exists('users', 'id')->where(
                     fn ($query) => $query->whereNull('archived_at'),
@@ -111,12 +113,11 @@ class UpdateDraftingRequestRevisionRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'code.required' => 'Enter a job number.',
+            'code.required' => 'Enter a revision number.',
             'code.regex' => 'Use format YY001 or YY001-01 (e.g. 26001 or 26001-01).',
             'log_date.required' => 'Select a date in.',
             'category.required' => 'Select a category.',
             'category.in' => 'Select a valid category.',
-            'drafter_user_id.required' => 'Select a drafter.',
             'drafter_user_id.exists' => 'Select a valid drafter.',
             'checker_user_id.exists' => 'Select a valid checker.',
         ];

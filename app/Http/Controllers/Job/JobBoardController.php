@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Job;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateDraftingRequestAssignmentRequest;
 use App\Http\Requests\UpdateDraftingRequestBoardFieldsRequest;
+use App\Models\CrmCategory;
 use App\Models\DraftingRequest;
 use App\Models\DraftingRequestActivity;
 use App\Models\DraftingRequestAssignment;
@@ -43,13 +44,16 @@ class JobBoardController extends Controller
         $user = $request->user();
         $canReviewPublicRequests = $user?->hasPermission('job.drafting-request.review') ?? false;
         $canForwardFromMasterlist = $user?->hasPermission('job.list.view') ?? false;
+        $canAddRevision = $user?->hasPermission('job.drafting.revision.add') ?? false;
 
         return Inertia::render('Job/Board', [
             'jobs' => $query
                 ->paginate($filters['per_page'])
-                ->through(function (DraftingRequest $row) use ($request) {
+                ->through(function (DraftingRequest $row) use ($request, $canAddRevision) {
                     $formatted = $this->board->formatBoardRow($row);
                     $formatted['can_assign'] = $this->board->canAssignStaff($request, $row);
+                    $formatted['can_add_revision'] = $canAddRevision
+                        && $this->board->canAssignStaff($request, $row);
 
                     return $formatted;
                 })
@@ -74,6 +78,18 @@ class JobBoardController extends Controller
                 ->map(fn (string $label, string $value) => [
                     'value' => $value,
                     'label' => $label,
+                ])
+                ->values()
+                ->all(),
+            'categoryOptions' => CrmCategory::query()
+                ->active()
+                ->where('status', 'active')
+                ->orderBy('code')
+                ->get(['id', 'code', 'name'])
+                ->map(fn (CrmCategory $row) => [
+                    'id' => $row->id,
+                    'code' => $row->code ?: $row->name,
+                    'name' => $row->name,
                 ])
                 ->values()
                 ->all(),
@@ -179,6 +195,14 @@ class JobBoardController extends Controller
                 ->where('role', $role)
                 ->where('slot', $slot)
                 ->delete();
+
+            $this->board->syncAssignmentToRevision(
+                $draftingRequest,
+                $role,
+                $slot,
+                null,
+                null,
+            );
         } else {
             DraftingRequestAssignment::query()->updateOrCreate(
                 [
@@ -192,9 +216,10 @@ class JobBoardController extends Controller
                 ],
             );
 
-            $this->board->syncAssignmentHoursToRevision(
+            $this->board->syncAssignmentToRevision(
                 $draftingRequest,
                 $role,
+                $slot,
                 (int) $validated['user_id'],
                 $validated['hours'] ?? null,
             );
@@ -223,6 +248,10 @@ class JobBoardController extends Controller
 
             if ($previousStatus !== $newStatus) {
                 $draftingRequest->update(['status' => $newStatus]);
+                $this->board->syncBoardStatusToLatestRevision(
+                    $draftingRequest,
+                    $newStatus,
+                );
 
                 $options = DraftingRequest::statusOptions();
                 $fromLabel = $options[$previousStatus]
