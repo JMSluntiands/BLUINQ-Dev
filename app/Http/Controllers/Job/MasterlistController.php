@@ -94,6 +94,7 @@ class MasterlistController extends Controller
             'applicant' => [
                 'requested_at' => now(config('app.timezone'))->seconds(0)->format('Y-m-d\TH:i'),
                 'your_name' => $request->user()?->name,
+                'lead_number' => '',
             ],
             ...$this->formOptions(),
         ]);
@@ -140,6 +141,7 @@ class MasterlistController extends Controller
             'formTitle' => 'Edit masterlist entry',
             'applicant' => [
                 'id' => $draftingRequest->id,
+                'lead_number' => $draftingRequest->lead_number ?: $draftingRequest->jobNumber(),
                 'requested_at' => $requestedAt,
                 'your_name' => $draftingRequest->your_name,
                 'client_id' => $draftingRequest->client_id,
@@ -333,7 +335,8 @@ class MasterlistController extends Controller
                 ->orWhere('company_name', 'like', '%'.$search.'%')
                 ->orWhere('email', 'like', '%'.$search.'%')
                 ->orWhere('site_address', 'like', '%'.$search.'%')
-                ->orWhere('site_owner_name', 'like', '%'.$search.'%');
+                ->orWhere('site_owner_name', 'like', '%'.$search.'%')
+                ->orWhere('lead_number', 'like', '%'.$search.'%');
         });
     }
 }

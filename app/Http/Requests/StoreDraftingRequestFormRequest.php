@@ -19,6 +19,16 @@ class StoreDraftingRequestFormRequest extends FormRequest
     {
         return [
             'requested_at' => ['nullable', 'date'],
+            'lead_number' => [
+                Rule::requiredIf(fn () => $this->user() !== null),
+                'nullable',
+                'string',
+                'max:32',
+                'regex:/^[A-Za-z0-9\-]+$/',
+                Rule::unique('drafting_requests', 'lead_number')->ignore(
+                    $this->route('draftingRequest')?->id,
+                ),
+            ],
             'your_name' => ['required', 'string', 'max:255'],
             'client_id' => [
                 'required',
@@ -100,6 +110,18 @@ class StoreDraftingRequestFormRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'lead_number.required' => 'Enter a lead number.',
+            'lead_number.unique' => 'That lead number is already in use.',
+            'lead_number.regex' => 'Lead number may only contain letters, numbers, and hyphens.',
+        ];
+    }
+
     protected function prepareForValidation(): void
     {
         $nullableIds = [
@@ -149,6 +171,9 @@ class StoreDraftingRequestFormRequest extends FormRequest
         if ($this->input('council_shire') === '') {
             $normalized['council_shire'] = null;
         }
+
+        $leadNumber = trim((string) $this->input('lead_number', ''));
+        $normalized['lead_number'] = $leadNumber === '' ? null : $leadNumber;
 
         foreach (['ceiling_heights', 'first_floor_slab', 'additional_inclusions'] as $key) {
             if ($this->input($key) === '' || $this->input($key) === null) {

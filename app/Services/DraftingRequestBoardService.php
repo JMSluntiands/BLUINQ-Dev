@@ -57,7 +57,8 @@ class DraftingRequestBoardService
                 ->orWhere('company_name', 'like', '%'.$search.'%')
                 ->orWhere('email', 'like', '%'.$search.'%')
                 ->orWhere('site_address', 'like', '%'.$search.'%')
-                ->orWhere('site_owner_name', 'like', '%'.$search.'%');
+                ->orWhere('site_owner_name', 'like', '%'.$search.'%')
+                ->orWhere('lead_number', 'like', '%'.$search.'%');
         });
     }
 

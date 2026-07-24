@@ -35,6 +35,8 @@ class MasterlistToApmWorkflowTest extends TestCase
 
         $row = DraftingRequest::query()->first();
         $this->assertNotNull($row);
+        $this->assertSame('26001', $row->lead_number);
+        $this->assertSame('26001', $row->jobNumber());
         $this->assertSame(DraftingRequest::STAGE_MASTERLIST, $row->workflow_stage);
         $this->assertSame(DraftingRequest::REVIEW_ACCEPTED, $row->review_status);
         $this->assertSame($storeyLevel->id, $row->storey_level_id);
@@ -356,6 +358,7 @@ class MasterlistToApmWorkflowTest extends TestCase
         ?BuildingClass $buildingClass = null,
     ): array {
         return [
+            'lead_number' => '26001',
             'requested_at' => now()->format('Y-m-d H:i:s'),
             'your_name' => $client->contact_name,
             'client_id' => $client->id,

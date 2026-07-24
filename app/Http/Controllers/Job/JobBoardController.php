@@ -224,10 +224,12 @@ class JobBoardController extends Controller
             $q->where('company_name', 'like', '%'.$search.'%')
                 ->orWhere('your_name', 'like', '%'.$search.'%')
                 ->orWhere('site_address', 'like', '%'.$search.'%')
-                ->orWhere('site_owner_name', 'like', '%'.$search.'%');
+                ->orWhere('site_owner_name', 'like', '%'.$search.'%')
+                ->orWhere('lead_number', 'like', '%'.$search.'%');
 
             if ($digits !== '') {
-                $q->orWhere('id', (int) $digits);
+                $q->orWhere('id', (int) $digits)
+                    ->orWhere('lead_number', 'like', '%'.$digits.'%');
 
                 if (strlen($digits) >= 3) {
                     $q->orWhere('id', (int) substr($digits, -3));

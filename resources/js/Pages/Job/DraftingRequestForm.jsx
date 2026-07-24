@@ -97,6 +97,7 @@ export default function DraftingRequestForm({
     const loggedInName = auth?.user?.name ?? '';
 
     const { data, setData, post, processing, errors, transform } = useForm({
+        lead_number: applicant.lead_number ?? '',
         requested_at: applicant.requested_at,
         your_name: standalone
             ? (applicant.your_name ?? '')
@@ -129,6 +130,13 @@ export default function DraftingRequestForm({
         next.ndis_sda = next.sda_type_ids.length > 0;
         if (next.client_id === '' || next.client_id == null) {
             next.client_id = null;
+        }
+        if (standalone) {
+            delete next.lead_number;
+        } else if (!next.lead_number?.trim()) {
+            next.lead_number = null;
+        } else {
+            next.lead_number = next.lead_number.trim();
         }
         if (!standalone && loggedInName) {
             next.your_name = loggedInName;
@@ -199,6 +207,8 @@ export default function DraftingRequestForm({
         [setData],
     );
 
+    const fieldNo = (n) => (standalone ? n : n + 1);
+
     const submit = (e) => {
         e.preventDefault();
         post(storeRoute, {
@@ -263,10 +273,38 @@ export default function DraftingRequestForm({
                             encType="multipart/form-data"
                         >
                             <FormRow>
+                                {!standalone && (
+                                    <FieldBlock
+                                        label={
+                                            <InputLabel htmlFor="lead_number">
+                                                1. Lead number
+                                                <ReqMark />
+                                            </InputLabel>
+                                        }
+                                        hint="Enter the project lead / job number."
+                                        error={errors.lead_number}
+                                    >
+                                        <TextInput
+                                            id="lead_number"
+                                            type="text"
+                                            className={inputClass}
+                                            value={data.lead_number ?? ''}
+                                            onChange={(e) =>
+                                                setData(
+                                                    'lead_number',
+                                                    e.target.value,
+                                                )
+                                            }
+                                            placeholder="e.g. 26001"
+                                            required
+                                        />
+                                    </FieldBlock>
+                                )}
+
                                 <FieldBlock
                                     label={
                                         <InputLabel htmlFor="requested_at">
-                                            1. Date
+                                            {standalone ? '1' : '2'}. Date
                                         </InputLabel>
                                     }
                                     error={errors.requested_at}
@@ -287,7 +325,9 @@ export default function DraftingRequestForm({
 
                                 <FieldBlock
                                     label={
-                                        <InputLabel value="2. Your Name" />
+                                        <InputLabel
+                                            value={`${standalone ? '2' : '3'}. Your Name`}
+                                        />
                                     }
                                     hint={
                                         standalone
@@ -308,7 +348,7 @@ export default function DraftingRequestForm({
                                 <FieldBlock
                                     label={
                                         <InputLabel htmlFor="client_id">
-                                            3. Client Name
+                                            {standalone ? '3' : '4'}. Client Name
                                             <ReqMark />
                                         </InputLabel>
                                     }
@@ -388,7 +428,7 @@ export default function DraftingRequestForm({
                                     className="lg:col-span-2"
                                     label={
                                         <InputLabel htmlFor="crm_category_id">
-                                            4. Category
+                                            {fieldNo(4)}. Category
                                             <ReqMark />
                                         </InputLabel>
                                     }
@@ -435,7 +475,7 @@ export default function DraftingRequestForm({
                                 <FieldBlock
                                     label={
                                         <InputLabel htmlFor="site_address">
-                                            5. Site Address Details
+                                            {fieldNo(5)}. Site Address Details
                                             <ReqMark />
                                         </InputLabel>
                                     }
@@ -459,7 +499,7 @@ export default function DraftingRequestForm({
                                 <FieldBlock
                                     label={
                                         <InputLabel htmlFor="council_shire">
-                                            6. Council / Shire
+                                            {fieldNo(6)}. Council / Shire
                                         </InputLabel>
                                     }
                                     error={errors.council_shire}
@@ -481,7 +521,7 @@ export default function DraftingRequestForm({
                                 <FieldBlock
                                     label={
                                         <InputLabel htmlFor="site_owner_name">
-                                            7. Site Owner Name
+                                            {fieldNo(7)}. Site Owner Name
                                             <ReqMark />
                                         </InputLabel>
                                     }
@@ -506,7 +546,7 @@ export default function DraftingRequestForm({
                                 <FieldBlock
                                     label={
                                         <InputLabel htmlFor="max_building_area_sqm">
-                                            8. Area (m²)
+                                            {fieldNo(8)}. Area (m²)
                                         </InputLabel>
                                     }
                                     hint="Area in square meter."
@@ -533,7 +573,7 @@ export default function DraftingRequestForm({
                                 <FieldBlock
                                     label={
                                         <InputLabel htmlFor="building_class_id">
-                                            9. Building Class
+                                            {fieldNo(9)}. Building Class
                                             <ReqMark />
                                         </InputLabel>
                                     }
@@ -573,7 +613,7 @@ export default function DraftingRequestForm({
                                 <FieldBlock
                                     label={
                                         <InputLabel htmlFor="storey_level_id">
-                                            10. Storey / Levels
+                                            {fieldNo(10)}. Storey / Levels
                                             <ReqMark />
                                         </InputLabel>
                                     }
@@ -615,7 +655,7 @@ export default function DraftingRequestForm({
                                 <FieldBlock
                                     label={
                                         <InputLabel htmlFor="zoning">
-                                            11. Zoning
+                                            {fieldNo(11)}. Zoning
                                         </InputLabel>
                                     }
                                     hint="e.g. R2, R3, Mixed Use, Commercial…"
@@ -637,7 +677,7 @@ export default function DraftingRequestForm({
                                 <FieldBlock
                                     label={
                                         <InputLabel htmlFor="sda_type_ids">
-                                            12. NDIS – SDA Dwelling (Class 3)
+                                            {fieldNo(12)}. NDIS – SDA Dwelling (Class 3)
                                         </InputLabel>
                                     }
                                     hint="Select SDA types if this is an NDIS requirement dwelling. You can select multiple."
@@ -668,7 +708,7 @@ export default function DraftingRequestForm({
                                 <FieldBlock
                                     label={
                                         <InputLabel htmlFor="external_wall_construction_id">
-                                            13. External Wall Construction
+                                            {fieldNo(13)}. External Wall Construction
                                         </InputLabel>
                                     }
                                     hint="Options from Workflow settings → External wall construction."
@@ -708,7 +748,7 @@ export default function DraftingRequestForm({
                                 className="w-full"
                                 label={
                                     <InputLabel htmlFor="documents">
-                                        14. Upload documents
+                                        {fieldNo(14)}. Upload documents
                                     </InputLabel>
                                 }
                                 hint={

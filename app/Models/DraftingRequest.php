@@ -102,6 +102,7 @@ class DraftingRequest extends Model
 
     protected $fillable = [
         'user_id',
+        'lead_number',
         'status',
         'is_priority',
         'requested_at',
@@ -263,6 +264,12 @@ class DraftingRequest extends Model
 
     public function jobNumber(): string
     {
+        $manual = trim((string) ($this->lead_number ?? ''));
+
+        if ($manual !== '') {
+            return $manual;
+        }
+
         $at = $this->requested_at ?? $this->created_at;
 
         $year = $at !== null
