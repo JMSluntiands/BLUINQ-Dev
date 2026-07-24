@@ -19,9 +19,7 @@ class DraftingRequestBoardService
      */
     public function baseQuery(Request $request): Builder
     {
-        $user = $request->user();
-
-        $query = DraftingRequest::query()
+        return DraftingRequest::query()
             ->with([
                 'crmCategory:id,name,code',
                 'buildingType:id,name',
@@ -43,12 +41,6 @@ class DraftingRequestBoardService
             ->orderByDesc('is_priority')
             ->orderByDesc('requested_at')
             ->orderByDesc('id');
-
-        if ($user !== null && ! $user->isAdmin()) {
-            $query->where('user_id', $user->id);
-        }
-
-        return $query;
     }
 
     /**

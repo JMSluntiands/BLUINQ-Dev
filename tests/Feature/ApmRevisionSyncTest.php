@@ -203,6 +203,66 @@ class ApmRevisionSyncTest extends TestCase
                 ->has('categoryOptions'));
     }
 
+    public function test_member_sees_all_apm_jobs_on_board_and_can_open_them(): void
+    {
+        $owner = $this->adminUser();
+        $member = $this->memberUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+        $job = $this->createApmJob($owner, $storeyLevel, $category);
+
+        $this->actingAs($member)
+            ->get(route('job.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->has('jobs.data', 1)
+                ->where('jobs.data.0.id', $job->id)
+                ->where('canViewAllRequests', true));
+
+        $this->actingAs($member)
+            ->get(route('job.drafting.show', $job))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Drafting/Show')
+                ->where('draftingRequest.id', $job->id));
+    }
+
+    public function test_member_sees_all_masterlist_entries(): void
+    {
+        $owner = $this->adminUser();
+        $member = $this->memberUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $row = DraftingRequest::query()->create([
+            'user_id' => $owner->id,
+            'status' => DraftingRequest::STATUS_NEW,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_MASTERLIST,
+            'requested_at' => now(),
+            'your_name' => 'Owner Client',
+            'company_name' => 'Owner Co',
+            'email' => 'owner@example.com',
+            'site_address' => '9 Masterlist St',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        $this->actingAs($member)
+            ->get(route('job.masterlist'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Masterlist/Index')
+                ->has('draftingRequests.data', 1)
+                ->where('draftingRequests.data.0.id', $row->id));
+
+        $this->actingAs($member)
+            ->get(route('job.masterlist.show', $row))
+            ->assertOk();
+    }
+
     public function test_board_checking_slot_zero_syncs_checker_and_hours(): void
     {
         $user = $this->adminUser();
@@ -246,6 +306,15 @@ class ApmRevisionSyncTest extends TestCase
 
         return User::factory()->create([
             'role_id' => $adminRoleId,
+        ]);
+    }
+
+    private function memberUser(): User
+    {
+        $memberRoleId = Role::query()->where('slug', 'user')->value('id');
+
+        return User::factory()->create([
+            'role_id' => $memberRoleId,
         ]);
     }
 

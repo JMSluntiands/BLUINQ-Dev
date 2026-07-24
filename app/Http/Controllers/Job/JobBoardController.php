@@ -62,7 +62,7 @@ class JobBoardController extends Controller
                 })
                 ->withQueryString(),
             'filters' => $filters,
-            'canViewAllRequests' => $user?->isAdmin() ?? false,
+            'canViewAllRequests' => $user?->hasPermission('job.list.view') ?? false,
             'canReviewPublicRequests' => $canReviewPublicRequests,
             'canForwardFromMasterlist' => $canForwardFromMasterlist,
             'masterlistCandidates' => $canForwardFromMasterlist
@@ -177,18 +177,12 @@ class JobBoardController extends Controller
      */
     private function masterlistCandidateQuery(?User $user)
     {
-        $query = DraftingRequest::query()
+        return DraftingRequest::query()
             ->masterlist()
             ->reviewAccepted()
             ->active()
             ->orderByDesc('requested_at')
             ->orderByDesc('id');
-
-        if ($user !== null && ! $user->isAdmin()) {
-            $query->where('user_id', $user->id);
-        }
-
-        return $query;
     }
 
     /**
@@ -198,7 +192,7 @@ class JobBoardController extends Controller
      */
     private function reopenableApmCandidateQuery(?User $user)
     {
-        $query = DraftingRequest::query()
+        return DraftingRequest::query()
             ->apm()
             ->reviewAccepted()
             ->active()
@@ -210,12 +204,6 @@ class JobBoardController extends Controller
             ->orderByDesc('updated_at')
             ->orderByDesc('requested_at')
             ->orderByDesc('id');
-
-        if ($user !== null && ! $user->isAdmin()) {
-            $query->where('user_id', $user->id);
-        }
-
-        return $query;
     }
 
     /**
@@ -229,10 +217,6 @@ class JobBoardController extends Controller
             ->active()
             ->orderByDesc('updated_at')
             ->orderByDesc('id');
-
-        if ($user !== null && ! $user->isAdmin()) {
-            $query->where('user_id', $user->id);
-        }
 
         $digits = preg_replace('/\D+/', '', $search) ?? '';
 
@@ -268,10 +252,6 @@ class JobBoardController extends Controller
         $user = $request->user();
 
         if ($user === null) {
-            abort(403);
-        }
-
-        if (! $user->isAdmin() && $draftingRequest->user_id !== $user->id) {
             abort(403);
         }
 

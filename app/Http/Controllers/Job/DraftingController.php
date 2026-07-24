@@ -65,7 +65,7 @@ class DraftingController extends Controller
                 'search' => $search,
                 'per_page' => $perPage,
             ],
-            'canViewAllRequests' => $request->user()->isAdmin(),
+            'canViewAllRequests' => $request->user()->hasPermission('job.list.view'),
         ]);
     }
 
@@ -91,7 +91,7 @@ class DraftingController extends Controller
                 'search' => $search,
                 'per_page' => $perPage,
             ],
-            'canViewAllRequests' => $request->user()->isAdmin(),
+            'canViewAllRequests' => $request->user()->hasPermission('job.list.view'),
         ]);
     }
 
@@ -999,9 +999,7 @@ class DraftingController extends Controller
      */
     private function baseListQuery(Request $request)
     {
-        $user = $request->user();
-
-        $query = DraftingRequest::query()
+        return DraftingRequest::query()
             ->with([
                 'buildingType:id,name',
                 'serviceEngagings:id,name',
@@ -1010,12 +1008,6 @@ class DraftingController extends Controller
             ->apm()
             ->orderByDesc('requested_at')
             ->orderByDesc('id');
-
-        if (! $user->isAdmin()) {
-            $query->where('user_id', $user->id);
-        }
-
-        return $query;
     }
 
     /**
@@ -1231,15 +1223,13 @@ class DraftingController extends Controller
         User $user,
         DraftingRequest $draftingRequest,
     ): bool {
-        $isOwnerOrAdmin = $user->isAdmin() || $draftingRequest->user_id === $user->id;
-
-        if ($user->hasPermission('job.drafting.view') && $isOwnerOrAdmin) {
+        if ($draftingRequest->workflow_stage === DraftingRequest::STAGE_APM
+            && $user->hasPermission('job.drafting.view')) {
             return true;
         }
 
         if ($draftingRequest->workflow_stage === DraftingRequest::STAGE_MASTERLIST
-            && $user->hasPermission('job.drafting-request.view')
-            && $isOwnerOrAdmin) {
+            && $user->hasPermission('job.drafting-request.view')) {
             return true;
         }
 

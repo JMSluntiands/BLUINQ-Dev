@@ -58,12 +58,9 @@ class MasterlistController extends Controller
             ->orderByDesc('requested_at')
             ->orderByDesc('id');
 
-        $user = $request->user();
-        if ($user !== null && ! $user->isAdmin()) {
-            $query->where('user_id', $user->id);
-        }
-
         $this->applySearch($query, $search);
+
+        $user = $request->user();
 
         return Inertia::render('Job/Masterlist/Index', [
             'draftingRequests' => $query
@@ -277,7 +274,7 @@ class MasterlistController extends Controller
     {
         $user = $request->user();
 
-        if ($user === null) {
+        if ($user === null || ! $user->hasPermission('job.drafting-request.view')) {
             abort(403);
         }
 
@@ -291,17 +288,13 @@ class MasterlistController extends Controller
             || $draftingRequest->isArchived()) {
             abort(404);
         }
-
-        if (! $user->isAdmin() && $draftingRequest->user_id !== $user->id) {
-            abort(403);
-        }
     }
 
     private function authorizeMasterlist(Request $request, DraftingRequest $draftingRequest): void
     {
         $user = $request->user();
 
-        if ($user === null) {
+        if ($user === null || ! $user->hasPermission('job.drafting-request.view')) {
             abort(403);
         }
 
@@ -309,10 +302,6 @@ class MasterlistController extends Controller
             || $draftingRequest->review_status !== DraftingRequest::REVIEW_ACCEPTED
             || $draftingRequest->isArchived()) {
             abort(404);
-        }
-
-        if (! $user->isAdmin() && $draftingRequest->user_id !== $user->id) {
-            abort(403);
         }
     }
 
