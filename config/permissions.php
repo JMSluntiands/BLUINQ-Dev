@@ -28,6 +28,7 @@ return [
         'leave.reject' => 'leave.manage',
         'leave.credits.index' => ['leave.credits.view', 'leave.credits.edit'],
         'leave.credits.store' => 'leave.credits.edit',
+        'leave.credits.update' => 'leave.credits.edit',
         'settings.user-milestones.index' => 'profile.milestones.manage',
         'settings.user-milestones.show' => 'profile.milestones.manage',
         'settings.user-milestones.store' => 'profile.milestones.manage',

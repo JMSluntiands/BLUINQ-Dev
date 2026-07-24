@@ -160,6 +160,48 @@ class LeaveService
         });
     }
 
+    public function updateBalances(
+        User $employee,
+        int $alCredits,
+        int $slCredits,
+        User $actor,
+        ?string $notes = null,
+    ): void {
+        DB::transaction(function () use ($employee, $alCredits, $slCredits, $actor, $notes): void {
+            $employee->refresh();
+            $this->entitlements->ensureYearInitialized($employee);
+            $employee->refresh();
+
+            $previousAl = (int) $employee->al_credits;
+            $previousSl = (int) $employee->sl_credits;
+
+            $employee->forceFill([
+                'al_credits' => $alCredits,
+                'sl_credits' => $slCredits,
+            ])->save();
+
+            $this->entitlements->syncLegacyLeaveCredits($employee->fresh());
+            $employee->refresh();
+
+            $delta = ($alCredits - $previousAl) + ($slCredits - $previousSl);
+
+            $this->logCreditChange(
+                employee: $employee,
+                actor: $actor,
+                amount: $delta,
+                action: 'manual_edit',
+                notes: trim(sprintf(
+                    'AL %d→%d, SL %d→%d.%s',
+                    $previousAl,
+                    $alCredits,
+                    $previousSl,
+                    $slCredits,
+                    $notes ? ' '.$notes : '',
+                )),
+            );
+        });
+    }
+
     public function deductCreditsForApprovedLeave(LeaveRequest $leaveRequest, User $actor): void
     {
         $type = LeaveRequest::normalizeType($leaveRequest->type);
@@ -305,6 +347,7 @@ class LeaveService
 
         $description = match ($action) {
             'manual_add' => "Added {$amount} leave credit(s) to {$employee->name}. AL: {$balances['al_available']}, SL: {$balances['sl_credits']}.",
+            'manual_edit' => "Edited leave balances for {$employee->name}. AL: {$balances['al_available']}, SL: {$balances['sl_credits']}.",
             'leave_approved' => sprintf(
                 'Deducted %d day(s) from %s for approved %s #%d. AL: %d, SL: %d, medical used: %d.',
                 abs($amount),

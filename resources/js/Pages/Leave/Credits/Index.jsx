@@ -8,12 +8,13 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
 import UserAvatar from '@/Components/UserAvatar';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
 const FLASH_MESSAGES = {
     'leave-credits-added': 'Leave credits added successfully.',
+    'leave-credits-updated': 'Leave balances updated successfully.',
 };
 
 function AddCreditsModal({ employee, onClose }) {
@@ -39,10 +40,6 @@ function AddCreditsModal({ employee, onClose }) {
             },
         });
     };
-
-    if (!employee) {
-        return null;
-    }
 
     return (
         <Modal show onClose={onClose} maxWidth="md">
@@ -95,11 +92,11 @@ function AddCreditsModal({ employee, onClose }) {
                     </div>
                     <div>
                         <InputLabel
-                            htmlFor="notes"
+                            htmlFor="add-notes"
                             value="Notes (optional)"
                         />
                         <textarea
-                            id="notes"
+                            id="add-notes"
                             value={data.notes}
                             onChange={(event) =>
                                 setData('notes', event.target.value)
@@ -125,9 +122,121 @@ function AddCreditsModal({ employee, onClose }) {
     );
 }
 
+function EditCreditsModal({ employee, onClose }) {
+    const balances = employee.balances ?? {};
+    const { data, setData, patch, processing, errors, reset } = useForm({
+        al_credits: String(balances.al_credits ?? 0),
+        sl_credits: String(balances.sl_credits ?? 0),
+        notes: '',
+    });
+
+    useEffect(() => {
+        setData({
+            al_credits: String(balances.al_credits ?? 0),
+            sl_credits: String(balances.sl_credits ?? 0),
+            notes: '',
+        });
+    }, [employee.id, balances.al_credits, balances.sl_credits, setData]);
+
+    const submit = (event) => {
+        event.preventDefault();
+        patch(route('leave.credits.update', employee.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                reset();
+                onClose();
+            },
+        });
+    };
+
+    return (
+        <Modal show onClose={onClose} maxWidth="md">
+            <form onSubmit={submit} className="p-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Edit leave balances
+                </h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    {employee.name}
+                    {balances.al_carried_over > 0
+                        ? ` · includes ${balances.al_carried_over} carried-over AL (not edited here)`
+                        : ''}
+                </p>
+
+                <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <InputLabel htmlFor="al_credits" value="AL credits" />
+                        <TextInput
+                            id="al_credits"
+                            type="number"
+                            min="0"
+                            max="365"
+                            value={data.al_credits}
+                            onChange={(event) =>
+                                setData('al_credits', event.target.value)
+                            }
+                            className="mt-1 block w-full"
+                            required
+                        />
+                        <InputError
+                            message={errors.al_credits}
+                            className="mt-1"
+                        />
+                    </div>
+                    <div>
+                        <InputLabel htmlFor="sl_credits" value="SL credits" />
+                        <TextInput
+                            id="sl_credits"
+                            type="number"
+                            min="0"
+                            max="365"
+                            value={data.sl_credits}
+                            onChange={(event) =>
+                                setData('sl_credits', event.target.value)
+                            }
+                            className="mt-1 block w-full"
+                            required
+                        />
+                        <InputError
+                            message={errors.sl_credits}
+                            className="mt-1"
+                        />
+                    </div>
+                    <div className="sm:col-span-2">
+                        <InputLabel
+                            htmlFor="edit-notes"
+                            value="Notes (optional)"
+                        />
+                        <textarea
+                            id="edit-notes"
+                            value={data.notes}
+                            onChange={(event) =>
+                                setData('notes', event.target.value)
+                            }
+                            rows={2}
+                            className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                            placeholder="Reason for editing balances..."
+                        />
+                        <InputError message={errors.notes} className="mt-1" />
+                    </div>
+                </div>
+
+                <div className="mt-6 flex justify-end gap-3">
+                    <SecondaryButton type="button" onClick={onClose}>
+                        Cancel
+                    </SecondaryButton>
+                    <PrimaryButton disabled={processing}>
+                        Save balances
+                    </PrimaryButton>
+                </div>
+            </form>
+        </Modal>
+    );
+}
+
 export default function Index({ employees, filters = {}, canEdit = false }) {
     const rows = employees?.data ?? [];
-    const [selectedEmployee, setSelectedEmployee] = useState(null);
+    const [addEmployee, setAddEmployee] = useState(null);
+    const [editEmployee, setEditEmployee] = useState(null);
 
     const handleSearch = (event) => {
         event.preventDefault();
@@ -222,16 +331,28 @@ export default function Index({ employees, filters = {}, canEdit = false }) {
                                     </div>
                                 </div>
                                 {canEdit && (
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setSelectedEmployee(employee)
-                                        }
-                                        className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-sky-500"
-                                    >
-                                        <PlusIcon className="h-4 w-4" />
-                                        Add credits
-                                    </button>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setEditEmployee(employee)
+                                            }
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                                        >
+                                            <PencilSquareIcon className="h-4 w-4" />
+                                            Edit
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setAddEmployee(employee)
+                                            }
+                                            className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-sky-500"
+                                        >
+                                            <PlusIcon className="h-4 w-4" />
+                                            Add credits
+                                        </button>
+                                    </div>
                                 )}
                             </li>
                         ))}
@@ -245,10 +366,17 @@ export default function Index({ employees, filters = {}, canEdit = false }) {
                 )}
             </div>
 
-            {canEdit && selectedEmployee && (
+            {canEdit && addEmployee && (
                 <AddCreditsModal
-                    employee={selectedEmployee}
-                    onClose={() => setSelectedEmployee(null)}
+                    employee={addEmployee}
+                    onClose={() => setAddEmployee(null)}
+                />
+            )}
+
+            {canEdit && editEmployee && (
+                <EditCreditsModal
+                    employee={editEmployee}
+                    onClose={() => setEditEmployee(null)}
                 />
             )}
         </AuthenticatedLayout>

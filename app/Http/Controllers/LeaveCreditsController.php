@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreLeaveCreditsRequest;
+use App\Http\Requests\UpdateLeaveCreditsRequest;
 use App\Models\User;
 use App\Services\LeaveService;
 use Illuminate\Http\RedirectResponse;
@@ -73,5 +74,20 @@ class LeaveCreditsController extends Controller
         );
 
         return back()->with('status', 'leave-credits-added');
+    }
+
+    public function update(UpdateLeaveCreditsRequest $request, User $user): RedirectResponse
+    {
+        $employee = User::query()->active()->findOrFail($user->id);
+
+        $this->leave->updateBalances(
+            $employee,
+            (int) $request->validated('al_credits'),
+            (int) $request->validated('sl_credits'),
+            $request->user(),
+            $request->validated('notes'),
+        );
+
+        return back()->with('status', 'leave-credits-updated');
     }
 }

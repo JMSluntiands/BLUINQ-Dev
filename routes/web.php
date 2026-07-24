@@ -132,6 +132,8 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('leave.credits.index');
     Route::post('/leave/credits', [LeaveCreditsController::class, 'store'])
         ->name('leave.credits.store');
+    Route::patch('/leave/credits/{user}', [LeaveCreditsController::class, 'update'])
+        ->name('leave.credits.update');
 
     Route::get('/settings/user-milestones', [UserMilestoneController::class, 'index'])
         ->name('settings.user-milestones.index');
