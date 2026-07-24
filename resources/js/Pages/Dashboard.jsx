@@ -12,7 +12,7 @@ import {
     UserMinusIcon,
 } from '@heroicons/react/24/outline';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const FLASH_MESSAGES = {
     'leave-request-submitted':
@@ -29,9 +29,13 @@ function DashboardPanel({
     children,
     className = '',
     bodyClassName = '',
+    style,
+    panelRef,
 }) {
     return (
         <div
+            ref={panelRef}
+            style={style}
             className={
                 'flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm dark:border-slate-700/70 dark:bg-slate-900/90 ' +
                 className
@@ -47,11 +51,7 @@ function DashboardPanel({
                     {title}
                 </h3>
             </div>
-            <div
-                className={
-                    'min-h-0 flex-1 p-5 ' + bodyClassName
-                }
-            >
+            <div className={'min-h-0 flex-1 overflow-hidden p-5 ' + bodyClassName}>
                 {children}
             </div>
         </div>
@@ -342,6 +342,7 @@ export default function Dashboard() {
                     title="Announcement"
                     icon={MegaphoneIcon}
                     className="lg:col-span-6"
+                    panelRef={announcementPanelRef}
                 >
                     {announcements.length === 0 ? (
                         <div className="text-center">
@@ -438,13 +439,9 @@ export default function Dashboard() {
                 <DashboardPanel
                     title="Attendance"
                     icon={UserMinusIcon}
-                    className={
-                        'lg:col-span-3' +
-                        (canViewAnnouncements
-                            ? ' lg:h-0 lg:min-h-full'
-                            : ' lg:max-h-[28rem]')
-                    }
-                    bodyClassName="overflow-y-auto"
+                    className="lg:col-span-3 lg:max-h-[32rem]"
+                    bodyClassName="overflow-y-auto overscroll-y-contain"
+                    style={sidePanelStyle}
                 >
                     <div className="space-y-5">
                         <div>
@@ -500,13 +497,9 @@ export default function Dashboard() {
                 <DashboardPanel
                     title="Holidays & Birthday"
                     icon={CalendarDaysIcon}
-                    className={
-                        'lg:col-span-3' +
-                        (canViewAnnouncements
-                            ? ' lg:h-0 lg:min-h-full'
-                            : ' lg:max-h-[28rem]')
-                    }
-                    bodyClassName="overflow-y-auto"
+                    className="lg:col-span-3 lg:max-h-[32rem]"
+                    bodyClassName="overflow-y-auto overscroll-y-contain"
+                    style={sidePanelStyle}
                 >
                     <div className="space-y-5">
                         <div>
