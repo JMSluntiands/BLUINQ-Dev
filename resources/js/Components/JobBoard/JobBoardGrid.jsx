@@ -507,6 +507,7 @@ function JobBoardTableBody({
     onPriorityUpdated,
     renderActions = null,
     variant = 'board',
+    fitWidth = false,
     assignableUsers = [],
     statusOptions = [],
     onOpenAssignment = null,
@@ -550,7 +551,14 @@ function JobBoardTableBody({
                             }
                         >
                             <td className={tdClass}>
-                                <div className="flex min-w-[14rem] items-center gap-1.5">
+                                <div
+                                    className={
+                                        'flex items-center gap-1.5 ' +
+                                        (fitWidth
+                                            ? 'min-w-0'
+                                            : 'min-w-[14rem]')
+                                    }
+                                >
                                     {isMasterlist ? (
                                         <button
                                             type="button"
@@ -884,6 +892,7 @@ function JobBoardStatusSection({
     hideStatus = false,
     renderActions = null,
     variant = 'board',
+    fitWidth = false,
     assignableUsers = [],
     statusOptions = [],
     onOpenAssignment = null,
@@ -923,13 +932,21 @@ function JobBoardStatusSection({
 
             {!collapsed &&
                 (jobs.length > 0 ? (
-                    <div id={sectionId} className="min-w-0 max-w-full overflow-x-auto">
+                    <div
+                        id={sectionId}
+                        className={
+                            'min-w-0 max-w-full ' +
+                            (fitWidth ? 'overflow-x-hidden' : 'overflow-x-auto')
+                        }
+                    >
                         <table
                             className={
                                 'w-full border-collapse text-left ' +
-                                (variant === 'masterlist'
-                                    ? 'min-w-[64rem]'
-                                    : 'min-w-[108rem]')
+                                (fitWidth
+                                    ? 'table-fixed'
+                                    : variant === 'masterlist'
+                                      ? 'min-w-[64rem]'
+                                      : 'min-w-[108rem]')
                             }
                         >
                             <JobBoardTableHead
@@ -947,6 +964,7 @@ function JobBoardStatusSection({
                                 onPriorityUpdated={onPriorityUpdated}
                                 renderActions={renderActions}
                                 variant={variant}
+                                fitWidth={fitWidth}
                                 assignableUsers={assignableUsers}
                                 statusOptions={statusOptions}
                                 onOpenAssignment={onOpenAssignment}
@@ -990,6 +1008,7 @@ export default function JobBoardGrid({
     hideStatus = false,
     renderActions = null,
     variant = 'board',
+    fitWidth = false,
     assignableUsers = [],
     statusOptions = [],
 }) {
@@ -1040,12 +1059,18 @@ export default function JobBoardGrid({
         );
     }
 
-    const tableMinWidth =
-        variant === 'masterlist' ? 'min-w-[64rem]' : 'min-w-[108rem]';
+    const tableMinWidth = fitWidth
+        ? 'table-fixed'
+        : variant === 'masterlist'
+          ? 'min-w-[64rem]'
+          : 'min-w-[108rem]';
+    const tableOverflowClass = fitWidth
+        ? 'overflow-x-hidden'
+        : 'overflow-x-auto';
 
     return (
         <>
-            <div className="bg-white dark:bg-[#1a1b2e] min-w-0 max-w-full">
+            <div className="min-w-0 max-w-full bg-white dark:bg-[#1a1b2e]">
                 {groupByStatus ? (
                     statusGroups.map((group) => (
                         <JobBoardStatusSection
@@ -1065,13 +1090,18 @@ export default function JobBoardGrid({
                             hideStatus={hideStatus}
                             renderActions={renderActions}
                             variant={variant}
+                            fitWidth={fitWidth}
                             assignableUsers={assignableUsers}
                             statusOptions={statusOptions}
                             onOpenAssignment={setAssignmentTarget}
                         />
                     ))
                 ) : (
-                    <div className="min-w-0 max-w-full overflow-x-auto">
+                    <div
+                        className={
+                            'min-w-0 max-w-full ' + tableOverflowClass
+                        }
+                    >
                         <table
                             className={
                                 'w-full border-collapse text-left ' +
@@ -1093,6 +1123,7 @@ export default function JobBoardGrid({
                                 onPriorityUpdated={onPriorityUpdated}
                                 renderActions={renderActions}
                                 variant={variant}
+                                fitWidth={fitWidth}
                                 assignableUsers={assignableUsers}
                                 statusOptions={statusOptions}
                                 onOpenAssignment={setAssignmentTarget}

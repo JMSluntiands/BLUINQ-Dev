@@ -379,12 +379,12 @@ export default function Dashboard() {
                 activityFormOptions={activityFormOptions}
             />
 
-            <div className="mt-8 grid min-w-0 grid-cols-1 items-start gap-5 lg:grid-cols-12 lg:gap-6">
+            <div className="mt-8 grid min-w-0 max-w-full grid-cols-1 items-start gap-5 overflow-x-hidden lg:grid-cols-12 lg:gap-6">
                 {canViewAnnouncements && (
                 <DashboardPanel
                     title="Announcement"
                     icon={MegaphoneIcon}
-                    className="lg:col-span-6"
+                    className="min-w-0 lg:col-span-6"
                     panelRef={announcementPanelRef}
                 >
                     {announcements.length === 0 ? (
