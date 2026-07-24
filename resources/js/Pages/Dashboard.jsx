@@ -37,7 +37,7 @@ function DashboardPanel({
             ref={panelRef}
             style={style}
             className={
-                'flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm dark:border-slate-700/70 dark:bg-slate-900/90 ' +
+                'flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm dark:border-slate-700/70 dark:bg-slate-900/90 ' +
                 className
             }
         >
@@ -359,8 +359,7 @@ export default function Dashboard() {
     const sidePanelStyle =
         sidePanelHeight != null
             ? {
-                  height: `${sidePanelHeight}px`,
-                  maxHeight: `${sidePanelHeight}px`,
+                  '--dashboard-side-h': `${sidePanelHeight}px`,
               }
             : undefined;
 
@@ -380,7 +379,7 @@ export default function Dashboard() {
                 activityFormOptions={activityFormOptions}
             />
 
-            <div className="mt-8 grid grid-cols-1 items-stretch gap-5 lg:grid-cols-12 lg:gap-6">
+            <div className="mt-8 grid min-w-0 grid-cols-1 items-start gap-5 lg:grid-cols-12 lg:gap-6">
                 {canViewAnnouncements && (
                 <DashboardPanel
                     title="Announcement"
@@ -483,7 +482,7 @@ export default function Dashboard() {
                 <DashboardPanel
                     title="Attendance"
                     icon={UserMinusIcon}
-                    className="lg:col-span-3 lg:max-h-[32rem]"
+                    className="max-h-[28rem] w-full lg:col-span-3 lg:max-h-[var(--dashboard-side-h,28rem)] lg:h-[var(--dashboard-side-h,28rem)]"
                     bodyClassName="overflow-y-auto overscroll-y-contain"
                     style={sidePanelStyle}
                 >
@@ -541,7 +540,7 @@ export default function Dashboard() {
                 <DashboardPanel
                     title="Holidays & Birthday"
                     icon={CalendarDaysIcon}
-                    className="lg:col-span-3 lg:max-h-[32rem]"
+                    className="max-h-[28rem] w-full lg:col-span-3 lg:max-h-[var(--dashboard-side-h,28rem)] lg:h-[var(--dashboard-side-h,28rem)]"
                     bodyClassName="overflow-y-auto overscroll-y-contain"
                     style={sidePanelStyle}
                 >

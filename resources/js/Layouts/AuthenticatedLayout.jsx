@@ -709,7 +709,7 @@ export default function AuthenticatedLayout({ header, children }) {
             </aside>
 
             {/* Main: navbar + content */}
-            <div className="flex min-h-screen flex-col lg:pl-64">
+            <div className="flex min-h-screen min-w-0 flex-col lg:pl-64">
                 <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b border-slate-200 bg-white px-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:px-6">
                     <button
                         type="button"
@@ -762,13 +762,13 @@ export default function AuthenticatedLayout({ header, children }) {
                     </div>
                 </header>
 
-                <main className="flex-1 p-4 sm:p-6 lg:p-8">
+                <main className="min-w-0 flex-1 overflow-x-hidden p-4 sm:p-6 lg:p-8">
                     {header && (
                         <div className="mb-6 border-b border-slate-200 pb-4 dark:border-slate-800">
                             {header}
                         </div>
                     )}
-                    <div className="w-full">{children}</div>
+                    <div className="w-full min-w-0">{children}</div>
                 </main>
             </div>
         </div>
