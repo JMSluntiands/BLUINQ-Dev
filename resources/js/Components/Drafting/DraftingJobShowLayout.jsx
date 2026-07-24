@@ -1,4 +1,4 @@
-import { staffBadgeColor } from '@/Components/JobBoard/jobBoardStyles';
+import { staffBadgeStyle } from '@/Components/JobBoard/jobBoardStyles';
 import InputError from '@/Components/InputError';
 import TextInput from '@/Components/TextInput';
 import { PencilSquareIcon, PlusIcon } from '@heroicons/react/24/outline';
@@ -148,10 +148,8 @@ function DrafterBadge({ initials, name }) {
     if (text.length > 3) {
         return (
             <span
-                className={
-                    'inline-flex max-w-[5rem] items-center truncate rounded-md px-2 py-0.5 text-[10px] font-bold text-white ' +
-                    staffBadgeColor(text)
-                }
+                className="inline-flex max-w-[5rem] items-center truncate rounded-md px-2 py-0.5 text-[10px] font-bold"
+                style={staffBadgeStyle(text)}
                 title={name ?? text}
             >
                 {text}
@@ -161,10 +159,8 @@ function DrafterBadge({ initials, name }) {
 
     return (
         <span
-            className={
-                'inline-flex h-7 w-7 items-center justify-center rounded text-[10px] font-bold text-white ' +
-                staffBadgeColor(text)
-            }
+            className="inline-flex h-7 w-7 items-center justify-center rounded text-[10px] font-bold"
+            style={staffBadgeStyle(text)}
             title={name ?? text}
         >
             {text}

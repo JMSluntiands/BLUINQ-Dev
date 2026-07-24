@@ -3,7 +3,7 @@ import {
     JOB_STATUS_LABELS,
     JOB_STATUS_STYLES,
     TAG_PILL_CLASS,
-    staffBadgeColor,
+    staffBadgeStyle,
 } from '@/Components/JobBoard/jobBoardStyles';
 import JobBoardCommentsModal, {
     JobBoardCommentButton,
@@ -87,10 +87,8 @@ function StaffSlot({ assignment, editable = false, onClick }) {
     ) : (
         <div className="flex items-center gap-1">
             <span
-                className={
-                    'flex h-6 w-6 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white shadow-sm ring-1 ring-black/10 ' +
-                    staffBadgeColor(assignment.initials)
-                }
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-[10px] font-bold shadow-sm ring-1 ring-black/10"
+                style={staffBadgeStyle(assignment.initials)}
                 title={assignment.name ?? assignment.initials}
             >
                 {assignment.initials}

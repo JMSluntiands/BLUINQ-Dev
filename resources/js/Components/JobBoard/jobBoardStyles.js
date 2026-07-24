@@ -71,7 +71,21 @@ export const JOB_LIST_SECTIONS = [
     { key: 'cancelled_jobs', label: 'Cancelled Jobs' },
 ];
 
-/** @type {string[]} */
+/** High-contrast badge fills (white text). Hex so Tailwind purge cannot drop them. */
+export const STAFF_BADGE_HEX = [
+    '#7c3aed', // violet-600
+    '#db2777', // pink-600
+    '#c026d3', // fuchsia-600
+    '#ea580c', // orange-600
+    '#0e7490', // cyan-700
+    '#d97706', // amber-600
+    '#059669', // emerald-600
+    '#e11d48', // rose-600
+    '#4f46e5', // indigo-600
+    '#0f766e', // teal-700
+];
+
+/** @deprecated Prefer staffBadgeStyle — Tailwind may purge dynamic bg-* from .js files. */
 export const STAFF_BADGE_COLORS = [
     'bg-violet-600',
     'bg-pink-600',
@@ -90,6 +104,16 @@ export function staffBadgeColor(initials) {
         .split('')
         .reduce((sum, char) => sum + char.charCodeAt(0), 0);
     return STAFF_BADGE_COLORS[code % STAFF_BADGE_COLORS.length];
+}
+
+export function staffBadgeStyle(initials) {
+    const code = (initials ?? '')
+        .split('')
+        .reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    return {
+        backgroundColor: STAFF_BADGE_HEX[code % STAFF_BADGE_HEX.length],
+        color: '#ffffff',
+    };
 }
 
 export const TAG_PILL_CLASS =
