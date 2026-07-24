@@ -109,12 +109,16 @@ class DraftingRequest extends Model
         'date_out',
         'your_name',
         'company_name',
+        'client_id',
         'email',
+        'phone',
         'site_address',
+        'council_shire',
         'site_owner_name',
         'max_building_area_sqm',
         'design_requirements',
         'building_type_id',
+        'building_class_id',
         'zoning',
         'ndis_sda',
         'unit_development_count',
@@ -273,6 +277,14 @@ class DraftingRequest extends Model
     }
 
     /**
+     * @return BelongsTo<Client, $this>
+     */
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class);
+    }
+
+    /**
      * @return BelongsTo<User, $this>
      */
     public function reviewer(): BelongsTo
@@ -286,6 +298,14 @@ class DraftingRequest extends Model
     public function buildingType(): BelongsTo
     {
         return $this->belongsTo(BuildingType::class);
+    }
+
+    /**
+     * @return BelongsTo<BuildingClass, $this>
+     */
+    public function buildingClass(): BelongsTo
+    {
+        return $this->belongsTo(BuildingClass::class);
     }
 
     /**
@@ -310,6 +330,14 @@ class DraftingRequest extends Model
     public function serviceEngagings(): BelongsToMany
     {
         return $this->belongsToMany(ServiceEngaging::class, 'drafting_request_service_engaging');
+    }
+
+    /**
+     * @return BelongsToMany<SdaType, $this>
+     */
+    public function sdaTypes(): BelongsToMany
+    {
+        return $this->belongsToMany(SdaType::class, 'drafting_request_sda_type');
     }
 
     /**

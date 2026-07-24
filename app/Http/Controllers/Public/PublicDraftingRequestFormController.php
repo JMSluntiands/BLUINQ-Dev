@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePublicDraftingRequestFormRequest;
+use App\Models\BuildingClass;
 use App\Models\BuildingType;
+use App\Models\Client;
 use App\Models\DraftingRequest;
 use App\Models\ExternalWallConstruction;
 use App\Models\RoofType;
+use App\Models\SdaType;
 use App\Models\ServiceEngaging;
 use App\Services\DraftingRequestSubmissionService;
 use App\Support\PublicDraftingFormUrl;
@@ -34,14 +37,26 @@ class PublicDraftingRequestFormController extends Controller
             'applicant' => [
                 'requested_at' => $requestedAt,
             ],
+            'clients' => Client::query()
+                ->selectable()
+                ->orderBy('name')
+                ->get(['id', 'name', 'contact_name', 'email', 'phone']),
             'serviceEngagings' => ServiceEngaging::query()
                 ->active()
                 ->orderBy('name')
                 ->get(['id', 'name']),
+            'sdaTypes' => SdaType::query()
+                ->active()
+                ->orderBy('name')
+                ->get(['id', 'name', 'code']),
             'buildingTypes' => BuildingType::query()
                 ->active()
                 ->orderBy('name')
                 ->get(['id', 'name']),
+            'buildingClasses' => BuildingClass::query()
+                ->active()
+                ->orderBy('name')
+                ->get(['id', 'name', 'code']),
             'externalWallConstructions' => ExternalWallConstruction::query()
                 ->active()
                 ->orderBy('name')

@@ -20,8 +20,16 @@ class StoreDraftingRequestFormRequest extends FormRequest
         return [
             'requested_at' => ['required', 'date'],
             'your_name' => ['required', 'string', 'max:255'],
+            'client_id' => [
+                'required',
+                'integer',
+                Rule::exists('clients', 'id')->where(
+                    fn ($q) => $q->whereNull('archived_at'),
+                ),
+            ],
             'company_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:255'],
             'service_engaging_ids' => ['required', 'array', 'min:1'],
             'service_engaging_ids.*' => [
                 'integer',
@@ -30,9 +38,9 @@ class StoreDraftingRequestFormRequest extends FormRequest
                 ),
             ],
             'site_address' => ['required', 'string', 'max:2000'],
+            'council_shire' => ['nullable', 'string', 'max:255'],
             'site_owner_name' => ['required', 'string', 'max:255'],
             'max_building_area_sqm' => ['nullable', 'numeric', 'min:0'],
-            'design_requirements' => ['nullable', 'string', 'max:2000'],
             'building_type_id' => [
                 'required',
                 'integer',
@@ -40,8 +48,21 @@ class StoreDraftingRequestFormRequest extends FormRequest
                     fn ($q) => $q->whereNull('archived_at'),
                 ),
             ],
+            'building_class_id' => [
+                'required',
+                'integer',
+                Rule::exists('building_classes', 'id')->where(
+                    fn ($q) => $q->whereNull('archived_at'),
+                ),
+            ],
             'zoning' => ['nullable', 'string', 'max:255'],
-            'facade' => ['nullable', 'file', 'max:20480'],
+            'sda_type_ids' => ['nullable', 'array'],
+            'sda_type_ids.*' => [
+                'integer',
+                Rule::exists('sda_types', 'id')->where(
+                    fn ($q) => $q->whereNull('archived_at'),
+                ),
+            ],
             'ndis_sda' => ['sometimes', 'boolean'],
             'external_wall_construction_id' => [
                 'nullable',
@@ -70,10 +91,15 @@ class StoreDraftingRequestFormRequest extends FormRequest
         $nullableIds = [
             'external_wall_construction_id',
             'roof_type_id',
+            'client_id',
+            'building_class_id',
+            'building_type_id',
         ];
 
         $normalized = [
-            'ndis_sda' => filter_var($this->input('ndis_sda'), FILTER_VALIDATE_BOOLEAN),
+            'ndis_sda' => collect($this->input('sda_type_ids', []))
+                ->filter(fn ($id) => $id !== '' && $id !== null)
+                ->isNotEmpty(),
         ];
 
         foreach ($nullableIds as $key) {
@@ -88,6 +114,23 @@ class StoreDraftingRequestFormRequest extends FormRequest
         if ($this->input('zoning') === '') {
             $normalized['zoning'] = null;
         }
+
+        if ($this->input('phone') === '') {
+            $normalized['phone'] = null;
+        }
+
+        if ($this->input('council_shire') === '') {
+            $normalized['council_shire'] = null;
+        }
+
+        $sdaIds = $this->input('sda_type_ids', []);
+        if (! is_array($sdaIds)) {
+            $sdaIds = [];
+        }
+        $normalized['sda_type_ids'] = array_values(array_filter(
+            $sdaIds,
+            fn ($id) => $id !== '' && $id !== null,
+        ));
 
         $this->merge($normalized);
     }

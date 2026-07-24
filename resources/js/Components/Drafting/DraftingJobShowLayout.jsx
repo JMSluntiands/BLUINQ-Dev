@@ -461,6 +461,7 @@ export default function DraftingJobShowLayout({
     const contactLine = [
         draftingRequest.your_name,
         draftingRequest.email ? `(${draftingRequest.email})` : null,
+        draftingRequest.phone || null,
     ]
         .filter(Boolean)
         .join(' ');
@@ -696,8 +697,16 @@ export default function DraftingJobShowLayout({
                     value={draftingRequest.site_address}
                 />
                 <JobDetailField
+                    label="Council / Shire"
+                    value={draftingRequest.council_shire}
+                />
+                <JobDetailField
                     label="Home owner name"
                     value={draftingRequest.site_owner_name}
+                />
+                <JobDetailField
+                    label="Building class"
+                    value={draftingRequest.building_class}
                 />
                 <JobDetailField
                     label="House type"
@@ -743,7 +752,13 @@ export default function DraftingJobShowLayout({
                 />
                 <JobDetailField
                     label="NDIS / SDA"
-                    value={draftingRequest.ndis_sda ? 'YES' : 'NO'}
+                    value={
+                        draftingRequest.sda_types?.length
+                            ? draftingRequest.sda_types.join(', ')
+                            : draftingRequest.ndis_sda
+                              ? 'YES'
+                              : 'NO'
+                    }
                 />
                 <JobDetailField
                     label="Construction"

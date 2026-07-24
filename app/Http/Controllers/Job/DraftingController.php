@@ -115,9 +115,11 @@ class DraftingController extends Controller
     ): Response {
         $draftingRequest->load([
             'buildingType:id,name',
+            'buildingClass:id,name,code',
             'externalWallConstruction:id,name',
             'roofType:id,name',
             'serviceEngagings:id,name',
+            'sdaTypes:id,name,code',
             'units',
             'files' => fn ($query) => $query->orderBy('kind')->orderBy('id'),
             'user:id,name,email',
@@ -146,6 +148,7 @@ class DraftingController extends Controller
                 'your_name' => $draftingRequest->your_name,
                 'company_name' => $draftingRequest->company_name,
                 'email' => $draftingRequest->email,
+                'phone' => $draftingRequest->phone,
                 'building_type_id' => $draftingRequest->building_type_id,
                 'external_wall_construction_id' => $draftingRequest->external_wall_construction_id,
                 'roof_type_id' => $draftingRequest->roof_type_id,
@@ -154,13 +157,23 @@ class DraftingController extends Controller
                     ->values()
                     ->all(),
                 'site_address' => $draftingRequest->site_address,
+                'council_shire' => $draftingRequest->council_shire,
                 'site_owner_name' => $draftingRequest->site_owner_name,
                 'max_building_area_sqm' => $draftingRequest->max_building_area_sqm !== null
                     ? (string) $draftingRequest->max_building_area_sqm
                     : null,
                 'design_requirements' => $draftingRequest->design_requirements,
                 'building_type' => $draftingRequest->buildingType?->name,
+                'building_class' => $draftingRequest->buildingClass
+                    ? ($draftingRequest->buildingClass->code
+                        ? "{$draftingRequest->buildingClass->code} — {$draftingRequest->buildingClass->name}"
+                        : $draftingRequest->buildingClass->name)
+                    : null,
                 'ndis_sda' => $draftingRequest->ndis_sda,
+                'sda_types' => $draftingRequest->sdaTypes
+                    ->map(fn ($row) => $row->code ? "{$row->code} — {$row->name}" : $row->name)
+                    ->values()
+                    ->all(),
                 'unit_development_count' => (int) ($draftingRequest->unit_development_count ?? 0),
                 'units' => $draftingRequest->units
                     ->map(fn (DraftingRequestUnit $unit) => [

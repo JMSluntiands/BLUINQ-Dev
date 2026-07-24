@@ -22,7 +22,7 @@ class DraftingRequestSubmissionService
         string $reviewStatus,
         string $workflowStage = DraftingRequest::STAGE_MASTERLIST,
     ): DraftingRequest {
-        $validated = $request->safe()->except(['facade', 'documents', 'service_engaging_ids']);
+        $validated = $request->safe()->except(['documents', 'service_engaging_ids', 'sda_type_ids']);
 
         return DB::transaction(function () use ($request, $user, $validated, $reviewStatus, $workflowStage) {
             $draftingRequest = DraftingRequest::query()->create([
@@ -37,14 +37,9 @@ class DraftingRequestSubmissionService
                 $request->validated('service_engaging_ids'),
             );
 
-            if ($request->hasFile('facade')) {
-                $this->storeUploadedFile(
-                    $draftingRequest,
-                    $request->file('facade'),
-                    DraftingRequestFile::KIND_FACADE,
-                    'facade',
-                );
-            }
+            $draftingRequest->sdaTypes()->sync(
+                $request->validated('sda_type_ids') ?? [],
+            );
 
             foreach ($request->file('documents', []) as $file) {
                 if ($file instanceof UploadedFile && $file->isValid()) {
@@ -88,7 +83,7 @@ class DraftingRequestSubmissionService
             abort(404);
         }
 
-        $validated = $request->safe()->except(['facade', 'documents', 'service_engaging_ids']);
+        $validated = $request->safe()->except(['documents', 'service_engaging_ids', 'sda_type_ids']);
 
         return DB::transaction(function () use ($request, $draftingRequest, $actor, $validated) {
             $draftingRequest->update($validated);
@@ -97,14 +92,9 @@ class DraftingRequestSubmissionService
                 $request->validated('service_engaging_ids'),
             );
 
-            if ($request->hasFile('facade')) {
-                $this->storeUploadedFile(
-                    $draftingRequest,
-                    $request->file('facade'),
-                    DraftingRequestFile::KIND_FACADE,
-                    'facade',
-                );
-            }
+            $draftingRequest->sdaTypes()->sync(
+                $request->validated('sda_type_ids') ?? [],
+            );
 
             foreach ($request->file('documents', []) as $file) {
                 if ($file instanceof UploadedFile && $file->isValid()) {

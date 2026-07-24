@@ -11,10 +11,23 @@ import {
     RectangleStackIcon,
     Squares2X2Icon,
     TagIcon,
+    UserGroupIcon,
     WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
 
 export const WORKFLOW_SETTINGS_MODULES = [
+    {
+        key: 'client',
+        label: 'Clients',
+        permission: 'settings.client.view',
+        icon: UserGroupIcon,
+        routes: {
+            index: 'settings.client.index',
+            create: 'settings.client.create',
+            archive: 'settings.client.archive',
+            edit: 'settings.client.edit',
+        },
+    },
     {
         key: 'service-engaging',
         label: 'Service Engaging',

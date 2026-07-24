@@ -13,8 +13,8 @@ function jQuery() {
 /**
  * @param {{
  *   id?: string;
- *   value?: string;
- *   onChange: (value: string) => void;
+ *   value?: string | string[];
+ *   onChange: (value: string | string[]) => void;
  *   options?: Array<{ value: string; label: string }>;
  *   placeholder?: string;
  *   allowClear?: boolean;
@@ -22,6 +22,7 @@ function jQuery() {
  *   enabled?: boolean;
  *   className?: string;
  *   required?: boolean;
+ *   multiple?: boolean;
  * }} props
  */
 export default function Select2({
@@ -35,10 +36,14 @@ export default function Select2({
     enabled = true,
     className = '',
     required = false,
+    multiple = false,
 }) {
     const selectRef = useRef(null);
     const onChangeRef = useRef(onChange);
     const optionsKey = options.map((option) => option.value).join('\0');
+    const valueKey = multiple
+        ? (Array.isArray(value) ? value : []).join('\0')
+        : String(value ?? '');
 
     useEffect(() => {
         onChangeRef.current = onChange;
@@ -58,13 +63,26 @@ export default function Select2({
 
         $el.select2({
             placeholder,
-            allowClear,
+            allowClear: multiple ? false : allowClear,
             width: '100%',
             dropdownParent: $(document.body),
+            multiple,
+            closeOnSelect: !multiple,
         });
 
         const handleChange = () => {
-            onChangeRef.current(String($el.val() ?? ''));
+            const raw = $el.val();
+            if (multiple) {
+                onChangeRef.current(
+                    Array.isArray(raw)
+                        ? raw.map(String)
+                        : raw
+                          ? [String(raw)]
+                          : [],
+                );
+            } else {
+                onChangeRef.current(String(raw ?? ''));
+            }
         };
 
         $el.on('change', handleChange);
@@ -75,7 +93,7 @@ export default function Select2({
                 $el.select2('destroy');
             }
         };
-    }, [enabled, placeholder, allowClear, optionsKey]);
+    }, [enabled, placeholder, allowClear, optionsKey, multiple]);
 
     useEffect(() => {
         if (!enabled || !selectRef.current) {
@@ -88,12 +106,23 @@ export default function Select2({
         }
 
         const $el = $(selectRef.current);
-        const next = value ?? '';
 
-        if (String($el.val() ?? '') !== next) {
-            $el.val(next).trigger('change.select2');
+        if (multiple) {
+            const next = Array.isArray(value) ? value.map(String) : [];
+            const current = ($el.val() ?? []).map(String);
+            if (
+                next.length !== current.length ||
+                next.some((v, i) => v !== current[i])
+            ) {
+                $el.val(next).trigger('change.select2');
+            }
+        } else {
+            const next = value ?? '';
+            if (String($el.val() ?? '') !== String(next)) {
+                $el.val(next).trigger('change.select2');
+            }
         }
-    }, [value, enabled]);
+    }, [valueKey, enabled, multiple, value]);
 
     useEffect(() => {
         if (!enabled || !selectRef.current) {
@@ -112,15 +141,22 @@ export default function Select2({
         return null;
     }
 
+    const selected = multiple
+        ? Array.isArray(value)
+            ? value.map(String)
+            : []
+        : value;
+
     return (
         <select
             ref={selectRef}
             id={id}
             className={className}
-            defaultValue={value}
+            defaultValue={selected}
             required={required}
+            multiple={multiple}
         >
-            <option value="">{placeholder}</option>
+            {!multiple ? <option value="">{placeholder}</option> : null}
             {options.map((option) => (
                 <option key={option.value} value={option.value}>
                     {option.label}

@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\BuildingClass;
 use App\Models\BuildingType;
+use App\Models\Client;
 use App\Models\DraftingRequest;
 use App\Models\DraftingRequestRevision;
 use App\Models\Role;
@@ -20,11 +22,13 @@ class MasterlistToApmWorkflowTest extends TestCase
     public function test_authenticated_store_appears_in_masterlist_not_board(): void
     {
         $user = $this->adminUser();
-        [$buildingType, $service] = $this->seedLookups();
+        [$buildingType, $service, $client, $buildingClass] = $this->seedLookups();
 
         $response = $this->actingAs($user)->post(route('job.masterlist.store'), $this->validPayload(
             $buildingType->id,
             $service->id,
+            $client,
+            $buildingClass,
         ));
 
         $response->assertRedirect(route('job.masterlist'));
@@ -52,11 +56,13 @@ class MasterlistToApmWorkflowTest extends TestCase
     public function test_forward_moves_to_apm_and_seeds_revision_code(): void
     {
         $user = $this->adminUser();
-        [$buildingType, $service] = $this->seedLookups();
+        [$buildingType, $service, $client, $buildingClass] = $this->seedLookups();
 
         $this->actingAs($user)->post(route('job.masterlist.store'), $this->validPayload(
             $buildingType->id,
             $service->id,
+            $client,
+            $buildingClass,
         ));
 
         $row = DraftingRequest::query()->firstOrFail();
@@ -186,7 +192,7 @@ class MasterlistToApmWorkflowTest extends TestCase
     }
 
     /**
-     * @return array{0: BuildingType, 1: ServiceEngaging}
+     * @return array{0: BuildingType, 1: ServiceEngaging, 2: Client, 3: BuildingClass}
      */
     private function seedLookups(): array
     {
@@ -200,25 +206,48 @@ class MasterlistToApmWorkflowTest extends TestCase
             'status' => 'active',
         ]);
 
-        return [$buildingType, $service];
+        $client = Client::query()->create([
+            'name' => 'Acme Design',
+            'contact_name' => 'Jane Architect',
+            'email' => 'jane@acme.test',
+            'phone' => '0400000000',
+            'status' => 'active',
+        ]);
+
+        $buildingClass = BuildingClass::query()->create([
+            'code' => '1a',
+            'name' => 'Class 1a',
+            'status' => 'active',
+        ]);
+
+        return [$buildingType, $service, $client, $buildingClass];
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function validPayload(int $buildingTypeId, int $serviceId): array
-    {
+    private function validPayload(
+        int $buildingTypeId,
+        int $serviceId,
+        Client $client,
+        ?BuildingClass $buildingClass = null,
+    ): array {
         return [
             'requested_at' => now()->format('Y-m-d H:i:s'),
-            'your_name' => 'Jane Architect',
-            'company_name' => 'Acme Design',
-            'email' => 'jane@acme.test',
+            'your_name' => $client->contact_name,
+            'client_id' => $client->id,
+            'company_name' => $client->name,
+            'email' => $client->email,
+            'phone' => $client->phone,
             'service_engaging_ids' => [$serviceId],
             'site_address' => '10 Example Road',
+            'council_shire' => 'Example Shire',
             'site_owner_name' => 'Site Owner',
             'building_type_id' => $buildingTypeId,
+            'building_class_id' => $buildingClass?->id ?? BuildingClass::query()->value('id'),
             'ceiling_heights' => '2700mm',
             'ndis_sda' => false,
+            'sda_type_ids' => [],
         ];
     }
 }

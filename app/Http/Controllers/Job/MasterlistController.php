@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Job;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDraftingRequestFormRequest;
+use App\Models\BuildingClass;
 use App\Models\BuildingType;
+use App\Models\Client;
 use App\Models\DraftingRequest;
 use App\Models\ExternalWallConstruction;
 use App\Models\RoofType;
+use App\Models\SdaType;
 use App\Models\ServiceEngaging;
 use App\Services\DraftingRequestBoardService;
 use App\Services\DraftingRequestSubmissionService;
@@ -81,6 +84,7 @@ class MasterlistController extends Controller
             'formTitle' => 'Encode project info',
             'applicant' => [
                 'requested_at' => now(config('app.timezone'))->seconds(0)->format('Y-m-d\TH:i'),
+                'your_name' => $request->user()?->name,
             ],
             ...$this->formOptions(),
         ]);
@@ -129,15 +133,19 @@ class MasterlistController extends Controller
                 'id' => $draftingRequest->id,
                 'requested_at' => $requestedAt,
                 'your_name' => $draftingRequest->your_name,
+                'client_id' => $draftingRequest->client_id,
                 'company_name' => $draftingRequest->company_name,
                 'email' => $draftingRequest->email,
+                'phone' => $draftingRequest->phone,
                 'service_engaging_ids' => $draftingRequest->serviceEngagings()->pluck('service_engagings.id')->all(),
                 'site_address' => $draftingRequest->site_address,
+                'council_shire' => $draftingRequest->council_shire,
                 'site_owner_name' => $draftingRequest->site_owner_name,
                 'max_building_area_sqm' => $draftingRequest->max_building_area_sqm,
-                'design_requirements' => $draftingRequest->design_requirements,
                 'building_type_id' => $draftingRequest->building_type_id,
+                'building_class_id' => $draftingRequest->building_class_id,
                 'zoning' => $draftingRequest->zoning,
+                'sda_type_ids' => $draftingRequest->sdaTypes()->pluck('sda_types.id')->all(),
                 'ndis_sda' => (bool) $draftingRequest->ndis_sda,
                 'external_wall_construction_id' => $draftingRequest->external_wall_construction_id,
                 'roof_type_id' => $draftingRequest->roof_type_id,
@@ -145,7 +153,7 @@ class MasterlistController extends Controller
                 'first_floor_slab' => $draftingRequest->first_floor_slab,
                 'additional_inclusions' => $draftingRequest->additional_inclusions,
             ],
-            ...$this->formOptions(),
+            ...$this->formOptions($draftingRequest->client_id),
         ]);
     }
 
@@ -194,23 +202,51 @@ class MasterlistController extends Controller
 
     /**
      * @return array{
+     *     clients: \Illuminate\Support\Collection,
      *     serviceEngagings: \Illuminate\Support\Collection,
+     *     sdaTypes: \Illuminate\Support\Collection,
      *     buildingTypes: \Illuminate\Support\Collection,
+     *     buildingClasses: \Illuminate\Support\Collection,
      *     externalWallConstructions: \Illuminate\Support\Collection,
      *     roofTypes: \Illuminate\Support\Collection
      * }
      */
-    private function formOptions(): array
+    private function formOptions(?int $includeClientId = null): array
     {
+        $clients = Client::query()
+            ->selectable()
+            ->orderBy('name')
+            ->get(['id', 'name', 'contact_name', 'email', 'phone']);
+
+        if ($includeClientId !== null) {
+            $extra = Client::query()
+                ->active()
+                ->whereKey($includeClientId)
+                ->first(['id', 'name', 'contact_name', 'email', 'phone']);
+
+            if ($extra !== null && ! $clients->contains('id', $extra->id)) {
+                $clients = $clients->prepend($extra)->values();
+            }
+        }
+
         return [
+            'clients' => $clients,
             'serviceEngagings' => ServiceEngaging::query()
                 ->active()
                 ->orderBy('name')
                 ->get(['id', 'name']),
+            'sdaTypes' => SdaType::query()
+                ->active()
+                ->orderBy('name')
+                ->get(['id', 'name', 'code']),
             'buildingTypes' => BuildingType::query()
                 ->active()
                 ->orderBy('name')
                 ->get(['id', 'name']),
+            'buildingClasses' => BuildingClass::query()
+                ->active()
+                ->orderBy('name')
+                ->get(['id', 'name', 'code']),
             'externalWallConstructions' => ExternalWallConstruction::query()
                 ->active()
                 ->orderBy('name')

@@ -20,6 +20,7 @@ use App\Http\Controllers\Public\PublicDraftingRequestFormController;
 use App\Http\Controllers\Settings\ActivityLogController;
 use App\Http\Controllers\Settings\BuildingClassController;
 use App\Http\Controllers\Settings\BuildingTypeController;
+use App\Http\Controllers\Settings\ClientController;
 use App\Http\Controllers\Settings\SdaTypeController;
 use App\Http\Controllers\Settings\StoreyLevelController;
 use App\Http\Controllers\Crm\CrmQuoteController;
@@ -260,6 +261,21 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
 
     Route::get('/settings/workflow', [WorkflowSettingsController::class, 'index'])
         ->name('settings.workflow');
+
+    Route::prefix('settings/client')->name('settings.client.')->group(function () {
+        Route::get('/', [ClientController::class, 'index'])->name('index');
+        Route::get('/create', [ClientController::class, 'create'])->name('create');
+        Route::post('/', [ClientController::class, 'store'])->name('store');
+        Route::get('/archive', [ClientController::class, 'archive'])->name('archive');
+        Route::get('/{client}/edit', [ClientController::class, 'edit'])
+            ->name('edit');
+        Route::patch('/{client}', [ClientController::class, 'update'])
+            ->name('update');
+        Route::delete('/{client}', [ClientController::class, 'destroy'])
+            ->name('destroy');
+        Route::post('/{client}/restore', [ClientController::class, 'restore'])
+            ->name('restore');
+    });
 
     Route::prefix('settings/building-type')->name('settings.building-type.')->group(function () {
         Route::get('/', [BuildingTypeController::class, 'index'])->name('index');
