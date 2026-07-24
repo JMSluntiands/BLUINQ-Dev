@@ -35,7 +35,7 @@ return [
         'settings.user-milestones.update' => 'profile.milestones.manage',
         'settings.user-milestones.destroy' => 'profile.milestones.manage',
         'job.list' => 'job.list.view',
-        'job.status-chart' => 'job.list.view',
+        'job.status-chart' => 'job.statistic.view',
         'job.board' => 'job.list.view',
         'job.board.add' => 'job.list.view',
         'job.drafting' => 'job.list.view',

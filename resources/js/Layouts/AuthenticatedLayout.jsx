@@ -117,6 +117,7 @@ export default function AuthenticatedLayout({ header, children }) {
     const canDraftingRequest = can('job.drafting-request.view');
     const canReviewDraftingRequests = can('job.drafting-request.review');
     const canJobList = can('job.list.view');
+    const canStatistic = can('job.statistic.view');
     const canAnnouncements = can('announcements.view');
     const canAnnouncementsManage = can('announcements.manage');
     const canTimesheet = can('timesheet.view');
@@ -324,7 +325,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             Project Masterlist
                         </NavItem>
                     )}
-                    {canJobList && (
+                    {canStatistic && (
                         <NavItem
                             href={route('job.status-chart')}
                             active={isJobStatusChart}
