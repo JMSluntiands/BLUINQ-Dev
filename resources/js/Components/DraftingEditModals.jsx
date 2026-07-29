@@ -3,6 +3,7 @@ import InputLabel from '@/Components/InputLabel';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import Select2 from '@/Components/Select2';
 import TextInput from '@/Components/TextInput';
 import { useForm } from '@inertiajs/react';
 import { useEffect } from 'react';
@@ -41,10 +42,12 @@ export default function DraftingEditModals({
     section,
     onClose,
     draftingRequest,
-    formOptions = {},
+    formOptions: formOptionsProp = {},
     statusOptions = [],
     updateUrl,
 }) {
+    const formOptions = formOptionsProp ?? {};
+    const categories = formOptions.categories ?? [];
     const clientForm = useForm({
         section: 'client',
         your_name: draftingRequest.your_name ?? '',
@@ -54,9 +57,17 @@ export default function DraftingEditModals({
 
     const jobForm = useForm({
         section: 'job',
+        lead_number:
+            draftingRequest.lead_number ?? draftingRequest.reference ?? '',
         status: draftingRequest.status ?? 'new',
         storey_level_id: draftingRequest.storey_level_id ?? '',
         crm_category_id: draftingRequest.crm_category_id ?? '',
+        crm_category_ids: (
+            draftingRequest.crm_category_ids ??
+            (draftingRequest.crm_category_id
+                ? [draftingRequest.crm_category_id]
+                : [])
+        ).map(String),
         zoning: draftingRequest.zoning ?? '',
         site_address: draftingRequest.site_address ?? '',
         site_owner_name: draftingRequest.site_owner_name ?? '',
@@ -76,6 +87,24 @@ export default function DraftingEditModals({
         additional_inclusions: draftingRequest.additional_inclusions ?? '',
     });
 
+    const jobStatusOptions = (() => {
+        const current = jobForm.data.status;
+        if (
+            !current ||
+            statusOptions.some((option) => option.value === current)
+        ) {
+            return statusOptions;
+        }
+
+        return [
+            {
+                value: current,
+                label: draftingRequest.status_label ?? current,
+            },
+            ...statusOptions,
+        ];
+    })();
+
     useEffect(() => {
         if (section !== 'job') {
             return;
@@ -83,9 +112,17 @@ export default function DraftingEditModals({
 
         jobForm.setData({
             section: 'job',
+            lead_number:
+                draftingRequest.lead_number ?? draftingRequest.reference ?? '',
             status: draftingRequest.status ?? 'new',
             storey_level_id: draftingRequest.storey_level_id ?? '',
             crm_category_id: draftingRequest.crm_category_id ?? '',
+            crm_category_ids: (
+                draftingRequest.crm_category_ids ??
+                (draftingRequest.crm_category_id
+                    ? [draftingRequest.crm_category_id]
+                    : [])
+            ).map(String),
             zoning: draftingRequest.zoning ?? '',
             site_address: draftingRequest.site_address ?? '',
             site_owner_name: draftingRequest.site_owner_name ?? '',
@@ -126,6 +163,7 @@ export default function DraftingEditModals({
     const submit = (form) => {
         form.patch(updateUrl, {
             preserveScroll: true,
+            preserveState: true,
             onSuccess: () => onClose(),
         });
     };
@@ -219,6 +257,7 @@ export default function DraftingEditModals({
 
             {section === 'job' ? (
                 <form
+                    noValidate
                     onSubmit={(e) => {
                         e.preventDefault();
                         submit(jobForm);
@@ -226,8 +265,33 @@ export default function DraftingEditModals({
                     className="flex max-h-[85vh] flex-col p-5"
                 >
                     <ModalHeader title={SECTION_TITLES.job} onClose={onClose} />
+                    {Object.keys(jobForm.errors).length > 0 ? (
+                        <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-200">
+                            {jobForm.errors.lead_number ??
+                                'Please fix the highlighted fields below.'}
+                        </div>
+                    ) : null}
                     <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                            <InputLabel htmlFor="edit-lead_number" value="Lead number" />
+                            <TextInput
+                                id="edit-lead_number"
+                                className="mt-1 block w-full"
+                                value={jobForm.data.lead_number}
+                                onChange={(e) =>
+                                    jobForm.setData(
+                                        'lead_number',
+                                        e.target.value,
+                                    )
+                                }
+                                placeholder="e.g. 26001"
+                            />
+                            <InputError
+                                className="mt-1"
+                                message={jobForm.errors.lead_number}
+                            />
+                        </div>
                         <div>
                             <InputLabel htmlFor="edit-status" value="JOB STATUS" />
                             <select
@@ -238,7 +302,7 @@ export default function DraftingEditModals({
                                     jobForm.setData('status', e.target.value)
                                 }
                             >
-                                {statusOptions.map((o) => (
+                                {jobStatusOptions.map((o) => (
                                     <option key={o.value} value={o.value}>
                                         {o.label}
                                     </option>
@@ -350,31 +414,42 @@ export default function DraftingEditModals({
                             />
                         </div>
                         <div className="sm:col-span-2">
-                            <InputLabel htmlFor="edit-crm_category_id" value="Category" />
-                            <select
-                                id="edit-crm_category_id"
-                                className={selectClass}
-                                value={jobForm.data.crm_category_id}
-                                onChange={(e) =>
-                                    jobForm.setData(
-                                        'crm_category_id',
-                                        e.target.value,
-                                    )
-                                }
-                                required
-                            >
-                                <option value="">Select…</option>
-                                {(formOptions.categories ?? []).map((row) => (
-                                    <option key={row.id} value={row.id}>
-                                        {row.code
+                            <InputLabel
+                                htmlFor="edit-crm_category_ids"
+                                value="Category"
+                            />
+                            <div className="mt-1 select2-field">
+                                <Select2
+                                    id="edit-crm_category_ids"
+                                    multiple
+                                    value={jobForm.data.crm_category_ids}
+                                    onChange={(values) => {
+                                        const next = Array.isArray(values)
+                                            ? values.map(String)
+                                            : [];
+                                        jobForm.setData({
+                                            ...jobForm.data,
+                                            crm_category_ids: next,
+                                            crm_category_id: next[0] ?? '',
+                                        });
+                                    }}
+                                    options={categories.map((row) => ({
+                                        value: String(row.id),
+                                        label: row.code
                                             ? `${row.code} — ${row.name}`
-                                            : row.name}
-                                    </option>
-                                ))}
-                            </select>
+                                            : row.name,
+                                    }))}
+                                    placeholder="Select categories…"
+                                    enabled={section === 'job'}
+                                />
+                            </div>
                             <InputError
                                 className="mt-2"
-                                message={jobForm.errors.crm_category_id}
+                                message={
+                                    jobForm.errors.crm_category_ids ??
+                                    jobForm.errors['crm_category_ids.0'] ??
+                                    jobForm.errors.crm_category_id
+                                }
                             />
                         </div>
                         <div className="sm:col-span-2 border-t border-[#e6e9ef] pt-3 dark:border-[#2f3347]">

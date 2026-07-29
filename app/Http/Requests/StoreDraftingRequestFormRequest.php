@@ -47,8 +47,15 @@ class StoreDraftingRequestFormRequest extends FormRequest
                     fn ($q) => $q->whereNull('archived_at'),
                 ),
             ],
+            'crm_category_ids' => ['required', 'array', 'min:1'],
+            'crm_category_ids.*' => [
+                'integer',
+                Rule::exists('crm_categories', 'id')->where(
+                    fn ($q) => $q->whereNull('archived_at'),
+                ),
+            ],
             'crm_category_id' => [
-                'required',
+                'nullable',
                 'integer',
                 Rule::exists('crm_categories', 'id')->where(
                     fn ($q) => $q->whereNull('archived_at'),
@@ -119,6 +126,8 @@ class StoreDraftingRequestFormRequest extends FormRequest
             'lead_number.required' => 'Enter a lead number.',
             'lead_number.unique' => 'That lead number is already in use.',
             'lead_number.regex' => 'Lead number may only contain letters, numbers, and hyphens.',
+            'crm_category_ids.required' => 'Select at least one category.',
+            'crm_category_ids.min' => 'Select at least one category.',
         ];
     }
 
@@ -198,6 +207,21 @@ class StoreDraftingRequestFormRequest extends FormRequest
             $serviceIds,
             fn ($id) => $id !== '' && $id !== null,
         ));
+
+        $categoryIds = $this->input('crm_category_ids', []);
+        if (! is_array($categoryIds)) {
+            // Backward compatible: single select field posted as crm_category_id.
+            $single = $this->input('crm_category_id');
+            $categoryIds = $single === '' || $single === null ? [] : [$single];
+        }
+        $normalized['crm_category_ids'] = array_values(array_map(
+            'intval',
+            array_filter(
+                $categoryIds,
+                fn ($id) => $id !== '' && $id !== null,
+            ),
+        ));
+        $normalized['crm_category_id'] = $normalized['crm_category_ids'][0] ?? null;
 
         $this->merge($normalized);
     }

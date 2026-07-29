@@ -22,6 +22,7 @@ class DraftingRequestBoardService
         return DraftingRequest::query()
             ->with([
                 'crmCategory:id,name,code',
+                'crmCategories:id,name,code',
                 'buildingType:id,name',
                 'storeyLevel:id,name,code',
                 'serviceEngagings:id,name',
@@ -52,13 +53,34 @@ class DraftingRequestBoardService
             return;
         }
 
-        $query->where(function ($q) use ($search) {
+        $digits = preg_replace('/\D+/', '', $search) ?? '';
+        $statusKeys = collect(DraftingRequest::statusLabels())
+            ->filter(fn (string $label, string $value) =>
+                str_contains(mb_strtolower($label), mb_strtolower($search))
+                || str_contains(mb_strtolower($value), mb_strtolower($search))
+            )
+            ->keys()
+            ->all();
+
+        $query->where(function ($q) use ($search, $digits, $statusKeys) {
             $q->where('your_name', 'like', '%'.$search.'%')
                 ->orWhere('company_name', 'like', '%'.$search.'%')
                 ->orWhere('email', 'like', '%'.$search.'%')
                 ->orWhere('site_address', 'like', '%'.$search.'%')
                 ->orWhere('site_owner_name', 'like', '%'.$search.'%')
                 ->orWhere('lead_number', 'like', '%'.$search.'%');
+
+            if ($digits !== '' && $digits !== $search) {
+                $q->orWhere('lead_number', 'like', '%'.$digits.'%');
+            }
+
+            if ($statusKeys !== []) {
+                $q->orWhereIn('status', $statusKeys);
+            }
+
+            $q->orWhereHas('revisions', function ($revisionQuery) use ($search) {
+                $revisionQuery->where('code', 'like', '%'.$search.'%');
+            });
         });
     }
 
@@ -85,7 +107,20 @@ class DraftingRequestBoardService
     public function formatBoardRow(DraftingRequest $row): array
     {
         $tz = config('app.timezone');
-        if ($row->crmCategory) {
+        $row->loadMissing(['crmCategories', 'crmCategory', 'serviceEngagings']);
+
+        if ($row->crmCategories->isNotEmpty()) {
+            $labels = $row->crmCategories->map(
+                fn ($category) => $category->code
+                    ? "{$category->code} — {$category->name}"
+                    : $category->name,
+            )->values();
+            $shorts = $row->crmCategories->map(
+                fn ($category) => $category->code ?: $category->name,
+            )->values();
+            $categoryFull = $labels->join(', ');
+            $category = $shorts->join(', ');
+        } elseif ($row->crmCategory) {
             $categoryFull = $row->crmCategory->code
                 ? "{$row->crmCategory->code} — {$row->crmCategory->name}"
                 : $row->crmCategory->name;
@@ -188,7 +223,9 @@ class DraftingRequestBoardService
             'status_label' => $row->statusLabel(),
             'list_group' => $this->mapJobListGroup($row),
             'is_priority' => (bool) $row->is_priority,
-            'vo_hours' => null,
+            'vo_hours' => $row->vo_hours !== null
+                ? rtrim(rtrim((string) $row->vo_hours, '0'), '.')
+                : null,
             'comments_count' => $row->comments_count ?? 0,
             'has_comments' => ($row->comments_count ?? 0) > 0,
         ];
@@ -212,10 +249,12 @@ class DraftingRequestBoardService
         ]);
 
         $counts = [
-            'on_hold' => 0,
-            'for_checking' => 0,
             'new' => 0,
-            'wip' => 0,
+            'design_wip' => 0,
+            'drafting_wip' => 0,
+            'for_checking' => 0,
+            'submitted' => 0,
+            'cancelled' => 0,
         ];
 
         foreach ($query->pluck('status') as $status) {
@@ -722,12 +761,19 @@ class DraftingRequestBoardService
     private function ensurePrimaryRevision(
         DraftingRequest $draftingRequest,
     ): DraftingRequestRevision {
-        $draftingRequest->loadMissing(['crmCategory', 'serviceEngagings']);
+        $draftingRequest->loadMissing(['crmCategories', 'crmCategory', 'serviceEngagings']);
 
-        $category = $draftingRequest->crmCategory?->code
-            ?: $draftingRequest->crmCategory?->name
-            ?: $draftingRequest->serviceEngagings->sortBy('name')->first()?->name
-            ?: 'Working Drawings';
+        $fromMany = $draftingRequest->crmCategories
+            ->map(fn ($category) => $category->code ?: $category->name)
+            ->filter()
+            ->values();
+
+        $category = $fromMany->isNotEmpty()
+            ? $fromMany->join(', ')
+            : ($draftingRequest->crmCategory?->code
+                ?: $draftingRequest->crmCategory?->name
+                ?: $draftingRequest->serviceEngagings->sortBy('name')->first()?->name
+                ?: 'Working Drawings');
 
         return DraftingRequestRevision::query()->create([
             'drafting_request_id' => $draftingRequest->id,
@@ -899,24 +945,34 @@ class DraftingRequestBoardService
     {
         return [
             [
-                'status' => 'On Hold',
-                'count' => $counts['on_hold'],
-                'color' => '#8b5cf6',
-            ],
-            [
-                'status' => 'For Checking',
-                'count' => $counts['for_checking'],
-                'color' => '#3b82f6',
-            ],
-            [
                 'status' => 'New',
-                'count' => $counts['new'],
+                'count' => $counts['new'] ?? 0,
                 'color' => '#94a3b8',
             ],
             [
-                'status' => 'WIP',
-                'count' => $counts['wip'],
+                'status' => 'Design WIP',
+                'count' => $counts['design_wip'] ?? 0,
+                'color' => '#c026d3',
+            ],
+            [
+                'status' => 'Drafting WIP',
+                'count' => $counts['drafting_wip'] ?? 0,
                 'color' => '#f87171',
+            ],
+            [
+                'status' => 'For Checking',
+                'count' => $counts['for_checking'] ?? 0,
+                'color' => '#06b6d4',
+            ],
+            [
+                'status' => 'Submitted',
+                'count' => $counts['submitted'] ?? 0,
+                'color' => '#10b981',
+            ],
+            [
+                'status' => 'Cancelled',
+                'count' => $counts['cancelled'] ?? 0,
+                'color' => '#f43f5e',
             ],
         ];
     }
@@ -924,15 +980,15 @@ class DraftingRequestBoardService
     public function mapBoardStatus(?string $status): string
     {
         return match ($status) {
-            DraftingRequest::STATUS_WIP,
-            DraftingRequest::STATUS_ASSIGNED,
-            DraftingRequest::STATUS_DESIGN_WIP,
+            DraftingRequest::STATUS_DESIGN_WIP => 'design_wip',
             DraftingRequest::STATUS_DRAFTING_WIP,
-            DraftingRequest::STATUS_QUERY => 'wip',
+            DraftingRequest::STATUS_WIP,
+            DraftingRequest::STATUS_ASSIGNED => 'drafting_wip',
             DraftingRequest::STATUS_FOR_CHECKING,
-            DraftingRequest::STATUS_SUBMITTED => 'for_checking',
-            DraftingRequest::STATUS_ON_HOLD,
-            DraftingRequest::STATUS_CANCELLED => 'on_hold',
+            DraftingRequest::STATUS_QUERY => 'for_checking',
+            DraftingRequest::STATUS_SUBMITTED => 'submitted',
+            DraftingRequest::STATUS_CANCELLED,
+            DraftingRequest::STATUS_ON_HOLD => 'cancelled',
             DraftingRequest::STATUS_NEW => 'new',
             default => 'new',
         };
@@ -941,10 +997,12 @@ class DraftingRequestBoardService
     public function boardStatusLabel(string $boardStatus, string $fallback): string
     {
         return match ($boardStatus) {
-            'for_checking' => 'For Checking',
-            'wip' => 'WIP',
             'new' => 'New',
-            'on_hold' => 'On Hold',
+            'design_wip' => 'Design WIP',
+            'drafting_wip', 'wip' => 'Drafting WIP',
+            'for_checking' => 'For Checking',
+            'submitted' => 'Submitted',
+            'cancelled', 'on_hold' => 'Cancelled',
             default => $fallback,
         };
     }
@@ -1064,13 +1122,20 @@ class DraftingRequestBoardService
                 ['color' => '#06b6d4', 'weight' => 3],
                 ['color' => '#8b5cf6', 'weight' => 2],
             ],
-            'wip' => [
+            'design_wip' => [
+                ['color' => '#c026d3', 'weight' => 2],
+                ['color' => '#f472b6', 'weight' => 1],
+            ],
+            'drafting_wip', 'wip' => [
                 ['color' => '#f472b6', 'weight' => 2],
                 ['color' => '#f97316', 'weight' => 2],
                 ['color' => '#8b5cf6', 'weight' => 1],
             ],
-            'on_hold' => [
-                ['color' => '#8b5cf6', 'weight' => 3],
+            'submitted' => [
+                ['color' => '#10b981', 'weight' => 3],
+            ],
+            'cancelled', 'on_hold' => [
+                ['color' => '#f43f5e', 'weight' => 3],
             ],
             default => [
                 ['color' => '#64748b', 'weight' => 2],

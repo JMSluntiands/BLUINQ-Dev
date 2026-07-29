@@ -82,6 +82,7 @@ export default function DraftingRequestForm({
     backUrl = null,
     formTitle = null,
     mode = 'create',
+    sourceReference = null,
 }) {
     const { logo_url: logoUrl, auth } = usePage().props;
     const Layout = standalone ? PublicFormLayout : AuthenticatedLayout;
@@ -107,6 +108,9 @@ export default function DraftingRequestForm({
         email: applicant.email ?? '',
         phone: applicant.phone ?? '',
         crm_category_id: applicant.crm_category_id ?? '',
+        crm_category_ids: (applicant.crm_category_ids ?? (
+            applicant.crm_category_id ? [applicant.crm_category_id] : []
+        )).map(String),
         site_address: applicant.site_address ?? '',
         council_shire: applicant.council_shire ?? '',
         site_owner_name: applicant.site_owner_name ?? '',
@@ -128,6 +132,10 @@ export default function DraftingRequestForm({
         }
         next.sda_type_ids = (next.sda_type_ids ?? []).map((id) => Number(id));
         next.ndis_sda = next.sda_type_ids.length > 0;
+        next.crm_category_ids = (next.crm_category_ids ?? []).map((id) =>
+            Number(id),
+        );
+        next.crm_category_id = next.crm_category_ids[0] ?? null;
         if (next.client_id === '' || next.client_id == null) {
             next.client_id = null;
         }
@@ -160,6 +168,15 @@ export default function DraftingRequestForm({
                 label: row.code ? `${row.code} — ${row.name}` : row.name,
             })),
         [sdaTypes],
+    );
+
+    const categoryOptions = useMemo(
+        () =>
+            categories.map((row) => ({
+                value: String(row.id),
+                label: row.code ? `${row.code} — ${row.name}` : row.name,
+            })),
+        [categories],
     );
 
     const selectedClient = useMemo(
@@ -203,6 +220,17 @@ export default function DraftingRequestForm({
                 'sda_type_ids',
                 Array.isArray(values) ? values.map(String) : [],
             );
+        },
+        [setData],
+    );
+
+    const handleCategoryChange = useCallback(
+        (values) => {
+            const next = Array.isArray(values) ? values.map(String) : [];
+            setData({
+                crm_category_ids: next,
+                crm_category_id: next[0] ?? '',
+            });
         },
         [setData],
     );
@@ -281,7 +309,11 @@ export default function DraftingRequestForm({
                                                 <ReqMark />
                                             </InputLabel>
                                         }
-                                        hint="Enter the project lead / job number."
+                                        hint={
+                                            sourceReference
+                                                ? `Copied from ${sourceReference}. Enter a new unique lead number.`
+                                                : 'Enter the project lead / job number.'
+                                        }
                                         error={errors.lead_number}
                                     >
                                         <TextInput
@@ -427,35 +459,28 @@ export default function DraftingRequestForm({
                                 <FieldBlock
                                     className="lg:col-span-2"
                                     label={
-                                        <InputLabel htmlFor="crm_category_id">
+                                        <InputLabel htmlFor="crm_category_ids">
                                             {fieldNo(4)}. Category
                                             <ReqMark />
                                         </InputLabel>
                                     }
-                                    hint="Options from Workflow settings → Category."
-                                    error={errors.crm_category_id}
+                                    hint="Options from Workflow settings → Category. You can select multiple."
+                                    error={
+                                        errors.crm_category_ids ??
+                                        errors['crm_category_ids.0'] ??
+                                        errors.crm_category_id
+                                    }
                                 >
-                                    <select
-                                        id="crm_category_id"
-                                        className={selectClass}
-                                        value={data.crm_category_id}
-                                        onChange={(e) =>
-                                            setData(
-                                                'crm_category_id',
-                                                e.target.value,
-                                            )
-                                        }
-                                        required
-                                    >
-                                        <option value="">Select…</option>
-                                        {categories.map((row) => (
-                                            <option key={row.id} value={row.id}>
-                                                {row.code
-                                                    ? `${row.code} — ${row.name}`
-                                                    : row.name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <div className="select2-field w-full">
+                                        <Select2
+                                            id="crm_category_ids"
+                                            multiple
+                                            value={data.crm_category_ids}
+                                            onChange={handleCategoryChange}
+                                            options={categoryOptions}
+                                            placeholder="Select categories…"
+                                        />
+                                    </div>
                                     <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                                         For job material documents/files —
                                         please email or upload them to
@@ -823,7 +848,9 @@ export default function DraftingRequestForm({
                                 >
                                     {isEdit
                                         ? 'Save changes'
-                                        : 'Submit request'}
+                                        : sourceReference
+                                          ? 'Save duplicate'
+                                          : 'Submit request'}
                                 </PrimaryButton>
                                 {!standalone && listBackUrl && (
                                     <Link

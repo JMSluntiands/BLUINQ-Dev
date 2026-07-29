@@ -64,12 +64,9 @@ class DraftingRequest extends Model
 
         return [
             self::STATUS_NEW => 'New',
-            self::STATUS_ASSIGNED => 'Assigned',
             self::STATUS_DESIGN_WIP => 'Design WIP',
             self::STATUS_DRAFTING_WIP => 'Drafting WIP',
             self::STATUS_FOR_CHECKING => 'For Checking',
-            self::STATUS_ON_HOLD => 'On Hold',
-            self::STATUS_QUERY => 'Query',
             self::STATUS_SUBMITTED => 'Submitted',
             self::STATUS_CANCELLED => 'Cancelled',
         ];
@@ -84,6 +81,9 @@ class DraftingRequest extends Model
     {
         return [
             ...self::statusOptions(),
+            self::STATUS_ASSIGNED => 'Assigned',
+            self::STATUS_ON_HOLD => 'On Hold',
+            self::STATUS_QUERY => 'Query',
             self::STATUS_WIP => 'Drafting WIP',
             self::STATUS_FOR_QUOTE => 'For Quote',
             self::STATUS_QUOTE_SENT => 'Quote Sent',
@@ -97,7 +97,13 @@ class DraftingRequest extends Model
      */
     public static function statusValues(): array
     {
-        return array_keys(self::statusOptions());
+        return array_values(array_unique([
+            ...array_keys(self::statusOptions()),
+            self::STATUS_ASSIGNED,
+            self::STATUS_ON_HOLD,
+            self::STATUS_QUERY,
+            self::STATUS_WIP,
+        ]));
     }
 
     protected $fillable = [
@@ -105,6 +111,7 @@ class DraftingRequest extends Model
         'lead_number',
         'status',
         'is_priority',
+        'vo_hours',
         'requested_at',
         'start_date',
         'eta',
@@ -206,6 +213,7 @@ class DraftingRequest extends Model
             'max_building_area_sqm' => 'decimal:2',
             'ndis_sda' => 'boolean',
             'is_priority' => 'boolean',
+            'vo_hours' => 'decimal:2',
             'unit_development_count' => 'integer',
             'drawing_checklist' => 'array',
             'reviewed_at' => 'datetime',
@@ -329,6 +337,14 @@ class DraftingRequest extends Model
     public function crmCategory(): BelongsTo
     {
         return $this->belongsTo(CrmCategory::class);
+    }
+
+    /**
+     * @return BelongsToMany<CrmCategory, $this>
+     */
+    public function crmCategories(): BelongsToMany
+    {
+        return $this->belongsToMany(CrmCategory::class, 'drafting_request_crm_category');
     }
 
     /**

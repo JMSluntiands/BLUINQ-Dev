@@ -287,6 +287,7 @@ export default function Dashboard() {
         attendance = {},
         clock = {},
         boardPreviewJobs = [],
+        statusOptions = [],
         announcements = [],
         canViewAnnouncements = false,
         canManageAnnouncements = false,
@@ -511,7 +512,7 @@ export default function Dashboard() {
                             <SectionLabel color="rose">Absent</SectionLabel>
                             {!absentAfterNine && (
                                 <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
-                                    Absent list updates at 9:00 AM for staff
+                                    Absent list updates at 8:00 AM for staff
                                     who have not clocked in.
                                 </p>
                             )}
@@ -566,11 +567,13 @@ export default function Dashboard() {
                         </div>
 
                         <div>
-                            <SectionLabel color="pink">Birthdays</SectionLabel>
+                            <SectionLabel color="pink">
+                                Birthdays this month
+                            </SectionLabel>
                             <ul className="space-y-2">
                                 {upcomingBirthdays.length === 0 ? (
                                     <li className="rounded-xl bg-slate-50/90 px-3 py-2.5 text-sm text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
-                                        No upcoming birthdays.
+                                        No birthdays this month.
                                     </li>
                                 ) : (
                                     upcomingBirthdays.map((employee) => (
@@ -586,7 +589,10 @@ export default function Dashboard() {
                 </DashboardPanel>
             </div>
 
-            <HighPriorityJobsTable boardPreviewJobs={boardPreviewJobs} />
+            <HighPriorityJobsTable
+                boardPreviewJobs={boardPreviewJobs}
+                statusOptions={statusOptions}
+            />
 
             <DashboardCharts
                 drafterLeaderboard={drafterLeaderboard}

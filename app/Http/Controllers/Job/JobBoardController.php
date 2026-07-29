@@ -323,6 +323,14 @@ class JobBoardController extends Controller
             abort(422);
         }
 
+        $previousUserId = DraftingRequestAssignment::query()
+            ->where('drafting_request_id', $draftingRequest->id)
+            ->where('role', $role)
+            ->where('slot', $slot)
+            ->value('user_id');
+        $previousUserId = $previousUserId !== null ? (int) $previousUserId : null;
+        $nextUserId = $validated['user_id'] !== null ? (int) $validated['user_id'] : null;
+
         if ($validated['user_id'] === null) {
             DraftingRequestAssignment::query()
                 ->where('drafting_request_id', $draftingRequest->id)
@@ -359,7 +367,68 @@ class JobBoardController extends Controller
             );
         }
 
+        if ($previousUserId !== $nextUserId) {
+            $this->recordAssignmentChange(
+                $draftingRequest,
+                $request->user(),
+                $role,
+                $slot,
+                $previousUserId,
+                $nextUserId,
+            );
+        }
+
         return back();
+    }
+
+    private function recordAssignmentChange(
+        DraftingRequest $draftingRequest,
+        ?User $actor,
+        string $role,
+        int $slot,
+        ?int $previousUserId,
+        ?int $nextUserId,
+    ): void {
+        $roleLabel = $role === DraftingRequestAssignment::ROLE_CHECKING
+            ? 'Checker'
+            : 'Drafter';
+
+        $userIds = array_values(array_filter([$previousUserId, $nextUserId]));
+        $names = $userIds === []
+            ? []
+            : User::query()
+                ->whereIn('id', $userIds)
+                ->pluck('name', 'id')
+                ->all();
+
+        $fromName = $previousUserId !== null
+            ? ($names[$previousUserId] ?? 'Unknown')
+            : 'Unassigned';
+        $toName = $nextUserId !== null
+            ? ($names[$nextUserId] ?? 'Unknown')
+            : 'Unassigned';
+
+        $revisionCode = $draftingRequest->revisions()
+            ->orderByDesc('log_date')
+            ->orderByDesc('id')
+            ->value('code');
+
+        $slotLabel = $slot > 0 ? ' slot '.($slot + 1) : '';
+        $revisionLabel = $revisionCode ? " on revision {$revisionCode}" : '';
+
+        DraftingRequestActivity::record(
+            $draftingRequest,
+            $actor,
+            DraftingRequestActivity::ACTION_ASSIGNMENT_CHANGED,
+            sprintf(
+                '%s%s%s changed from %s to %s.',
+                $roleLabel,
+                $slotLabel,
+                $revisionLabel,
+                $fromName,
+                $toName,
+            ),
+        );
     }
 
     public function updateBoardFields(
@@ -432,6 +501,12 @@ class JobBoardController extends Controller
                 );
                 $draftingRequest->update(['requested_at' => $next]);
             }
+        }
+
+        if (array_key_exists('vo_hours', $validated)) {
+            $draftingRequest->update([
+                'vo_hours' => $validated['vo_hours'],
+            ]);
         }
 
         return back();

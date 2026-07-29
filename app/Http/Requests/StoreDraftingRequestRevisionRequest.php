@@ -18,7 +18,7 @@ class StoreDraftingRequestRevisionRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        foreach (['checker_user_id', 'drafter_user_id', 'drafting_hours', 'checking_hours', 'area_size', 'submitted_date'] as $key) {
+        foreach (['checker_user_id', 'drafter_user_id', 'drafting_hours', 'checking_hours', 'area_size', 'submitted_date', 'link'] as $key) {
             if ($this->input($key) === '') {
                 $this->merge([$key => null]);
             }
@@ -43,6 +43,7 @@ class StoreDraftingRequestRevisionRequest extends FormRequest
 
         return [
             'code' => ['required', 'string', 'max:64', 'regex:/^\d{5}(-\d{2})?$/'],
+            'link' => ['nullable', 'string', 'max:2048', 'url'],
             'log_date' => ['required', 'date'],
             'category' => ['required', 'string', 'max:255', Rule::in(array_values(array_unique($categoryCodes)))],
             'drafter_user_id' => [

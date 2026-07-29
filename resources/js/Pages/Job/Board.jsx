@@ -59,15 +59,21 @@ export default function JobBoard({
     );
 
     useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        if (!params.has('search')) {
+        // Keep search ephemeral in the URL without a second Inertia visit —
+        // a router.get() here races live search and clears filtered jobs.
+        const url = new URL(window.location.href);
+        if (!url.searchParams.has('search')) {
             return;
         }
 
-        params.delete('search');
-        params.delete('page');
-        const query = Object.fromEntries(params.entries());
-        router.get(route(searchRoute), query, { replace: true });
+        url.searchParams.delete('search');
+        url.searchParams.delete('page');
+        const query = url.searchParams.toString();
+        window.history.replaceState(
+            {},
+            '',
+            query ? `${url.pathname}?${query}` : url.pathname,
+        );
     }, [searchRoute]);
 
     useEffect(() => {
@@ -143,6 +149,7 @@ export default function JobBoard({
                     ziggyRouteName={searchRoute}
                     filters={filters}
                     liveSearch
+                    liveSearchOnly={['jobs', 'filters']}
                     onLiveSearchChange={setLiveSearch}
                 />
                 <JobBoardGrid

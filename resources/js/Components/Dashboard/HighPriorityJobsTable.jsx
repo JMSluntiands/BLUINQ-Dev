@@ -1,7 +1,10 @@
 import JobBoardGrid from '@/Components/JobBoard/JobBoardGrid';
 import { Link, router } from '@inertiajs/react';
 
-export default function HighPriorityJobsTable({ boardPreviewJobs = [] }) {
+export default function HighPriorityJobsTable({
+    boardPreviewJobs = [],
+    statusOptions = [],
+}) {
     return (
         <div className="mt-8 min-w-0 max-w-full">
             <div className="mb-4 flex items-center justify-between gap-3">
@@ -20,7 +23,7 @@ export default function HighPriorityJobsTable({ boardPreviewJobs = [] }) {
                     View full board
                 </Link>
             </div>
-            <div className="min-w-0 max-w-full overflow-hidden rounded-xl border border-[#2a2d3e] dark:border-[#2f3347]">
+            <div className="min-w-0 max-w-full overflow-hidden rounded-xl border border-slate-200 dark:border-[#2f3347]">
                 <JobBoardGrid
                     jobs={boardPreviewJobs}
                     emptyMessage="No jobs for checking."
@@ -28,7 +31,7 @@ export default function HighPriorityJobsTable({ boardPreviewJobs = [] }) {
                         route('job.drafting.show', row.id)
                     }
                     showFilesInTotal
-                    fitWidth
+                    statusOptions={statusOptions}
                     onCommentsUpdated={() =>
                         router.reload({
                             only: ['boardPreviewJobs'],

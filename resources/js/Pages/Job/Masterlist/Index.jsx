@@ -3,7 +3,11 @@ import FlashNoticeModal from '@/Components/FlashNoticeModal';
 import Pagination from '@/Components/Pagination';
 import TableSearchToolbar from '@/Components/TableSearchToolbar';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { PencilSquareIcon, PlusIcon } from '@heroicons/react/24/outline';
+import {
+    DocumentDuplicateIcon,
+    PencilSquareIcon,
+    PlusIcon,
+} from '@heroicons/react/24/outline';
 import { Head, Link, router } from '@inertiajs/react';
 
 function filterQueryString(filters) {
@@ -14,9 +18,23 @@ function filterQueryString(filters) {
     if (filters?.per_page) {
         p.set('per_page', String(filters.per_page));
     }
+    if (filters?.sort) {
+        p.set('sort', filters.sort);
+    }
+    if (filters?.direction) {
+        p.set('direction', filters.direction);
+    }
     const s = p.toString();
     return s ? `?${s}` : '';
 }
+
+const MASTERLIST_SORT_OPTIONS = [
+    { value: 'lead_number', label: 'Lead number' },
+    { value: 'requested_at', label: 'Date' },
+    { value: 'company_name', label: 'Client' },
+    { value: 'site_address', label: 'Site address' },
+    { value: 'status', label: 'Status' },
+];
 
 const iconBtn =
     'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#676879] transition-colors hover:bg-[#e6e9ef] hover:text-[#0073ea] focus:outline-none focus:ring-2 focus:ring-[#0073ea] focus:ring-offset-1 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-sky-400 dark:focus:ring-offset-slate-900';
@@ -62,9 +80,13 @@ export default function Index({ draftingRequests, filters = {} }) {
 
             <div className="overflow-hidden rounded-xl border border-[#e6e9ef] bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
                 <TableSearchToolbar
-                    key={`${filters.search ?? ''}-${filters.per_page}`}
+                    key={`${filters.search ?? ''}-${filters.per_page}-${filters.sort ?? ''}-${filters.direction ?? ''}`}
                     ziggyRouteName="job.masterlist"
                     filters={filters}
+                    defaultPerPage={25}
+                    sortOptions={MASTERLIST_SORT_OPTIONS}
+                    defaultSort="requested_at"
+                    defaultDirection="desc"
                 />
 
                 <JobBoardGrid
@@ -90,22 +112,36 @@ export default function Index({ draftingRequests, filters = {} }) {
                             preserveScroll: true,
                         })
                     }
-                    renderActions={(job) =>
-                        job.can_edit_masterlist ? (
+                    renderActions={(job) => (
+                        <div className="inline-flex items-center gap-0.5">
                             <Link
-                                href={route('job.masterlist.edit', job.id) + q}
+                                href={
+                                    route('job.masterlist.duplicate', job.id) + q
+                                }
                                 className={iconBtn}
-                                title="Edit"
-                                aria-label={`Edit ${job.job_no}`}
+                                title="Duplicate"
+                                aria-label={`Duplicate ${job.job_no}`}
                             >
-                                <PencilSquareIcon className="h-4 w-4" />
+                                <DocumentDuplicateIcon className="h-4 w-4" />
                             </Link>
-                        ) : (
-                            <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                                Forwarded
-                            </span>
-                        )
-                    }
+                            {job.can_edit_masterlist ? (
+                                <Link
+                                    href={
+                                        route('job.masterlist.edit', job.id) + q
+                                    }
+                                    className={iconBtn}
+                                    title="Edit"
+                                    aria-label={`Edit ${job.job_no}`}
+                                >
+                                    <PencilSquareIcon className="h-4 w-4" />
+                                </Link>
+                            ) : (
+                                <span className="px-1 text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                                    Forwarded
+                                </span>
+                            )}
+                        </div>
+                    )}
                 />
 
                 <Pagination pagination={draftingRequests} />

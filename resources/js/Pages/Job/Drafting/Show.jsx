@@ -21,7 +21,7 @@ import {
     PencilSquareIcon,
 } from '@heroicons/react/24/outline';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 function listQueryString(listFilters = {}) {
     const p = new URLSearchParams();
@@ -278,6 +278,7 @@ export default function DraftingShow({
                         viewComments ? (
                         <DiscussionPanel
                             comments={draftingRequest.comments ?? []}
+                            revisions={revisions}
                             commentKind="comment"
                             draftingRequestId={draftingRequest.id}
                             listFilters={listFilters}
@@ -433,6 +434,7 @@ function FilePanel({ title, files, emptyLabel, canEdit = false, onEdit }) {
 function DiscussionPanel({
     title,
     comments = [],
+    revisions = [],
     commentKind,
     draftingRequestId,
     listFilters,
@@ -446,12 +448,41 @@ function DiscussionPanel({
     const { flash } = usePage().props;
     const listQs = listQueryString(listFilters);
     const editorId = `comment-${commentKind}`;
+    const latestRevisionId =
+        revisions.length > 0 ? String(revisions[0].id) : '';
 
     const form = useForm({
         kind: commentKind,
         body: '',
+        drafting_request_revision_id: latestRevisionId,
     });
     const [editorKey, setEditorKey] = useState(0);
+    const [filterRevisionId, setFilterRevisionId] = useState('all');
+
+    const revisionOptions = useMemo(
+        () =>
+            revisions.map((revision) => ({
+                value: String(revision.id),
+                label: revision.code || `Revision #${revision.id}`,
+            })),
+        [revisions],
+    );
+
+    const filteredComments = useMemo(() => {
+        if (filterRevisionId === 'all') {
+            return comments;
+        }
+
+        if (filterRevisionId === 'general') {
+            return comments.filter((comment) => !comment.revision_id);
+        }
+
+        const selectedId = Number(filterRevisionId);
+
+        return comments.filter(
+            (comment) => Number(comment.revision_id) === selectedId,
+        );
+    }, [comments, filterRevisionId]);
 
     const submit = (e) => {
         if (readOnly) {
@@ -465,7 +496,12 @@ function DiscussionPanel({
                 preserveState: false,
                 onSuccess: () => {
                     form.reset('body');
-                    form.setData('kind', commentKind);
+                    form.setData({
+                        kind: commentKind,
+                        drafting_request_revision_id:
+                            form.data.drafting_request_revision_id ||
+                            latestRevisionId,
+                    });
                     setEditorKey((key) => key + 1);
                     router.reload({
                         only: ['draftingRequest'],
@@ -501,17 +537,46 @@ function DiscussionPanel({
                 </p>
             ) : null}
 
-            {comments.length === 0 ? (
+            {revisionOptions.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-2 border-b border-[#e6e9ef] px-4 py-2.5 dark:border-[#2f3347] sm:px-5">
+                    <label
+                        htmlFor={`${editorId}-filter`}
+                        className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400"
+                    >
+                        Show
+                    </label>
+                    <select
+                        id={`${editorId}-filter`}
+                        value={filterRevisionId}
+                        onChange={(event) =>
+                            setFilterRevisionId(event.target.value)
+                        }
+                        className="rounded-md border border-[#c5c7d0] bg-white px-2 py-1 text-xs font-medium text-[#323338] focus:border-[#0073ea] focus:outline-none focus:ring-1 focus:ring-[#0073ea] dark:border-[#2f3347] dark:bg-[#151622] dark:text-slate-200"
+                    >
+                        <option value="all">All comments</option>
+                        <option value="general">General (no revision)</option>
+                        {revisionOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                                {option.label}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            ) : null}
+
+            {filteredComments.length === 0 ? (
                 <p className="flex items-center gap-2 border-b border-[#e6e9ef] px-4 py-5 text-sm text-[#676879] dark:border-[#2f3347] dark:text-slate-400 sm:px-5">
                     <ChatBubbleLeftRightIcon
                         className="h-5 w-5 shrink-0"
                         aria-hidden
                     />
-                    {emptyLabel}
+                    {comments.length === 0
+                        ? emptyLabel
+                        : 'No comments for this revision filter.'}
                 </p>
             ) : (
                 <ul className="max-h-64 divide-y divide-[#e6e9ef] overflow-y-auto border-b border-[#e6e9ef] dark:divide-[#2f3347] dark:border-[#2f3347]">
-                    {comments.map((comment) => (
+                    {filteredComments.map((comment) => (
                         <li key={comment.id} className="px-4 py-4 sm:px-5">
                             <article className="flex gap-3">
                                 <UserAvatar
@@ -532,6 +597,15 @@ function DiscussionPanel({
                                                     (you)
                                                 </span>
                                             ) : null}
+                                            {comment.revision_code ? (
+                                                <span className="ml-2 inline-flex rounded-md bg-[#e6f4ff] px-1.5 py-0.5 text-[10px] font-semibold text-[#0073ea] dark:bg-[#1e3a5f] dark:text-[#93c5fd]">
+                                                    {comment.revision_code}
+                                                </span>
+                                            ) : (
+                                                <span className="ml-2 inline-flex rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                                                    General
+                                                </span>
+                                            )}
                                         </p>
                                         <time className="text-xs text-slate-400">
                                             {comment.created_at}
@@ -554,6 +628,43 @@ function DiscussionPanel({
             ) : (
                 <form onSubmit={submit} className="space-y-3 p-4 sm:p-5">
                     <input type="hidden" name="kind" value={commentKind} />
+                    {revisionOptions.length > 0 ? (
+                        <div>
+                            <label
+                                htmlFor={`${editorId}-revision`}
+                                className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400"
+                            >
+                                Revision number
+                            </label>
+                            <select
+                                id={`${editorId}-revision`}
+                                value={form.data.drafting_request_revision_id}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'drafting_request_revision_id',
+                                        event.target.value,
+                                    )
+                                }
+                                className="block w-full rounded-lg border border-[#c5c7d0] bg-white px-3 py-2 text-sm text-[#323338] focus:border-[#0073ea] focus:outline-none focus:ring-1 focus:ring-[#0073ea] dark:border-[#2f3347] dark:bg-[#151622] dark:text-slate-200"
+                            >
+                                <option value="">General (no revision)</option>
+                                {revisionOptions.map((option) => (
+                                    <option
+                                        key={option.value}
+                                        value={option.value}
+                                    >
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                            <InputError
+                                message={
+                                    form.errors.drafting_request_revision_id
+                                }
+                                className="mt-1"
+                            />
+                        </div>
+                    ) : null}
                     <RichTextEditor
                         key={editorKey}
                         id={editorId}

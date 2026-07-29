@@ -23,19 +23,22 @@ class UpdateDraftingRequestRequest extends FormRequest
             return false;
         }
 
-        if (! $user->hasPermission('job.drafting.view')) {
-            return false;
-        }
+        $canViewApm = $draftingRequest->workflow_stage === DraftingRequest::STAGE_APM
+            && $user->hasPermission('job.drafting.view');
+        $canViewMasterlist = $draftingRequest->workflow_stage === DraftingRequest::STAGE_MASTERLIST
+            && $user->hasPermission('job.drafting-request.view');
 
-        if (! $user->isAdmin() && $draftingRequest->user_id !== $user->id) {
+        if (! $canViewApm && ! $canViewMasterlist) {
             return false;
         }
 
         if ($this->input('section') === 'building_area') {
-            return $user->hasPermission('job.drafting.building-area.edit');
+            return $user->hasPermission('job.drafting.building-area.edit')
+                || $canViewMasterlist;
         }
 
-        return $user->hasPermission('job.drafting.job-details.edit');
+        return $user->hasPermission('job.drafting.job-details.edit')
+            || $canViewMasterlist;
     }
 
     /**
@@ -54,6 +57,15 @@ class UpdateDraftingRequestRequest extends FormRequest
             ],
             'job' => [
                 'section' => ['required', 'string', 'in:job'],
+                'lead_number' => [
+                    'required',
+                    'string',
+                    'max:32',
+                    'regex:/^[A-Za-z0-9\-]+$/',
+                    Rule::unique('drafting_requests', 'lead_number')->ignore(
+                        $this->route('draftingRequest')?->id,
+                    ),
+                ],
                 'status' => ['required', 'string', Rule::in(DraftingRequest::statusValues())],
                 'building_type_id' => [
                     'nullable',
@@ -69,8 +81,15 @@ class UpdateDraftingRequestRequest extends FormRequest
                         fn ($q) => $q->whereNull('archived_at'),
                     ),
                 ],
+                'crm_category_ids' => ['required', 'array', 'min:1'],
+                'crm_category_ids.*' => [
+                    'integer',
+                    Rule::exists('crm_categories', 'id')->where(
+                        fn ($q) => $q->whereNull('archived_at'),
+                    ),
+                ],
                 'crm_category_id' => [
-                    'required',
+                    'nullable',
                     'integer',
                     Rule::exists('crm_categories', 'id')->where(
                         fn ($q) => $q->whereNull('archived_at'),
@@ -156,11 +175,32 @@ class UpdateDraftingRequestRequest extends FormRequest
         };
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'lead_number.required' => 'Enter a lead number.',
+            'lead_number.unique' => 'That lead number is already in use.',
+            'lead_number.regex' => 'Lead number may only contain letters, numbers, and hyphens.',
+            'crm_category_ids.required' => 'Select at least one category.',
+            'crm_category_ids.min' => 'Select at least one category.',
+        ];
+    }
+
     protected function prepareForValidation(): void
     {
         $section = $this->input('section');
 
         if ($section === 'job') {
+            if ($this->has('lead_number')) {
+                $leadNumber = trim((string) $this->input('lead_number', ''));
+                $this->merge([
+                    'lead_number' => $leadNumber === '' ? null : $leadNumber,
+                ]);
+            }
+
             $this->merge([
                 'ndis_sda' => filter_var($this->input('ndis_sda'), FILTER_VALIDATE_BOOLEAN),
             ]);
@@ -184,6 +224,23 @@ class UpdateDraftingRequestRequest extends FormRequest
                     $key => $value === '' || $value === null ? null : $value,
                 ]);
             }
+
+            $categoryIds = $this->input('crm_category_ids', []);
+            if (! is_array($categoryIds)) {
+                $single = $this->input('crm_category_id');
+                $categoryIds = $single === '' || $single === null ? [] : [$single];
+            }
+            $categoryIds = array_values(array_map(
+                'intval',
+                array_filter(
+                    $categoryIds,
+                    fn ($id) => $id !== '' && $id !== null,
+                ),
+            ));
+            $this->merge([
+                'crm_category_ids' => $categoryIds,
+                'crm_category_id' => $categoryIds[0] ?? null,
+            ]);
         }
 
         if ($section === 'drawing_checklist' && is_array($this->input('items'))) {

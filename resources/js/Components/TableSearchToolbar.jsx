@@ -3,12 +3,25 @@ import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { router, useForm } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
-function stripEphemeralSearchFromUrl(perPage) {
+function stripEphemeralSearchFromUrl(
+    perPage,
+    defaultPerPage = 10,
+    sort = null,
+    direction = null,
+    defaultSort = null,
+    defaultDirection = null,
+) {
     const url = new URL(window.location.href);
     url.searchParams.delete('search');
     url.searchParams.delete('page');
-    if (String(perPage) === '10') {
+    if (String(perPage) === String(defaultPerPage)) {
         url.searchParams.delete('per_page');
+    }
+    if (defaultSort && String(sort) === String(defaultSort)) {
+        url.searchParams.delete('sort');
+    }
+    if (defaultDirection && String(direction) === String(defaultDirection)) {
+        url.searchParams.delete('direction');
     }
     const query = url.searchParams.toString();
     window.history.replaceState(
@@ -18,14 +31,22 @@ function stripEphemeralSearchFromUrl(perPage) {
     );
 }
 
+const selectClass =
+    'block w-full min-w-[9rem] rounded-lg border border-[#c5c7d0] bg-white py-2.5 ps-3 pe-8 text-sm text-[#323338] shadow-sm focus:border-[#0073ea] focus:ring-[#0073ea] sm:w-40 dark:border-[#3d4f63] dark:bg-[#0f1419] dark:text-white dark:focus:border-[#1890ff] dark:focus:ring-[#1890ff]';
+
 /**
  * @param {{
  *   ziggyRouteName: string;
- *   filters?: { search?: string; per_page?: number };
+ *   filters?: { search?: string; per_page?: number; sort?: string; direction?: string };
  *   queryParams?: Record<string, string>;
  *   liveSearch?: boolean;
+ *   liveSearchOnly?: string[];
  *   searchDebounceMs?: number;
  *   onLiveSearchChange?: (search: string) => void;
+ *   defaultPerPage?: number;
+ *   sortOptions?: Array<{ value: string; label: string }>;
+ *   defaultSort?: string;
+ *   defaultDirection?: 'asc' | 'desc';
  * }} props
  */
 export default function TableSearchToolbar({
@@ -33,13 +54,22 @@ export default function TableSearchToolbar({
     filters = {},
     queryParams = {},
     liveSearch = false,
+    liveSearchOnly = null,
     searchDebounceMs = 300,
     onLiveSearchChange,
+    defaultPerPage = 10,
+    sortOptions = [],
+    defaultSort = 'requested_at',
+    defaultDirection = 'desc',
 }) {
+    const hasSort = sortOptions.length > 0;
+    const defaultPerPageValue = String(defaultPerPage);
     const [liveSearchValue, setLiveSearchValue] = useState('');
     const form = useForm({
         search: filters.search ?? '',
-        per_page: String(filters.per_page ?? 10),
+        per_page: String(filters.per_page ?? defaultPerPage),
+        sort: filters.sort ?? defaultSort,
+        direction: filters.direction ?? defaultDirection,
     });
     const debounceRef = useRef(null);
 
@@ -69,22 +99,42 @@ export default function TableSearchToolbar({
             overrides.search ?? (liveSearch ? liveSearchValue : form.data.search)
         ).trim();
         const perPage = String(overrides.per_page ?? form.data.per_page);
+        const sort = String(overrides.sort ?? form.data.sort ?? defaultSort);
+        const direction = String(
+            overrides.direction ?? form.data.direction ?? defaultDirection,
+        );
         router.get(
             route(ziggyRouteName),
             {
                 ...queryParams,
                 ...(search ? { search } : {}),
                 per_page: perPage,
+                ...(hasSort
+                    ? {
+                          sort,
+                          direction,
+                      }
+                    : {}),
                 page: overrides.page ?? 1,
             },
             {
                 preserveState: true,
                 preserveScroll: true,
                 replace: true,
+                ...(liveSearch && Array.isArray(liveSearchOnly) && liveSearchOnly.length > 0
+                    ? { only: liveSearchOnly }
+                    : {}),
                 ...(liveSearch
                     ? {
                           onFinish: () =>
-                              stripEphemeralSearchFromUrl(perPage),
+                              stripEphemeralSearchFromUrl(
+                                  perPage,
+                                  defaultPerPage,
+                                  sort,
+                                  direction,
+                                  defaultSort,
+                                  defaultDirection,
+                              ),
                       }
                     : {}),
             },
@@ -97,8 +147,21 @@ export default function TableSearchToolbar({
     };
 
     const clear = () => {
-        form.setData({ search: '', per_page: '10' });
-        go({ search: '', per_page: '10', page: 1 });
+        const next = {
+            search: '',
+            per_page: defaultPerPageValue,
+            ...(hasSort
+                ? {
+                      sort: defaultSort,
+                      direction: defaultDirection,
+                  }
+                : {}),
+        };
+        form.setData({
+            ...form.data,
+            ...next,
+        });
+        go({ ...next, page: 1 });
     };
 
     const handleSearchChange = (e) => {
@@ -175,8 +238,59 @@ export default function TableSearchToolbar({
                 </div>
             </div>
 
-            {/* Right: Show — pinned to end via justify-between on form */}
-            <div className="flex w-full shrink-0 justify-end sm:w-auto">
+            <div className="flex w-full shrink-0 flex-col gap-3 sm:w-auto sm:flex-row sm:items-end sm:justify-end">
+                {hasSort ? (
+                    <>
+                        <div>
+                            <label
+                                htmlFor="table-sort"
+                                className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-[#94a3b8]"
+                            >
+                                Sort by
+                            </label>
+                            <select
+                                id="table-sort"
+                                className={selectClass}
+                                value={form.data.sort}
+                                onChange={(e) => {
+                                    const v = e.target.value;
+                                    form.setData('sort', v);
+                                    go({ sort: v, page: 1 });
+                                }}
+                            >
+                                {sortOptions.map((option) => (
+                                    <option
+                                        key={option.value}
+                                        value={option.value}
+                                    >
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label
+                                htmlFor="table-direction"
+                                className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-[#94a3b8]"
+                            >
+                                Order
+                            </label>
+                            <select
+                                id="table-direction"
+                                className={selectClass}
+                                value={form.data.direction}
+                                onChange={(e) => {
+                                    const v = e.target.value;
+                                    form.setData('direction', v);
+                                    go({ direction: v, page: 1 });
+                                }}
+                            >
+                                <option value="asc">Ascending</option>
+                                <option value="desc">Descending</option>
+                            </select>
+                        </div>
+                    </>
+                ) : null}
                 <div>
                     <label
                         htmlFor="table-per-page"
@@ -186,7 +300,7 @@ export default function TableSearchToolbar({
                     </label>
                     <select
                         id="table-per-page"
-                        className="block w-full min-w-[10rem] rounded-lg border border-[#c5c7d0] bg-white py-2.5 ps-3 pe-8 text-sm text-[#323338] shadow-sm focus:border-[#0073ea] focus:ring-[#0073ea] sm:w-40 dark:border-[#3d4f63] dark:bg-[#0f1419] dark:text-white dark:focus:border-[#1890ff] dark:focus:ring-[#1890ff]"
+                        className={selectClass}
                         value={form.data.per_page}
                         onChange={(e) => {
                             const v = e.target.value;

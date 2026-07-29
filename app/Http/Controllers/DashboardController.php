@@ -59,56 +59,21 @@ class DashboardController extends Controller
                     ->values()
                     ->all()
                 : [],
+            'statusOptions' => $user?->hasPermission('job.list.view')
+                ? collect(DraftingRequest::statusOptions())
+                    ->map(fn (string $label, string $value) => [
+                        'value' => $value,
+                        'label' => $label,
+                    ])
+                    ->values()
+                    ->all()
+                : [],
             'attendance' => $this->attendance->dashboardAttendancePayload(),
             'clock' => $user
                 ? $this->attendance->clockStateForUser($user)
                 : null,
-            'activityFormOptions' => $user?->hasPermission('dashboard.view')
-                ? [
-                    'activities' => [
-                        ['value' => 'admin', 'label' => 'Admin'],
-                        ['value' => 'meeting', 'label' => 'Meeting'],
-                        ['value' => 'training', 'label' => 'Training'],
-                        ['value' => 'drafting', 'label' => 'Drafting'],
-                        ['value' => 'downtime', 'label' => 'Downtime'],
-                    ],
-                    'projects' => $user->hasPermission('job.list.view')
-                        ? DraftingRequest::query()
-                            ->active()
-                            ->reviewAccepted()
-                            ->apm()
-                            ->whereIn('status', [
-                                DraftingRequest::STATUS_NEW,
-                                DraftingRequest::STATUS_WIP,
-                                DraftingRequest::STATUS_DESIGN_WIP,
-                                DraftingRequest::STATUS_DRAFTING_WIP,
-                                DraftingRequest::STATUS_FOR_CHECKING,
-                            ])
-                            ->when(
-                                ! $user->isAdmin(),
-                                fn ($query) => $query->where(function ($inner) use ($user) {
-                                    $inner
-                                        ->where('user_id', $user->id)
-                                        ->orWhereHas(
-                                            'assignments',
-                                            fn ($assignment) => $assignment->where('user_id', $user->id),
-                                        );
-                                }),
-                            )
-                            ->orderByDesc('requested_at')
-                            ->orderByDesc('id')
-                            ->limit(200)
-                            ->get(['id', 'site_address', 'requested_at', 'created_at'])
-                            ->map(fn ($row) => [
-                                'value' => (string) $row->id,
-                                'label' => trim(
-                                    ($row->site_address ?: 'Untitled').' ('.$row->jobNumber().')',
-                                ),
-                            ])
-                            ->values()
-                            ->all()
-                        : [],
-                ]
+            'activityFormOptions' => $user
+                ? $this->timesheet->activityFormOptionsForUser($user)
                 : null,
             'announcements' => $user?->hasPermission('announcements.view')
                 ? AnnouncementController::latestForDashboard()

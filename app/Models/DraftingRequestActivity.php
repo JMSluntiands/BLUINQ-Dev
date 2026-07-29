@@ -43,6 +43,8 @@ class DraftingRequestActivity extends Model
 
     public const ACTION_DRAWING_CHECKLIST_RESET = 'drawing_checklist_reset';
 
+    public const ACTION_ASSIGNMENT_CHANGED = 'assignment_changed';
+
     protected $fillable = [
         'drafting_request_id',
         'user_id',

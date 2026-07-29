@@ -71,6 +71,7 @@ return [
         'job.masterlist.store' => 'job.drafting-request.view',
         'job.masterlist.show' => 'job.drafting-request.view',
         'job.masterlist.edit' => 'job.drafting-request.view',
+        'job.masterlist.duplicate' => 'job.drafting-request.view',
         'job.masterlist.update' => 'job.drafting-request.view',
         'job.masterlist.forward' => 'job.list.view',
         'job.drafting-requests.pending' => 'job.drafting-request.review',

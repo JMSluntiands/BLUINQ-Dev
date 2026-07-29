@@ -52,7 +52,7 @@ export function suggestNextRevisionCode(jobNumber, revisions = []) {
 
 /**
  * Slim revision modal (APM-owned staffing fields live on the board).
- * Fields: Revision Number, Category, Date In, Status.
+ * Fields: Revision Number, Revision Link, Category, Date In, Status.
  */
 export default function DraftingRevisionAddModal({
     show = false,
@@ -108,6 +108,7 @@ export default function DraftingRevisionAddModal({
 
     const form = useForm({
         code: '',
+        link: '',
         log_date: '',
         category: '',
         status: defaultJobStatus || 'new',
@@ -123,6 +124,7 @@ export default function DraftingRevisionAddModal({
         if (entry) {
             form.setData({
                 code: entry.code ?? '',
+                link: entry.link ?? '',
                 log_date: entry.log_date_value ?? '',
                 category: entry.category ?? '',
                 status: entry.status ?? '',
@@ -133,6 +135,7 @@ export default function DraftingRevisionAddModal({
 
         form.setData({
             code: suggestNextRevisionCode(jobNumber, revisions),
+            link: '',
             log_date: '',
             category: '',
             status: defaultJobStatus || 'new',
@@ -177,7 +180,7 @@ export default function DraftingRevisionAddModal({
                 </h2>
                 <p className="mt-1 text-sm text-[#676879] dark:text-slate-400">
                     {isEditing
-                        ? 'Update revision number, category, date in, and status. Drafter, hours, and date out are set on the board.'
+                        ? 'Update revision number, link, category, date in, and status. Drafter, hours, and date out are set on the board.'
                         : 'Add a revision. Assign drafter, checker, and hours on the Project Management board.'}
                 </p>
 
@@ -200,6 +203,27 @@ export default function DraftingRevisionAddModal({
                         />
                         <InputError
                             message={form.errors.code}
+                            className="mt-1"
+                        />
+                    </div>
+
+                    <div>
+                        <InputLabel
+                            htmlFor="revision-link"
+                            value="Revision Link"
+                        />
+                        <TextInput
+                            id="revision-link"
+                            type="url"
+                            value={form.data.link}
+                            onChange={(e) =>
+                                form.setData('link', e.target.value)
+                            }
+                            className="mt-1 block w-full"
+                            placeholder="https://…"
+                        />
+                        <InputError
+                            message={form.errors.link}
                             className="mt-1"
                         />
                     </div>

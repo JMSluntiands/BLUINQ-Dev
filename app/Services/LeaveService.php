@@ -83,23 +83,23 @@ class LeaveService
     }
 
     /**
+     * Birthdays in the current calendar month for active users with a birthday set.
+     *
      * @return list<array{id: int, name: string, department: string, date: string, profile_image_url: string|null}>
      */
-    public function upcomingBirthdays(int $limit = 5): array
+    public function upcomingBirthdays(int $limit = 50): array
     {
         $today = Carbon::today();
+        $month = $today->month;
 
         return User::query()
             ->active()
             ->whereNotNull('birthday')
             ->orderBy('name')
             ->get(['id', 'name', 'birthday', 'job_title', 'profile_image'])
+            ->filter(fn (User $user) => (int) $user->birthday->month === $month)
             ->map(function (User $user) use ($today) {
                 $occurrence = $user->birthday->copy()->year($today->year);
-
-                if ($occurrence->lt($today)) {
-                    $occurrence->addYear();
-                }
 
                 return [
                     'id' => $user->id,
@@ -107,7 +107,7 @@ class LeaveService
                     'department' => $user->job_title ?? '',
                     'date' => $occurrence->format('M j'),
                     'profile_image_url' => $user->profile_image_url,
-                    'sort_key' => $occurrence->format('Y-m-d'),
+                    'sort_key' => $occurrence->format('m-d'),
                 ];
             })
             ->sortBy('sort_key')

@@ -18,7 +18,9 @@ class StoreDashboardActivityRequest extends FormRequest
      */
     public function rules(): array
     {
-        $isDrafting = $this->input('activity') === TimesheetEntry::TASK_DRAFTING;
+        $isProjectScoped = TimesheetEntry::activityRequiresProject(
+            (string) $this->input('activity'),
+        );
 
         return [
             'activity' => [
@@ -27,7 +29,7 @@ class StoreDashboardActivityRequest extends FormRequest
                 Rule::in(array_keys(TimesheetEntry::ACTIVITY_TASK_LABELS)),
             ],
             'project_id' => [
-                Rule::requiredIf($isDrafting),
+                Rule::requiredIf($isProjectScoped),
                 'nullable',
                 'integer',
                 'exists:drafting_requests,id',

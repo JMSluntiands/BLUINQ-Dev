@@ -7,14 +7,14 @@ return [
     | Attendance timezone
     |--------------------------------------------------------------------------
     |
-    | Used for work-day boundaries, the 9:00 AM absent cutoff, and default
+    | Used for work-day boundaries, the 8:00 AM absent cutoff, and default
     | clock display. Philippines and Singapore are both UTC+8.
     |
     */
 
     'timezone' => env('ATTENDANCE_TIMEZONE', 'Asia/Manila'),
 
-    'absent_cutoff' => '09:00',
+    'absent_cutoff' => '08:00',
 
     'display_timezones' => [
         [

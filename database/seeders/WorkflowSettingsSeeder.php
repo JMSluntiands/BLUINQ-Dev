@@ -245,12 +245,9 @@ class WorkflowSettingsSeeder extends Seeder
     {
         $archi = [
             'new' => 'New',
-            'assigned' => 'Assigned',
             'design_wip' => 'Design WIP',
             'drafting_wip' => 'Drafting WIP',
             'for_checking' => 'For Checking',
-            'on_hold' => 'On Hold',
-            'query' => 'Query',
             'submitted' => 'Submitted',
             'cancelled' => 'Cancelled',
         ];

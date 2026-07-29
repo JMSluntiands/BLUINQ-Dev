@@ -117,6 +117,7 @@ class DraftingController extends Controller
             'buildingClass:id,name,code',
             'storeyLevel:id,name,code',
             'crmCategory:id,name,code',
+            'crmCategories:id,name,code',
             'externalWallConstruction:id,name',
             'roofType:id,name',
             'serviceEngagings:id,name',
@@ -125,7 +126,10 @@ class DraftingController extends Controller
             'files' => fn ($query) => $query->orderBy('kind')->orderBy('id'),
             'user:id,name,email',
             'comments' => fn ($query) => $query
-                ->with('user:id,name,profile_image')
+                ->with([
+                    'user:id,name,profile_image',
+                    'revision:id,drafting_request_id,code',
+                ])
                 ->orderBy('created_at'),
             'revisions',
             'accountEntries',
@@ -140,6 +144,7 @@ class DraftingController extends Controller
             'draftingRequest' => [
                 'id' => $draftingRequest->id,
                 'reference' => $draftingRequest->jobNumber(),
+                'lead_number' => $draftingRequest->lead_number ?: $draftingRequest->jobNumber(),
                 'status' => $draftingRequest->status,
                 'status_label' => $draftingRequest->statusLabel(),
                 'is_archived' => $draftingRequest->isArchived(),
@@ -153,6 +158,12 @@ class DraftingController extends Controller
                 'building_type_id' => $draftingRequest->building_type_id,
                 'storey_level_id' => $draftingRequest->storey_level_id,
                 'crm_category_id' => $draftingRequest->crm_category_id,
+                'crm_category_ids' => ($draftingRequest->crmCategories->isNotEmpty()
+                    ? $draftingRequest->crmCategories->pluck('id')
+                    : collect([$draftingRequest->crm_category_id])->filter())
+                    ->map(fn ($id) => (int) $id)
+                    ->values()
+                    ->all(),
                 'external_wall_construction_id' => $draftingRequest->external_wall_construction_id,
                 'roof_type_id' => $draftingRequest->roof_type_id,
                 'service_engaging_ids' => $draftingRequest->serviceEngagings
@@ -172,11 +183,15 @@ class DraftingController extends Controller
                         ? "{$draftingRequest->storeyLevel->code} — {$draftingRequest->storeyLevel->name}"
                         : $draftingRequest->storeyLevel->name)
                     : null,
-                'crm_category' => $draftingRequest->crmCategory
-                    ? ($draftingRequest->crmCategory->code
-                        ? "{$draftingRequest->crmCategory->code} — {$draftingRequest->crmCategory->name}"
-                        : $draftingRequest->crmCategory->name)
-                    : null,
+                'crm_category' => $draftingRequest->crmCategories->isNotEmpty()
+                    ? $draftingRequest->crmCategories
+                        ->map(fn ($row) => $row->code ? "{$row->code} — {$row->name}" : $row->name)
+                        ->join(', ')
+                    : ($draftingRequest->crmCategory
+                        ? ($draftingRequest->crmCategory->code
+                            ? "{$draftingRequest->crmCategory->code} — {$draftingRequest->crmCategory->name}"
+                            : $draftingRequest->crmCategory->name)
+                        : null),
                 'building_class' => $draftingRequest->buildingClass
                     ? ($draftingRequest->buildingClass->code
                         ? "{$draftingRequest->buildingClass->code} — {$draftingRequest->buildingClass->name}"
@@ -390,6 +405,9 @@ class DraftingController extends Controller
         $serviceEngagingIds = $validated['service_engaging_ids'] ?? null;
         unset($validated['service_engaging_ids']);
 
+        $crmCategoryIds = $validated['crm_category_ids'] ?? null;
+        unset($validated['crm_category_ids']);
+
         $units = $validated['units'] ?? null;
         unset($validated['units']);
 
@@ -397,6 +415,10 @@ class DraftingController extends Controller
 
         if ($serviceEngagingIds !== null) {
             $draftingRequest->serviceEngagings()->sync($serviceEngagingIds);
+        }
+
+        if ($crmCategoryIds !== null) {
+            $draftingRequest->crmCategories()->sync($crmCategoryIds);
         }
 
         if ($section === 'job' && $units !== null) {
@@ -548,6 +570,9 @@ class DraftingController extends Controller
             'drafting_request_id' => $draftingRequest->id,
             'user_id' => $request->user()->id,
             'code' => trim($validated['code']),
+            'link' => isset($validated['link']) && $validated['link'] !== ''
+                ? trim($validated['link'])
+                : null,
             'log_date' => $validated['log_date'],
             'category' => trim($validated['category']),
             'drafter_user_id' => $drafter?->id,
@@ -613,6 +638,12 @@ class DraftingController extends Controller
             'status' => $validated['status'],
         ];
 
+        if (array_key_exists('link', $validated)) {
+            $updates['link'] = $validated['link'] !== null && $validated['link'] !== ''
+                ? trim((string) $validated['link'])
+                : null;
+        }
+
         if (array_key_exists('drafter_user_id', $validated)) {
             $drafter = null;
             if (! empty($validated['drafter_user_id'])) {
@@ -647,8 +678,45 @@ class DraftingController extends Controller
                 : null;
         }
 
+        $previousDrafterId = $revision->drafter_user_id;
+        $previousCheckerId = $revision->checker_user_id;
+
         $revision->update($updates);
         $revision->refresh();
+
+        if (
+            array_key_exists('drafter_user_id', $updates)
+            && (int) ($previousDrafterId ?? 0) !== (int) ($revision->drafter_user_id ?? 0)
+        ) {
+            DraftingRequestActivity::record(
+                $draftingRequest,
+                $request->user(),
+                DraftingRequestActivity::ACTION_ASSIGNMENT_CHANGED,
+                sprintf(
+                    'Drafter on revision %s changed from %s to %s.',
+                    $revision->code,
+                    $this->assignmentUserLabel($previousDrafterId),
+                    $this->assignmentUserLabel($revision->drafter_user_id),
+                ),
+            );
+        }
+
+        if (
+            array_key_exists('checker_user_id', $updates)
+            && (int) ($previousCheckerId ?? 0) !== (int) ($revision->checker_user_id ?? 0)
+        ) {
+            DraftingRequestActivity::record(
+                $draftingRequest,
+                $request->user(),
+                DraftingRequestActivity::ACTION_ASSIGNMENT_CHANGED,
+                sprintf(
+                    'Checker on revision %s changed from %s to %s.',
+                    $revision->code,
+                    $this->assignmentUserLabel($previousCheckerId),
+                    $this->assignmentUserLabel($revision->checker_user_id),
+                ),
+            );
+        }
 
         $hoursLabel = $this->formatRevisionHoursLabel(
             $revision->drafting_hours,
@@ -800,15 +868,23 @@ class DraftingController extends Controller
         }
 
         $body = $request->sanitizedBody();
+        $revisionId = $request->revisionId();
 
         DraftingRequestComment::query()->create([
             'drafting_request_id' => $draftingRequest->id,
+            'drafting_request_revision_id' => $revisionId,
             'user_id' => $request->user()->id,
             'kind' => $kind,
             'body' => $body,
         ]);
 
         $isRun = $kind === DraftingRequestComment::KIND_RUN;
+        $revisionCode = $revisionId
+            ? DraftingRequestRevision::query()
+                ->whereKey($revisionId)
+                ->where('drafting_request_id', $draftingRequest->id)
+                ->value('code')
+            : null;
 
         DraftingRequestActivity::record(
             $draftingRequest,
@@ -816,7 +892,7 @@ class DraftingController extends Controller
             $isRun
                 ? DraftingRequestActivity::ACTION_RUN_COMMENT_POSTED
                 : DraftingRequestActivity::ACTION_COMMENT_POSTED,
-            $this->commentActivityDescription($body, $isRun),
+            $this->commentActivityDescription($body, $isRun, $revisionCode),
         );
 
         return back()->with('status', $isRun ? 'run-comment-added' : 'comment-added');
@@ -831,7 +907,10 @@ class DraftingController extends Controller
         $tz = config('app.timezone');
         $draftingRequest->load([
             'comments' => fn ($query) => $query
-                ->with('user:id,name,profile_image')
+                ->with([
+                    'user:id,name,profile_image',
+                    'revision:id,drafting_request_id,code',
+                ])
                 ->where('kind', DraftingRequestComment::KIND_COMMENT)
                 ->orderBy('created_at'),
         ]);
@@ -1047,6 +1126,15 @@ class DraftingController extends Controller
             'status' => $row->status,
             'status_label' => $row->statusLabel(),
         ];
+    }
+
+    private function assignmentUserLabel(?int $userId): string
+    {
+        if ($userId === null) {
+            return 'Unassigned';
+        }
+
+        return User::query()->whereKey($userId)->value('name') ?? 'Unknown';
     }
 
     private function formatRevisionHoursLabel(
@@ -1306,6 +1394,8 @@ class DraftingController extends Controller
             'author_profile_image_url' => $comment->user?->profile_image_url,
             'created_at' => $comment->created_at?->timezone($tz)->format('d M Y, h:i A'),
             'is_mine' => $comment->user_id === auth()->id(),
+            'revision_id' => $comment->drafting_request_revision_id,
+            'revision_code' => $comment->revision?->code,
         ];
     }
 
@@ -1352,6 +1442,7 @@ class DraftingController extends Controller
                 DraftingRequestActivity::ACTION_INVOICE_UPDATED => 'Updated invoice',
                 DraftingRequestActivity::ACTION_DRAWING_CHECKLIST_UPDATED => 'Updated drawing status',
                 DraftingRequestActivity::ACTION_DRAWING_CHECKLIST_RESET => 'Reset drawing status',
+                DraftingRequestActivity::ACTION_ASSIGNMENT_CHANGED => 'Changed assignment',
                 default => 'Activity',
             },
             'description' => $activity->description,
@@ -1375,17 +1466,23 @@ class DraftingController extends Controller
             ->all();
     }
 
-    private function commentActivityDescription(string $body, bool $isRun = false): string
-    {
+    private function commentActivityDescription(
+        string $body,
+        bool $isRun = false,
+        ?string $revisionCode = null,
+    ): string {
         $text = trim(strip_tags($body));
+        $revisionPrefix = $revisionCode
+            ? '['.$revisionCode.'] '
+            : '';
 
         if ($text === '') {
-            return $isRun
+            return $revisionPrefix.($isRun
                 ? 'Added a run comment with rich text only.'
-                : 'Added a comment with rich text only.';
+                : 'Added a comment with rich text only.');
         }
 
-        $prefix = $isRun ? 'Run comment: ' : '';
+        $prefix = ($isRun ? 'Run comment: ' : '').$revisionPrefix;
 
         return $prefix.Str::limit($text, 200);
     }

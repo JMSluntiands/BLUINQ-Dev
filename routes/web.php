@@ -218,6 +218,8 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('job.masterlist.show');
     Route::get('/job/masterlist/{draftingRequest}/edit', [MasterlistController::class, 'edit'])
         ->name('job.masterlist.edit');
+    Route::get('/job/masterlist/{draftingRequest}/duplicate', [MasterlistController::class, 'duplicate'])
+        ->name('job.masterlist.duplicate');
     Route::post('/job/masterlist/{draftingRequest}', [MasterlistController::class, 'update'])
         ->name('job.masterlist.update');
     Route::post('/job/masterlist/{draftingRequest}/forward', [MasterlistController::class, 'forward'])

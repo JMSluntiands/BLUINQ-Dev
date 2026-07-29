@@ -30,13 +30,14 @@ class MasterlistController extends Controller
 
     public function index(Request $request): Response
     {
-        [$search, $perPage] = $this->resolveListFilters($request);
+        [$search, $perPage, $sort, $direction] = $this->resolveListFilters($request);
 
         $query = DraftingRequest::query()
             ->with([
                 'buildingType:id,name',
                 'storeyLevel:id,name,code',
                 'crmCategory:id,name,code',
+                'crmCategories:id,name,code',
                 'serviceEngagings:id,name',
                 'assignments' => fn ($relation) => $relation
                     ->with('user:id,name')
@@ -54,11 +55,10 @@ class MasterlistController extends Controller
                 DraftingRequest::STAGE_APM,
             ])
             ->reviewAccepted()
-            ->active()
-            ->orderByDesc('requested_at')
-            ->orderByDesc('id');
+            ->active();
 
         $this->applySearch($query, $search);
+        $this->applySort($query, $sort, $direction);
 
         $user = $request->user();
 
@@ -77,6 +77,8 @@ class MasterlistController extends Controller
             'filters' => [
                 'search' => $search,
                 'per_page' => $perPage,
+                'sort' => $sort,
+                'direction' => $direction,
             ],
             'canForwardToApm' => $user?->hasPermission('job.list.view') ?? false,
         ]);
@@ -127,11 +129,6 @@ class MasterlistController extends Controller
     {
         $this->authorizeMasterlist($request, $draftingRequest);
 
-        $tz = config('app.timezone');
-        $requestedAt = $draftingRequest->requested_at
-            ? $draftingRequest->requested_at->timezone($tz)->seconds(0)->format('Y-m-d\TH:i')
-            : now($tz)->seconds(0)->format('Y-m-d\TH:i');
-
         return Inertia::render('Job/DraftingRequestForm', [
             'standalone' => false,
             'submitted' => false,
@@ -139,32 +136,30 @@ class MasterlistController extends Controller
             'submitUrl' => route('job.masterlist.update', $draftingRequest),
             'backUrl' => route('job.masterlist'),
             'formTitle' => 'Edit masterlist entry',
-            'applicant' => [
-                'id' => $draftingRequest->id,
-                'lead_number' => $draftingRequest->lead_number ?: $draftingRequest->jobNumber(),
-                'requested_at' => $requestedAt,
-                'your_name' => $draftingRequest->your_name,
-                'client_id' => $draftingRequest->client_id,
-                'company_name' => $draftingRequest->company_name,
-                'email' => $draftingRequest->email,
-                'phone' => $draftingRequest->phone,
-                'service_engaging_ids' => $draftingRequest->serviceEngagings()->pluck('service_engagings.id')->all(),
-                'crm_category_id' => $draftingRequest->crm_category_id,
-                'site_address' => $draftingRequest->site_address,
-                'council_shire' => $draftingRequest->council_shire,
-                'site_owner_name' => $draftingRequest->site_owner_name,
-                'max_building_area_sqm' => $draftingRequest->max_building_area_sqm,
-                'storey_level_id' => $draftingRequest->storey_level_id,
-                'building_class_id' => $draftingRequest->building_class_id,
-                'zoning' => $draftingRequest->zoning,
-                'sda_type_ids' => $draftingRequest->sdaTypes()->pluck('sda_types.id')->all(),
-                'ndis_sda' => (bool) $draftingRequest->ndis_sda,
-                'external_wall_construction_id' => $draftingRequest->external_wall_construction_id,
-                'roof_type_id' => $draftingRequest->roof_type_id,
-                'ceiling_heights' => $draftingRequest->ceiling_heights,
-                'first_floor_slab' => $draftingRequest->first_floor_slab,
-                'additional_inclusions' => $draftingRequest->additional_inclusions,
-            ],
+            'applicant' => $this->applicantFormData($draftingRequest),
+            ...$this->formOptions($draftingRequest->client_id),
+        ]);
+    }
+
+    public function duplicate(Request $request, DraftingRequest $draftingRequest): Response
+    {
+        $this->authorizeMasterlistView($request, $draftingRequest);
+
+        $applicant = $this->applicantFormData($draftingRequest);
+        unset($applicant['id']);
+        $applicant['lead_number'] = '';
+        $applicant['requested_at'] = now(config('app.timezone'))->seconds(0)->format('Y-m-d\TH:i');
+        $applicant['your_name'] = $request->user()?->name ?? $applicant['your_name'];
+
+        return Inertia::render('Job/DraftingRequestForm', [
+            'standalone' => false,
+            'submitted' => false,
+            'mode' => 'create',
+            'submitUrl' => route('job.masterlist.store'),
+            'backUrl' => route('job.masterlist'),
+            'formTitle' => 'Duplicate project info',
+            'sourceReference' => $draftingRequest->jobNumber(),
+            'applicant' => $applicant,
             ...$this->formOptions($draftingRequest->client_id),
         ]);
     }
@@ -210,6 +205,46 @@ class MasterlistController extends Controller
         return redirect()
             ->route('job.masterlist')
             ->with('status', 'masterlist-forwarded');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function applicantFormData(DraftingRequest $draftingRequest): array
+    {
+        $tz = config('app.timezone');
+        $requestedAt = $draftingRequest->requested_at
+            ? $draftingRequest->requested_at->timezone($tz)->seconds(0)->format('Y-m-d\TH:i')
+            : now($tz)->seconds(0)->format('Y-m-d\TH:i');
+
+        return [
+            'id' => $draftingRequest->id,
+            'lead_number' => $draftingRequest->lead_number ?: $draftingRequest->jobNumber(),
+            'requested_at' => $requestedAt,
+            'your_name' => $draftingRequest->your_name,
+            'client_id' => $draftingRequest->client_id,
+            'company_name' => $draftingRequest->company_name,
+            'email' => $draftingRequest->email,
+            'phone' => $draftingRequest->phone,
+            'service_engaging_ids' => $draftingRequest->serviceEngagings()->pluck('service_engagings.id')->all(),
+            'crm_category_id' => $draftingRequest->crm_category_id,
+            'crm_category_ids' => $draftingRequest->crmCategories()->pluck('crm_categories.id')->all()
+                ?: array_values(array_filter([(int) $draftingRequest->crm_category_id])),
+            'site_address' => $draftingRequest->site_address,
+            'council_shire' => $draftingRequest->council_shire,
+            'site_owner_name' => $draftingRequest->site_owner_name,
+            'max_building_area_sqm' => $draftingRequest->max_building_area_sqm,
+            'storey_level_id' => $draftingRequest->storey_level_id,
+            'building_class_id' => $draftingRequest->building_class_id,
+            'zoning' => $draftingRequest->zoning,
+            'sda_type_ids' => $draftingRequest->sdaTypes()->pluck('sda_types.id')->all(),
+            'ndis_sda' => (bool) $draftingRequest->ndis_sda,
+            'external_wall_construction_id' => $draftingRequest->external_wall_construction_id,
+            'roof_type_id' => $draftingRequest->roof_type_id,
+            'ceiling_heights' => $draftingRequest->ceiling_heights,
+            'first_floor_slab' => $draftingRequest->first_floor_slab,
+            'additional_inclusions' => $draftingRequest->additional_inclusions,
+        ];
     }
 
     /**
@@ -308,17 +343,42 @@ class MasterlistController extends Controller
     }
 
     /**
-     * @return array{0: string, 1: int}
+     * @return array{0: string, 1: int, 2: string, 3: string}
      */
     private function resolveListFilters(Request $request): array
     {
         $search = Str::limit(trim((string) $request->input('search', '')), 255);
-        $perPage = (int) $request->input('per_page', 10);
+        $perPage = (int) $request->input('per_page', 25);
         if ($perPage < 5 || $perPage > 50) {
-            $perPage = 10;
+            $perPage = 25;
         }
 
-        return [$search, $perPage];
+        $allowedSorts = [
+            'lead_number',
+            'requested_at',
+            'company_name',
+            'site_address',
+            'status',
+        ];
+        $sort = (string) $request->input('sort', 'requested_at');
+        if (! in_array($sort, $allowedSorts, true)) {
+            $sort = 'requested_at';
+        }
+
+        $direction = strtolower((string) $request->input('direction', 'desc'));
+        if (! in_array($direction, ['asc', 'desc'], true)) {
+            $direction = 'desc';
+        }
+
+        return [$search, $perPage, $sort, $direction];
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<DraftingRequest>  $query
+     */
+    private function applySort($query, string $sort, string $direction): void
+    {
+        $query->orderBy($sort, $direction)->orderBy('id', $direction);
     }
 
     /**

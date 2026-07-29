@@ -11,6 +11,7 @@ class DraftingRequestRevision extends Model
         'drafting_request_id',
         'user_id',
         'code',
+        'link',
         'log_date',
         'category',
         'drafter_user_id',

@@ -439,7 +439,8 @@ export default function ClockInOutPanel({
         }
     }, [clock.current_local_time_hm, nowMs, selectedTimezone]);
 
-    const clockInNeedsProject = clockInForm.activity === 'drafting';
+    const clockInNeedsProject = clockInForm.activity === 'drafting'
+        || clockInForm.activity === 'checking';
     const clockInCanSubmit = Boolean(
         clockInForm.activity &&
             (!clockInNeedsProject || clockInForm.project) &&
@@ -460,7 +461,11 @@ export default function ClockInOutPanel({
     const updateClockInField = (field, value) => {
         setClockInForm((current) => {
             const next = { ...current, [field]: value };
-            if (field === 'activity' && value !== 'drafting') {
+            if (
+                field === 'activity' &&
+                value !== 'drafting' &&
+                value !== 'checking'
+            ) {
                 next.project = '';
             }
             return next;
@@ -541,7 +546,11 @@ export default function ClockInOutPanel({
     const updateActivityField = (field, value) => {
         setActivityForm((current) => {
             const next = { ...current, [field]: value };
-            if (field === 'activity' && value !== 'drafting') {
+            if (
+                field === 'activity' &&
+                value !== 'drafting' &&
+                value !== 'checking'
+            ) {
                 next.project = '';
             }
             return next;
@@ -558,7 +567,8 @@ export default function ClockInOutPanel({
         );
         const activityValue = activityForm.activity;
         const projectValue = activityForm.project;
-        const needsProject = activityValue === 'drafting';
+        const needsProject =
+            activityValue === 'drafting' || activityValue === 'checking';
 
         if (!activityValue || (needsProject && !projectValue)) {
             return;
@@ -751,7 +761,7 @@ export default function ClockInOutPanel({
                                 </>
                             ) : (
                                 <>
-                                    Staff who have not clocked in by 9:00 AM (
+                                    Staff who have not clocked in by 8:00 AM (
                                     {selectedTimezoneLabel}) will appear as
                                     absent. Local time now:{' '}
                                     <span className="font-medium text-slate-700 dark:text-slate-200">
@@ -1073,7 +1083,8 @@ export default function ClockInOutPanel({
                             ))}
                         </select>
 
-                        {activityForm.activity === 'drafting' ? (
+                        {activityForm.activity === 'drafting' ||
+                        activityForm.activity === 'checking' ? (
                             <select
                                 value={activityForm.project}
                                 onChange={(event) =>

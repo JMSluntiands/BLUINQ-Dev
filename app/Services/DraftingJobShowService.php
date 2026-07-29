@@ -23,6 +23,7 @@ class DraftingJobShowService
                 return [
                 'id' => $revision->id,
                 'code' => $revision->code,
+                'link' => $revision->link,
                 'log_date' => $revision->log_date?->format('d M Y'),
                 'category' => $revision->category,
                 'drafter_initials' => $revision->drafter_initials
@@ -137,6 +138,16 @@ class DraftingJobShowService
 
     public function formattedServices(DraftingRequest $draftingRequest): ?string
     {
+        $draftingRequest->loadMissing(['crmCategories', 'crmCategory', 'serviceEngagings']);
+
+        if ($draftingRequest->crmCategories->isNotEmpty()) {
+            return $draftingRequest->crmCategories
+                ->map(fn ($category) => $category->code
+                    ? mb_strtoupper("{$category->code} — {$category->name}")
+                    : mb_strtoupper($category->name))
+                ->join(', ');
+        }
+
         if ($draftingRequest->crmCategory) {
             $category = $draftingRequest->crmCategory;
 

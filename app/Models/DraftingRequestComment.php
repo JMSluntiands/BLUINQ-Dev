@@ -13,6 +13,7 @@ class DraftingRequestComment extends Model
 
     protected $fillable = [
         'drafting_request_id',
+        'drafting_request_revision_id',
         'user_id',
         'kind',
         'body',
@@ -24,6 +25,14 @@ class DraftingRequestComment extends Model
     public function draftingRequest(): BelongsTo
     {
         return $this->belongsTo(DraftingRequest::class);
+    }
+
+    /**
+     * @return BelongsTo<DraftingRequestRevision, $this>
+     */
+    public function revision(): BelongsTo
+    {
+        return $this->belongsTo(DraftingRequestRevision::class, 'drafting_request_revision_id');
     }
 
     /**

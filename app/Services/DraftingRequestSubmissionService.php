@@ -22,7 +22,7 @@ class DraftingRequestSubmissionService
         string $reviewStatus,
         string $workflowStage = DraftingRequest::STAGE_MASTERLIST,
     ): DraftingRequest {
-        $validated = $request->safe()->except(['documents', 'service_engaging_ids', 'sda_type_ids']);
+        $validated = $request->safe()->except(['documents', 'service_engaging_ids', 'sda_type_ids', 'crm_category_ids']);
 
         return DB::transaction(function () use ($request, $user, $validated, $reviewStatus, $workflowStage) {
             $draftingRequest = DraftingRequest::query()->create([
@@ -39,6 +39,10 @@ class DraftingRequestSubmissionService
 
             $draftingRequest->sdaTypes()->sync(
                 $request->validated('sda_type_ids') ?? [],
+            );
+
+            $draftingRequest->crmCategories()->sync(
+                $request->validated('crm_category_ids') ?? [],
             );
 
             foreach ($request->file('documents', []) as $file) {
@@ -83,7 +87,7 @@ class DraftingRequestSubmissionService
             abort(404);
         }
 
-        $validated = $request->safe()->except(['documents', 'service_engaging_ids', 'sda_type_ids']);
+        $validated = $request->safe()->except(['documents', 'service_engaging_ids', 'sda_type_ids', 'crm_category_ids']);
 
         return DB::transaction(function () use ($request, $draftingRequest, $actor, $validated) {
             $draftingRequest->update($validated);
@@ -94,6 +98,10 @@ class DraftingRequestSubmissionService
 
             $draftingRequest->sdaTypes()->sync(
                 $request->validated('sda_type_ids') ?? [],
+            );
+
+            $draftingRequest->crmCategories()->sync(
+                $request->validated('crm_category_ids') ?? [],
             );
 
             foreach ($request->file('documents', []) as $file) {
@@ -286,7 +294,16 @@ class DraftingRequestSubmissionService
 
     private function revisionCategoryFor(DraftingRequest $draftingRequest): string
     {
-        $draftingRequest->loadMissing(['crmCategory', 'serviceEngagings']);
+        $draftingRequest->loadMissing(['crmCategories', 'crmCategory', 'serviceEngagings']);
+
+        $fromMany = $draftingRequest->crmCategories
+            ->map(fn ($category) => $category->code ?: $category->name)
+            ->filter()
+            ->values();
+
+        if ($fromMany->isNotEmpty()) {
+            return $fromMany->join(', ');
+        }
 
         return $draftingRequest->crmCategory?->code
             ?: $draftingRequest->crmCategory?->name

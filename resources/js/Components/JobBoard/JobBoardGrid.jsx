@@ -9,6 +9,11 @@ import JobBoardCommentsModal, {
     JobBoardCommentButton,
 } from '@/Components/JobBoard/JobBoardCommentsModal';
 import JobBoardAssignmentModal from '@/Components/JobBoard/JobBoardAssignmentModal';
+import InputLabel from '@/Components/InputLabel';
+import Modal from '@/Components/Modal';
+import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
+import TextInput from '@/Components/TextInput';
 import {
     CalendarDaysIcon,
     ChevronDownIcon,
@@ -17,7 +22,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { FlagIcon as FlagIconSolid } from '@heroicons/react/24/solid';
 import { Link, router } from '@inertiajs/react';
-import { Fragment, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 
 const DRAFTING_SLOTS = 1;
 const CHECKING_SLOTS = 1;
@@ -128,9 +133,23 @@ function EditableStatusSelect({ job, statusOptions = [], disabled = false }) {
         );
     }
 
+    const current = job.status ?? 'new';
+    const options = statusOptions.some((option) => option.value === current)
+        ? statusOptions
+        : [
+              {
+                  value: current,
+                  label:
+                      job.status_label ??
+                      JOB_STATUS_LABELS[current] ??
+                      current,
+              },
+              ...statusOptions,
+          ];
+
     return (
         <select
-            value={job.status ?? 'new'}
+            value={current}
             disabled={busy}
             onChange={(event) => {
                 const next = event.target.value;
@@ -153,7 +172,7 @@ function EditableStatusSelect({ job, statusOptions = [], disabled = false }) {
             }
             aria-label={`Status for ${job.job_no}`}
         >
-            {statusOptions.map((option) => (
+            {options.map((option) => (
                 <option
                     key={option.value}
                     value={option.value}
@@ -163,6 +182,115 @@ function EditableStatusSelect({ job, statusOptions = [], disabled = false }) {
                 </option>
             ))}
         </select>
+    );
+}
+
+function EditableVoHours({ job, disabled = false }) {
+    const [open, setOpen] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [value, setValue] = useState(job.vo_hours ?? '');
+    const display =
+        job.vo_hours != null && job.vo_hours !== ''
+            ? `${job.vo_hours} h`
+            : '—';
+
+    useEffect(() => {
+        if (open) {
+            setValue(job.vo_hours ?? '');
+        }
+    }, [open, job.vo_hours]);
+
+    if (disabled) {
+        return (
+            <span className="whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400">
+                {display}
+            </span>
+        );
+    }
+
+    const close = () => {
+        if (busy) {
+            return;
+        }
+        setOpen(false);
+        setValue(job.vo_hours ?? '');
+    };
+
+    const save = (event) => {
+        event.preventDefault();
+        const next = String(value).trim();
+        setBusy(true);
+        router.patch(
+            route('job.drafting.board.update', job.id),
+            { vo_hours: next === '' ? null : next },
+            {
+                preserveScroll: true,
+                onSuccess: () => setOpen(false),
+                onFinish: () => setBusy(false),
+            },
+        );
+    };
+
+    return (
+        <>
+            <div className="flex items-center gap-1.5">
+                <span className="whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400">
+                    {display}
+                </span>
+                <button
+                    type="button"
+                    onClick={() => setOpen(true)}
+                    className="text-[10px] font-semibold text-[#0073ea] underline underline-offset-2 hover:text-[#0060c4] dark:text-[#60a5fa]"
+                >
+                    Edit
+                </button>
+            </div>
+
+            <Modal show={open} onClose={close} maxWidth="sm">
+                <form onSubmit={save} className="p-6">
+                    <h2 className="text-lg font-semibold text-[#323338] dark:text-white">
+                        Edit VO hours
+                    </h2>
+                    <p className="mt-1 text-sm text-[#676879] dark:text-slate-400">
+                        {job.job_no}
+                        {job.job ? ` — ${job.job}` : ''}
+                    </p>
+
+                    <div className="mt-5">
+                        <InputLabel htmlFor={`vo-hours-${job.id}`} value="VO hours" />
+                        <TextInput
+                            id={`vo-hours-${job.id}`}
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={value}
+                            onChange={(event) => setValue(event.target.value)}
+                            className="mt-1 block w-full"
+                            placeholder="e.g. 2.5"
+                            disabled={busy}
+                            autoFocus
+                        />
+                    </div>
+
+                    <div className="mt-6 flex flex-wrap justify-end gap-2">
+                        <SecondaryButton
+                            type="button"
+                            onClick={close}
+                            disabled={busy}
+                            className="rounded-lg normal-case tracking-normal"
+                        >
+                            Cancel
+                        </SecondaryButton>
+                        <PrimaryButton
+                            loading={busy}
+                            className="rounded-lg normal-case tracking-normal !bg-[#0073ea] hover:!bg-[#0060c4]"
+                        >
+                            Save
+                        </PrimaryButton>
+                    </div>
+                </form>
+            </Modal>
+        </>
     );
 }
 
@@ -363,9 +491,12 @@ const thClass =
 const tdClass =
     'border-r border-[#e6e9ef] px-2 py-1.5 align-middle text-xs text-[#323338] last:border-r-0 dark:border-[#2a2d42] dark:text-slate-200';
 
-/** Map legacy / accounting codes onto the 9 Archi statuses. */
+/** Map legacy / removed codes onto active Archi statuses. */
 const LEGACY_STATUS_TO_ARCHI = {
     wip: 'drafting_wip',
+    assigned: 'new',
+    on_hold: 'cancelled',
+    query: 'for_checking',
     for_quote: 'new',
     quote_sent: 'submitted',
     invoiced: 'submitted',
@@ -817,13 +948,11 @@ function JobBoardTableBody({
                                 />
                             </td>
                             {!isMasterlist && (
-                                <td
-                                    className={
-                                        tdClass +
-                                        ' whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400'
-                                    }
-                                >
-                                    {job.vo_hours ?? '—'}
+                                <td className={tdClass}>
+                                    <EditableVoHours
+                                        job={job}
+                                        disabled={!job.can_assign}
+                                    />
                                 </td>
                             )}
                             {renderActions ? (

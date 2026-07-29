@@ -47,14 +47,11 @@ export const JOB_STATUS_LABELS = {
 /** Board column order when jobs are split into status tables. */
 export const JOB_BOARD_STATUS_ORDER = [
     'new',
-    'assigned',
     'design_wip',
     'drafting_wip',
     'wip',
     'for_checking',
-    'query',
     'submitted',
-    'on_hold',
     'cancelled',
     'for_quote',
     'quote_sent',

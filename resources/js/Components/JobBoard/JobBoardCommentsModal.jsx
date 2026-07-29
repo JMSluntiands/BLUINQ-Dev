@@ -166,6 +166,11 @@ export default function JobBoardCommentsModal({
                                                         (you)
                                                     </span>
                                                 ) : null}
+                                                {comment.revision_code ? (
+                                                    <span className="ml-2 inline-flex rounded-md bg-[#e6f4ff] px-1.5 py-0.5 text-[10px] font-semibold text-[#0073ea] dark:bg-[#1e3a5f] dark:text-[#93c5fd]">
+                                                        {comment.revision_code}
+                                                    </span>
+                                                ) : null}
                                             </p>
                                             <time className="text-xs text-[#676879] dark:text-slate-500">
                                                 {comment.created_at}

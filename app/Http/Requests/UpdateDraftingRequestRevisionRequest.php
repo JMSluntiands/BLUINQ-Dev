@@ -36,20 +36,12 @@ class UpdateDraftingRequestRevisionRequest extends FormRequest
             return false;
         }
 
-        if (! $user->hasPermission('job.drafting.view')) {
-            return false;
-        }
-
-        if (! $user->isAdmin() && $draftingRequest->user_id !== $user->id) {
-            return false;
-        }
-
         return true;
     }
 
     protected function prepareForValidation(): void
     {
-        foreach (['checker_user_id', 'drafter_user_id', 'drafting_hours', 'checking_hours', 'area_size', 'submitted_date'] as $key) {
+        foreach (['checker_user_id', 'drafter_user_id', 'drafting_hours', 'checking_hours', 'area_size', 'submitted_date', 'link'] as $key) {
             if ($this->input($key) === '') {
                 $this->merge([$key => null]);
             }
@@ -83,6 +75,7 @@ class UpdateDraftingRequestRevisionRequest extends FormRequest
 
         return [
             'code' => ['required', 'string', 'max:64', 'regex:/^\d{5}(-\d{2})?$/'],
+            'link' => ['nullable', 'string', 'max:2048', 'url'],
             'log_date' => ['required', 'date'],
             'category' => ['required', 'string', 'max:255', Rule::in($categoryCodes)],
             'drafter_user_id' => [

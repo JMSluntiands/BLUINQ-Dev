@@ -35,10 +35,12 @@ const DRAFTER_SERIES = [
 ];
 
 const EMPTY_JOB_STATUS_DATA = [
-    { status: 'On Hold', count: 0, color: '#8b5cf6' },
-    { status: 'For Checking', count: 0, color: '#3b82f6' },
     { status: 'New', count: 0, color: '#94a3b8' },
-    { status: 'WIP', count: 0, color: '#f87171' },
+    { status: 'Design WIP', count: 0, color: '#c026d3' },
+    { status: 'Drafting WIP', count: 0, color: '#f87171' },
+    { status: 'For Checking', count: 0, color: '#06b6d4' },
+    { status: 'Submitted', count: 0, color: '#10b981' },
+    { status: 'Cancelled', count: 0, color: '#f43f5e' },
 ];
 
 function parseChartDate(value) {

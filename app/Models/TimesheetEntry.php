@@ -18,6 +18,8 @@ class TimesheetEntry extends Model
 
     public const TASK_DRAFTING = 'drafting';
 
+    public const TASK_CHECKING = 'checking';
+
     public const TASK_DOWNTIME = 'downtime';
 
     /**
@@ -41,8 +43,27 @@ class TimesheetEntry extends Model
         self::TASK_MEETING => 'Meeting',
         self::TASK_TRAINING => 'Training',
         self::TASK_DRAFTING => 'Drafting',
+        self::TASK_CHECKING => 'Checking',
         self::TASK_DOWNTIME => 'Downtime',
     ];
+
+    /**
+     * Dashboard activities that require selecting a project.
+     *
+     * @return list<string>
+     */
+    public static function projectScopedActivityTypes(): array
+    {
+        return [
+            self::TASK_DRAFTING,
+            self::TASK_CHECKING,
+        ];
+    }
+
+    public static function activityRequiresProject(string $activity): bool
+    {
+        return in_array($activity, self::projectScopedActivityTypes(), true);
+    }
 
     /**
      * @var list<string>

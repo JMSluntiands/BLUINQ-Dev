@@ -105,7 +105,7 @@ function ExternalLink({ href, label }) {
 
     if (!href) {
         return (
-            <span className="font-semibold text-[#0073ea] dark:text-[#60a5fa]">
+            <span className="font-semibold text-[#323338] dark:text-slate-200">
                 {text}
             </span>
         );
@@ -116,11 +116,31 @@ function ExternalLink({ href, label }) {
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-semibold text-[#0073ea] underline decoration-[#0073ea]/30 underline-offset-2 transition hover:text-[#0060c4] dark:text-[#60a5fa] dark:hover:text-[#93c5fd]"
+            className="inline-flex max-w-full items-center gap-1 font-semibold text-[#0073ea] underline decoration-[#0073ea]/30 underline-offset-2 transition hover:text-[#0060c4] dark:text-[#60a5fa] dark:hover:text-[#93c5fd]"
         >
-            {text}
+            <span className="truncate">{text}</span>
         </a>
     );
+}
+
+function revisionSharepointHref(sharepointBase, code) {
+    const base = String(sharepointBase ?? '').trim();
+    const revisionCode = String(code ?? '').trim();
+
+    if (base === '' || revisionCode === '') {
+        return null;
+    }
+
+    return `${base}${revisionCode}`;
+}
+
+function revisionLinkHref(row, sharepointBase) {
+    const custom = String(row?.link ?? '').trim();
+    if (custom !== '') {
+        return custom;
+    }
+
+    return revisionSharepointHref(sharepointBase, row?.code);
 }
 
 function formatRate(rate) {
@@ -174,6 +194,114 @@ function formatHours(hours) {
     }
 
     return `${hours} hrs`;
+}
+
+function RevisionAreaSizeCell({
+    row,
+    draftingRequestId,
+    canEdit = false,
+}) {
+    const [editing, setEditing] = useState(false);
+    const form = useForm({
+        code: row.code ?? '',
+        log_date: row.log_date_value ?? '',
+        category: row.category ?? '',
+        status: row.status ?? 'new',
+        area_size: row.area_size ?? '',
+        drafter_user_id: row.drafter_user_id ?? '',
+        checker_user_id: row.checker_user_id ?? '',
+        drafting_hours: row.drafting_hours ?? '',
+        checking_hours: row.checking_hours ?? '',
+        submitted_date: row.submitted_date_value ?? '',
+    });
+
+    useEffect(() => {
+        if (editing) {
+            return;
+        }
+
+        form.setData({
+            code: row.code ?? '',
+            log_date: row.log_date_value ?? '',
+            category: row.category ?? '',
+            status: row.status ?? 'new',
+            area_size: row.area_size ?? '',
+            drafter_user_id: row.drafter_user_id ?? '',
+            checker_user_id: row.checker_user_id ?? '',
+            drafting_hours: row.drafting_hours ?? '',
+            checking_hours: row.checking_hours ?? '',
+            submitted_date: row.submitted_date_value ?? '',
+        });
+        form.clearErrors();
+    }, [row.id, row.area_size, row.code, row.log_date_value, row.category, row.status, editing]);
+
+    if (!canEdit) {
+        return row.area_size ?? '—';
+    }
+
+    if (!editing) {
+        return (
+            <div className="flex items-center gap-2">
+                <span className="tabular-nums">{row.area_size ?? '—'}</span>
+                <button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    className="text-[11px] font-semibold text-[#0073ea] underline underline-offset-2 hover:text-[#0060c4] dark:text-[#60a5fa]"
+                >
+                    Edit
+                </button>
+            </div>
+        );
+    }
+
+    const submit = (e) => {
+        e.preventDefault();
+        form.patch(
+            route('job.drafting.revisions.update', [
+                draftingRequestId,
+                row.id,
+            ]),
+            {
+                preserveScroll: true,
+                onSuccess: () => setEditing(false),
+            },
+        );
+    };
+
+    return (
+        <form onSubmit={submit} className="flex min-w-[9rem] flex-col gap-1">
+            <div className="flex items-center gap-1.5">
+                <TextInput
+                    type="text"
+                    value={form.data.area_size}
+                    onChange={(e) => form.setData('area_size', e.target.value)}
+                    className="!mt-0 w-20 !px-2 !py-1 text-xs"
+                    placeholder="e.g. 32"
+                    disabled={form.processing}
+                    autoFocus
+                />
+                <button
+                    type="submit"
+                    disabled={form.processing}
+                    className="rounded bg-[#0073ea] px-2 py-1 text-[10px] font-semibold text-white hover:bg-[#0060c4] disabled:opacity-50"
+                >
+                    Save
+                </button>
+                <button
+                    type="button"
+                    onClick={() => {
+                        form.setData('area_size', row.area_size ?? '');
+                        form.clearErrors();
+                        setEditing(false);
+                    }}
+                    className="rounded border border-[#c5c7d0] px-2 py-1 text-[10px] font-semibold text-[#676879] hover:bg-[#f6f7fb] dark:border-[#3b82f6]/40 dark:text-slate-400"
+                >
+                    Cancel
+                </button>
+            </div>
+            <InputError message={form.errors.area_size} className="!mt-0" />
+        </form>
+    );
 }
 
 function BuildingAreaEditor({ value, canEdit, updateUrl, onCancel }) {
@@ -468,17 +596,34 @@ export default function DraftingJobShowLayout({
     const revisionColumns = [
         {
             key: 'revision',
-            label: 'Job Number',
+            label: 'Revision #',
             render: (row) => (
                 <ExternalLink
-                    href={
-                        integrationUrls.sharepoint
-                            ? `${integrationUrls.sharepoint}${row.code}`
-                            : null
-                    }
+                    href={revisionLinkHref(row, integrationUrls.sharepoint)}
                     label={row.code}
                 />
             ),
+        },
+        {
+            key: 'link',
+            label: 'Revision Link',
+            render: (row) => {
+                const href = revisionLinkHref(row, integrationUrls.sharepoint);
+                if (!href) {
+                    return (
+                        <span className="text-[#676879] dark:text-slate-400">
+                            —
+                        </span>
+                    );
+                }
+
+                return (
+                    <ExternalLink
+                        href={href}
+                        label={row.link ? 'Open link' : 'Open SharePoint'}
+                    />
+                );
+            },
         },
         {
             key: 'log_date',
@@ -545,7 +690,13 @@ export default function DraftingJobShowLayout({
         {
             key: 'area_size',
             label: 'Area Size',
-            render: (row) => row.area_size ?? '—',
+            render: (row) => (
+                <RevisionAreaSizeCell
+                    row={row}
+                    draftingRequestId={draftingRequest.id}
+                    canEdit={Boolean(onEditRevision)}
+                />
+            ),
         },
         {
             key: 'submitted_date',
@@ -679,6 +830,28 @@ export default function DraftingJobShowLayout({
             onEdit={onEditJobDetails}
         >
             <dl>
+                <JobDetailField
+                    label={isMasterlist ? 'Lead number' : 'Revision number'}
+                >
+                    {isMasterlist ? (
+                        draftingRequest.reference || '—'
+                    ) : (
+                        <ExternalLink
+                            href={revisionLinkHref(
+                                revisions[0] ?? {
+                                    code: draftingRequest.reference,
+                                    link: null,
+                                },
+                                integrationUrls.sharepoint,
+                            )}
+                            label={
+                                revisions[0]?.code ??
+                                draftingRequest.reference ??
+                                '—'
+                            }
+                        />
+                    )}
+                </JobDetailField>
                 <JobDetailField
                     label="Client name"
                     value={draftingRequest.company_name}
@@ -860,7 +1033,7 @@ export default function DraftingJobShowLayout({
                     columns={revisionColumns}
                     rows={revisions}
                     emptyMessage="No revisions recorded yet."
-                    minWidth="44rem"
+                    minWidth="52rem"
                 />
             </div>
         </JobPanel>
@@ -957,15 +1130,14 @@ export default function DraftingJobShowLayout({
                                 {activityPanel}
                             </section>
                         ) : null}
-                        {filesPanel ? (
-                            <section aria-label="Documents">{filesPanel}</section>
-                        ) : null}
-                        {commentsBlock}
-                        {archiveActions ? (
-                            <div className="flex flex-wrap gap-2">
-                                {archiveActions}
-                            </div>
-                        ) : null}
+                    {filesPanel ? (
+                        <section aria-label="Documents">{filesPanel}</section>
+                    ) : null}
+                    {archiveActions ? (
+                        <div className="flex flex-wrap gap-2">
+                            {archiveActions}
+                        </div>
+                    ) : null}
                     </aside>
                     <div className="space-y-4 lg:col-span-8">
                         {(canViewRevision || canViewAccounts) && (
@@ -983,6 +1155,12 @@ export default function DraftingJobShowLayout({
                             <p className={sectionLabelClass}>Drawing status</p>
                             {drawingPanel}
                         </section>
+                        {commentsBlock ? (
+                            <section aria-label="Comments">
+                                <p className={sectionLabelClass}>Comments</p>
+                                {commentsBlock}
+                            </section>
+                        ) : null}
                     </div>
                 </div>
             </div>
@@ -1012,12 +1190,6 @@ export default function DraftingJobShowLayout({
                             {filesPanel}
                         </section>
                     ) : null}
-                    {commentsPanel ? (
-                        <section aria-label="Comments">
-                            <p className={sectionLabelClass}>Comments</p>
-                            {commentsBlock}
-                        </section>
-                    ) : null}
                     {archiveActions ? (
                         <div className="flex flex-wrap gap-2">{archiveActions}</div>
                     ) : null}
@@ -1039,6 +1211,12 @@ export default function DraftingJobShowLayout({
                         <p className={sectionLabelClass}>3. Drawing status</p>
                         {drawingPanel}
                     </section>
+                    {commentsBlock ? (
+                        <section aria-label="Comments">
+                            <p className={sectionLabelClass}>4. Comments</p>
+                            {commentsBlock}
+                        </section>
+                    ) : null}
                 </div>
             </div>
         </div>

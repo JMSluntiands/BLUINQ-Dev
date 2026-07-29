@@ -1,5 +1,6 @@
 import CalendarEventModal from '@/Components/Dashboard/CalendarEventModal';
 import LeaveRequestModal from '@/Components/Leave/LeaveRequestModal';
+import { badgeInitialsFromName } from '@/utils/badgeInitials';
 import {
     CalendarDaysIcon,
     ChevronDownIcon,
@@ -139,7 +140,7 @@ function holidayBadge(country) {
 function DayCell({
     day,
     todayKey,
-    leaveCount = 0,
+    leavePeople = [],
     holidays = [],
     birthdays = [],
     events = [],
@@ -152,6 +153,11 @@ function DayCell({
     const isSelectedMonth = day.isCurrentMonth;
     const visibleEvents = events.slice(0, 2);
     const hiddenEventCount = Math.max(events.length - visibleEvents.length, 0);
+    const visibleLeave = leavePeople.slice(0, 2);
+    const hiddenLeaveCount = Math.max(
+        leavePeople.length - visibleLeave.length,
+        0,
+    );
 
     const handleDeleteEvent = (event) => {
         if (!canDeleteEvent?.(event)) {
@@ -300,9 +306,22 @@ function DayCell({
                     </p>
                 )}
 
-                {leaveCount > 0 && (
+                {visibleLeave.map((person) => (
+                    <div
+                        key={person.id}
+                        className="truncate rounded-md bg-slate-200/90 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 dark:bg-slate-600/50 dark:text-slate-200"
+                        title={`On leave: ${person.name}`}
+                    >
+                        <span className="font-bold tabular-nums">
+                            {person.initials}
+                        </span>
+                        <span className="opacity-80"> · </span>
+                        {person.name}
+                    </div>
+                ))}
+                {hiddenLeaveCount > 0 && (
                     <p className="px-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                        {leaveCount} on leave
+                        +{hiddenLeaveCount} more on leave
                     </p>
                 )}
             </div>
@@ -366,14 +385,24 @@ export default function LeaveHolidayCalendar({
         return map;
     }, [users]);
 
-    const dayLeaveCounts = useMemo(() => {
+    const dayLeavePeople = useMemo(() => {
         const map = {};
 
         users.forEach((user) => {
             Object.entries(user.marks ?? {}).forEach(([key, mark]) => {
-                if (mark === 'leave' || mark === 'leave_pending') {
-                    map[key] = (map[key] ?? 0) + 1;
+                if (mark !== 'leave' && mark !== 'leave_pending') {
+                    return;
                 }
+
+                if (!map[key]) {
+                    map[key] = [];
+                }
+
+                map[key].push({
+                    id: user.id,
+                    name: user.name,
+                    initials: badgeInitialsFromName(user.name),
+                });
             });
         });
 
@@ -473,7 +502,7 @@ export default function LeaveHolidayCalendar({
                                         key={day.key}
                                         day={day}
                                         todayKey={todayKey}
-                                        leaveCount={dayLeaveCounts[day.key] ?? 0}
+                                        leavePeople={dayLeavePeople[day.key] ?? []}
                                         holidays={holidays[day.key] ?? []}
                                         birthdays={dayBirthdays[day.key] ?? []}
                                         events={calendarEvents[day.key] ?? []}

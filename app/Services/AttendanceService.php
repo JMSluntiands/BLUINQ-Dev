@@ -16,7 +16,7 @@ class AttendanceService
 
     public function absentCutoff(): string
     {
-        return (string) config('attendance.absent_cutoff', '09:00');
+        return (string) config('attendance.absent_cutoff', '08:00');
     }
 
     public function nowInAttendanceTimezone(): \Illuminate\Support\Carbon
@@ -46,7 +46,7 @@ class AttendanceService
     }
 
     /**
-     * Active users who have not clocked in today after 9:00 AM.
+     * Active users who have not clocked in today after 8:00 AM.
      *
      * @return Collection<int, User>
      */

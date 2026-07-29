@@ -126,7 +126,7 @@ class WeeklyTimesheetService
             ]);
         }
 
-        $requiresProject = $activity === TimesheetEntry::TASK_DRAFTING;
+        $requiresProject = TimesheetEntry::activityRequiresProject($activity);
 
         if ($requiresProject) {
             if ($projectId === null) {
@@ -197,6 +197,51 @@ class WeeklyTimesheetService
         );
 
         return $entry->fresh(['hours', 'draftingRequest']);
+    }
+
+    /**
+     * Clock-in / dashboard activity dropdown options.
+     *
+     * @return array{activities: list<array{value: string, label: string}>, projects: list<array{value: string, label: string}>}
+     */
+    public function activityFormOptionsForUser(User $user): array
+    {
+        return [
+            'activities' => collect(TimesheetEntry::ACTIVITY_TASK_LABELS)
+                ->map(fn (string $label, string $value) => [
+                    'value' => $value,
+                    'label' => $label,
+                ])
+                ->values()
+                ->all(),
+            'projects' => $this->activityProjectsForUser($user),
+        ];
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    public function activityProjectsForUser(User $user): array
+    {
+        return $this->activityProjectQueryForUser($user)
+            ->with('revisions:id,drafting_request_id,code,log_date')
+            ->orderByDesc('requested_at')
+            ->orderByDesc('id')
+            ->limit(200)
+            ->get(['id', 'site_address', 'requested_at', 'created_at', 'lead_number'])
+            ->map(function (DraftingRequest $row) {
+                $revisionCode = trim((string) ($row->revisions->first()?->code ?? ''));
+                $number = $revisionCode !== '' ? $revisionCode : $row->jobNumber();
+
+                return [
+                    'value' => (string) $row->id,
+                    'label' => trim(
+                        ($row->site_address ?: 'Untitled').' ('.$number.')',
+                    ),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     public function updateHour(
@@ -308,30 +353,61 @@ class WeeklyTimesheetService
             ?? ucfirst($entry->task_type);
     }
 
-    private function findActivityProject(User $user, int $projectId): ?DraftingRequest
+    /**
+     * @return list<string>
+     */
+    private function activityProjectStatuses(): array
+    {
+        return [
+            DraftingRequest::STATUS_NEW,
+            DraftingRequest::STATUS_WIP,
+            DraftingRequest::STATUS_ASSIGNED,
+            DraftingRequest::STATUS_DESIGN_WIP,
+            DraftingRequest::STATUS_DRAFTING_WIP,
+            DraftingRequest::STATUS_FOR_CHECKING,
+            DraftingRequest::STATUS_ON_HOLD,
+            DraftingRequest::STATUS_QUERY,
+        ];
+    }
+
+    private function canSeeAllActivityProjects(User $user): bool
+    {
+        return $user->isAdmin() || $user->role?->slug === 'project-manager';
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Builder<DraftingRequest>
+     */
+    private function activityProjectQueryForUser(User $user)
     {
         return DraftingRequest::query()
             ->active()
             ->reviewAccepted()
             ->apm()
-            ->whereKey($projectId)
-            ->whereIn('status', [
-                DraftingRequest::STATUS_WIP,
-                DraftingRequest::STATUS_ASSIGNED,
-                DraftingRequest::STATUS_FOR_CHECKING,
-                DraftingRequest::STATUS_ON_HOLD,
-            ])
+            ->whereIn('status', $this->activityProjectStatuses())
             ->when(
-                ! $user->isAdmin(),
+                ! $this->canSeeAllActivityProjects($user),
                 fn ($query) => $query->where(function ($inner) use ($user) {
                     $inner
                         ->where('user_id', $user->id)
                         ->orWhereHas(
                             'assignments',
                             fn ($assignment) => $assignment->where('user_id', $user->id),
+                        )
+                        ->orWhereHas(
+                            'revisions',
+                            fn ($revision) => $revision
+                                ->where('drafter_user_id', $user->id)
+                                ->orWhere('checker_user_id', $user->id),
                         );
                 }),
-            )
+            );
+    }
+
+    private function findActivityProject(User $user, int $projectId): ?DraftingRequest
+    {
+        return $this->activityProjectQueryForUser($user)
+            ->whereKey($projectId)
             ->first();
     }
 
