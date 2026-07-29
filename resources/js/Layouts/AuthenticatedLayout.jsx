@@ -127,6 +127,7 @@ export default function AuthenticatedLayout({ header, children }) {
     const canManageUserMilestones = can('profile.milestones.manage');
     const canDraftingMemos = can('drafting-memos.view');
     const canDraftingArchive = can('job.drafting.archive');
+    const canClientList = can('settings.client.view');
     const canApm =
         canJobList ||
         canReviewDraftingRequests ||
@@ -181,7 +182,12 @@ export default function AuthenticatedLayout({ header, children }) {
     const isRolesEdit = route().current('settings.roles.edit');
     const isRolesSection =
         isRolesIndex || isRolesCreate || isRolesEdit;
-    const isWorkflowSection = isAnyWorkflowRoute();
+    const isClientSection =
+        route().current('settings.client.index') ||
+        route().current('settings.client.create') ||
+        route().current('settings.client.edit') ||
+        route().current('settings.client.archive');
+    const isWorkflowSection = isAnyWorkflowRoute() && !isClientSection;
 
     const showSettingsBlock =
         canBuildingType ||
@@ -197,6 +203,7 @@ export default function AuthenticatedLayout({ header, children }) {
         canLevelOfDifficulty ||
         canArrivalInputFiles ||
         canCrmCategories ||
+        canClientList ||
         canUserAccounts ||
         canPermissionsPage ||
         canActivityLogs ||
@@ -460,6 +467,21 @@ export default function AuthenticatedLayout({ header, children }) {
                                     }
                                 >
                                     Workflow settings
+                                </NavItem>
+                            )}
+                            {canClientList && (
+                                <NavItem
+                                    href={route('settings.client.index')}
+                                    active={isClientSection}
+                                    onNavigate={closeSidebar}
+                                    icon={
+                                        <UsersIcon
+                                            className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
+                                            aria-hidden
+                                        />
+                                    }
+                                >
+                                    Client list
                                 </NavItem>
                             )}
                             {(canManageLeave ||
