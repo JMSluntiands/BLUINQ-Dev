@@ -4,6 +4,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import RichTextEditor from '@/Components/RichTextEditor';
 import TextInput from '@/Components/TextInput';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { uploadAnnouncementInlineImage } from '@/lib/uploadAnnouncementInlineImage';
 import { PhotoIcon } from '@heroicons/react/24/outline';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
@@ -158,6 +159,8 @@ export default function Edit({ announcement, listFilters = {} }) {
                                     form.setData('description', html)
                                 }
                                 placeholder="Write the announcement details…"
+                                allowImages
+                                uploadImage={uploadAnnouncementInlineImage}
                             />
                         </div>
                         <InputError

@@ -44,17 +44,94 @@ class AnnouncementController extends Controller
         return Inertia::render('Announcements/Create');
     }
 
-    public function show(Announcement $announcement): Response
+    public function show(Request $request, Announcement $announcement): Response
     {
         if ($announcement->isArchived()) {
             abort(404);
         }
 
         $announcement->loadMissing('user:id,name');
+        $user = $request->user();
+        $tz = $this->displayTimezone();
+
+        $orderedIds = Announcement::query()
+            ->active()
+            ->orderByDesc('published_at')
+            ->orderByDesc('id')
+            ->pluck('id');
+
+        $index = $orderedIds->search(fn ($id) => (int) $id === (int) $announcement->id);
+        $prevId = $index !== false && $index > 0 ? (int) $orderedIds[$index - 1] : null;
+        $nextId = $index !== false && $index < $orderedIds->count() - 1
+            ? (int) $orderedIds[$index + 1]
+            : null;
+
+        $siblings = Announcement::query()
+            ->active()
+            ->orderByDesc('published_at')
+            ->orderByDesc('id')
+            ->limit(30)
+            ->get(['id', 'title', 'published_at']);
+
+        if (! $siblings->contains('id', $announcement->id)) {
+            $siblings = $siblings->prepend(
+                Announcement::query()
+                    ->whereKey($announcement->id)
+                    ->first(['id', 'title', 'published_at']),
+            )->filter();
+        }
+
+        $navRows = collect([$prevId, $nextId])
+            ->filter()
+            ->unique()
+            ->values();
+        $navById = $navRows->isEmpty()
+            ? collect()
+            : Announcement::query()
+                ->whereIn('id', $navRows->all())
+                ->get(['id', 'title'])
+                ->keyBy('id');
+
+        $formatted = $this->formatAnnouncement($announcement);
+        $formatted['likes_count'] = $announcement->likes()->count();
+        $formatted['liked_by_me'] = $announcement->isLikedBy($user);
 
         return Inertia::render('Announcements/Show', [
-            'announcement' => $this->formatAnnouncement($announcement),
+            'announcement' => $formatted,
+            'siblings' => $siblings->map(function (Announcement $row) use ($tz) {
+                $publishedAt = $row->published_at?->timezone($tz);
+
+                return [
+                    'id' => $row->id,
+                    'title' => $row->title,
+                    'date' => $publishedAt?->format('F j, Y'),
+                ];
+            })->values()->all(),
+            'prev' => $prevId && $navById->has($prevId)
+                ? ['id' => $prevId, 'title' => $navById[$prevId]->title]
+                : null,
+            'next' => $nextId && $navById->has($nextId)
+                ? ['id' => $nextId, 'title' => $navById[$nextId]->title]
+                : null,
         ]);
+    }
+
+    public function toggleLike(Request $request, Announcement $announcement): RedirectResponse
+    {
+        if ($announcement->isArchived()) {
+            abort(404);
+        }
+
+        $user = $request->user();
+        $existing = $announcement->likes()->where('user_id', $user->id)->first();
+
+        if ($existing) {
+            $existing->delete();
+        } else {
+            $announcement->likes()->create(['user_id' => $user->id]);
+        }
+
+        return back();
     }
 
     public function store(StoreAnnouncementRequest $request): RedirectResponse

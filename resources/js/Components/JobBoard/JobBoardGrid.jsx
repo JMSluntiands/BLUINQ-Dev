@@ -1141,6 +1141,7 @@ function JobBoardStatusSection({
  *   getJobHref?: (row: JobBoardRow) => string;
  *   showFilesInTotal?: boolean;
  *   groupByStatus?: boolean;
+ *   hideEmptyStatusGroups?: boolean;
  *   onCommentsUpdated?: () => void;
  *   onPriorityUpdated?: () => void;
  *   variant?: 'board' | 'masterlist';
@@ -1152,6 +1153,7 @@ export default function JobBoardGrid({
     getJobHref,
     showFilesInTotal = false,
     groupByStatus = false,
+    hideEmptyStatusGroups = false,
     jobListSections = {},
     onCommentsUpdated,
     onPriorityUpdated,
@@ -1177,13 +1179,18 @@ export default function JobBoardGrid({
             return [];
         }
 
-        if (useListSections) {
-            return groupJobsByListSection(jobs, jobListSections);
+        const groups = useListSections
+            ? groupJobsByListSection(jobs, jobListSections)
+            : groupJobsByWorkflowStatus(jobs, statusOptions);
+
+        if (!hideEmptyStatusGroups) {
+            return groups;
         }
 
-        return groupJobsByWorkflowStatus(jobs, statusOptions);
+        return groups.filter((group) => group.jobs.length > 0);
     }, [
         groupByStatus,
+        hideEmptyStatusGroups,
         useListSections,
         jobs,
         jobListSections,

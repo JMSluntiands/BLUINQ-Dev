@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\AnnouncementHtml;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateAnnouncementRequest extends FormRequest
@@ -22,10 +23,9 @@ class UpdateAnnouncementRequest extends FormRequest
             'description' => [
                 'required',
                 'string',
-                'max:65535',
+                'max:200000',
                 function (string $attribute, mixed $value, \Closure $fail): void {
-                    $text = trim(strip_tags((string) $value));
-                    if ($text === '') {
+                    if (! AnnouncementHtml::descriptionHasContent((string) $value)) {
                         $fail('Please enter a description.');
                     }
                 },
@@ -46,9 +46,6 @@ class UpdateAnnouncementRequest extends FormRequest
 
     public function sanitizedDescription(): string
     {
-        $allowed = '<p><br><strong><b><em><i><u><ul><ol><li><a><h2><h3><blockquote>';
-        $clean = strip_tags((string) $this->input('description'), $allowed);
-
-        return trim($clean);
+        return AnnouncementHtml::sanitizeDescription($this->input('description'));
     }
 }

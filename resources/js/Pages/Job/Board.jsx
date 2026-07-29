@@ -58,15 +58,33 @@ export default function JobBoard({
         [rows],
     );
 
+    const reloadBoard = (only = ['jobs']) => {
+        const q = liveSearch.trim();
+        router.get(
+            route(searchRoute),
+            {
+                ...(q ? { search: q } : {}),
+                per_page: filters.per_page ?? 10,
+            },
+            {
+                only,
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            },
+        );
+    };
+
     useEffect(() => {
         // Keep search ephemeral in the URL without a second Inertia visit —
         // a router.get() here races live search and clears filtered jobs.
         const url = new URL(window.location.href);
-        if (!url.searchParams.has('search')) {
+        if (!url.searchParams.has('search') && !url.searchParams.has('q')) {
             return;
         }
 
         url.searchParams.delete('search');
+        url.searchParams.delete('q');
         url.searchParams.delete('page');
         const query = url.searchParams.toString();
         window.history.replaceState(
@@ -75,38 +93,6 @@ export default function JobBoard({
             query ? `${url.pathname}?${query}` : url.pathname,
         );
     }, [searchRoute]);
-
-    useEffect(() => {
-        if (!canForwardFromMasterlist) {
-            return undefined;
-        }
-
-        const q = liveSearch.trim();
-        const handle = window.setTimeout(() => {
-            const params = Object.fromEntries(
-                new URLSearchParams(window.location.search).entries(),
-            );
-            const currentQ = params.q ?? '';
-            if (q === currentQ) {
-                return;
-            }
-
-            if (q) {
-                params.q = q;
-            } else {
-                delete params.q;
-            }
-
-            router.get(route(searchRoute), params, {
-                only: ['masterlistCandidates'],
-                preserveState: true,
-                preserveScroll: true,
-                replace: true,
-            });
-        }, 300);
-
-        return () => window.clearTimeout(handle);
-    }, [liveSearch, canForwardFromMasterlist, searchRoute]);
 
     return (
         <AuthenticatedLayout
@@ -155,6 +141,7 @@ export default function JobBoard({
                 <JobBoardGrid
                     jobs={rows}
                     groupByStatus={groupByStatus}
+                    hideEmptyStatusGroups={hasSearch}
                     emptyMessage={
                         hasSearch
                             ? 'No drafting requests match your search.'
@@ -167,23 +154,10 @@ export default function JobBoard({
                     assignableUsers={assignableUsers}
                     statusOptions={statusOptions}
                     onCommentsUpdated={() =>
-                        router.reload({
-                            only: ['jobs', 'masterlistCandidates'],
-                            preserveScroll: true,
-                        })
+                        reloadBoard(['jobs', 'masterlistCandidates'])
                     }
-                    onPriorityUpdated={() =>
-                        router.reload({
-                            only: ['jobs'],
-                            preserveScroll: true,
-                        })
-                    }
-                    onAssignmentsUpdated={() =>
-                        router.reload({
-                            only: ['jobs'],
-                            preserveScroll: true,
-                        })
-                    }
+                    onPriorityUpdated={() => reloadBoard(['jobs'])}
+                    onAssignmentsUpdated={() => reloadBoard(['jobs'])}
                     jobListSections={jobListSections}
                     renderActions={
                         showAddRevisionActions

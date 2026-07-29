@@ -13,6 +13,7 @@ function stripEphemeralSearchFromUrl(
 ) {
     const url = new URL(window.location.href);
     url.searchParams.delete('search');
+    url.searchParams.delete('q');
     url.searchParams.delete('page');
     if (String(perPage) === String(defaultPerPage)) {
         url.searchParams.delete('per_page');

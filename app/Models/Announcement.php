@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Announcement extends Model
 {
@@ -63,6 +64,28 @@ class Announcement extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * @return HasMany<AnnouncementLike, $this>
+     */
+    public function likes(): HasMany
+    {
+        return $this->hasMany(AnnouncementLike::class);
+    }
+
+    public function isLikedBy(?User $user): bool
+    {
+        if ($user === null) {
+            return false;
+        }
+
+        if ($this->relationLoaded('likes')) {
+            return $this->likes->contains('user_id', $user->id);
+        }
+
+        return $this->likes()->where('user_id', $user->id)->exists();
+    }
+
 
     /**
      * Public URL for the stored announcement image, or null.

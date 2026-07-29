@@ -3,6 +3,7 @@
 use App\Http\Controllers\CalendarEventController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AnnouncementImageController;
+use App\Http\Controllers\AnnouncementInlineImageController;
 use App\Http\Controllers\BrandLogoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LeaveRequestController;
@@ -101,12 +102,19 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('announcements.index');
     Route::get('/announcements/create', [AnnouncementController::class, 'create'])
         ->name('announcements.create');
+    Route::post('/announcements/inline-images', [AnnouncementInlineImageController::class, 'store'])
+        ->name('announcements.inline-image.store');
+    Route::get('/announcements/inline-images/{filename}', [AnnouncementInlineImageController::class, 'show'])
+        ->where('filename', '[A-Za-z0-9._-]+')
+        ->name('announcements.inline-image.show');
     Route::post('/announcements', [AnnouncementController::class, 'store'])
         ->name('announcements.store');
     Route::get('/announcements/archive', [AnnouncementController::class, 'archive'])
         ->name('announcements.archive');
     Route::get('/announcements/{announcement}', [AnnouncementController::class, 'show'])
         ->name('announcements.show');
+    Route::post('/announcements/{announcement}/like', [AnnouncementController::class, 'toggleLike'])
+        ->name('announcements.like');
     Route::get('/announcements/{announcement}/image', [AnnouncementImageController::class, 'show'])
         ->name('announcements.image');
     Route::get('/announcements/{announcement}/edit', [AnnouncementController::class, 'edit'])

@@ -53,6 +53,7 @@ export default function RichTextEditor({
     placeholder = 'Write a comment…',
     disabled = false,
     allowImages = false,
+    uploadImage = null,
     className = '',
 }) {
     const editorRef = useRef(null);
@@ -60,6 +61,7 @@ export default function RichTextEditor({
     const isInternalChange = useRef(false);
     const [activeCommands, setActiveCommands] = useState({});
     const [showPlaceholder, setShowPlaceholder] = useState(true);
+    const [uploadingImage, setUploadingImage] = useState(false);
 
     const updateActiveState = useCallback(() => {
         if (!editorRef.current || disabled) {
@@ -190,6 +192,25 @@ export default function RichTextEditor({
                 return;
             }
 
+            if (typeof uploadImage === 'function') {
+                setUploadingImage(true);
+                Promise.resolve(uploadImage(file))
+                    .then((url) => {
+                        if (typeof url === 'string' && url.trim() !== '') {
+                            insertImageAtCursor(url.trim());
+                        } else {
+                            window.alert('Failed to upload image.');
+                        }
+                    })
+                    .catch(() => {
+                        window.alert('Failed to upload image.');
+                    })
+                    .finally(() => {
+                        setUploadingImage(false);
+                    });
+                return;
+            }
+
             const reader = new FileReader();
             reader.onload = () => {
                 if (typeof reader.result === 'string') {
@@ -198,7 +219,7 @@ export default function RichTextEditor({
             };
             reader.readAsDataURL(file);
         },
-        [insertImageAtCursor],
+        [insertImageAtCursor, uploadImage],
     );
 
     const handlePaste = (event) => {
@@ -285,12 +306,12 @@ export default function RichTextEditor({
                             <button
                                 type="button"
                                 title="Insert image"
-                                disabled={disabled}
+                                disabled={disabled || uploadingImage}
                                 className={toolbarButtonClass(false)}
                                 onMouseDown={(event) => event.preventDefault()}
                                 onClick={() => imageInputRef.current?.click()}
                             >
-                                Image
+                                {uploadingImage ? '…' : 'Image'}
                             </button>
                         </>
                     ) : null}
