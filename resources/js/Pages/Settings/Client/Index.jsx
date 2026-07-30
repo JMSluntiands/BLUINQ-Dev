@@ -303,18 +303,25 @@ export default function ClientIndex({
                     <div className="flex flex-wrap items-center gap-2">
                         <Link
                             href={route('settings.client.archive')}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                            className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 text-xs font-semibold uppercase tracking-wide text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                         >
-                            <ArchiveBoxArrowDownIcon className="h-4 w-4" />
+                            <ArchiveBoxArrowDownIcon
+                                className="h-4 w-4 shrink-0"
+                                aria-hidden
+                            />
                             Archive
                         </Link>
-                        <PrimaryButton
+                        <button
                             type="button"
                             onClick={() => setShowAddClient(true)}
+                            className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-sky-600 px-4 text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-600"
                         >
-                            <PlusIcon className="mr-1 h-4 w-4" aria-hidden />
+                            <PlusIcon
+                                className="h-4 w-4 shrink-0"
+                                aria-hidden
+                            />
                             Add client
-                        </PrimaryButton>
+                        </button>
                     </div>
                 </div>
             }

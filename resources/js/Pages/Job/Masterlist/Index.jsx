@@ -9,6 +9,7 @@ import {
     PlusIcon,
 } from '@heroicons/react/24/outline';
 import { Head, Link, router } from '@inertiajs/react';
+import { useState } from 'react';
 
 function filterQueryString(filters) {
     const p = new URLSearchParams();
@@ -49,8 +50,34 @@ const FLASH_MESSAGES = {
 
 export default function Index({ draftingRequests, filters = {} }) {
     const rows = draftingRequests?.data ?? [];
-    const hasSearch = Boolean((filters.search ?? '').trim());
-    const q = filterQueryString(filters);
+    const [liveSearch, setLiveSearch] = useState('');
+    const hasSearch = Boolean(
+        liveSearch.trim() || (filters.search ?? '').trim(),
+    );
+    const q = filterQueryString({
+        ...filters,
+        search: liveSearch.trim() || filters.search,
+    });
+
+    const reloadList = () => {
+        const search = liveSearch.trim();
+        router.get(
+            route('job.masterlist'),
+            {
+                ...(search ? { search } : {}),
+                per_page: filters.per_page ?? 25,
+                ...(filters.sort
+                    ? { sort: filters.sort, direction: filters.direction }
+                    : {}),
+            },
+            {
+                only: ['draftingRequests', 'filters'],
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            },
+        );
+    };
 
     return (
         <AuthenticatedLayout
@@ -80,9 +107,12 @@ export default function Index({ draftingRequests, filters = {} }) {
 
             <div className="overflow-hidden rounded-xl border border-[#e6e9ef] bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
                 <TableSearchToolbar
-                    key={`${filters.search ?? ''}-${filters.per_page}-${filters.sort ?? ''}-${filters.direction ?? ''}`}
+                    key={`${filters.per_page ?? 25}-${filters.sort ?? ''}-${filters.direction ?? ''}`}
                     ziggyRouteName="job.masterlist"
                     filters={filters}
+                    liveSearch
+                    liveSearchOnly={['draftingRequests', 'filters']}
+                    onLiveSearchChange={setLiveSearch}
                     defaultPerPage={25}
                     sortOptions={MASTERLIST_SORT_OPTIONS}
                     defaultSort="requested_at"
@@ -100,18 +130,8 @@ export default function Index({ draftingRequests, filters = {} }) {
                     getJobHref={(row) =>
                         route('job.masterlist.show', row.id) + q
                     }
-                    onCommentsUpdated={() =>
-                        router.reload({
-                            only: ['draftingRequests'],
-                            preserveScroll: true,
-                        })
-                    }
-                    onPriorityUpdated={() =>
-                        router.reload({
-                            only: ['draftingRequests'],
-                            preserveScroll: true,
-                        })
-                    }
+                    onCommentsUpdated={reloadList}
+                    onPriorityUpdated={reloadList}
                     renderActions={(job) => (
                         <div className="inline-flex items-center gap-0.5">
                             <Link
