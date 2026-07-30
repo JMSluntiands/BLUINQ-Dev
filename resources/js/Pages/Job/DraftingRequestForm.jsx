@@ -178,13 +178,39 @@ export default function DraftingRequestForm({
         [sdaTypes],
     );
 
-    const categoryOptions = useMemo(
-        () =>
-            categories.map((row) => ({
-                value: String(row.id),
-                label: row.code ? `${row.code} — ${row.name}` : row.name,
-            })),
-        [categories],
+    const categoryOptions = useMemo(() => {
+        const items = categories.map((row) => ({
+            value: String(row.id),
+            label: row.code ? `${row.code} — ${row.name}` : row.name,
+        }));
+
+        const known = new Set(items.map((item) => item.value));
+        const selectedIds = Array.isArray(data.crm_category_ids)
+            ? data.crm_category_ids.map(String)
+            : [];
+
+        selectedIds.forEach((id) => {
+            if (!id || known.has(id)) {
+                return;
+            }
+
+            items.push({
+                value: id,
+                label: `Category #${id}`,
+            });
+            known.add(id);
+        });
+
+        return items;
+    }, [categories, data.crm_category_ids]);
+
+    const handleCategoryChange = useCallback(
+        (values) => {
+            const next = Array.isArray(values) ? values.map(String) : [];
+            setData('crm_category_ids', next);
+            setData('crm_category_id', next[0] ?? '');
+        },
+        [setData],
     );
 
     const selectedClient = useMemo(
@@ -283,17 +309,6 @@ export default function DraftingRequestForm({
                 'sda_type_ids',
                 Array.isArray(values) ? values.map(String) : [],
             );
-        },
-        [setData],
-    );
-
-    const handleCategoryChange = useCallback(
-        (values) => {
-            const next = Array.isArray(values) ? values.map(String) : [];
-            setData({
-                crm_category_ids: next,
-                crm_category_id: next[0] ?? '',
-            });
         },
         [setData],
     );
@@ -553,7 +568,7 @@ export default function DraftingRequestForm({
                                             <ReqMark />
                                         </InputLabel>
                                     }
-                                    hint="Options from Workflow settings → Category. You can select multiple."
+                                    hint="Options from Workflow settings → Category. Select multiple; click × on a chip to remove."
                                     error={
                                         errors.crm_category_ids ??
                                         errors['crm_category_ids.0'] ??

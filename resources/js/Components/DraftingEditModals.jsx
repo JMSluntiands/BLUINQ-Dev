@@ -433,16 +433,39 @@ export default function DraftingEditModals({
                                             crm_category_id: next[0] ?? '',
                                         });
                                     }}
-                                    options={categories.map((row) => ({
-                                        value: String(row.id),
-                                        label: row.code
-                                            ? `${row.code} — ${row.name}`
-                                            : row.name,
-                                    }))}
+                                    options={(() => {
+                                        const items = categories.map((row) => ({
+                                            value: String(row.id),
+                                            label: row.code
+                                                ? `${row.code} — ${row.name}`
+                                                : row.name,
+                                        }));
+                                        const known = new Set(
+                                            items.map((item) => item.value),
+                                        );
+                                        (
+                                            jobForm.data.crm_category_ids ?? []
+                                        ).forEach((id) => {
+                                            const key = String(id);
+                                            if (!key || known.has(key)) {
+                                                return;
+                                            }
+                                            items.push({
+                                                value: key,
+                                                label: `Category #${key}`,
+                                            });
+                                            known.add(key);
+                                        });
+                                        return items;
+                                    })()}
                                     placeholder="Select categories…"
                                     enabled={section === 'job'}
                                 />
                             </div>
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                Add or remove categories anytime. Click × on a
+                                selected chip to remove it.
+                            </p>
                             <InputError
                                 className="mt-2"
                                 message={

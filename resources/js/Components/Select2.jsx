@@ -10,6 +10,17 @@ function jQuery() {
     return window.jQuery ?? null;
 }
 
+function sameStringList(a, b) {
+    if (a.length !== b.length) {
+        return false;
+    }
+
+    const left = [...a].map(String).sort();
+    const right = [...b].map(String).sort();
+
+    return left.every((value, index) => value === right[index]);
+}
+
 /**
  * @param {{
  *   id?: string;
@@ -40,9 +51,10 @@ export default function Select2({
 }) {
     const selectRef = useRef(null);
     const onChangeRef = useRef(onChange);
-    const optionsKey = options.map((option) => option.value).join('\0');
+    const syncingRef = useRef(false);
+    const optionsKey = options.map((option) => `${option.value}:${option.label}`).join('\0');
     const valueKey = multiple
-        ? (Array.isArray(value) ? value : []).join('\0')
+        ? (Array.isArray(value) ? value : []).map(String).sort().join('\0')
         : String(value ?? '');
 
     useEffect(() => {
@@ -71,6 +83,10 @@ export default function Select2({
         });
 
         const handleChange = () => {
+            if (syncingRef.current) {
+                return;
+            }
+
             const raw = $el.val();
             if (multiple) {
                 onChangeRef.current(
@@ -109,17 +125,18 @@ export default function Select2({
 
         if (multiple) {
             const next = Array.isArray(value) ? value.map(String) : [];
-            const current = ($el.val() ?? []).map(String);
-            if (
-                next.length !== current.length ||
-                next.some((v, i) => v !== current[i])
-            ) {
-                $el.val(next).trigger('change.select2');
+            const current = (($el.val() ?? [])).map(String);
+            if (!sameStringList(next, current)) {
+                syncingRef.current = true;
+                $el.val(next).trigger('change');
+                syncingRef.current = false;
             }
         } else {
             const next = value ?? '';
             if (String($el.val() ?? '') !== String(next)) {
-                $el.val(next).trigger('change.select2');
+                syncingRef.current = true;
+                $el.val(next).trigger('change');
+                syncingRef.current = false;
             }
         }
     }, [valueKey, enabled, multiple, value]);
