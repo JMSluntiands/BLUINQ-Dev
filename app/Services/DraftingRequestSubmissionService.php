@@ -76,8 +76,14 @@ class DraftingRequestSubmissionService
         StoreDraftingRequestFormRequest $request,
         DraftingRequest $draftingRequest,
         User $actor,
+        bool $allowApmStage = false,
     ): DraftingRequest {
-        if ($draftingRequest->workflow_stage !== DraftingRequest::STAGE_MASTERLIST) {
+        $isMasterlist = $draftingRequest->workflow_stage === DraftingRequest::STAGE_MASTERLIST;
+        $isEditableApm = $allowApmStage
+            && $draftingRequest->workflow_stage === DraftingRequest::STAGE_APM
+            && $draftingRequest->review_status === DraftingRequest::REVIEW_ACCEPTED;
+
+        if (! $isMasterlist && ! $isEditableApm) {
             throw ValidationException::withMessages([
                 'workflow_stage' => 'Only masterlist entries can be edited here.',
             ]);
@@ -89,7 +95,7 @@ class DraftingRequestSubmissionService
 
         $validated = $request->safe()->except(['documents', 'service_engaging_ids', 'sda_type_ids', 'crm_category_ids']);
 
-        return DB::transaction(function () use ($request, $draftingRequest, $actor, $validated) {
+        return DB::transaction(function () use ($request, $draftingRequest, $actor, $validated, $isMasterlist) {
             $draftingRequest->update($validated);
 
             $draftingRequest->serviceEngagings()->sync(
@@ -120,7 +126,9 @@ class DraftingRequestSubmissionService
                 $actor,
                 DraftingRequestActivity::ACTION_DETAILS_UPDATED,
                 sprintf(
-                    'Masterlist entry %s was updated.',
+                    $isMasterlist
+                        ? 'Masterlist entry %s was updated.'
+                        : 'Project %s was updated before adding to the board.',
                     $draftingRequest->jobNumber(),
                 ),
             );

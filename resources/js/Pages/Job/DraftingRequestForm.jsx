@@ -81,6 +81,7 @@ export default function DraftingRequestForm({
     submitUrl = null,
     backUrl = null,
     formTitle = null,
+    submitLabel = null,
     mode = 'create',
     sourceReference = null,
 }) {
@@ -89,6 +90,13 @@ export default function DraftingRequestForm({
     const isEdit = mode === 'edit';
     const pageTitle =
         formTitle ?? (isEdit ? 'Edit masterlist entry' : 'Drafting Request Form');
+    const primarySubmitLabel =
+        submitLabel ??
+        (isEdit
+            ? 'Save changes'
+            : sourceReference
+              ? 'Save duplicate'
+              : 'Submit request');
     const listBackUrl = backUrl ?? (standalone ? null : route('job.masterlist'));
     const storeRoute =
         submitUrl ??
@@ -950,11 +958,7 @@ export default function DraftingRequestForm({
                                     type="submit"
                                     loading={processing}
                                 >
-                                    {isEdit
-                                        ? 'Save changes'
-                                        : sourceReference
-                                          ? 'Save duplicate'
-                                          : 'Submit request'}
+                                    {primarySubmitLabel}
                                 </PrimaryButton>
                                 {!standalone && listBackUrl && (
                                     <Link

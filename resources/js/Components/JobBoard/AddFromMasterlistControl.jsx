@@ -1,5 +1,5 @@
 import Select2 from '@/Components/Select2';
-import { PlusIcon, QueueListIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, QueueListIcon } from '@heroicons/react/24/outline';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -12,20 +12,15 @@ export default function AddFromMasterlistControl({ candidates = [] }) {
     const [selectedId, setSelectedId] = useState('');
     const [busy, setBusy] = useState(false);
 
-    const submit = () => {
+    const openReview = () => {
         if (!selectedId || busy) {
             return;
         }
 
         setBusy(true);
-        router.post(
-            route('job.board.add', selectedId),
-            {},
-            {
-                preserveScroll: true,
-                onFinish: () => setBusy(false),
-            },
-        );
+        router.visit(route('job.board.add.review', selectedId), {
+            onFinish: () => setBusy(false),
+        });
     };
 
     const options = candidates.map((row) => ({
@@ -33,7 +28,7 @@ export default function AddFromMasterlistControl({ candidates = [] }) {
         label: row.label,
     }));
     const empty = options.length === 0;
-    const canSubmit = Boolean(selectedId) && !busy && !empty;
+    const canContinue = Boolean(selectedId) && !busy && !empty;
 
     return (
         <div className="w-full max-w-md lg:max-w-lg">
@@ -62,7 +57,7 @@ export default function AddFromMasterlistControl({ candidates = [] }) {
                         placeholder={
                             empty
                                 ? 'No projects available'
-                                : 'Add project / reopen submitted…'
+                                : 'Select project to review…'
                         }
                         allowClear
                         disabled={busy || empty}
@@ -71,17 +66,23 @@ export default function AddFromMasterlistControl({ candidates = [] }) {
                 </div>
                 <button
                     type="button"
-                    onClick={submit}
-                    disabled={!canSubmit}
+                    onClick={openReview}
+                    disabled={!canContinue}
                     className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 border-l border-[#c5c7d0] bg-[#0073ea] px-3.5 text-xs font-semibold text-white transition hover:bg-[#0060c4] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0073ea] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:bg-[#c5c7d0] disabled:text-white/80 dark:border-[#2f3347] dark:hover:bg-[#1478e0] dark:disabled:bg-[#2a2d3e] dark:disabled:text-slate-500"
                 >
-                    <PlusIcon className="h-4 w-4" aria-hidden />
+                    <PencilSquareIcon className="h-4 w-4" aria-hidden />
                     <span className="hidden sm:inline">
-                        {busy ? 'Adding…' : 'Add to board'}
+                        {busy ? 'Opening…' : 'Review & edit'}
                     </span>
-                    <span className="sm:hidden">{busy ? '…' : 'Add'}</span>
+                    <span className="sm:hidden">{busy ? '…' : 'Edit'}</span>
                 </button>
             </div>
+            {!empty ? (
+                <p className="mt-1.5 text-[11px] leading-snug text-[#676879] dark:text-slate-400">
+                    Review and edit the project details, then confirm to add it
+                    to the board.
+                </p>
+            ) : null}
         </div>
     );
 }

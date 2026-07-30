@@ -162,6 +162,10 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('job.board');
     Route::post('/job/board/add/{draftingRequest}', [JobBoardController::class, 'addToBoard'])
         ->name('job.board.add');
+    Route::get('/job/board/add/{draftingRequest}/review', [JobBoardController::class, 'reviewBeforeAdd'])
+        ->name('job.board.add.review');
+    Route::post('/job/board/add/{draftingRequest}/confirm', [JobBoardController::class, 'confirmAddToBoard'])
+        ->name('job.board.add.confirm');
     Route::get('/job/drafting', [JobBoardController::class, 'redirectFromLegacyList'])
         ->name('job.drafting');
     Route::get('/job/drafting/archive', [DraftingController::class, 'archive'])
