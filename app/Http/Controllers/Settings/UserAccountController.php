@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Models\DraftingRequestRevision;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -106,6 +107,7 @@ class UserAccountController extends Controller
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
+                'initials' => $user->initials,
                 'email' => $user->email,
                 'position' => $user->position,
                 'date_hired' => $user->date_hired?->format('Y-m-d'),
@@ -129,6 +131,7 @@ class UserAccountController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'initials' => ['nullable', 'string', 'max:10', 'regex:/^[A-Za-z0-9.\- ]*$/'],
             'email' => [
                 'required',
                 'string',
@@ -158,7 +161,9 @@ class UserAccountController extends Controller
             }
         }
 
+        $initials = trim((string) ($validated['initials'] ?? ''));
         $user->name = $validated['name'];
+        $user->initials = $initials === '' ? null : mb_strtoupper($initials);
         $user->email = $validated['email'];
         $user->role_id = (int) $validated['role_id'];
         $user->position = $validated['position'] ?? null;
@@ -169,7 +174,21 @@ class UserAccountController extends Controller
             $user->password = $validated['password'];
         }
 
+        $initialsChanged = $user->isDirty('initials') || $user->isDirty('name');
+
         $user->save();
+
+        if ($initialsChanged) {
+            $badge = $user->badgeInitials();
+
+            DraftingRequestRevision::query()
+                ->where('drafter_user_id', $user->id)
+                ->update(['drafter_initials' => $badge]);
+
+            DraftingRequestRevision::query()
+                ->where('checker_user_id', $user->id)
+                ->update(['checker_initials' => $badge]);
+        }
 
         return redirect()
             ->route('settings.users.index', $this->redirectQuery($request))

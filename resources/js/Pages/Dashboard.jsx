@@ -156,7 +156,7 @@ function AnnouncementExcerpt({ description, href }) {
 
     return (
         <div>
-            <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+            <p className="mt-3 break-words text-sm leading-relaxed text-slate-600 dark:text-slate-300">
                 {previewText || '—'}
             </p>
             {href ? (
@@ -375,12 +375,13 @@ export default function Dashboard() {
             <Head title="Dashboard" />
             <FlashNoticeModal messages={FLASH_MESSAGES} />
 
+            <div className="w-full min-w-0 max-w-full overflow-x-hidden">
             <ClockInOutPanel
                 clock={clock}
                 activityFormOptions={activityFormOptions}
             />
 
-            <div className="mt-8 grid min-w-0 max-w-full grid-cols-1 items-start gap-5 overflow-x-hidden lg:grid-cols-12 lg:gap-6">
+            <div className="mt-8 grid w-full min-w-0 max-w-full grid-cols-1 items-start gap-5 overflow-x-hidden lg:grid-cols-12 lg:gap-6">
                 {canViewAnnouncements && (
                 <DashboardPanel
                     title="Announcement"
@@ -412,10 +413,10 @@ export default function Dashboard() {
                             <p className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">
                                 Latest update
                             </p>
-                            <h4 className="mt-1 text-lg font-semibold leading-snug text-slate-900 dark:text-white sm:text-xl">
+                            <h4 className="mt-1 break-words text-lg font-semibold leading-snug text-slate-900 dark:text-white sm:text-xl">
                                 {featuredAnnouncement.title}
                             </h4>
-                            <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                            <p className="mt-1.5 break-words text-xs text-slate-500 dark:text-slate-400">
                                 {featuredAnnouncement.date} ·{' '}
                                 {featuredAnnouncement.time} ·{' '}
                                 {featuredAnnouncement.author}
@@ -610,6 +611,7 @@ export default function Dashboard() {
                 canDeleteAnyEvent={auth.user?.role === 'admin'}
                 calendarMonth={calendarMonth}
             />
+            </div>
         </AuthenticatedLayout>
     );
 }

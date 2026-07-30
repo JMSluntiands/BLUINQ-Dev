@@ -667,7 +667,7 @@ export default function ClockInOutPanel({
         timezoneShortLabel(selectedTimezone);
 
     return (
-        <div className="mb-6">
+        <div className="mb-6 w-full min-w-0 max-w-full overflow-x-hidden">
             <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm dark:border-slate-700/70 dark:bg-slate-900/90 sm:p-5">
                 {statusMessage && (
                     <div
@@ -685,8 +685,8 @@ export default function ClockInOutPanel({
                     </div>
                 )}
 
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="min-w-0">
+                <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-3">
                             <h3 className="text-base font-semibold text-slate-900 dark:text-white">
                                 Daily attendance
@@ -793,7 +793,7 @@ export default function ClockInOutPanel({
                         )}
                     </div>
 
-                    <div className="flex shrink-0 items-start justify-end gap-4">
+                    <div className="flex shrink-0 flex-wrap items-start justify-end gap-4">
                         {canClockIn && (
                             <button
                                 type="button"

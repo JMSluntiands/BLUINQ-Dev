@@ -15,7 +15,7 @@ import {
     SparklesIcon,
     UserIcon,
 } from '@heroicons/react/24/outline';
-import { badgeInitialsFromName } from '@/utils/badgeInitials';
+import { resolveBadgeInitials } from '@/utils/badgeInitials';
 import { Link, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
@@ -113,7 +113,7 @@ function formatBirthday(value) {
     }
 }
 
-function StaffPhotoBadge({ profileImageUrl, name }) {
+function StaffPhotoBadge({ profileImageUrl, name, initials }) {
     return (
         <div className="relative shrink-0">
             <div
@@ -128,7 +128,7 @@ function StaffPhotoBadge({ profileImageUrl, name }) {
                 />
             ) : (
                 <UserAvatar
-                    user={{ name }}
+                    user={{ name, initials }}
                     className="relative h-20 w-20 text-2xl ring-2 ring-white dark:ring-[#0a0e14] sm:h-24 sm:w-24"
                 />
             )}
@@ -139,6 +139,7 @@ function StaffPhotoBadge({ profileImageUrl, name }) {
 function profileFormDefaults(profile) {
     return {
         name: profile.name ?? '',
+        initials: profile.initials ?? '',
         email: profile.email ?? '',
         company_name: profile.company_name ?? '',
         employee_number: profile.employee_number ?? '',
@@ -201,7 +202,7 @@ export default function UserProfileForm({
         });
     };
 
-    const nameInitials = badgeInitialsFromName(profile.name);
+    const nameInitials = resolveBadgeInitials(profile);
     const positionLabel = profile.position?.trim() ?? '';
     const photoPreviewUrl =
         photoPreview || profile.profile_image_url || null;
@@ -216,6 +217,7 @@ export default function UserProfileForm({
                                 <StaffPhotoBadge
                                     profileImageUrl={profile.profile_image_url}
                                     name={profile.name}
+                                    initials={profile.initials}
                                 />
 
                                 <div className="min-w-0 space-y-1">
@@ -259,6 +261,13 @@ export default function UserProfileForm({
                                 <ProfileDetailItem
                                     label="Full name"
                                     value={profile.name}
+                                />
+                                <ProfileDetailItem
+                                    label="Initials"
+                                    value={
+                                        profile.badge_initials ||
+                                        resolveBadgeInitials(profile)
+                                    }
                                 />
                                 <ProfileDetailItem
                                     label="Job title"
@@ -452,6 +461,35 @@ export default function UserProfileForm({
                             />
                         </div>
 
+                        <div>
+                            <InputLabel
+                                htmlFor="edit-initials"
+                                value="Initials"
+                            />
+                            <TextInput
+                                id="edit-initials"
+                                className="mt-1 block w-full uppercase"
+                                value={data.initials}
+                                onChange={(e) =>
+                                    setData(
+                                        'initials',
+                                        e.target.value.toUpperCase(),
+                                    )
+                                }
+                                maxLength={10}
+                                placeholder="e.g. JD"
+                                autoComplete="off"
+                            />
+                            <p className="mt-1 text-xs text-slate-500 dark:text-gray-500">
+                                Shown on APM board, revisions, and badges. Leave
+                                blank to use initials from your name.
+                            </p>
+                            <InputError
+                                className="mt-1"
+                                message={errors.initials}
+                            />
+                        </div>
+
                         <div className="grid gap-3 sm:grid-cols-2">
                             <div>
                                 <InputLabel
@@ -617,7 +655,10 @@ export default function UserProfileForm({
                                     />
                                 ) : (
                                     <UserAvatar
-                                        user={{ name: data.name }}
+                                        user={{
+                                            name: data.name,
+                                            initials: data.initials,
+                                        }}
                                         className="h-12 w-12 text-sm"
                                     />
                                 )}

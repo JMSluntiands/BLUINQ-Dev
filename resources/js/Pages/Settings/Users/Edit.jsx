@@ -27,6 +27,7 @@ export default function UsersEdit({
 
     const form = useForm({
         name: user.name,
+        initials: user.initials ?? '',
         email: user.email,
         position: user.position ?? '',
         date_hired: user.date_hired ?? '',
@@ -74,6 +75,32 @@ export default function UsersEdit({
                             autoComplete="name"
                         />
                         <InputError className="mt-2" message={form.errors.name} />
+                    </div>
+
+                    <div>
+                        <InputLabel htmlFor="initials" value="Initials" />
+                        <TextInput
+                            id="initials"
+                            className="mt-1 block w-full uppercase"
+                            value={form.data.initials}
+                            onChange={(e) =>
+                                form.setData(
+                                    'initials',
+                                    e.target.value.toUpperCase(),
+                                )
+                            }
+                            maxLength={10}
+                            placeholder="e.g. JD"
+                            autoComplete="off"
+                        />
+                        <p className="mt-1 text-xs text-slate-500">
+                            Used for drafter/checker badges. Leave blank to
+                            derive from name.
+                        </p>
+                        <InputError
+                            className="mt-2"
+                            message={form.errors.initials}
+                        />
                     </div>
 
                     <div>

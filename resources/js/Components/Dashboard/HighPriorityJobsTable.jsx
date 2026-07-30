@@ -6,7 +6,7 @@ export default function HighPriorityJobsTable({
     statusOptions = [],
 }) {
     return (
-        <div className="mt-8 min-w-0 max-w-full">
+        <div className="mt-8 w-full min-w-0 max-w-full">
             <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                     <h3 className="text-base font-semibold text-slate-900 dark:text-white">
@@ -23,7 +23,8 @@ export default function HighPriorityJobsTable({
                     View full board
                 </Link>
             </div>
-            <div className="min-w-0 max-w-full overflow-hidden rounded-xl border border-slate-200 dark:border-[#2f3347]">
+            {/* Keep wide JobBoardGrid scroll inside this box — do not expand the page. */}
+            <div className="w-full min-w-0 max-w-full overflow-x-auto overscroll-x-contain rounded-xl border border-slate-200 dark:border-[#2f3347]">
                 <JobBoardGrid
                     jobs={boardPreviewJobs}
                     emptyMessage="No jobs for checking."

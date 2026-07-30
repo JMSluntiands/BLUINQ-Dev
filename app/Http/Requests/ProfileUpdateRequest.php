@@ -18,6 +18,7 @@ class ProfileUpdateRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
+            'initials' => ['nullable', 'string', 'max:10', 'regex:/^[A-Za-z0-9.\- ]*$/'],
             'company_name' => ['nullable', 'string', 'max:255'],
             'employee_number' => ['nullable', 'string', 'max:50'],
             'job_title' => ['nullable', 'string', 'max:255'],
@@ -36,5 +37,20 @@ class ProfileUpdateRequest extends FormRequest
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $initials = $this->input('initials');
+
+        if ($initials === null) {
+            return;
+        }
+
+        $trimmed = trim((string) $initials);
+
+        $this->merge([
+            'initials' => $trimmed === '' ? null : mb_strtoupper($trimmed),
+        ]);
     }
 }

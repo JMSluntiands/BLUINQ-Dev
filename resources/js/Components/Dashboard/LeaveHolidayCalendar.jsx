@@ -193,7 +193,7 @@ function DayCell({
                     : undefined
             }
             className={
-                'min-h-[5.5rem] border-b border-r border-slate-100 p-1.5 dark:border-slate-800 ' +
+                'min-h-[5.5rem] overflow-hidden border-b border-r border-slate-100 p-1.5 dark:border-slate-800 ' +
                 (!isSelectedMonth
                     ? 'bg-slate-50/60 dark:bg-slate-900/40'
                     : day.isWeekend
@@ -202,8 +202,7 @@ function DayCell({
                 (isToday ? ' ring-1 ring-inset ring-sky-500/60' : '') +
                 (canAddEvent
                     ? ' cursor-pointer transition hover:bg-sky-50/50 dark:hover:bg-sky-500/5'
-                    : '') +
-                ' overflow-visible'
+                    : '')
             }
         >
             <div className="flex items-center justify-between">
@@ -221,7 +220,7 @@ function DayCell({
                 </span>
             </div>
 
-            <div className="relative mt-1 space-y-1 overflow-visible">
+            <div className="relative mt-1 min-w-0 space-y-1 overflow-hidden">
                 {holidays.slice(0, 2).map((holiday) => (
                     <div
                         key={`${holiday.country}-${holiday.name}`}
@@ -401,7 +400,9 @@ export default function LeaveHolidayCalendar({
                 map[key].push({
                     id: user.id,
                     name: user.name,
-                    initials: badgeInitialsFromName(user.name),
+                    initials:
+                        user.initials ||
+                        badgeInitialsFromName(user.name),
                 });
             });
         });
@@ -480,12 +481,12 @@ export default function LeaveHolidayCalendar({
                         </p>
                     )}
 
-                    <div className="overflow-visible rounded-xl border border-slate-100 dark:border-slate-800">
+                    <div className="min-w-0 overflow-hidden rounded-xl border border-slate-100 dark:border-slate-800">
                         <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50/90 dark:border-slate-800 dark:bg-slate-800/40">
                             {WEEKDAYS.map((weekday) => (
                                 <div
                                     key={weekday}
-                                    className="border-r border-slate-100 px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-500 last:border-r-0 dark:border-slate-800 dark:text-slate-400"
+                                    className="min-w-0 border-r border-slate-100 px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-500 last:border-r-0 dark:border-slate-800 dark:text-slate-400"
                                 >
                                     {weekday}
                                 </div>
@@ -495,7 +496,7 @@ export default function LeaveHolidayCalendar({
                         {weeks.map((week, weekIndex) => (
                             <div
                                 key={`week-${weekIndex}`}
-                                className="grid grid-cols-7"
+                                className="grid min-w-0 grid-cols-7"
                             >
                                 {week.map((day) => (
                                     <DayCell

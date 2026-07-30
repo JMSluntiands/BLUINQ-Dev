@@ -27,6 +27,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'initials',
         'email',
         'company_name',
         'employee_number',
@@ -149,7 +150,13 @@ class User extends Authenticatable
 
     public function badgeInitials(): string
     {
-        $name = trim($this->name);
+        $custom = trim((string) ($this->initials ?? ''));
+
+        if ($custom !== '') {
+            return mb_strtoupper($custom);
+        }
+
+        $name = trim((string) $this->name);
 
         if ($name === '') {
             return '?';

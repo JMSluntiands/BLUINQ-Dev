@@ -41,6 +41,7 @@ class LeaveService
             ->get([
                 'id',
                 'name',
+                'initials',
                 'birthday',
                 'profile_image',
                 'leave_credits',
@@ -74,6 +75,7 @@ class LeaveService
             return [
                 'id' => $user->id,
                 'name' => $user->name,
+                'initials' => $user->badgeInitials(),
                 'profile_image_url' => $user->profile_image_url,
                 'balance' => $balances['al_available'],
                 'balances' => $balances,

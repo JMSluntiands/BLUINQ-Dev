@@ -1,8 +1,8 @@
-import { badgeInitialsFromName } from '@/utils/badgeInitials';
+import { resolveBadgeInitials } from '@/utils/badgeInitials';
 import { useState } from 'react';
 
 /**
- * Circular profile image, or first letter of name when missing / broken image.
+ * Circular profile image, or initials when missing / broken image.
  */
 export default function UserAvatar({
     user,
@@ -11,7 +11,7 @@ export default function UserAvatar({
 }) {
     const [imageFailed, setImageFailed] = useState(false);
     const url = user?.profile_image_url;
-    const initial = badgeInitialsFromName(user?.name);
+    const initial = resolveBadgeInitials(user);
 
     const base =
         'flex shrink-0 select-none items-center justify-center rounded-full font-semibold uppercase tracking-tight text-white ' +
