@@ -18,9 +18,11 @@ class StoreDashboardActivityRequest extends FormRequest
      */
     public function rules(): array
     {
-        $isProjectScoped = TimesheetEntry::activityRequiresProject(
-            (string) $this->input('activity'),
-        );
+        $canSelectProject = $this->user()?->hasPermission('dashboard.activity.project') ?? false;
+        $isProjectScoped = $canSelectProject
+            && TimesheetEntry::activityRequiresProject(
+                (string) $this->input('activity'),
+            );
 
         return [
             'activity' => [

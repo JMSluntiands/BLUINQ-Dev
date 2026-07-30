@@ -980,15 +980,15 @@ class DraftingRequestBoardService
     public function mapBoardStatus(?string $status): string
     {
         return match ($status) {
-            DraftingRequest::STATUS_DESIGN_WIP => 'design_wip',
+            DraftingRequest::STATUS_DESIGN_WIP,
+            DraftingRequest::STATUS_ASSIGNED,
+            DraftingRequest::STATUS_ON_HOLD,
+            DraftingRequest::STATUS_QUERY => 'design_wip',
             DraftingRequest::STATUS_DRAFTING_WIP,
-            DraftingRequest::STATUS_WIP,
-            DraftingRequest::STATUS_ASSIGNED => 'drafting_wip',
-            DraftingRequest::STATUS_FOR_CHECKING,
-            DraftingRequest::STATUS_QUERY => 'for_checking',
+            DraftingRequest::STATUS_WIP => 'drafting_wip',
+            DraftingRequest::STATUS_FOR_CHECKING => 'for_checking',
             DraftingRequest::STATUS_SUBMITTED => 'submitted',
-            DraftingRequest::STATUS_CANCELLED,
-            DraftingRequest::STATUS_ON_HOLD => 'cancelled',
+            DraftingRequest::STATUS_CANCELLED => 'cancelled',
             DraftingRequest::STATUS_NEW => 'new',
             default => 'new',
         };
@@ -1031,17 +1031,19 @@ class DraftingRequestBoardService
             return 'for_quotes';
         }
 
-        if ($status === DraftingRequest::STATUS_DESIGN_WIP) {
+        if (in_array($status, [
+            DraftingRequest::STATUS_DESIGN_WIP,
+            DraftingRequest::STATUS_ASSIGNED,
+            DraftingRequest::STATUS_ON_HOLD,
+            DraftingRequest::STATUS_QUERY,
+        ], true)) {
             return 'design_wip';
         }
 
         if (in_array($status, [
             DraftingRequest::STATUS_DRAFTING_WIP,
             DraftingRequest::STATUS_WIP,
-            DraftingRequest::STATUS_ASSIGNED,
             DraftingRequest::STATUS_FOR_CHECKING,
-            DraftingRequest::STATUS_ON_HOLD,
-            DraftingRequest::STATUS_QUERY,
         ], true)) {
             return $this->isDesignPhaseRequest($row) ? 'design_wip' : 'drafting_wip';
         }

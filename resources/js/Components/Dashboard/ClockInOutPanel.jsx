@@ -345,6 +345,9 @@ export default function ClockInOutPanel({
     const workDate = todayKey();
     const activityOptions = activityFormOptions?.activities ?? [];
     const projectOptions = activityFormOptions?.projects ?? [];
+    const canSelectProject = Boolean(
+        activityFormOptions?.can_select_project,
+    );
 
     const [selectedTimezone, setSelectedTimezone] = useState(defaultTimezone);
     const [clockInOpen, setClockInOpen] = useState(false);
@@ -439,8 +442,10 @@ export default function ClockInOutPanel({
         }
     }, [clock.current_local_time_hm, nowMs, selectedTimezone]);
 
-    const clockInNeedsProject = clockInForm.activity === 'drafting'
-        || clockInForm.activity === 'checking';
+    const clockInNeedsProject =
+        canSelectProject &&
+        (clockInForm.activity === 'drafting' ||
+            clockInForm.activity === 'checking');
     const clockInCanSubmit = Boolean(
         clockInForm.activity &&
             (!clockInNeedsProject || clockInForm.project) &&
@@ -568,7 +573,8 @@ export default function ClockInOutPanel({
         const activityValue = activityForm.activity;
         const projectValue = activityForm.project;
         const needsProject =
-            activityValue === 'drafting' || activityValue === 'checking';
+            canSelectProject &&
+            (activityValue === 'drafting' || activityValue === 'checking');
 
         if (!activityValue || (needsProject && !projectValue)) {
             return;
@@ -1083,8 +1089,9 @@ export default function ClockInOutPanel({
                             ))}
                         </select>
 
-                        {activityForm.activity === 'drafting' ||
-                        activityForm.activity === 'checking' ? (
+                        {canSelectProject &&
+                        (activityForm.activity === 'drafting' ||
+                            activityForm.activity === 'checking') ? (
                             <select
                                 value={activityForm.project}
                                 onChange={(event) =>

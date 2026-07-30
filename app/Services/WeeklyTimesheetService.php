@@ -126,7 +126,8 @@ class WeeklyTimesheetService
             ]);
         }
 
-        $requiresProject = TimesheetEntry::activityRequiresProject($activity);
+        $requiresProject = TimesheetEntry::activityRequiresProject($activity)
+            && $user->hasPermission('dashboard.activity.project');
 
         if ($requiresProject) {
             if ($projectId === null) {
@@ -202,10 +203,16 @@ class WeeklyTimesheetService
     /**
      * Clock-in / dashboard activity dropdown options.
      *
-     * @return array{activities: list<array{value: string, label: string}>, projects: list<array{value: string, label: string}>}
+     * @return array{
+     *     activities: list<array{value: string, label: string}>,
+     *     projects: list<array{value: string, label: string}>,
+     *     can_select_project: bool
+     * }
      */
     public function activityFormOptionsForUser(User $user): array
     {
+        $canSelectProject = $user->hasPermission('dashboard.activity.project');
+
         return [
             'activities' => collect(TimesheetEntry::ACTIVITY_TASK_LABELS)
                 ->map(fn (string $label, string $value) => [
@@ -214,7 +221,10 @@ class WeeklyTimesheetService
                 ])
                 ->values()
                 ->all(),
-            'projects' => $this->activityProjectsForUser($user),
+            'projects' => $canSelectProject
+                ? $this->activityProjectsForUser($user)
+                : [],
+            'can_select_project' => $canSelectProject,
         ];
     }
 

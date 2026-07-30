@@ -494,9 +494,9 @@ const tdClass =
 /** Map legacy / removed codes onto active Archi statuses. */
 const LEGACY_STATUS_TO_ARCHI = {
     wip: 'drafting_wip',
-    assigned: 'new',
-    on_hold: 'cancelled',
-    query: 'for_checking',
+    assigned: 'design_wip',
+    on_hold: 'design_wip',
+    query: 'design_wip',
     for_quote: 'new',
     quote_sent: 'submitted',
     invoiced: 'submitted',
