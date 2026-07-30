@@ -5,7 +5,7 @@ import TableSearchToolbar from '@/Components/TableSearchToolbar';
 import FlashNoticeModal from '@/Components/FlashNoticeModal';
 import Modal from '@/Components/Modal';
 import SecondaryButton from '@/Components/SecondaryButton';
-import WorkflowSettingsLayout from '@/Layouts/WorkflowSettingsLayout';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
 import { createColumnHelper } from '@tanstack/react-table';
 import { Head, Link, router } from '@inertiajs/react';
@@ -78,14 +78,6 @@ export default function ClientArchive({ clients, filters = {} }) {
                     </span>
                 ),
             }),
-            columnHelper.accessor('contact_name', {
-                header: ({ column }) => (
-                    <DataTableSortHeader column={column}>
-                        Contact name
-                    </DataTableSortHeader>
-                ),
-                cell: ({ getValue }) => getValue() || '—',
-            }),
             columnHelper.accessor('status', {
                 header: ({ column }) => (
                     <DataTableSortHeader column={column}>
@@ -140,16 +132,15 @@ export default function ClientArchive({ clients, filters = {} }) {
     );
 
     return (
-        <WorkflowSettingsLayout
-            moduleKey="client"
+        <AuthenticatedLayout
             header={
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <h2 className="text-xl font-semibold leading-tight text-[#323338]">
+                    <h2 className="text-xl font-semibold leading-tight text-[#323338] dark:text-slate-100">
                         Clients — Archive
                     </h2>
                     <Link
                         href={route('settings.client.index') + q}
-                        className="inline-flex items-center rounded-lg border border-[#c5c7d0] bg-white px-3 py-2 text-sm font-semibold text-[#323338] shadow-sm transition hover:bg-[#f6f7fb]"
+                        className="inline-flex items-center rounded-lg border border-[#c5c7d0] bg-white px-3 py-2 text-sm font-semibold text-[#323338] shadow-sm transition hover:bg-[#f6f7fb] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                     >
                         Back to list
                     </Link>
@@ -213,6 +204,6 @@ export default function ClientArchive({ clients, filters = {} }) {
                     <Pagination pagination={clients} />
                 </div>
             </div>
-        </WorkflowSettingsLayout>
+        </AuthenticatedLayout>
     );
 }

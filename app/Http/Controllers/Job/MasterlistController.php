@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Job;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDraftingRequestFormRequest;
 use App\Models\BuildingClass;
-use App\Models\Client;
 use App\Models\CrmCategory;
 use App\Models\DraftingRequest;
 use App\Models\ExternalWallConstruction;
@@ -223,6 +222,7 @@ class MasterlistController extends Controller
             'requested_at' => $requestedAt,
             'your_name' => $draftingRequest->your_name,
             'client_id' => $draftingRequest->client_id,
+            'client_contact_id' => $draftingRequest->client_contact_id,
             'company_name' => $draftingRequest->company_name,
             'email' => $draftingRequest->email,
             'phone' => $draftingRequest->phone,
@@ -260,24 +260,8 @@ class MasterlistController extends Controller
      */
     private function formOptions(?int $includeClientId = null): array
     {
-        $clients = Client::query()
-            ->selectable()
-            ->orderBy('name')
-            ->get(['id', 'name', 'contact_name', 'email', 'phone']);
-
-        if ($includeClientId !== null) {
-            $extra = Client::query()
-                ->active()
-                ->whereKey($includeClientId)
-                ->first(['id', 'name', 'contact_name', 'email', 'phone']);
-
-            if ($extra !== null && ! $clients->contains('id', $extra->id)) {
-                $clients = $clients->prepend($extra)->values();
-            }
-        }
-
         return [
-            'clients' => $clients,
+            'clients' => \App\Support\ClientFormOptions::forForms($includeClientId),
             'categories' => CrmCategory::query()
                 ->active()
                 ->orderBy('code')

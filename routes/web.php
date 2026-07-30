@@ -278,17 +278,20 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
 
     Route::prefix('settings/client')->name('settings.client.')->group(function () {
         Route::get('/', [ClientController::class, 'index'])->name('index');
-        Route::get('/create', [ClientController::class, 'create'])->name('create');
         Route::post('/', [ClientController::class, 'store'])->name('store');
         Route::get('/archive', [ClientController::class, 'archive'])->name('archive');
-        Route::get('/{client}/edit', [ClientController::class, 'edit'])
-            ->name('edit');
         Route::patch('/{client}', [ClientController::class, 'update'])
             ->name('update');
         Route::delete('/{client}', [ClientController::class, 'destroy'])
             ->name('destroy');
         Route::post('/{client}/restore', [ClientController::class, 'restore'])
             ->name('restore');
+        Route::post('/{client}/contacts', [ClientController::class, 'storeContact'])
+            ->name('contacts.store');
+        Route::patch('/{client}/contacts/{contact}', [ClientController::class, 'updateContact'])
+            ->name('contacts.update');
+        Route::delete('/{client}/contacts/{contact}', [ClientController::class, 'destroyContact'])
+            ->name('contacts.destroy');
     });
 
     Route::prefix('settings/building-type')->name('settings.building-type.')->group(function () {

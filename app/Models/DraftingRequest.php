@@ -119,6 +119,7 @@ class DraftingRequest extends Model
         'your_name',
         'company_name',
         'client_id',
+        'client_contact_id',
         'email',
         'phone',
         'site_address',
@@ -329,6 +330,14 @@ class DraftingRequest extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+
+    /**
+     * @return BelongsTo<ClientContact, $this>
+     */
+    public function clientContact(): BelongsTo
+    {
+        return $this->belongsTo(ClientContact::class);
     }
 
     /**

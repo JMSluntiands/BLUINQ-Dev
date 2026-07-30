@@ -104,6 +104,9 @@ export default function DraftingRequestForm({
             ? (applicant.your_name ?? '')
             : (applicant.your_name || loggedInName || ''),
         client_id: applicant.client_id ? String(applicant.client_id) : '',
+        client_contact_id: applicant.client_contact_id
+            ? String(applicant.client_contact_id)
+            : '',
         company_name: applicant.company_name ?? '',
         email: applicant.email ?? '',
         phone: applicant.phone ?? '',
@@ -138,6 +141,11 @@ export default function DraftingRequestForm({
         next.crm_category_id = next.crm_category_ids[0] ?? null;
         if (next.client_id === '' || next.client_id == null) {
             next.client_id = null;
+        }
+        if (next.client_contact_id === '' || next.client_contact_id == null) {
+            next.client_contact_id = null;
+        } else {
+            next.client_contact_id = Number(next.client_contact_id);
         }
         if (standalone) {
             delete next.lead_number;
@@ -186,6 +194,45 @@ export default function DraftingRequestForm({
         [clients, data.client_id],
     );
 
+    const contactOptions = useMemo(() => {
+        const contacts = selectedClient?.contacts ?? [];
+        return contacts.map((contact) => ({
+            value: String(contact.id),
+            label: contact.label || contact.type_label || `Contact #${contact.id}`,
+        }));
+    }, [selectedClient]);
+
+    const selectedContact = useMemo(() => {
+        const contacts = selectedClient?.contacts ?? [];
+        return (
+            contacts.find(
+                (c) => String(c.id) === String(data.client_contact_id),
+            ) ?? null
+        );
+    }, [selectedClient, data.client_contact_id]);
+
+    const applyContact = useCallback(
+        (contact, client) => {
+            if (!contact) {
+                setData({
+                    client_contact_id: '',
+                    email: '',
+                    phone: '',
+                    ...(standalone ? { your_name: '' } : {}),
+                });
+                return;
+            }
+            setData({
+                client_contact_id: String(contact.id),
+                email: contact.email || '',
+                phone: contact.mobile || '',
+                ...(standalone ? { your_name: contact.name || '' } : {}),
+                ...(client ? { company_name: client.name ?? '' } : {}),
+            });
+        },
+        [setData, standalone],
+    );
+
     const handleClientChange = useCallback(
         (value) => {
             const client = clients.find(
@@ -194,6 +241,7 @@ export default function DraftingRequestForm({
             if (!client) {
                 setData({
                     client_id: '',
+                    client_contact_id: '',
                     company_name: '',
                     email: '',
                     phone: '',
@@ -201,17 +249,32 @@ export default function DraftingRequestForm({
                 });
                 return;
             }
+
+            const contacts = client.contacts ?? [];
+            const main =
+                contacts.find((c) => c.type === 'main') ?? contacts[0] ?? null;
+
             setData({
                 client_id: String(client.id),
                 company_name: client.name ?? '',
-                email: client.email || '',
-                phone: client.phone || '',
-                ...(standalone
-                    ? { your_name: client.contact_name || '' }
-                    : {}),
+                client_contact_id: main ? String(main.id) : '',
+                email: main?.email || '',
+                phone: main?.mobile || '',
+                ...(standalone ? { your_name: main?.name || '' } : {}),
             });
         },
         [clients, setData, standalone],
+    );
+
+    const handleContactChange = useCallback(
+        (value) => {
+            const contacts = selectedClient?.contacts ?? [];
+            const contact =
+                contacts.find((row) => String(row.id) === String(value)) ??
+                null;
+            applyContact(contact, selectedClient);
+        },
+        [applyContact, selectedClient],
     );
 
     const handleSdaTypeChange = useCallback(
@@ -384,12 +447,10 @@ export default function DraftingRequestForm({
                                             <ReqMark />
                                         </InputLabel>
                                     }
-                                    hint="Active clients from Workflow settings → Clients."
+                                    hint="Active clients from Client list."
                                     error={
                                         errors.client_id ??
-                                        errors.company_name ??
-                                        errors.email ??
-                                        errors.phone
+                                        errors.company_name
                                     }
                                 >
                                     <div className="select2-field">
@@ -406,17 +467,45 @@ export default function DraftingRequestForm({
                                     {clients.length === 0 ? (
                                         <p className="text-sm text-amber-800 dark:text-amber-200">
                                             No active clients configured. Add
-                                            them under Workflow settings →
-                                            Clients.
+                                            them under Client list.
                                         </p>
                                     ) : null}
                                 </FieldBlock>
 
                                 <FieldBlock
                                     label={
+                                        <InputLabel htmlFor="client_contact_id">
+                                            Contact
+                                            <ReqMark />
+                                        </InputLabel>
+                                    }
+                                    hint="Main, Account, or Additional contact for this client."
+                                    error={errors.client_contact_id}
+                                >
+                                    <div className="select2-field">
+                                        <Select2
+                                            id="client_contact_id"
+                                            value={data.client_contact_id}
+                                            onChange={handleContactChange}
+                                            options={contactOptions}
+                                            placeholder={
+                                                selectedClient
+                                                    ? 'Select contact…'
+                                                    : 'Select a client first…'
+                                            }
+                                            allowClear
+                                            disabled={!selectedClient}
+                                            required
+                                        />
+                                    </div>
+                                </FieldBlock>
+
+                                <FieldBlock
+                                    label={
                                         <InputLabel value="Client contact" />
                                     }
-                                    hint="From the selected client."
+                                    hint="From the selected contact."
+                                    error={errors.email ?? errors.phone}
                                 >
                                     <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
                                         <div className="min-w-0 space-y-1">
@@ -426,7 +515,7 @@ export default function DraftingRequestForm({
                                             <dd>
                                                 <DisplayValue
                                                     value={
-                                                        selectedClient?.contact_name
+                                                        selectedContact?.name
                                                     }
                                                 />
                                             </dd>

@@ -101,31 +101,39 @@ export default function WorkflowSettingsSidebar({ activeModuleKey }) {
                                 </button>
                                 {isOpen && (
                                     <div className="mt-0.5 space-y-0.5 pb-1">
-                                        <SidebarSubLink
-                                            href={route(routes.create)}
-                                            active={route().current(
-                                                routes.create,
-                                            )}
-                                        >
-                                            Create
-                                        </SidebarSubLink>
+                                        {routes.create ? (
+                                            <SidebarSubLink
+                                                href={route(routes.create)}
+                                                active={route().current(
+                                                    routes.create,
+                                                )}
+                                            >
+                                                Create
+                                            </SidebarSubLink>
+                                        ) : null}
                                         <SidebarSubLink
                                             href={route(routes.index)}
                                             active={
                                                 route().current(routes.index) ||
-                                                route().current(routes.edit)
+                                                (routes.edit
+                                                    ? route().current(
+                                                          routes.edit,
+                                                      )
+                                                    : false)
                                             }
                                         >
                                             List
                                         </SidebarSubLink>
-                                        <SidebarSubLink
-                                            href={route(routes.archive)}
-                                            active={route().current(
-                                                routes.archive,
-                                            )}
-                                        >
-                                            Archive
-                                        </SidebarSubLink>
+                                        {routes.archive ? (
+                                            <SidebarSubLink
+                                                href={route(routes.archive)}
+                                                active={route().current(
+                                                    routes.archive,
+                                                )}
+                                            >
+                                                Archive
+                                            </SidebarSubLink>
+                                        ) : null}
                                     </div>
                                 )}
                             </div>

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Public;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePublicDraftingRequestFormRequest;
 use App\Models\BuildingClass;
-use App\Models\Client;
 use App\Models\CrmCategory;
 use App\Models\DraftingRequest;
 use App\Models\ExternalWallConstruction;
@@ -37,10 +36,7 @@ class PublicDraftingRequestFormController extends Controller
             'applicant' => [
                 'requested_at' => $requestedAt,
             ],
-            'clients' => Client::query()
-                ->selectable()
-                ->orderBy('name')
-                ->get(['id', 'name', 'contact_name', 'email', 'phone']),
+            'clients' => \App\Support\ClientFormOptions::forForms(),
             'categories' => CrmCategory::query()
                 ->active()
                 ->orderBy('code')

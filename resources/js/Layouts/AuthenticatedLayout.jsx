@@ -184,8 +184,6 @@ export default function AuthenticatedLayout({ header, children }) {
         isRolesIndex || isRolesCreate || isRolesEdit;
     const isClientSection =
         route().current('settings.client.index') ||
-        route().current('settings.client.create') ||
-        route().current('settings.client.edit') ||
         route().current('settings.client.archive');
     const isWorkflowSection = isAnyWorkflowRoute() && !isClientSection;
 

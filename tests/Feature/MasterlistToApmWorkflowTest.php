@@ -333,11 +333,15 @@ class MasterlistToApmWorkflowTest extends TestCase
 
         $client = Client::query()->create([
             'name' => 'Acme Design',
-            'contact_name' => 'Jane Architect',
-            'email' => 'jane@acme.test',
-            'phone' => '0400000000',
             'status' => 'active',
         ]);
+        $client->ensureCoreContacts();
+        $client->mainContact()->update([
+            'name' => 'Jane Architect',
+            'email' => 'jane@acme.test',
+            'mobile' => '0400000000',
+        ]);
+        $client->load('mainContact');
 
         $buildingClass = BuildingClass::query()->create([
             'code' => '1a',
@@ -357,15 +361,18 @@ class MasterlistToApmWorkflowTest extends TestCase
         Client $client,
         ?BuildingClass $buildingClass = null,
     ): array {
+        $main = $client->mainContact;
         return [
             'lead_number' => '26001',
             'requested_at' => now()->format('Y-m-d H:i:s'),
-            'your_name' => $client->contact_name,
+            'your_name' => $main?->name ?? 'Jane Architect',
             'client_id' => $client->id,
+            'client_contact_id' => $main?->id,
             'company_name' => $client->name,
-            'email' => $client->email,
-            'phone' => $client->phone,
+            'email' => $main?->email,
+            'phone' => $main?->mobile,
             'crm_category_id' => $categoryId,
+            'crm_category_ids' => [$categoryId],
             'site_address' => '10 Example Road',
             'council_shire' => 'Example Shire',
             'site_owner_name' => 'Site Owner',
