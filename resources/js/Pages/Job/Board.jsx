@@ -1,6 +1,5 @@
 import JobBoardGrid from '@/Components/JobBoard/JobBoardGrid';
 import JobBoardPendingRequests from '@/Components/JobBoard/JobBoardPendingRequests';
-import AddFromMasterlistControl from '@/Components/JobBoard/AddFromMasterlistControl';
 import DraftingRevisionAddModal from '@/Components/Drafting/DraftingRevisionAddModal';
 import FlashNoticeModal from '@/Components/FlashNoticeModal';
 import Pagination from '@/Components/Pagination';
@@ -20,11 +19,13 @@ export default function JobBoard({
     groupByStatus = false,
     jobListSections = {},
     canReviewPublicRequests = false,
-    canForwardFromMasterlist = false,
-    masterlistCandidates = [],
     pendingRequests = [],
 }) {
-    const revisionCode = usePage().props.flash?.revision_code ?? null;
+    const page = usePage();
+    const revisionCode = page.props.flash?.revision_code ?? null;
+    const permissions = page.props.auth?.user?.permissions ?? [];
+    const canAddRevision = permissions.includes('job.drafting.revision.add');
+
     const flashMessages = useMemo(
         () => ({
             'drf-submitted':
@@ -45,7 +46,7 @@ export default function JobBoard({
 
     const rows = jobs?.data ?? [];
     const [liveSearch, setLiveSearch] = useState('');
-    const [revisionJob, setRevisionJob] = useState(null);
+    const [showAddModal, setShowAddModal] = useState(false);
     const hasSearch = Boolean(liveSearch.trim());
     const searchRoute = 'job.list';
     const pageTitle = 'Archi Project Management';
@@ -53,8 +54,28 @@ export default function JobBoard({
         ? 'All jobs on the project board, grouped by status.'
         : 'Your jobs on the project board, grouped by status.';
 
-    const showAddRevisionActions = useMemo(
-        () => rows.some((job) => job.can_add_revision),
+    const projectOptions = useMemo(
+        () =>
+            rows
+                .filter((job) => job.can_add_revision)
+                .map((job) => {
+                    const leadNo = String(job.job_no ?? '').replace(
+                        /-\d{2}$/,
+                        '',
+                    );
+                    const revisionNo =
+                        job.latest_revision && job.latest_revision !== '—'
+                            ? job.latest_revision
+                            : leadNo;
+
+                    return {
+                        id: job.id,
+                        label: `${revisionNo} — ${job.job}`,
+                        job_no: leadNo,
+                        revisions: job.revisions ?? [],
+                        status: job.status,
+                    };
+                }),
         [rows],
     );
 
@@ -106,10 +127,15 @@ export default function JobBoard({
                             {pageDescription}
                         </p>
                     </div>
-                    {canForwardFromMasterlist && (
-                        <AddFromMasterlistControl
-                            candidates={masterlistCandidates}
-                        />
+                    {canAddRevision && (
+                        <button
+                            type="button"
+                            onClick={() => setShowAddModal(true)}
+                            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#0073ea] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0060c4] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0073ea] focus-visible:ring-offset-1 dark:hover:bg-[#1478e0]"
+                        >
+                            <PlusIcon className="h-4 w-4" aria-hidden />
+                            Add from masterlist
+                        </button>
                     )}
                 </div>
             }
@@ -119,14 +145,11 @@ export default function JobBoard({
             <FlashNoticeModal messages={flashMessages} />
 
             <DraftingRevisionAddModal
-                show={revisionJob != null}
-                onClose={() => setRevisionJob(null)}
-                draftingRequestId={revisionJob?.id}
-                jobNumber={revisionJob?.job_no ?? revisionJob?.reference ?? ''}
-                revisions={revisionJob?.revisions ?? []}
+                show={showAddModal}
+                onClose={() => setShowAddModal(false)}
+                projectOptions={projectOptions}
                 statusOptions={statusOptions}
                 categoryOptions={categoryOptions}
-                defaultJobStatus={revisionJob?.status ?? 'new'}
             />
 
             <div className="overflow-hidden rounded-xl border border-[#e6e9ef] bg-white shadow-sm dark:border-[#2f3347] dark:bg-[#1a1b2e] dark:shadow-none">
@@ -145,7 +168,7 @@ export default function JobBoard({
                     emptyMessage={
                         hasSearch
                             ? 'No drafting requests match your search.'
-                            : 'No drafting requests yet. Add a project from the masterlist to get started.'
+                            : 'No drafting requests yet.'
                     }
                     getJobHref={(row) =>
                         route('job.drafting.show', row.id)
@@ -153,31 +176,10 @@ export default function JobBoard({
                     showFilesInTotal
                     assignableUsers={assignableUsers}
                     statusOptions={statusOptions}
-                    onCommentsUpdated={() =>
-                        reloadBoard(['jobs', 'masterlistCandidates'])
-                    }
+                    onCommentsUpdated={() => reloadBoard(['jobs'])}
                     onPriorityUpdated={() => reloadBoard(['jobs'])}
                     onAssignmentsUpdated={() => reloadBoard(['jobs'])}
                     jobListSections={jobListSections}
-                    renderActions={
-                        showAddRevisionActions
-                            ? (job) =>
-                                  job.can_add_revision ? (
-                                      <button
-                                          type="button"
-                                          onClick={() => setRevisionJob(job)}
-                                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-[#0073ea] transition hover:bg-[#e6f0ff] dark:text-[#1890ff] dark:hover:bg-[#1e3a5f]"
-                                          title="Add revision"
-                                          aria-label={`Add revision for ${job.job_no}`}
-                                      >
-                                          <PlusIcon className="h-4 w-4" />
-                                          <span className="hidden sm:inline">
-                                              Add
-                                          </span>
-                                      </button>
-                                  ) : null
-                            : null
-                    }
                 />
                 <Pagination pagination={jobs} />
             </div>

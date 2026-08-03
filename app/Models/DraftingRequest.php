@@ -317,6 +317,43 @@ class DraftingRequest extends Model
     }
 
     /**
+     * Latest revision display code (always prefers NNNNN-NN; bare lead → lead-01).
+     */
+    public function latestRevisionCode(): ?string
+    {
+        $base = $this->jobNumber();
+        $best = null;
+        $bestSuffix = -1;
+
+        $revisions = $this->relationLoaded('revisions')
+            ? $this->revisions
+            : $this->revisions()->orderByDesc('log_date')->orderByDesc('id')->get();
+
+        foreach ($revisions as $revision) {
+            $code = trim((string) ($revision->code ?? ''));
+            if ($code === '') {
+                continue;
+            }
+
+            if (preg_match('/^'.preg_quote($base, '/').'-(\d{2})$/', $code, $match)) {
+                $suffix = (int) $match[1];
+                if ($suffix > $bestSuffix) {
+                    $bestSuffix = $suffix;
+                    $best = $code;
+                }
+                continue;
+            }
+
+            if ($code === $base && $bestSuffix < 1) {
+                $bestSuffix = 1;
+                $best = sprintf('%s-01', $base);
+            }
+        }
+
+        return $best;
+    }
+
+    /**
      * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo

@@ -42,7 +42,7 @@ class StoreDraftingRequestRevisionRequest extends FormRequest
             ->all();
 
         return [
-            'code' => ['required', 'string', 'max:64', 'regex:/^\d{5}(-\d{2})?$/'],
+            'code' => ['required', 'string', 'max:64', 'regex:/^\d{5}-\d{2}$/'],
             'link' => ['nullable', 'string', 'max:2048', 'url'],
             'log_date' => ['required', 'date'],
             'category' => ['required', 'string', 'max:255', Rule::in(array_values(array_unique($categoryCodes)))],
@@ -75,7 +75,7 @@ class StoreDraftingRequestRevisionRequest extends FormRequest
     {
         return [
             'code.required' => 'Enter a revision number.',
-            'code.regex' => 'Use format YY001 or YY001-01 (e.g. 26001 or 26001-01).',
+            'code.regex' => 'Use format YY001-01 (e.g. 26001-01).',
             'log_date.required' => 'Select a date in.',
             'category.required' => 'Select a category.',
             'category.in' => 'Select a valid category.',

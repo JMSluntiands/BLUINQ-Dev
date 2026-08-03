@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\CrmCategory;
 use App\Models\DraftingRequest;
 use App\Models\DraftingRequestAssignment;
 use App\Models\DraftingRequestRevision;
@@ -140,14 +141,47 @@ class DraftingRequestBoardService
         $tz = config('app.timezone');
         $row->loadMissing(['crmCategories', 'crmCategory', 'serviceEngagings']);
 
-        if ($row->crmCategories->isNotEmpty()) {
+        $latestRevisionCategory = $row->relationLoaded('revisions')
+            ? trim((string) ($row->revisions->first()?->category ?? ''))
+            : '';
+
+        if ($latestRevisionCategory !== '') {
+            $matched = $row->crmCategories->first(
+                fn ($category) => $category->code === $latestRevisionCategory
+                    || $category->name === $latestRevisionCategory,
+            ) ?? $row->crmCategory;
+
+            if (
+                $matched === null
+                || (
+                    $matched->code !== $latestRevisionCategory
+                    && $matched->name !== $latestRevisionCategory
+                )
+            ) {
+                $matched = CrmCategory::query()
+                    ->where(function ($query) use ($latestRevisionCategory) {
+                        $query->where('code', $latestRevisionCategory)
+                            ->orWhere('name', $latestRevisionCategory);
+                    })
+                    ->first();
+            }
+
+            $categoryFull = $matched
+                ? ($matched->code && $matched->name && $matched->code !== $matched->name
+                    ? "{$matched->code} — {$matched->name}"
+                    : ($matched->name ?: $matched->code))
+                : $latestRevisionCategory;
+            $category = $matched
+                ? ($matched->name ?: ($matched->code ?: $latestRevisionCategory))
+                : $latestRevisionCategory;
+        } elseif ($row->crmCategories->isNotEmpty()) {
             $labels = $row->crmCategories->map(
                 fn ($category) => $category->code
                     ? "{$category->code} — {$category->name}"
                     : $category->name,
             )->values();
             $shorts = $row->crmCategories->map(
-                fn ($category) => $category->code ?: $category->name,
+                fn ($category) => $category->name ?: ($category->code ?: $category->name),
             )->values();
             $categoryFull = $labels->join(', ');
             $category = $shorts->join(', ');
@@ -155,14 +189,15 @@ class DraftingRequestBoardService
             $categoryFull = $row->crmCategory->code
                 ? "{$row->crmCategory->code} — {$row->crmCategory->name}"
                 : $row->crmCategory->name;
-            $category = $row->crmCategory->code ?: $row->crmCategory->name;
+            $category = $row->crmCategory->name
+                ?: ($row->crmCategory->code ?: $row->crmCategory->name);
         } else {
             $services = $row->serviceEngagings->pluck('name')->values();
             $categoryFull = $services->join(', ');
             $category = $services->first() ?? '—';
         }
-        if (mb_strlen($category) > 16) {
-            $category = mb_substr($category, 0, 13).'...';
+        if (mb_strlen($category) > 28) {
+            $category = mb_substr($category, 0, 25).'...';
         }
 
         $area = null;
@@ -202,7 +237,7 @@ class DraftingRequestBoardService
         $totalHours = $this->sumRevisionHours($row->revisions)
             ?? $this->sumAssignmentHours($row->assignments);
 
-        $latestRevision = $row->revisions->first()?->code;
+        $latestRevision = $row->latestRevisionCode();
         $accounting = $row->relationLoaded('accountEntries')
             ? $row->accountEntries->first()?->status
             : null;

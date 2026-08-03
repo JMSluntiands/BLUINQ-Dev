@@ -6,7 +6,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import Select2 from '@/Components/Select2';
 import TextInput from '@/Components/TextInput';
 import { useForm, usePage } from '@inertiajs/react';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 function listQueryString(listFilters = {}) {
     const p = new URLSearchParams();
@@ -23,8 +23,26 @@ function listQueryString(listFilters = {}) {
     return s ? `?${s}` : '';
 }
 
+export function leadNumberBase(jobNumber, revisions = []) {
+    const raw = String(jobNumber ?? '').trim();
+    const stripped = raw.replace(/-\d{2}$/, '');
+    if (stripped !== '') {
+        return stripped;
+    }
+
+    for (const revision of revisions) {
+        const code = String(revision?.code ?? '').trim();
+        const match = code.match(/^(\d{5})(?:-\d{2})?$/);
+        if (match) {
+            return match[1];
+        }
+    }
+
+    return '';
+}
+
 export function suggestNextRevisionCode(jobNumber, revisions = []) {
-    const base = String(jobNumber ?? '').trim();
+    const base = leadNumberBase(jobNumber, revisions);
     if (base === '') {
         return '';
     }
@@ -34,7 +52,11 @@ export function suggestNextRevisionCode(jobNumber, revisions = []) {
     let maxSuffix = 0;
 
     for (const revision of revisions) {
-        const code = String(revision.code ?? '').trim();
+        const code = String(revision?.code ?? '').trim();
+        if (code === '' || code === '—') {
+            continue;
+        }
+
         const match = code.match(suffixPattern);
         if (match) {
             maxSuffix = Math.max(maxSuffix, Number.parseInt(match[1], 10));
@@ -52,12 +74,12 @@ export function suggestNextRevisionCode(jobNumber, revisions = []) {
 
 /**
  * Slim revision modal (APM-owned staffing fields live on the board).
- * Fields: Revision Number, Revision Link, Category, Date In, Status.
+ * Fields: optional Project, Revision Number, Revision Link, Category, Date In, Status.
  */
 export default function DraftingRevisionAddModal({
     show = false,
     onClose,
-    draftingRequestId,
+    draftingRequestId = null,
     listFilters = {},
     entry = null,
     jobNumber = '',
@@ -65,22 +87,57 @@ export default function DraftingRevisionAddModal({
     statusOptions = [],
     categoryOptions = [],
     defaultJobStatus = 'new',
+    projectOptions = [],
 }) {
     const { categoryOptions: pageCategoryOptions = [] } = usePage().props;
     const categories =
         categoryOptions.length > 0 ? categoryOptions : pageCategoryOptions;
+    const needsProjectPick = !entry && !draftingRequestId;
+    const [selectedProjectId, setSelectedProjectId] = useState('');
+
+    const emptyRevisions = useMemo(() => [], []);
+    const selectedProject = useMemo(
+        () =>
+            projectOptions.find(
+                (option) => String(option.id) === String(selectedProjectId),
+            ) ?? null,
+        [projectOptions, selectedProjectId],
+    );
+
+    const effectiveRequestId = draftingRequestId || selectedProject?.id || null;
+    const effectiveJobNumber = draftingRequestId
+        ? jobNumber
+        : (selectedProject?.job_no ?? '');
+    const effectiveRevisions = draftingRequestId
+        ? revisions
+        : (selectedProject?.revisions ?? emptyRevisions);
+    const effectiveStatus = draftingRequestId
+        ? defaultJobStatus || 'new'
+        : (selectedProject?.status ?? defaultJobStatus) || 'new';
+
+    const projectSelectOptions = useMemo(
+        () =>
+            projectOptions.map((option) => ({
+                value: String(option.id),
+                label: option.label,
+            })),
+        [projectOptions],
+    );
 
     const categorySelectOptions = useMemo(() => {
         const items = categories.map((option) => {
-            const code = option.code || option.name;
+            const code = String(option.code || '').trim();
+            const name = String(option.name || '').trim();
+            const value = code || name;
+
             return {
-                value: code,
+                value,
                 label:
-                    option.name && option.name !== code
-                        ? `${code} — ${option.name}`
-                        : code,
+                    code && name && code !== name
+                        ? `${code} — ${name}`
+                        : name || code,
             };
-        });
+        }).filter((option) => option.value !== '');
 
         if (
             entry?.category &&
@@ -118,6 +175,7 @@ export default function DraftingRevisionAddModal({
         if (!show) {
             form.reset();
             form.clearErrors();
+            setSelectedProjectId('');
             return;
         }
 
@@ -133,22 +191,30 @@ export default function DraftingRevisionAddModal({
             return;
         }
 
-        form.setData({
-            code: suggestNextRevisionCode(jobNumber, revisions),
-            link: '',
-            log_date: '',
-            category: '',
-            status: defaultJobStatus || 'new',
-        });
-    }, [show, entry, jobNumber, revisions, defaultJobStatus]);
+        // Only refresh revision code + status when the selected project changes.
+        // Keep category / date / link so a Select2 choice is not wiped.
+        form.setData('code', suggestNextRevisionCode(effectiveJobNumber, effectiveRevisions));
+        form.setData('status', effectiveStatus || 'new');
+    }, [
+        show,
+        entry,
+        effectiveJobNumber,
+        effectiveRevisions,
+        effectiveStatus,
+        selectedProjectId,
+    ]);
 
     const submit = (e) => {
         e.preventDefault();
 
+        if (!effectiveRequestId) {
+            return;
+        }
+
         if (isEditing) {
             form.patch(
                 route('job.drafting.revisions.update', [
-                    draftingRequestId,
+                    effectiveRequestId,
                     entry.id,
                 ]) + listQs,
                 {
@@ -161,7 +227,7 @@ export default function DraftingRevisionAddModal({
         }
 
         form.post(
-            route('job.drafting.revisions.store', draftingRequestId) + listQs,
+            route('job.drafting.revisions.store', effectiveRequestId) + listQs,
             {
                 preserveScroll: true,
                 onSuccess: () => {
@@ -185,6 +251,37 @@ export default function DraftingRevisionAddModal({
                 </p>
 
                 <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {needsProjectPick ? (
+                        <div className="sm:col-span-2">
+                            <InputLabel
+                                htmlFor="revision-project"
+                                value="Project"
+                            />
+                            <div className="mt-1 select2-field">
+                                <Select2
+                                    id="revision-project"
+                                    value={selectedProjectId}
+                                    onChange={setSelectedProjectId}
+                                    options={projectSelectOptions}
+                                    placeholder={
+                                        projectSelectOptions.length === 0
+                                            ? 'No projects available'
+                                            : 'Select project…'
+                                    }
+                                    enabled={show && projectSelectOptions.length > 0}
+                                    required
+                                />
+                            </div>
+                            {projectSelectOptions.length === 0 ? (
+                                <p className="mt-1 text-xs text-[#676879] dark:text-slate-400">
+                                    No projects on this page allow adding a
+                                    revision. Search or change pages, then try
+                                    again.
+                                </p>
+                            ) : null}
+                        </div>
+                    ) : null}
+
                     <div>
                         <InputLabel
                             htmlFor="revision-code"
@@ -301,6 +398,7 @@ export default function DraftingRevisionAddModal({
                     </SecondaryButton>
                     <PrimaryButton
                         loading={form.processing}
+                        disabled={!effectiveRequestId && !isEditing}
                         className="rounded-lg normal-case tracking-normal"
                     >
                         {isEditing ? 'Save item' : 'Add from masterlist'}

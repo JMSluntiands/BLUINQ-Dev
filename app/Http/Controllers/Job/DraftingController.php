@@ -569,7 +569,10 @@ class DraftingController extends Controller
         $revision = DraftingRequestRevision::query()->create([
             'drafting_request_id' => $draftingRequest->id,
             'user_id' => $request->user()->id,
-            'code' => trim($validated['code']),
+            'code' => $this->normalizeRevisionCode(
+                $draftingRequest,
+                trim($validated['code']),
+            ),
             'link' => isset($validated['link']) && $validated['link'] !== ''
                 ? trim($validated['link'])
                 : null,
@@ -617,6 +620,10 @@ class DraftingController extends Controller
             $request->user(),
             $validated['status'],
         );
+        $this->syncJobCategoryFromSelection(
+            $draftingRequest,
+            $revision->category,
+        );
 
         $this->board->syncRevisionHoursToAssignments($draftingRequest, $revision);
         $this->timesheetSync->syncRevisionToTimesheet($revision->fresh());
@@ -632,7 +639,10 @@ class DraftingController extends Controller
         $validated = $request->validated();
 
         $updates = [
-            'code' => trim($validated['code']),
+            'code' => $this->normalizeRevisionCode(
+                $draftingRequest,
+                trim($validated['code']),
+            ),
             'log_date' => $validated['log_date'],
             'category' => trim($validated['category']),
             'status' => $validated['status'],
@@ -748,6 +758,10 @@ class DraftingController extends Controller
             $draftingRequest,
             $request->user(),
             $validated['status'],
+        );
+        $this->syncJobCategoryFromSelection(
+            $draftingRequest,
+            $revision->category,
         );
 
         $this->board->syncRevisionHoursToAssignments($draftingRequest, $revision->fresh());
@@ -1117,6 +1131,52 @@ class DraftingController extends Controller
         }
 
         return User::query()->whereKey($userId)->value('name') ?? 'Unknown';
+    }
+
+    /**
+     * Ensure revision codes always use lead-NN (never bare lead number alone).
+     */
+    private function normalizeRevisionCode(DraftingRequest $draftingRequest, string $code): string
+    {
+        $code = trim($code);
+        $base = $draftingRequest->jobNumber();
+
+        if ($code === $base || preg_match('/^\d{5}$/', $code) === 1) {
+            return $draftingRequest->suggestNextRevisionCode();
+        }
+
+        return $code;
+    }
+
+    /**
+     * Keep the board Category column in sync with the revision category selection.
+     */
+    private function syncJobCategoryFromSelection(
+        DraftingRequest $draftingRequest,
+        ?string $categoryValue,
+    ): void {
+        $categoryValue = trim((string) $categoryValue);
+        if ($categoryValue === '') {
+            return;
+        }
+
+        $category = CrmCategory::query()
+            ->active()
+            ->where('status', 'active')
+            ->where(function ($query) use ($categoryValue) {
+                $query->where('code', $categoryValue)
+                    ->orWhere('name', $categoryValue);
+            })
+            ->first();
+
+        if ($category === null) {
+            return;
+        }
+
+        $draftingRequest->crmCategories()->sync([$category->id]);
+        $draftingRequest->forceFill([
+            'crm_category_id' => $category->id,
+        ])->save();
     }
 
     private function formatRevisionHoursLabel(

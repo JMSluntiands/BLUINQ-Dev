@@ -698,7 +698,11 @@ function JobBoardTableBody({
                     job.latest_revision &&
                     job.latest_revision !== '—'
                         ? job.latest_revision
-                        : job.job_no;
+                        : !isMasterlist &&
+                            job.job_no &&
+                            /^\d{5}$/.test(String(job.job_no))
+                          ? `${job.job_no}-01`
+                          : job.job_no;
                 const rowTone = job.is_priority
                     ? 'bg-amber-50/70 dark:bg-[#2a1f2e]'
                     : rowIndex % 2 === 1
