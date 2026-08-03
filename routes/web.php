@@ -6,10 +6,12 @@ use App\Http\Controllers\AnnouncementImageController;
 use App\Http\Controllers\AnnouncementInlineImageController;
 use App\Http\Controllers\BrandLogoController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\LeaveRequestController;
 use App\Http\Controllers\LeaveCreditsController;
 use App\Http\Controllers\Job\DraftingMemoController;
 use App\Http\Controllers\Job\DraftingController;
+use App\Http\Controllers\Job\DraftingCommentInlineImageController;
 use App\Http\Controllers\Job\DraftingRequestFormController;
 use App\Http\Controllers\Job\MasterlistController;
 use App\Http\Controllers\Job\JobBoardController;
@@ -85,6 +87,9 @@ Route::get('/public/drafting-request', function () {
 Route::post('/public/drafting-request', [PublicDraftingRequestFormController::class, 'store']);
 
 Route::middleware(['auth', 'permission.route'])->group(function () {
+    Route::get('/search', GlobalSearchController::class)
+        ->name('search');
+
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->name('dashboard');
     Route::post('/dashboard/clock-in', [DashboardController::class, 'clockIn'])
@@ -188,6 +193,11 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('job.drafting.files.destroy');
     Route::post('/job/drafting/{draftingRequest}/comments', [DraftingController::class, 'storeComment'])
         ->name('job.drafting.comments.store');
+    Route::post('/job/drafting/comments/inline-images', [DraftingCommentInlineImageController::class, 'store'])
+        ->name('job.drafting.comments.inline-image.store');
+    Route::get('/job/drafting/comments/inline-images/{filename}', [DraftingCommentInlineImageController::class, 'show'])
+        ->where('filename', '[A-Za-z0-9._-]+')
+        ->name('job.drafting.comments.inline-image.show');
     Route::patch('/job/drafting/{draftingRequest}/status', [DraftingController::class, 'updateStatus'])
         ->name('job.drafting.status.update');
     Route::patch('/job/drafting/{draftingRequest}/priority', [JobBoardController::class, 'togglePriority'])

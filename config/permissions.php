@@ -50,6 +50,8 @@ return [
         'job.drafting.files.store' => 'job.drafting.files.edit',
         'job.drafting.files.destroy' => 'job.drafting.files.edit',
         'job.drafting.comments.store' => 'job.drafting.comments.post',
+        'job.drafting.comments.inline-image.store' => 'job.drafting.comments.post',
+        'job.drafting.comments.inline-image.show' => 'job.drafting.comments.view',
         'job.drafting.board-comments' => 'job.drafting.comments.view',
         'job.drafting.archive' => 'job.list.view',
         'job.drafting.destroy' => 'job.drafting.archive',

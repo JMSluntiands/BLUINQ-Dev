@@ -56,7 +56,8 @@ class MasterlistController extends Controller
             ->reviewAccepted()
             ->active();
 
-        $this->applySearch($query, $search);
+        $this->board->applySearch($query, $search);
+
         $this->applySort($query, $sort, $direction);
 
         $user = $request->user();
@@ -363,41 +364,5 @@ class MasterlistController extends Controller
     private function applySort($query, string $sort, string $direction): void
     {
         $query->orderBy($sort, $direction)->orderBy('id', $direction);
-    }
-
-    /**
-     * @param  \Illuminate\Database\Eloquent\Builder<DraftingRequest>  $query
-     */
-    private function applySearch($query, string $search): void
-    {
-        if ($search === '') {
-            return;
-        }
-
-        $digits = preg_replace('/\D+/', '', $search) ?? '';
-
-        $query->where(function ($q) use ($search, $digits) {
-            $q->where('your_name', 'like', '%'.$search.'%')
-                ->orWhere('company_name', 'like', '%'.$search.'%')
-                ->orWhere('email', 'like', '%'.$search.'%')
-                ->orWhere('phone', 'like', '%'.$search.'%')
-                ->orWhere('site_address', 'like', '%'.$search.'%')
-                ->orWhere('site_owner_name', 'like', '%'.$search.'%')
-                ->orWhere('lead_number', 'like', '%'.$search.'%')
-                ->orWhere('council_shire', 'like', '%'.$search.'%');
-
-            if ($digits !== '' && $digits !== $search) {
-                $q->orWhere('lead_number', 'like', '%'.$digits.'%')
-                    ->orWhere('phone', 'like', '%'.$digits.'%');
-            }
-
-            $q->orWhereHas('revisions', function ($revisionQuery) use ($search) {
-                $revisionQuery->where('code', 'like', '%'.$search.'%');
-            });
-
-            $q->orWhereHas('client', function ($clientQuery) use ($search) {
-                $clientQuery->where('name', 'like', '%'.$search.'%');
-            });
-        });
     }
 }

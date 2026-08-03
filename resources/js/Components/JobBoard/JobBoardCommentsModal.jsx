@@ -3,6 +3,7 @@ import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import RichTextEditor from '@/Components/RichTextEditor';
 import UserAvatar from '@/Components/UserAvatar';
+import { uploadDraftingCommentInlineImage } from '@/lib/uploadDraftingCommentInlineImage';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { ChatBubbleLeftEllipsisIcon } from '@heroicons/react/24/solid';
 import { useForm } from '@inertiajs/react';
@@ -11,7 +12,7 @@ import { useCallback, useEffect, useState } from 'react';
 function CommentBody({ html }) {
     return (
         <div
-            className="rich-text-content text-sm text-[#323338] dark:text-slate-200 [&_a]:text-[#0073ea] [&_a]:underline dark:[&_a]:text-[#1890ff] [&_blockquote]:border-l-2 [&_blockquote]:border-[#e6e9ef] [&_blockquote]:pl-3 [&_blockquote]:text-[#676879] dark:[&_blockquote]:border-slate-600 dark:[&_blockquote]:text-slate-400 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:text-sm [&_h3]:font-semibold [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5"
+            className="rich-text-content text-sm text-[#323338] dark:text-slate-200 [&_a]:text-[#0073ea] [&_a]:underline dark:[&_a]:text-[#1890ff] [&_blockquote]:border-l-2 [&_blockquote]:border-[#e6e9ef] [&_blockquote]:pl-3 [&_blockquote]:text-[#676879] dark:[&_blockquote]:border-slate-600 dark:[&_blockquote]:text-slate-400 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:text-sm [&_h3]:font-semibold [&_img]:my-3 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-md [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5"
             dangerouslySetInnerHTML={{ __html: html }}
         />
     );
@@ -192,6 +193,8 @@ export default function JobBoardCommentsModal({
                         value={form.data.body}
                         onChange={(html) => form.setData('body', html)}
                         disabled={form.processing}
+                        allowImages
+                        uploadImage={uploadDraftingCommentInlineImage}
                         placeholder="Write a comment…"
                     />
                     <InputError message={form.errors.body} />

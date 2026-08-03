@@ -209,7 +209,7 @@ export default function TableSearchToolbar({
                             name={liveSearch ? 'job-board-q' : 'search'}
                             value={searchValue}
                             onChange={handleSearchChange}
-                            placeholder="Name or status…"
+                            placeholder="Search"
                             autoComplete={liveSearch ? 'one-time-code' : 'off'}
                             autoCorrect="off"
                             autoCapitalize="off"

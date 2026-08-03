@@ -66,20 +66,51 @@ class DraftingRequestBoardService
             $q->where('your_name', 'like', '%'.$search.'%')
                 ->orWhere('company_name', 'like', '%'.$search.'%')
                 ->orWhere('email', 'like', '%'.$search.'%')
+                ->orWhere('phone', 'like', '%'.$search.'%')
                 ->orWhere('site_address', 'like', '%'.$search.'%')
                 ->orWhere('site_owner_name', 'like', '%'.$search.'%')
-                ->orWhere('lead_number', 'like', '%'.$search.'%');
+                ->orWhere('lead_number', 'like', '%'.$search.'%')
+                ->orWhere('council_shire', 'like', '%'.$search.'%');
 
-            if ($digits !== '' && $digits !== $search) {
-                $q->orWhere('lead_number', 'like', '%'.$digits.'%');
+            if ($digits !== '') {
+                $q->orWhere('lead_number', 'like', '%'.$digits.'%')
+                    ->orWhere('phone', 'like', '%'.$digits.'%');
+
+                if (ctype_digit($digits)) {
+                    $q->orWhere('id', (int) $digits);
+                }
             }
 
             if ($statusKeys !== []) {
                 $q->orWhereIn('status', $statusKeys);
             }
 
+            $q->orWhereHas('client', function ($clientQuery) use ($search) {
+                $clientQuery->where('name', 'like', '%'.$search.'%');
+            });
+
+            $q->orWhereHas('storeyLevel', function ($storeyQuery) use ($search) {
+                $storeyQuery->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('code', 'like', '%'.$search.'%');
+            });
+
             $q->orWhereHas('revisions', function ($revisionQuery) use ($search) {
-                $revisionQuery->where('code', 'like', '%'.$search.'%');
+                $revisionQuery->where('code', 'like', '%'.$search.'%')
+                    ->orWhere('drafter_initials', 'like', '%'.$search.'%')
+                    ->orWhere('checker_initials', 'like', '%'.$search.'%')
+                    ->orWhereHas('drafter', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', '%'.$search.'%')
+                            ->orWhere('initials', 'like', '%'.$search.'%');
+                    })
+                    ->orWhereHas('checker', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', '%'.$search.'%')
+                            ->orWhere('initials', 'like', '%'.$search.'%');
+                    });
+            });
+
+            $q->orWhereHas('assignments.user', function ($userQuery) use ($search) {
+                $userQuery->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('initials', 'like', '%'.$search.'%');
             });
         });
     }

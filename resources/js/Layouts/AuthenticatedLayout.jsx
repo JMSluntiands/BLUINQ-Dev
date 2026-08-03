@@ -1,5 +1,6 @@
 import AppLogo from '@/Components/AppLogo';
 import Dropdown from '@/Components/Dropdown';
+import GlobalSearch from '@/Components/GlobalSearch';
 import ThemeToggle from '@/Components/ThemeToggle';
 import UserAvatar from '@/Components/UserAvatar';
 import { isAnyWorkflowRoute } from '@/config/workflowSettingsModules';
@@ -723,17 +724,19 @@ export default function AuthenticatedLayout({ header, children }) {
 
             {/* Main: navbar + content */}
             <div className="flex min-h-screen min-w-0 flex-col lg:pl-64">
-                <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b border-slate-200 bg-white px-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:px-6">
+                <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:gap-4 sm:px-6">
                     <button
                         type="button"
-                        className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 lg:hidden"
+                        className="shrink-0 rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 lg:hidden"
                         onClick={() => setSidebarOpen(true)}
                         aria-label="Open sidebar"
                     >
                         <Bars3Icon className="h-6 w-6" aria-hidden />
                     </button>
 
-                    <div className="ml-auto flex items-center gap-2">
+                    <GlobalSearch />
+
+                    <div className="flex shrink-0 items-center gap-2">
                         <ThemeToggle />
                         <Dropdown>
                             <Dropdown.Trigger>

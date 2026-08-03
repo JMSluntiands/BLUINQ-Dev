@@ -693,6 +693,12 @@ function JobBoardTableBody({
                 const checkingSlots = job.checking ?? [];
                 const revisions = job.revisions ?? [];
                 const isExpanded = expandedIds.has(job.id);
+                const revisionNo =
+                    !isMasterlist &&
+                    job.latest_revision &&
+                    job.latest_revision !== '—'
+                        ? job.latest_revision
+                        : job.job_no;
                 const rowTone = job.is_priority
                     ? 'bg-amber-50/70 dark:bg-[#2a1f2e]'
                     : rowIndex % 2 === 1
@@ -772,11 +778,11 @@ function JobBoardTableBody({
                                         href={getJobHref(job)}
                                         className="font-semibold text-[#0073ea] transition hover:text-[#0060c4] hover:underline dark:text-[#1890ff] dark:hover:text-[#1478e0]"
                                     >
-                                        {job.job_no}
+                                        {revisionNo}
                                     </Link>
                                 ) : (
                                     <span className="text-[#0073ea] dark:text-[#1890ff]">
-                                        {job.job_no}
+                                        {revisionNo}
                                     </span>
                                 )}
                             </td>

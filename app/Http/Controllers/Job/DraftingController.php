@@ -54,7 +54,7 @@ class DraftingController extends Controller
         $query = $this->baseListQuery($request)
             ->active();
 
-        $this->applySearch($query, $search);
+        $this->board->applySearch($query, $search);
 
         return Inertia::render('Job/Drafting', [
             'draftingRequests' => $query
@@ -77,7 +77,7 @@ class DraftingController extends Controller
             ->archived()
             ->orderByDesc('archived_at');
 
-        $this->applySearch($query, $search);
+        $this->board->applySearch($query, $search);
 
         return Inertia::render('Job/Drafting/Archive', [
             'draftingRequests' => $query
@@ -1087,24 +1087,6 @@ class DraftingController extends Controller
             ->apm()
             ->orderByDesc('requested_at')
             ->orderByDesc('id');
-    }
-
-    /**
-     * @param  \Illuminate\Database\Eloquent\Builder<DraftingRequest>  $query
-     */
-    private function applySearch($query, string $search): void
-    {
-        if ($search === '') {
-            return;
-        }
-
-        $query->where(function ($q) use ($search) {
-            $q->where('your_name', 'like', '%'.$search.'%')
-                ->orWhere('company_name', 'like', '%'.$search.'%')
-                ->orWhere('email', 'like', '%'.$search.'%')
-                ->orWhere('site_address', 'like', '%'.$search.'%')
-                ->orWhere('site_owner_name', 'like', '%'.$search.'%');
-        });
     }
 
     /**
