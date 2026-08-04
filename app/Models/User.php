@@ -150,7 +150,13 @@ class User extends Authenticatable
 
     public function badgeInitials(): string
     {
-        $custom = trim((string) ($this->initials ?? ''));
+        if (! array_key_exists('initials', $this->attributes)) {
+            $this->attributes['initials'] = static::query()
+                ->whereKey($this->getKey())
+                ->value('initials');
+        }
+
+        $custom = trim((string) ($this->attributes['initials'] ?? ''));
 
         if ($custom !== '') {
             return mb_strtoupper($custom);
@@ -171,6 +177,33 @@ class User extends Authenticatable
         }
 
         return mb_strtoupper(mb_substr($name, 0, min(3, mb_strlen($name))));
+    }
+
+    /**
+     * Keep revision drafter/checker snapshots aligned with this user's badge.
+     */
+    public function syncLinkedDraftingInitials(): void
+    {
+        $badge = $this->badgeInitials();
+
+        DraftingRequestRevision::query()
+            ->where('drafter_user_id', $this->id)
+            ->update(['drafter_initials' => $badge]);
+
+        DraftingRequestRevision::query()
+            ->where('checker_user_id', $this->id)
+            ->update(['checker_initials' => $badge]);
+    }
+
+    protected static function booted(): void
+    {
+        static::saved(function (User $user): void {
+            if (! $user->wasChanged(['initials', 'name'])) {
+                return;
+            }
+
+            $user->syncLinkedDraftingInitials();
+        });
     }
 
     /**

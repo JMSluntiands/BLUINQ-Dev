@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
-use App\Models\DraftingRequestRevision;
 use App\Models\PasswordChangeRequest;
 use App\Services\WeeklyTimesheetService;
 use Carbon\Carbon;
@@ -65,21 +64,7 @@ class ProfileController extends Controller
             $user->email_verified_at = null;
         }
 
-        $initialsChanged = $user->isDirty('initials') || $user->isDirty('name');
-
         $user->save();
-
-        if ($initialsChanged) {
-            $badge = $user->badgeInitials();
-
-            DraftingRequestRevision::query()
-                ->where('drafter_user_id', $user->id)
-                ->update(['drafter_initials' => $badge]);
-
-            DraftingRequestRevision::query()
-                ->where('checker_user_id', $user->id)
-                ->update(['checker_initials' => $badge]);
-        }
 
         return Redirect::route('profile.edit');
     }

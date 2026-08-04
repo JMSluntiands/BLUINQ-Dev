@@ -88,6 +88,57 @@ class ApmRevisionSyncTest extends TestCase
         $this->assertNotNull($revision->drafter_initials);
     }
 
+    public function test_changing_user_initials_updates_revision_snapshots_and_board_badges(): void
+    {
+        $admin = $this->adminUser();
+        $drafter = User::factory()->create([
+            'role_id' => Role::query()->where('slug', 'admin')->value('id'),
+            'name' => 'Alex Drafter',
+            'initials' => 'AD',
+        ]);
+        [$storeyLevel, $category] = $this->seedLookups();
+        $job = $this->createApmJob($admin, $storeyLevel, $category);
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $job->id,
+            'user_id' => $admin->id,
+            'code' => $job->jobNumber().'-01',
+            'log_date' => now()->toDateString(),
+            'category' => $category->code,
+            'status' => DraftingRequest::STATUS_NEW,
+            'drafter_user_id' => $drafter->id,
+            'drafter_initials' => 'AD',
+            'drafting_hours' => 2,
+        ]);
+
+        DraftingRequestAssignment::query()->create([
+            'drafting_request_id' => $job->id,
+            'role' => DraftingRequestAssignment::ROLE_DRAFTING,
+            'slot' => 0,
+            'user_id' => $drafter->id,
+            'hours' => 2,
+        ]);
+
+        $drafter->forceFill(['initials' => 'AC'])->save();
+
+        $revision = DraftingRequestRevision::query()
+            ->where('drafting_request_id', $job->id)
+            ->first();
+
+        $this->assertSame('AC', $revision?->drafter_initials);
+        $this->assertSame('AC', $revision?->resolvedDrafterInitials());
+
+        $job->load([
+            'assignments.user:id,name,initials',
+            'revisions.drafter:id,name,initials',
+            'revisions.checker:id,name,initials',
+        ]);
+
+        $row = app(\App\Services\DraftingRequestBoardService::class)->formatBoardRow($job);
+
+        $this->assertSame('AC', $row['drafting'][0]['initials'] ?? null);
+    }
+
     public function test_board_assign_creates_primary_revision_when_missing(): void
     {
         $user = $this->adminUser();
