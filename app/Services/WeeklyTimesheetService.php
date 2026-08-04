@@ -233,11 +233,15 @@ class WeeklyTimesheetService
      */
     public function activityProjectsForUser(User $user): array
     {
-        return $this->activityProjectQueryForUser($user)
-            ->with('revisions:id,drafting_request_id,code,log_date')
+        return $this->activityProjectQuery()
+            ->with([
+                'revisions' => fn ($query) => $query
+                    ->orderByDesc('log_date')
+                    ->orderByDesc('id')
+                    ->select(['id', 'drafting_request_id', 'code', 'log_date']),
+            ])
             ->orderByDesc('requested_at')
             ->orderByDesc('id')
-            ->limit(200)
             ->get(['id', 'site_address', 'requested_at', 'created_at', 'lead_number'])
             ->map(function (DraftingRequest $row) {
                 $revisionCode = trim((string) ($row->revisions->first()?->code ?? ''));
@@ -364,59 +368,25 @@ class WeeklyTimesheetService
     }
 
     /**
-     * @return list<string>
-     */
-    private function activityProjectStatuses(): array
-    {
-        return [
-            DraftingRequest::STATUS_NEW,
-            DraftingRequest::STATUS_WIP,
-            DraftingRequest::STATUS_ASSIGNED,
-            DraftingRequest::STATUS_DESIGN_WIP,
-            DraftingRequest::STATUS_DRAFTING_WIP,
-            DraftingRequest::STATUS_FOR_CHECKING,
-            DraftingRequest::STATUS_ON_HOLD,
-            DraftingRequest::STATUS_QUERY,
-        ];
-    }
-
-    private function canSeeAllActivityProjects(User $user): bool
-    {
-        return $user->isAdmin() || $user->role?->slug === 'project-manager';
-    }
-
-    /**
+     * Active masterlist + APM jobs available in the clock / dashboard project list.
+     *
      * @return \Illuminate\Database\Eloquent\Builder<DraftingRequest>
      */
-    private function activityProjectQueryForUser(User $user)
+    private function activityProjectQuery()
     {
         return DraftingRequest::query()
             ->active()
             ->reviewAccepted()
-            ->apm()
-            ->whereIn('status', $this->activityProjectStatuses())
-            ->when(
-                ! $this->canSeeAllActivityProjects($user),
-                fn ($query) => $query->where(function ($inner) use ($user) {
-                    $inner
-                        ->where('user_id', $user->id)
-                        ->orWhereHas(
-                            'assignments',
-                            fn ($assignment) => $assignment->where('user_id', $user->id),
-                        )
-                        ->orWhereHas(
-                            'revisions',
-                            fn ($revision) => $revision
-                                ->where('drafter_user_id', $user->id)
-                                ->orWhere('checker_user_id', $user->id),
-                        );
-                }),
-            );
+            ->whereIn('workflow_stage', [
+                DraftingRequest::STAGE_MASTERLIST,
+                DraftingRequest::STAGE_APM,
+            ])
+            ->where('status', '!=', DraftingRequest::STATUS_CANCELLED);
     }
 
     private function findActivityProject(User $user, int $projectId): ?DraftingRequest
     {
-        return $this->activityProjectQueryForUser($user)
+        return $this->activityProjectQuery()
             ->whereKey($projectId)
             ->first();
     }
