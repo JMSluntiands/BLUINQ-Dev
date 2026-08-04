@@ -319,10 +319,13 @@ class DraftingRequestBoardService
 
         $counts = [
             'new' => 0,
+            'assigned' => 0,
             'design_wip' => 0,
             'drafting_wip' => 0,
             'for_checking' => 0,
+            'query' => 0,
             'submitted' => 0,
+            'on_hold' => 0,
             'cancelled' => 0,
         ];
 
@@ -532,11 +535,7 @@ class DraftingRequestBoardService
             return false;
         }
 
-        if ($user->isAdmin()) {
-            return true;
-        }
-
-        return $row->user_id === $user->id;
+        return $user->hasPermission('job.list.edit');
     }
 
     /**
@@ -1012,6 +1011,11 @@ class DraftingRequestBoardService
                 'color' => '#94a3b8',
             ],
             [
+                'status' => 'Assigned',
+                'count' => $counts['assigned'] ?? 0,
+                'color' => '#2563eb',
+            ],
+            [
                 'status' => 'Design WIP',
                 'count' => $counts['design_wip'] ?? 0,
                 'color' => '#c026d3',
@@ -1027,9 +1031,19 @@ class DraftingRequestBoardService
                 'color' => '#06b6d4',
             ],
             [
+                'status' => 'Query',
+                'count' => $counts['query'] ?? 0,
+                'color' => '#f59e0b',
+            ],
+            [
                 'status' => 'Submitted',
                 'count' => $counts['submitted'] ?? 0,
                 'color' => '#10b981',
+            ],
+            [
+                'status' => 'On Hold',
+                'count' => $counts['on_hold'] ?? 0,
+                'color' => '#7c3aed',
             ],
             [
                 'status' => 'Cancelled',
@@ -1042,14 +1056,14 @@ class DraftingRequestBoardService
     public function mapBoardStatus(?string $status): string
     {
         return match ($status) {
-            DraftingRequest::STATUS_DESIGN_WIP,
-            DraftingRequest::STATUS_ASSIGNED,
-            DraftingRequest::STATUS_ON_HOLD,
-            DraftingRequest::STATUS_QUERY => 'design_wip',
+            DraftingRequest::STATUS_ASSIGNED => 'assigned',
+            DraftingRequest::STATUS_DESIGN_WIP => 'design_wip',
             DraftingRequest::STATUS_DRAFTING_WIP,
             DraftingRequest::STATUS_WIP => 'drafting_wip',
             DraftingRequest::STATUS_FOR_CHECKING => 'for_checking',
+            DraftingRequest::STATUS_QUERY => 'query',
             DraftingRequest::STATUS_SUBMITTED => 'submitted',
+            DraftingRequest::STATUS_ON_HOLD => 'on_hold',
             DraftingRequest::STATUS_CANCELLED => 'cancelled',
             DraftingRequest::STATUS_NEW => 'new',
             default => 'new',
@@ -1060,11 +1074,14 @@ class DraftingRequestBoardService
     {
         return match ($boardStatus) {
             'new' => 'New',
+            'assigned' => 'Assigned',
             'design_wip' => 'Design WIP',
             'drafting_wip', 'wip' => 'Drafting WIP',
             'for_checking' => 'For Checking',
+            'query' => 'Query',
             'submitted' => 'Submitted',
-            'cancelled', 'on_hold' => 'Cancelled',
+            'on_hold' => 'On Hold',
+            'cancelled' => 'Cancelled',
             default => $fallback,
         };
     }

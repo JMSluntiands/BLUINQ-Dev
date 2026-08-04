@@ -36,10 +36,13 @@ const DRAFTER_SERIES = [
 
 const EMPTY_JOB_STATUS_DATA = [
     { status: 'New', count: 0, color: '#94a3b8' },
+    { status: 'Assigned', count: 0, color: '#2563eb' },
     { status: 'Design WIP', count: 0, color: '#c026d3' },
     { status: 'Drafting WIP', count: 0, color: '#f87171' },
     { status: 'For Checking', count: 0, color: '#06b6d4' },
+    { status: 'Query', count: 0, color: '#f59e0b' },
     { status: 'Submitted', count: 0, color: '#10b981' },
+    { status: 'On Hold', count: 0, color: '#7c3aed' },
     { status: 'Cancelled', count: 0, color: '#f43f5e' },
 ];
 

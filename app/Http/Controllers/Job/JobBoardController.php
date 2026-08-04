@@ -475,9 +475,7 @@ class JobBoardController extends Controller
 
     public function togglePriority(Request $request, DraftingRequest $draftingRequest): RedirectResponse
     {
-        $user = $request->user();
-
-        if ($user !== null && ! $user->isAdmin() && $draftingRequest->user_id !== $user->id) {
+        if (! $this->board->canAssignStaff($request, $draftingRequest)) {
             abort(403);
         }
 

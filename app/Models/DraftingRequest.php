@@ -64,10 +64,13 @@ class DraftingRequest extends Model
 
         return [
             self::STATUS_NEW => 'New',
+            self::STATUS_ASSIGNED => 'Assigned',
             self::STATUS_DESIGN_WIP => 'Design WIP',
             self::STATUS_DRAFTING_WIP => 'Drafting WIP',
             self::STATUS_FOR_CHECKING => 'For Checking',
+            self::STATUS_QUERY => 'Query',
             self::STATUS_SUBMITTED => 'Submitted',
+            self::STATUS_ON_HOLD => 'On Hold',
             self::STATUS_CANCELLED => 'Cancelled',
         ];
     }
