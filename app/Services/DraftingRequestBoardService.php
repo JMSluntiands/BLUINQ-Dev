@@ -283,6 +283,9 @@ class DraftingRequestBoardService
             'total_hours' => $totalHours,
             'files_count' => $row->files_count,
             'area' => $area,
+            'area_sqm' => $row->max_building_area_sqm !== null
+                ? rtrim(rtrim((string) $row->max_building_area_sqm, '0'), '.')
+                : null,
             'date_out' => $row->date_out?->format('Y-m-d'),
             'date_out_label' => $row->date_out?->format('M j') ?? '—',
             'status' => $actualStatus,

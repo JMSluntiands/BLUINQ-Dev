@@ -694,6 +694,12 @@ class JobBoardController extends Controller
             ]);
         }
 
+        if (array_key_exists('max_building_area_sqm', $validated)) {
+            $draftingRequest->update([
+                'max_building_area_sqm' => $validated['max_building_area_sqm'],
+            ]);
+        }
+
         return back();
     }
 }

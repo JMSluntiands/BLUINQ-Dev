@@ -51,6 +51,7 @@ const CHECKING_SLOTS = 1;
  *   checking: (StaffAssignment | null)[];
  *   total_hours?: number | null;
  *   area?: string | null;
+ *   area_sqm?: string | null;
  *   date_out?: string | null;
  *   date_out_label?: string | null;
  *   status: keyof typeof JOB_STATUS_LABELS;
@@ -267,6 +268,115 @@ function EditableVoHours({ job, disabled = false }) {
                             onChange={(event) => setValue(event.target.value)}
                             className="mt-1 block w-full"
                             placeholder="e.g. 2.5"
+                            disabled={busy}
+                            autoFocus
+                        />
+                    </div>
+
+                    <div className="mt-6 flex flex-wrap justify-end gap-2">
+                        <SecondaryButton
+                            type="button"
+                            onClick={close}
+                            disabled={busy}
+                            className="rounded-lg normal-case tracking-normal"
+                        >
+                            Cancel
+                        </SecondaryButton>
+                        <PrimaryButton
+                            loading={busy}
+                            className="rounded-lg normal-case tracking-normal !bg-[#0073ea] hover:!bg-[#0060c4]"
+                        >
+                            Save
+                        </PrimaryButton>
+                    </div>
+                </form>
+            </Modal>
+        </>
+    );
+}
+
+function EditableArea({ job, disabled = false }) {
+    const [open, setOpen] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [value, setValue] = useState(job.area_sqm ?? '');
+    const display = job.area ?? '—';
+
+    useEffect(() => {
+        if (open) {
+            setValue(job.area_sqm ?? '');
+        }
+    }, [open, job.area_sqm]);
+
+    if (disabled) {
+        return (
+            <span className="whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400">
+                {display}
+            </span>
+        );
+    }
+
+    const close = () => {
+        if (busy) {
+            return;
+        }
+        setOpen(false);
+        setValue(job.area_sqm ?? '');
+    };
+
+    const save = (event) => {
+        event.preventDefault();
+        const next = String(value).trim();
+        setBusy(true);
+        router.patch(
+            route('job.drafting.board.update', job.id),
+            { max_building_area_sqm: next === '' ? null : next },
+            {
+                preserveScroll: true,
+                onSuccess: () => setOpen(false),
+                onFinish: () => setBusy(false),
+            },
+        );
+    };
+
+    return (
+        <>
+            <div className="flex items-center gap-1.5">
+                <span className="whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400">
+                    {display}
+                </span>
+                <button
+                    type="button"
+                    onClick={() => setOpen(true)}
+                    className="text-[10px] font-semibold text-[#0073ea] underline underline-offset-2 hover:text-[#0060c4] dark:text-[#60a5fa]"
+                >
+                    Edit
+                </button>
+            </div>
+
+            <Modal show={open} onClose={close} maxWidth="sm">
+                <form onSubmit={save} className="p-6">
+                    <h2 className="text-lg font-semibold text-[#323338] dark:text-white">
+                        Edit area
+                    </h2>
+                    <p className="mt-1 text-sm text-[#676879] dark:text-slate-400">
+                        {job.job_no}
+                        {job.job ? ` — ${job.job}` : ''}
+                    </p>
+
+                    <div className="mt-5">
+                        <InputLabel
+                            htmlFor={`area-sqm-${job.id}`}
+                            value="Building area (m²)"
+                        />
+                        <TextInput
+                            id={`area-sqm-${job.id}`}
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={value}
+                            onChange={(event) => setValue(event.target.value)}
+                            className="mt-1 block w-full"
+                            placeholder="e.g. 276.48"
                             disabled={busy}
                             autoFocus
                         />
@@ -926,13 +1036,11 @@ function JobBoardTableBody({
                                             ? `${job.total_hours} h`
                                             : '—'}
                                     </td>
-                                    <td
-                                        className={
-                                            tdClass +
-                                            ' whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400'
-                                        }
-                                    >
-                                        {job.area ?? '—'}
+                                    <td className={tdClass}>
+                                        <EditableArea
+                                            job={job}
+                                            disabled={!job.can_assign}
+                                        />
                                     </td>
                                     <td className={tdClass}>
                                         <EditableDateOut

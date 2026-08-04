@@ -15,7 +15,7 @@ class UpdateDraftingRequestBoardFieldsRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        foreach (['date_out', 'start_date', 'date_in', 'eta', 'vo_hours'] as $key) {
+        foreach (['date_out', 'start_date', 'date_in', 'eta', 'vo_hours', 'max_building_area_sqm'] as $key) {
             if ($this->input($key) === '') {
                 $this->merge([$key => null]);
             }
@@ -34,6 +34,7 @@ class UpdateDraftingRequestBoardFieldsRequest extends FormRequest
             'date_in' => ['sometimes', 'nullable', 'date'],
             'eta' => ['sometimes', 'nullable', 'date'],
             'vo_hours' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:9999.99'],
+            'max_building_area_sqm' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:999999.99'],
         ];
     }
 }
