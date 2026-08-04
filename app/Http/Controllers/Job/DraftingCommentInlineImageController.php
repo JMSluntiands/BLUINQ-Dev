@@ -20,7 +20,10 @@ class DraftingCommentInlineImageController extends Controller
         $filename = basename($path);
 
         return response()->json([
-            'url' => route('job.drafting.comments.inline-image.show', ['filename' => $filename]),
+            'url' => \App\Support\AnnouncementHtml::relativeInlineImageUrl(
+                'job.drafting.comments.inline-image.show',
+                $filename,
+            ),
         ]);
     }
 

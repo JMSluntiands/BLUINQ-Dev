@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreAnnouncementRequest;
 use App\Http\Requests\UpdateAnnouncementRequest;
 use App\Models\Announcement;
+use App\Support\AnnouncementHtml;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -164,7 +165,7 @@ class AnnouncementController extends Controller
             'announcement' => [
                 'id' => $announcement->id,
                 'title' => $announcement->title,
-                'description' => $announcement->description,
+                'description' => AnnouncementHtml::forDisplay($announcement->description),
                 'image_url' => $announcement->image_url,
             ],
             'listFilters' => $this->redirectQuery($request),
@@ -290,7 +291,7 @@ class AnnouncementController extends Controller
         $data = [
             'id' => $announcement->id,
             'title' => $announcement->title,
-            'description' => $announcement->description,
+            'description' => AnnouncementHtml::forDisplay($announcement->description),
             'image_url' => $announcement->image_url,
             'excerpt' => Str::limit(trim(strip_tags($announcement->description)), 140),
             'published_at' => $publishedAt?->toIso8601String(),

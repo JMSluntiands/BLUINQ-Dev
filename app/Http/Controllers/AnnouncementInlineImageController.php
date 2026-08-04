@@ -19,7 +19,10 @@ class AnnouncementInlineImageController extends Controller
         $filename = basename($path);
 
         return response()->json([
-            'url' => route('announcements.inline-image.show', ['filename' => $filename]),
+            'url' => \App\Support\AnnouncementHtml::relativeInlineImageUrl(
+                'announcements.inline-image.show',
+                $filename,
+            ),
         ]);
     }
 
