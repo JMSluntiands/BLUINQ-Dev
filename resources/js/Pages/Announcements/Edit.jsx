@@ -60,19 +60,19 @@ export default function Edit({ announcement, listFilters = {} }) {
     const submit = (e) => {
         e.preventDefault();
 
-        form
-            .transform((data) => {
-                const payload = { ...data };
-                if (!(payload.image instanceof File)) {
-                    delete payload.image;
-                }
+        form.transform((data) => {
+            const payload = { ...data };
+            if (!(payload.image instanceof File)) {
+                delete payload.image;
+            }
 
-                return payload;
-            })
-            .post(route('announcements.update', announcement.id) + listQs, {
-                forceFormData: true,
-                onFinish: () => form.transform((data) => data),
-            });
+            return payload;
+        });
+
+        form.post(route('announcements.update', announcement.id) + listQs, {
+            forceFormData: true,
+            onFinish: () => form.transform((data) => data),
+        });
     };
 
     return (
