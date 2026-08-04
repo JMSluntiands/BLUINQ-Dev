@@ -14,7 +14,7 @@ class DraftingJobShowService
     public function revisionsFor(DraftingRequest $draftingRequest): array
     {
         return $draftingRequest->revisions()
-            ->with(['drafter:id,name', 'checker:id,name'])
+            ->with(['drafter:id,name,initials', 'checker:id,name,initials'])
             ->get()
             ->map(function (DraftingRequestRevision $revision) {
                 $status = $revision->status;
@@ -26,12 +26,10 @@ class DraftingJobShowService
                 'link' => $revision->link,
                 'log_date' => $revision->log_date?->format('d M Y'),
                 'category' => $revision->category,
-                'drafter_initials' => $revision->drafter_initials
-                    ?? $revision->drafter?->badgeInitials(),
+                'drafter_initials' => $revision->resolvedDrafterInitials(),
                 'drafter_name' => $revision->drafter?->name,
                 'drafter_user_id' => $revision->drafter_user_id,
-                'checker_initials' => $revision->checker_initials
-                    ?? $revision->checker?->badgeInitials(),
+                'checker_initials' => $revision->resolvedCheckerInitials(),
                 'checker_name' => $revision->checker?->name,
                 'checker_user_id' => $revision->checker_user_id,
                 'log_date_value' => $revision->log_date?->format('Y-m-d'),

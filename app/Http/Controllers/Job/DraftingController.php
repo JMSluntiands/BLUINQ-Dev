@@ -127,7 +127,7 @@ class DraftingController extends Controller
             'user:id,name,email',
             'comments' => fn ($query) => $query
                 ->with([
-                    'user:id,name,profile_image',
+                    'user:id,name,initials,profile_image',
                     'revision:id,drafting_request_id,code',
                 ])
                 ->orderBy('created_at'),
@@ -294,7 +294,7 @@ class DraftingController extends Controller
             'drafterUsers' => User::query()
                 ->active()
                 ->orderBy('name')
-                ->get(['id', 'name'])
+                ->get(['id', 'name', 'initials'])
                 ->map(fn (User $u) => [
                     'id' => $u->id,
                     'name' => $u->name,
@@ -922,7 +922,7 @@ class DraftingController extends Controller
         $draftingRequest->load([
             'comments' => fn ($query) => $query
                 ->with([
-                    'user:id,name,profile_image',
+                    'user:id,name,initials,profile_image',
                     'revision:id,drafting_request_id,code',
                 ])
                 ->where('kind', DraftingRequestComment::KIND_COMMENT)
@@ -1433,6 +1433,7 @@ class DraftingController extends Controller
             'id' => $comment->id,
             'body' => $comment->body,
             'author_name' => $comment->user?->name ?? 'Unknown',
+            'author_initials' => $comment->user?->badgeInitials(),
             'author_profile_image_url' => $comment->user?->profile_image_url,
             'created_at' => $comment->created_at?->timezone($tz)->format('d M Y, h:i A'),
             'is_mine' => $comment->user_id === auth()->id(),
@@ -1448,7 +1449,7 @@ class DraftingController extends Controller
     {
         return DraftingRequestActivity::query()
             ->where('drafting_request_id', $draftingRequest->id)
-            ->with('user:id,name,profile_image')
+            ->with('user:id,name,initials,profile_image')
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->limit(100)
@@ -1489,6 +1490,7 @@ class DraftingController extends Controller
             },
             'description' => $activity->description,
             'user_name' => $activity->user?->name ?? 'Unknown',
+            'user_initials' => $activity->user?->badgeInitials(),
             'user_profile_image_url' => $activity->user?->profile_image_url,
             'created_at' => $activity->created_at?->timezone($tz)->format('d M Y, h:i A'),
             'is_mine' => $activity->user_id === auth()->id(),

@@ -69,4 +69,32 @@ class DraftingRequestRevision extends Model
     {
         return $this->belongsTo(User::class, 'checker_user_id');
     }
+
+    /**
+     * Live user initials when linked; otherwise the stored snapshot.
+     */
+    public function resolvedDrafterInitials(): ?string
+    {
+        if ($this->drafter !== null) {
+            return $this->drafter->badgeInitials();
+        }
+
+        $snapshot = trim((string) ($this->drafter_initials ?? ''));
+
+        return $snapshot !== '' ? mb_strtoupper($snapshot) : null;
+    }
+
+    /**
+     * Live user initials when linked; otherwise the stored snapshot.
+     */
+    public function resolvedCheckerInitials(): ?string
+    {
+        if ($this->checker !== null) {
+            return $this->checker->badgeInitials();
+        }
+
+        $snapshot = trim((string) ($this->checker_initials ?? ''));
+
+        return $snapshot !== '' ? mb_strtoupper($snapshot) : null;
+    }
 }

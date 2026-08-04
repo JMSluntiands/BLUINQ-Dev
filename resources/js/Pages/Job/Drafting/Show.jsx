@@ -583,6 +583,7 @@ function DiscussionPanel({
                                 <UserAvatar
                                     user={{
                                         name: comment.author_name,
+                                        initials: comment.author_initials,
                                         profile_image_url:
                                             comment.author_profile_image_url,
                                     }}

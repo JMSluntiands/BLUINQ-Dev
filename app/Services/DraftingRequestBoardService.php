@@ -28,11 +28,11 @@ class DraftingRequestBoardService
                 'storeyLevel:id,name,code',
                 'serviceEngagings:id,name',
                 'assignments' => fn ($relation) => $relation
-                    ->with('user:id,name')
+                    ->with('user:id,name,initials')
                     ->orderBy('role')
                     ->orderBy('slot'),
                 'revisions' => fn ($relation) => $relation
-                    ->with(['drafter:id,name', 'checker:id,name'])
+                    ->with(['drafter:id,name,initials', 'checker:id,name,initials'])
                     ->orderByDesc('log_date')
                     ->orderByDesc('id'),
             ])
@@ -375,7 +375,7 @@ class DraftingRequestBoardService
 
         if ($requestIds->isNotEmpty()) {
             $revisions = DraftingRequestRevision::query()
-                ->with(['drafter:id,name', 'checker:id,name'])
+                ->with(['drafter:id,name,initials', 'checker:id,name,initials'])
                 ->whereIn('drafting_request_id', $requestIds)
                 ->whereBetween('log_date', [
                     $monthStart->toDateString(),
@@ -391,15 +391,13 @@ class DraftingRequestBoardService
                     continue;
                 }
 
-                $initials = $revision->drafter_initials
-                    ?? $revision->drafter?->badgeInitials()
-                    ?? '?';
+                $initials = $revision->resolvedDrafterInitials() ?? '?';
 
                 $this->incrementLeaderboardEntry($byDrafter, $initials, $seriesKey, $seriesKeys);
             }
 
             $assignments = DraftingRequestAssignment::query()
-                ->with('user:id,name')
+                ->with('user:id,name,initials')
                 ->whereIn('drafting_request_id', $requestIds)
                 ->where('role', DraftingRequestAssignment::ROLE_DRAFTING)
                 ->whereBetween('updated_at', [
@@ -546,7 +544,7 @@ class DraftingRequestBoardService
         return User::query()
             ->active()
             ->orderBy('name')
-            ->get(['id', 'name'])
+            ->get(['id', 'name', 'initials'])
             ->map(fn (User $user) => [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -684,12 +682,8 @@ class DraftingRequestBoardService
                 $byUser[$userId] = [
                     'user_id' => $userId,
                     'initials' => $useChecker
-                        ? ($revision->checker_initials
-                            ?? $revision->checker?->badgeInitials()
-                            ?? '?')
-                        : ($revision->drafter_initials
-                            ?? $revision->drafter?->badgeInitials()
-                            ?? '?'),
+                        ? ($revision->resolvedCheckerInitials() ?? '?')
+                        : ($revision->resolvedDrafterInitials() ?? '?'),
                     'name' => $useChecker
                         ? $revision->checker?->name
                         : $revision->drafter?->name,
@@ -947,8 +941,7 @@ class DraftingRequestBoardService
                 continue;
             }
 
-            $initials = $revision->drafter_initials
-                ?? $revision->drafter?->badgeInitials();
+            $initials = $revision->resolvedDrafterInitials();
             if ($initials === null || $initials === '' || isset($seenInitials[$initials])) {
                 continue;
             }

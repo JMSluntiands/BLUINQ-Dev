@@ -39,11 +39,11 @@ class MasterlistController extends Controller
                 'crmCategories:id,name,code',
                 'serviceEngagings:id,name',
                 'assignments' => fn ($relation) => $relation
-                    ->with('user:id,name')
+                    ->with('user:id,name,initials')
                     ->orderBy('role')
                     ->orderBy('slot'),
                 'revisions' => fn ($relation) => $relation
-                    ->with(['drafter:id,name', 'checker:id,name'])
+                    ->with(['drafter:id,name,initials', 'checker:id,name,initials'])
                     ->orderByDesc('log_date')
                     ->orderByDesc('id'),
                 'accountEntries' => fn ($relation) => $relation->orderByDesc('id'),
