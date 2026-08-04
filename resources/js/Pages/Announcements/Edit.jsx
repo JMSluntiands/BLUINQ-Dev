@@ -3,6 +3,7 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import RichTextEditor from '@/Components/RichTextEditor';
 import TextInput from '@/Components/TextInput';
+import UploadProgressBar from '@/Components/UploadProgressBar';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { uploadAnnouncementInlineImage } from '@/lib/uploadAnnouncementInlineImage';
 import { PhotoIcon } from '@heroicons/react/24/outline';
@@ -46,6 +47,11 @@ export default function Edit({ announcement, listFilters = {} }) {
     }, [form.data.image]);
 
     const displayImage = imagePreview || announcement.image_url || null;
+
+    const coverUploadPercent =
+        form.processing && form.progress && form.data.image instanceof File
+            ? Math.round(form.progress.percentage ?? 0)
+            : null;
 
     useEffect(() => {
         setCoverBroken(false);
@@ -121,7 +127,14 @@ export default function Edit({ announcement, listFilters = {} }) {
                                     <PhotoIcon className="h-10 w-10 text-slate-400 dark:text-slate-500" />
                                 </div>
                             )}
-                            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-sky-500 hover:text-sky-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-sky-500 dark:hover:text-sky-400">
+                            <label
+                                className={
+                                    'inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-sky-500 hover:text-sky-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-sky-500 dark:hover:text-sky-400 ' +
+                                    (form.processing
+                                        ? 'pointer-events-none opacity-60'
+                                        : '')
+                                }
+                            >
                                 <PhotoIcon className="h-4 w-4" />
                                 {displayImage && !coverBroken
                                     ? 'Change image'
@@ -131,6 +144,7 @@ export default function Edit({ announcement, listFilters = {} }) {
                                     type="file"
                                     accept="image/*"
                                     className="sr-only"
+                                    disabled={form.processing}
                                     onChange={(e) =>
                                         form.setData(
                                             'image',
@@ -139,6 +153,12 @@ export default function Edit({ announcement, listFilters = {} }) {
                                     }
                                 />
                             </label>
+                            {coverUploadPercent !== null ? (
+                                <UploadProgressBar
+                                    percent={coverUploadPercent}
+                                    label="Uploading cover image…"
+                                />
+                            ) : null}
                             <p className="text-xs text-slate-500 dark:text-slate-400">
                                 Optional. JPG, PNG, or GIF up to 4 MB.
                             </p>
@@ -161,6 +181,7 @@ export default function Edit({ announcement, listFilters = {} }) {
                                 placeholder="Write the announcement details…"
                                 allowImages
                                 uploadImage={uploadAnnouncementInlineImage}
+                                disabled={form.processing}
                             />
                         </div>
                         <InputError

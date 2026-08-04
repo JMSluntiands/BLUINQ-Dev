@@ -1,3 +1,4 @@
+import UploadProgressBar from '@/Components/UploadProgressBar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const TOOLBAR_BUTTONS = [
@@ -62,6 +63,7 @@ export default function RichTextEditor({
     const [activeCommands, setActiveCommands] = useState({});
     const [showPlaceholder, setShowPlaceholder] = useState(true);
     const [uploadingImage, setUploadingImage] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
 
     const updateActiveState = useCallback(() => {
         if (!editorRef.current || disabled) {
@@ -194,7 +196,12 @@ export default function RichTextEditor({
 
             if (typeof uploadImage === 'function') {
                 setUploadingImage(true);
-                Promise.resolve(uploadImage(file))
+                setUploadProgress(0);
+                Promise.resolve(
+                    uploadImage(file, (percent) => {
+                        setUploadProgress(percent);
+                    }),
+                )
                     .then((url) => {
                         if (typeof url === 'string' && url.trim() !== '') {
                             insertImageAtCursor(url.trim());
@@ -207,6 +214,7 @@ export default function RichTextEditor({
                     })
                     .finally(() => {
                         setUploadingImage(false);
+                        setUploadProgress(0);
                     });
                 return;
             }
@@ -311,11 +319,19 @@ export default function RichTextEditor({
                                 onMouseDown={(event) => event.preventDefault()}
                                 onClick={() => imageInputRef.current?.click()}
                             >
-                                {uploadingImage ? '…' : 'Image'}
+                                {uploadingImage ? `${uploadProgress || 0}%` : 'Image'}
                             </button>
                         </>
                     ) : null}
                 </div>
+                {uploadingImage ? (
+                    <div className="border-b border-[#e6e9ef] bg-white px-3 py-2 dark:border-[#3b82f6]/30 dark:bg-[#151622]">
+                        <UploadProgressBar
+                            percent={uploadProgress}
+                            label="Uploading image…"
+                        />
+                    </div>
+                ) : null}
                 <div className="relative">
                     {showPlaceholder ? (
                         <p
