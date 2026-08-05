@@ -24,9 +24,6 @@ Route::prefix('v1')->group(function (): void {
 
         Route::middleware(['api.permission:profile.view'])->prefix('profile')->group(function (): void {
             Route::get('/', [ProfileApiController::class, 'show']);
-            Route::match(['put', 'patch'], '/', [ProfileApiController::class, 'update']);
-            Route::match(['put', 'patch'], '/password', [ProfileApiController::class, 'updatePassword']);
-            Route::delete('/', [ProfileApiController::class, 'destroy']);
         });
 
         Route::middleware(['api.permission:settings.building-type.view'])

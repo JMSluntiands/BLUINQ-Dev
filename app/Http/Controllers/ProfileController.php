@@ -2,15 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ProfileUpdateRequest;
-use App\Models\PasswordChangeRequest;
 use App\Services\WeeklyTimesheetService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Redirect;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -21,7 +16,7 @@ class ProfileController extends Controller
     ) {}
 
     /**
-     * Display the user's profile form.
+     * Display the user's profile (read-only; admins edit accounts in Settings).
      */
     public function edit(Request $request): Response
     {
@@ -35,38 +30,9 @@ class ProfileController extends Controller
         return Inertia::render('Profile/Edit', [
             'profile' => $this->profilePayload($user),
             'weeklyTimesheet' => $this->weeklyTimesheet->payloadForUser($user, $weekStart),
-            'passwordChangeRequest' => $this->passwordChangeRequestPayload($user),
             'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => session('status'),
         ]);
-    }
-
-    /**
-     * Update the user's profile information.
-     */
-    public function update(ProfileUpdateRequest $request): RedirectResponse
-    {
-        $user = $request->user();
-        $user->fill($request->safe()->except('profile_image'));
-
-        if ($request->hasFile('profile_image')) {
-            if ($user->profile_image) {
-                Storage::disk('public')->delete($user->profile_image);
-            }
-
-            $user->profile_image = $request->file('profile_image')->store(
-                'profile-images',
-                'public',
-            );
-        }
-
-        if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
-        }
-
-        $user->save();
-
-        return Redirect::route('profile.edit');
     }
 
     /**
@@ -100,28 +66,6 @@ class ProfileController extends Controller
             'profile_image_url' => $user->profile_image_url,
             'role_display_name' => $user->role?->name,
             'email_verified_at' => $user->email_verified_at,
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    private function passwordChangeRequestPayload($user): ?array
-    {
-        $pending = PasswordChangeRequest::query()
-            ->where('user_id', $user->id)
-            ->where('status', PasswordChangeRequest::STATUS_PENDING)
-            ->latest('id')
-            ->first();
-
-        if ($pending === null) {
-            return null;
-        }
-
-        return [
-            'id' => $pending->id,
-            'status' => $pending->status,
-            'requested_at' => $pending->created_at?->timezone(config('app.timezone'))->format('d M Y, h:i A'),
         ];
     }
 }

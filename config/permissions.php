@@ -92,7 +92,6 @@ return [
         'crm.quotes.destroy' => 'dashboard.view',
         'crm.quotes.restore' => 'dashboard.view',
         'profile.edit' => 'profile.view',
-        'profile.update' => 'profile.view',
         'profile.image' => 'profile.view',
         'profile.weekly-timesheet.entries.store' => 'profile.view',
         'profile.weekly-timesheet.hours.update' => 'profile.view',

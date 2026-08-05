@@ -292,6 +292,46 @@ class DraftingRequest extends Model
     }
 
     /**
+     * When the lead number changes, rewrite revision codes that used the old lead prefix.
+     * e.g. 26011-01 / 26011-02 → 27000-01 / 27000-02; bare "26011" → "27000-01".
+     */
+    public function rebaseRevisionCodes(string $previousLead, string $newLead): int
+    {
+        $previousLead = trim($previousLead);
+        $newLead = trim($newLead);
+
+        if ($previousLead === '' || $newLead === '' || $previousLead === $newLead) {
+            return 0;
+        }
+
+        $updated = 0;
+
+        foreach ($this->revisions()->cursor() as $revision) {
+            $code = trim((string) ($revision->code ?? ''));
+            if ($code === '') {
+                continue;
+            }
+
+            $newCode = null;
+
+            if ($code === $previousLead) {
+                $newCode = sprintf('%s-01', $newLead);
+            } elseif (preg_match('/^'.preg_quote($previousLead, '/').'-(\d{2})$/', $code, $match) === 1) {
+                $newCode = sprintf('%s-%s', $newLead, $match[1]);
+            }
+
+            if ($newCode === null || $newCode === $code) {
+                continue;
+            }
+
+            $revision->forceFill(['code' => $newCode])->save();
+            $updated++;
+        }
+
+        return $updated;
+    }
+
+    /**
      * Next revision code for this job (e.g. 26008-02).
      * Bare legacy codes equal to the job number count as -01.
      */

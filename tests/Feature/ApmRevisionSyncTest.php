@@ -351,6 +351,66 @@ class ApmRevisionSyncTest extends TestCase
         $this->assertNotNull($revision->checker_initials);
     }
 
+    public function test_changing_lead_number_rebases_revision_codes(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+        $job = $this->createApmJob($user, $storeyLevel, $category);
+        $job->forceFill([
+            'lead_number' => '26011',
+            'status' => DraftingRequest::STATUS_ASSIGNED,
+        ])->save();
+        $job->crmCategories()->sync([$category->id]);
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $job->id,
+            'user_id' => $user->id,
+            'code' => '26011-01',
+            'log_date' => now()->toDateString(),
+            'category' => $category->code,
+            'status' => DraftingRequest::STATUS_ASSIGNED,
+        ]);
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $job->id,
+            'user_id' => $user->id,
+            'code' => '26011-02',
+            'log_date' => now()->toDateString(),
+            'category' => $category->code,
+            'status' => DraftingRequest::STATUS_ASSIGNED,
+        ]);
+
+        $response = $this->actingAs($user)->from(route('job.drafting.show', $job))->patch(
+            route('job.drafting.update', $job),
+            [
+                'section' => 'job',
+                'lead_number' => '27000',
+                'status' => DraftingRequest::STATUS_ASSIGNED,
+                'storey_level_id' => $storeyLevel->id,
+                'crm_category_ids' => [$category->id],
+                'crm_category_id' => $category->id,
+                'site_address' => $job->site_address,
+                'site_owner_name' => $job->site_owner_name,
+                'ndis_sda' => false,
+                'ceiling_heights' => $job->ceiling_heights,
+                'unit_development_count' => 0,
+            ],
+        );
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect();
+
+        $job->refresh();
+        $this->assertSame('27000', $job->lead_number);
+
+        $codes = DraftingRequestRevision::query()
+            ->where('drafting_request_id', $job->id)
+            ->orderBy('code')
+            ->pluck('code')
+            ->all();
+
+        $this->assertSame(['27000-01', '27000-02'], $codes);
+    }
+
     private function adminUser(): User
     {
         $adminRoleId = Role::query()->where('slug', 'admin')->value('id');

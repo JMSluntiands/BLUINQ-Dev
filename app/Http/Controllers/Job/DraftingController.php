@@ -411,7 +411,18 @@ class DraftingController extends Controller
         $units = $validated['units'] ?? null;
         unset($validated['units']);
 
+        $previousLead = $section === 'job' && array_key_exists('lead_number', $validated)
+            ? $draftingRequest->jobNumber()
+            : null;
+
         $draftingRequest->update($validated);
+
+        if ($previousLead !== null) {
+            $newLead = trim((string) $validated['lead_number']);
+            if ($newLead !== '' && $newLead !== $previousLead) {
+                $draftingRequest->rebaseRevisionCodes($previousLead, $newLead);
+            }
+        }
 
         if ($serviceEngagingIds !== null) {
             $draftingRequest->serviceEngagings()->sync($serviceEngagingIds);

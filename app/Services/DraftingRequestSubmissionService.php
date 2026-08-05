@@ -96,7 +96,18 @@ class DraftingRequestSubmissionService
         $validated = $request->safe()->except(['documents', 'service_engaging_ids', 'sda_type_ids', 'crm_category_ids']);
 
         return DB::transaction(function () use ($request, $draftingRequest, $actor, $validated, $isMasterlist) {
+            $previousLead = array_key_exists('lead_number', $validated)
+                ? $draftingRequest->jobNumber()
+                : null;
+
             $draftingRequest->update($validated);
+
+            if ($previousLead !== null) {
+                $newLead = trim((string) ($validated['lead_number'] ?? ''));
+                if ($newLead !== '' && $newLead !== $previousLead) {
+                    $draftingRequest->rebaseRevisionCodes($previousLead, $newLead);
+                }
+            }
 
             $draftingRequest->serviceEngagings()->sync(
                 $request->validated('service_engaging_ids') ?? [],
