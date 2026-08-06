@@ -92,11 +92,7 @@ export default function Index({ users, filters = {} }) {
                     </ul>
                 )}
 
-                {users?.links?.length > 3 && (
-                    <div className="border-t border-slate-100 px-5 py-4 dark:border-slate-800">
-                        <Pagination links={users.links} />
-                    </div>
-                )}
+                <Pagination pagination={users} />
             </div>
         </AuthenticatedLayout>
     );

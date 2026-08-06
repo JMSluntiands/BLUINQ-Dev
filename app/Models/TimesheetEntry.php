@@ -22,6 +22,8 @@ class TimesheetEntry extends Model
 
     public const TASK_DOWNTIME = 'downtime';
 
+    public const TASK_SA_CLOCK_IN = 'sa_clock_in';
+
     /**
      * Tasks that can be added from Weekly Timesheet "Add task".
      *
@@ -45,6 +47,7 @@ class TimesheetEntry extends Model
         self::TASK_DRAFTING => 'Drafting',
         self::TASK_CHECKING => 'Checking',
         self::TASK_DOWNTIME => 'Downtime',
+        self::TASK_SA_CLOCK_IN => 'SA Clock In',
     ];
 
     /**

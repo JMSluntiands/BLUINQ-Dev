@@ -34,7 +34,7 @@ class UserMilestoneController extends Controller
 
         return Inertia::render('Settings/UserMilestones/Index', [
             'users' => $query
-                ->paginate(15)
+                ->paginate(10)
                 ->withQueryString()
                 ->through(fn (User $user) => [
                     'id' => $user->id,

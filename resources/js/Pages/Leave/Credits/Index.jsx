@@ -359,11 +359,7 @@ export default function Index({ employees, filters = {}, canEdit = false }) {
                     </ul>
                 )}
 
-                {employees?.links?.length > 3 && (
-                    <div className="border-t border-slate-100 px-5 py-4 dark:border-slate-800">
-                        <Pagination links={employees.links} />
-                    </div>
-                )}
+                <Pagination pagination={employees} />
             </div>
 
             {canEdit && addEmployee && (

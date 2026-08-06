@@ -41,7 +41,7 @@ class LeaveCreditsController extends Controller
 
         return Inertia::render('Leave/Credits/Index', [
             'employees' => $query
-                ->paginate(15)
+                ->paginate(10)
                 ->withQueryString()
                 ->through(fn (User $row) => [
                     'id' => $row->id,
