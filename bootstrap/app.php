@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\PersistentStoragePath;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -21,7 +22,7 @@ $isCsrfMismatch = static function (\Throwable $e): bool {
     return $e->getPrevious() instanceof TokenMismatchException;
 };
 
-return Application::configure(basePath: dirname(__DIR__))
+$app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
@@ -123,3 +124,12 @@ return Application::configure(basePath: dirname(__DIR__))
             );
         });
     })->create();
+
+$basePath = dirname(__DIR__);
+$persistentStorage = PersistentStoragePath::resolve($basePath);
+if ($persistentStorage !== null) {
+    $app->useStoragePath($persistentStorage);
+    PersistentStoragePath::ensureDirectories($persistentStorage);
+}
+
+return $app;

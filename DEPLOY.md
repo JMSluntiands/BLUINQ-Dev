@@ -1,47 +1,52 @@
 # Live deploy (keep images)
 
-Uploads live in `storage/app/public/` (logo, profile photos, announcements).
-That folder is **not** in git. Overwriting it on live deletes the images.
+Hostinger Git OAuth **replaces the deploy folder** (`public_html`) on every push.
+Uploads in `storage/` are not in git, so they get wiped. Move storage **outside** `public_html`.
 
-## Never touch on live
+## Hostinger Git OAuth (one-time)
 
-- `storage/app/public/`
-- `public/storage`
-- `.env`
+Do this once on live. After that, normal `develop` deploys will not delete images.
 
-## Safest: git pull on the server
+### A. If you have SSH / Terminal
 
 ```bash
-cd /path/to/bluinq
-php artisan down
-git pull origin develop
-composer install --no-dev --optimize-autoloader
-php artisan migrate --force
-php artisan storage:link
-php artisan up
+cd ~/domains/YOURDOMAIN/public_html
+php artisan bluinq:persist-storage
 ```
 
-`git pull` does not delete live uploads. Do **not** run `git clean`.
+That copies logo, profile photos, announcements, and memo files to:
 
-## FTP / File Manager / zip
+`~/domains/YOURDOMAIN/persistent/storage`
 
-1. On live, zip/download `storage/app/public` first (backup).
-2. From Git Bash on your PC:
+and writes `APP_STORAGE_PATH` to `.env` plus a sidecar file **outside** `public_html`.
 
-   ```bash
-   bash scripts/prepare-deploy.sh
-   ```
+### B. File Manager only
 
-   Output: `dist/bluinq-deploy-YYYYMMDD-HHMM.zip`  
-   (`--no-vendor` if live already has `vendor` and you will run composer there)
+1. Go **up** from `public_html` to the domain folder.
+2. Create `persistent/storage`.
+3. Move (cut) these from `public_html/storage` into `persistent/storage`:
+   - `app/public` (logo, profile-images, announcement-images, …)
+   - `app/private` (drafting memo attachments)
+   - `logs`, `framework` (optional but recommended)
+4. Edit live `.env` and add the real path, for example:
 
-3. Extract **over** the existing live app. Do not delete the live folder first.
-4. Skip overwrite of `storage/app/public` and `.env`.
-5. If the host uses a `public_html` document root, upload `public/build` into that `public` folder only — still leave `storage` alone.
+```
+APP_STORAGE_PATH=/home/u123456789/domains/YOURDOMAIN/persistent/storage
+```
 
-WinSCP / rsync exclude list: `deploy-exclude.txt`
+Find `/home/u…` under hPanel → Advanced → SSH Access, or from File Manager path.
 
-## After deploy
+5. Create a text file **next to** `public_html` named `.bluinq-storage-path` with that same path (one line). This survives even if `.env` is reset.
 
-- Confirm logo + a profile photo still load.
-- If images are gone, restore the `storage/app/public` backup. Do not re-upload your local `storage` folder.
+6. Deploy / reload PHP, then check logo + a profile photo.
+
+## After that: normal Git deploy
+
+Push `develop` as usual. Do **not** put uploads back inside `public_html/storage`.
+
+If images are already gone, restore a backup into `persistent/storage/app/public`, not into `public_html`.
+
+## FTP / zip (not Hostinger Git)
+
+Use `bash scripts/prepare-deploy.sh` and never overwrite `storage/` or `.env`.
+Exclude list: `deploy-exclude.txt`.
