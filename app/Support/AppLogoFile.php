@@ -26,10 +26,10 @@ class AppLogoFile
     public static function directories(): array
     {
         return array_values(array_unique([
+            public_path(),
+            public_path('storage'),
             storage_path('app/public'),
             base_path('storage/app/public'),
-            public_path('storage'),
-            public_path(),
         ]));
     }
 

@@ -130,6 +130,7 @@ $persistentStorage = PersistentStoragePath::resolve($basePath);
 if ($persistentStorage !== null) {
     $app->useStoragePath($persistentStorage);
     PersistentStoragePath::ensureDirectories($persistentStorage);
+    PersistentStoragePath::syncDeployUploads($basePath, $persistentStorage);
 }
 
 return $app;

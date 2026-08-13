@@ -23,6 +23,16 @@ class AppServiceProvider extends ServiceProvider
     {
         Vite::prefetch(concurrency: 3);
 
+        $publicRoot = storage_path('app/public');
+        $privateRoot = storage_path('app/private');
+        config([
+            'filesystems.disks.public.root' => $publicRoot,
+            'filesystems.disks.local.root' => $privateRoot,
+            'filesystems.links' => [
+                public_path('storage') => $publicRoot,
+            ],
+        ]);
+
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
         }
