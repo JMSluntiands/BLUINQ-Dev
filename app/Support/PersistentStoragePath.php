@@ -55,8 +55,14 @@ class PersistentStoragePath
     {
         $normalized = str_replace('\\', '/', rtrim($basePath, "\\/"));
 
-        if (preg_match('#^(.*?)/public_html(?:/.*)?$#', $normalized, $matches) === 1) {
-            return $matches[1].'/persistent/storage';
+        // public_html/dev → public_html/persistent-dev/storage
+        // Stays inside public_html (Hostinger open_basedir) but outside the Git deploy folder.
+        if (preg_match('#^(.*?/public_html)/([^/]+)$#', $normalized, $matches) === 1) {
+            return $matches[1].'/persistent-'.$matches[2].'/storage';
+        }
+
+        if (str_ends_with($normalized, '/public_html')) {
+            return dirname($normalized).'/persistent/storage';
         }
 
         return dirname($basePath).DIRECTORY_SEPARATOR.'persistent'.DIRECTORY_SEPARATOR.'storage';
@@ -82,9 +88,12 @@ class PersistentStoragePath
 
     public static function preferredSidecar(string $basePath): string
     {
-        $candidates = self::sidecarCandidates($basePath);
+        $normalized = str_replace('\\', '/', rtrim($basePath, "\\/"));
+        if (preg_match('#^(.*?/public_html)/([^/]+)$#', $normalized, $matches) === 1) {
+            return str_replace('/', DIRECTORY_SEPARATOR, $matches[1].'/'.self::SIDECAR);
+        }
 
-        return $candidates[count($candidates) - 1];
+        return dirname($basePath).DIRECTORY_SEPARATOR.self::SIDECAR;
     }
 
     public static function ensureDirectories(string $storagePath): void

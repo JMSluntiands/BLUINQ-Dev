@@ -7,6 +7,7 @@ use App\Models\Permission;
 use App\Services\DraftingRequestReviewService;
 use App\Services\LeaveEntitlementService;
 use App\Services\LeaveService;
+use App\Support\AppLogoFile;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -81,34 +82,10 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Prefer /storage/logo.* (symlink or copied file). If missing, use /brand-logo so
-     * shared hosts without php artisan storage:link still show the image.
+     * Prefer a public file, otherwise /brand-logo (shared hosts often block storage:link).
      */
     protected function resolveAppLogoUrl(): ?string
     {
-        $dir = storage_path('app/public');
-        $names = [
-            'logo.png',
-            'logo.jpg',
-            'logo.jpeg',
-            'logo.webp',
-            'logo.svg',
-        ];
-
-        foreach ($names as $name) {
-            $stored = $dir.DIRECTORY_SEPARATOR.$name;
-            if (! is_file($stored)) {
-                continue;
-            }
-
-            $publicPath = public_path('storage'.DIRECTORY_SEPARATOR.$name);
-            if (is_file($publicPath)) {
-                return asset('storage/'.$name);
-            }
-
-            return route('app.brand-logo');
-        }
-
-        return null;
+        return AppLogoFile::url();
     }
 }

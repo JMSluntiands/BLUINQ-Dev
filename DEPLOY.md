@@ -16,7 +16,9 @@ php artisan bluinq:persist-storage
 
 That copies logo, profile photos, announcements, and memo files to:
 
-`~/domains/YOURDOMAIN/persistent/storage`
+`~/domains/YOURDOMAIN/public_html/persistent-dev/storage`
+
+(if the Git folder is `public_html/dev` — stays inside `public_html` so Hostinger can read it)
 
 and writes `APP_STORAGE_PATH` to `.env` plus a sidecar file **outside** `public_html`.
 
