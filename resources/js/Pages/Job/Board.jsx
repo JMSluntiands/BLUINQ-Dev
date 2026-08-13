@@ -19,12 +19,15 @@ export default function JobBoard({
     groupByStatus = false,
     jobListSections = {},
     canReviewPublicRequests = false,
+    canForwardFromMasterlist = false,
+    masterlistCandidates = [],
     pendingRequests = [],
 }) {
     const page = usePage();
     const revisionCode = page.props.flash?.revision_code ?? null;
     const permissions = page.props.auth?.user?.permissions ?? [];
     const canAddRevision = permissions.includes('job.drafting.revision.add');
+    const canOpenAddModal = canForwardFromMasterlist || canAddRevision;
 
     const flashMessages = useMemo(
         () => ({
@@ -37,6 +40,9 @@ export default function JobBoard({
             'masterlist-forwarded':
                 'Project added to Archi Project Management from the masterlist.',
             'drf-revision-added': 'Revision added.',
+            'drf-revision-deleted': 'Revision deleted.',
+            'drf-revision-deleted-returned-to-masterlist':
+                'Revision deleted. Project removed from APM and is available again in Add from masterlist.',
             'board-reopened': revisionCode
                 ? `Project reopened on board with revision ${revisionCode}.`
                 : 'Project reopened on board with a new revision.',
@@ -56,27 +62,15 @@ export default function JobBoard({
 
     const projectOptions = useMemo(
         () =>
-            rows
-                .filter((job) => job.can_add_revision)
-                .map((job) => {
-                    const leadNo = String(job.job_no ?? '').replace(
-                        /-\d{2}$/,
-                        '',
-                    );
-                    const revisionNo =
-                        job.latest_revision && job.latest_revision !== '—'
-                            ? job.latest_revision
-                            : leadNo;
-
-                    return {
-                        id: job.id,
-                        label: `${revisionNo} — ${job.job}`,
-                        job_no: leadNo,
-                        revisions: job.revisions ?? [],
-                        status: job.status,
-                    };
-                }),
-        [rows],
+            (masterlistCandidates ?? []).map((candidate) => ({
+                id: candidate.id,
+                label: candidate.label,
+                job_no: candidate.lead_no ?? '',
+                revisions: [],
+                status: 'new',
+                source: candidate.source ?? 'masterlist',
+            })),
+        [masterlistCandidates],
     );
 
     const reloadBoard = (only = ['jobs']) => {
@@ -127,7 +121,7 @@ export default function JobBoard({
                             {pageDescription}
                         </p>
                     </div>
-                    {canAddRevision && (
+                    {canOpenAddModal && (
                         <button
                             type="button"
                             onClick={() => setShowAddModal(true)}
@@ -147,6 +141,7 @@ export default function JobBoard({
             <DraftingRevisionAddModal
                 show={showAddModal}
                 onClose={() => setShowAddModal(false)}
+                mode="forward"
                 projectOptions={projectOptions}
                 statusOptions={statusOptions}
                 categoryOptions={categoryOptions}
@@ -158,7 +153,7 @@ export default function JobBoard({
                     ziggyRouteName={searchRoute}
                     filters={filters}
                     liveSearch
-                    liveSearchOnly={['jobs', 'filters']}
+                    liveSearchOnly={['jobs', 'filters', 'masterlistCandidates']}
                     onLiveSearchChange={setLiveSearch}
                 />
                 <JobBoardGrid

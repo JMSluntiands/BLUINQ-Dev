@@ -190,22 +190,22 @@ class WorkflowSettingsSeeder extends Seeder
         $this->archiveNamesExcept(ExternalWallConstruction::class, $ewcKeep);
 
         $this->seedCodedLookup(BuildingClass::class, [
-            'Class 1a' => 'Single dwelling or attached dwellings',
-            'Class 1b' => 'Small boarding house/hostel',
-            'Class 2' => 'Apartment buildings',
-            'Class 3' => 'SDA / Transient Buildings',
-            'Class 4' => 'Dwelling within non-residential',
-            'Class 5' => 'Office buildings',
-            'Class 6' => 'Retail and service buildings',
-            'Class 7a' => 'Car parks',
-            'Class 7b' => 'Warehouses and storage',
-            'Class 8' => 'Industrial/factory',
-            'Class 9a' => 'Healthcare buildings',
-            'Class 9b' => 'Assembly buildings',
-            'Class 9c' => 'Aged care buildings',
-            'Class 10a' => 'Shed / Garage / Carport',
-            'Class 10b' => 'Retainings/Pool/Ext. Structures',
-            'Class 10c' => 'Private bushfire shelters',
+            '1a' => 'Single dwelling or attached dwellings',
+            '1b' => 'Small boarding house/hostel',
+            '2' => 'Apartment buildings',
+            '3' => 'SDA / Transient Buildings',
+            '4' => 'Dwelling within non-residential',
+            '5' => 'Office buildings',
+            '6' => 'Retail and service buildings',
+            '7a' => 'Car parks',
+            '7b' => 'Warehouses and storage',
+            '8' => 'Industrial/factory',
+            '9a' => 'Healthcare buildings',
+            '9b' => 'Assembly buildings',
+            '9c' => 'Aged care buildings',
+            '10a' => 'Shed / Garage / Carport',
+            '10b' => 'Retainings/Pool/Ext. Structures',
+            '10c' => 'Private bushfire shelters',
         ]);
         $this->archiveNamesExcept(BuildingClass::class, [
             'Single dwelling or attached dwellings',
@@ -346,8 +346,10 @@ class WorkflowSettingsSeeder extends Seeder
     {
         foreach ($items as $code => $name) {
             $existing = $model::query()
-                ->where(function ($q) use ($code) {
+                ->where(function ($q) use ($code, $name) {
                     $q->where('code', $code)
+                        ->orWhere('name', $name)
+                        ->orWhere('code', 'Class '.$code)
                         ->orWhere(function ($inner) use ($code) {
                             $inner->where(function ($byName) use ($code) {
                                 $byName->whereNull('code')->where('name', $code);

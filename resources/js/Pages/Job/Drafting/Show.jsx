@@ -63,6 +63,9 @@ export default function DraftingShow({
         'drf-files-updated': 'Files updated.',
         'drf-revision-added': 'Revision added.',
         'drf-revision-updated': 'Revision updated.',
+        'drf-revision-deleted': 'Revision deleted.',
+        'drf-revision-deleted-returned-to-masterlist':
+            'Revision deleted. Project removed from APM and is available again in Add from masterlist.',
         'drf-quote-added': 'Quote added.',
         'drf-invoice-added': 'Invoice added.',
         'drf-quote-updated': 'Quote updated.',
@@ -80,6 +83,7 @@ export default function DraftingShow({
         archive = false,
         viewRevision = false,
         addRevision = false,
+        deleteRevision = false,
         viewAccounts = false,
         addAccount = false,
         viewFiles = false,
@@ -108,6 +112,7 @@ export default function DraftingShow({
     const [filesEditPanel, setFilesEditPanel] = useState(null);
     const [revisionModalOpen, setRevisionModalOpen] = useState(false);
     const [editingRevision, setEditingRevision] = useState(null);
+    const [deleteRevisionTarget, setDeleteRevisionTarget] = useState(null);
     const [quoteModalOpen, setQuoteModalOpen] = useState(false);
     const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
     const [editingQuote, setEditingQuote] = useState(null);
@@ -127,6 +132,20 @@ export default function DraftingShow({
         );
         setRestoreOpen(false);
     }, [draftingRequest.id, listQs]);
+
+    const confirmDeleteRevision = useCallback(() => {
+        if (!deleteRevisionTarget) {
+            return;
+        }
+
+        router.delete(
+            route('job.drafting.revisions.destroy', [
+                draftingRequest.id,
+                deleteRevisionTarget.id,
+            ]) + listQs,
+        );
+        setDeleteRevisionTarget(null);
+    }, [deleteRevisionTarget, draftingRequest.id, listQs]);
 
     const facadeFiles = draftingRequest.files.filter((f) => f.kind === 'facade');
     const documentFiles = draftingRequest.files.filter(
@@ -176,6 +195,40 @@ export default function DraftingShow({
                     onConfirmArchive={confirmArchive}
                     onConfirmRestore={confirmRestore}
                 />
+
+                <Modal
+                    show={deleteRevisionTarget != null}
+                    onClose={() => setDeleteRevisionTarget(null)}
+                    maxWidth="md"
+                >
+                    <div className="p-6">
+                        <h2 className="text-lg font-semibold text-[#323338] dark:text-white">
+                            Delete revision?
+                        </h2>
+                        <p className="mt-2 text-sm leading-relaxed text-[#676879] dark:text-slate-400">
+                            <span className="font-medium text-[#323338] dark:text-white">
+                                {deleteRevisionTarget?.code}
+                            </span>{' '}
+                            will be permanently removed from this project.
+                        </p>
+                        <div className="mt-6 flex flex-wrap justify-end gap-2">
+                            <SecondaryButton
+                                type="button"
+                                onClick={() => setDeleteRevisionTarget(null)}
+                                className="rounded-lg normal-case tracking-normal"
+                            >
+                                Cancel
+                            </SecondaryButton>
+                            <DangerButton
+                                type="button"
+                                onClick={confirmDeleteRevision}
+                                className="rounded-lg normal-case tracking-normal"
+                            >
+                                Delete
+                            </DangerButton>
+                        </div>
+                    </div>
+                </Modal>
 
                 <DraftingEditModals
                     section={editSection}
@@ -255,9 +308,15 @@ export default function DraftingShow({
                     onEditInvoice={(row) => setEditingInvoice(row)}
                     canViewRevision={viewRevision}
                     canAddRevision={addRevision}
+                    canDeleteRevision={deleteRevision}
                     onAddRevision={() => setRevisionModalOpen(true)}
                     onEditRevision={
                         addRevision ? (row) => setEditingRevision(row) : undefined
+                    }
+                    onDeleteRevision={
+                        deleteRevision
+                            ? (row) => setDeleteRevisionTarget(row)
+                            : undefined
                     }
                     updateUrl={updateUrl}
                     onEditJobDetails={() => setEditSection('job')}

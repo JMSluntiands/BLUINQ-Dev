@@ -51,10 +51,7 @@ class PublicDraftingRequestFormController extends Controller
                 ->orderBy('code')
                 ->orderBy('name')
                 ->get(['id', 'name', 'code']),
-            'buildingClasses' => BuildingClass::query()
-                ->active()
-                ->orderBy('name')
-                ->get(['id', 'name', 'code']),
+            'buildingClasses' => BuildingClass::activeForSelect(),
             'externalWallConstructions' => ExternalWallConstruction::query()
                 ->active()
                 ->orderBy('name')

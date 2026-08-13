@@ -8,8 +8,10 @@ import { Head, Link, useForm } from '@inertiajs/react';
 export default function UsersCreate({ roles = [], employmentStatuses = {} }) {
     const form = useForm({
         name: '',
+        initials: '',
         email: '',
         position: '',
+        birthday: '',
         date_hired: '',
         employment_status: 'regular',
         password: '',
@@ -56,6 +58,32 @@ export default function UsersCreate({ roles = [], employmentStatuses = {} }) {
                     </div>
 
                     <div>
+                        <InputLabel htmlFor="initials" value="Initials" />
+                        <TextInput
+                            id="initials"
+                            className="mt-1 block w-full uppercase"
+                            value={form.data.initials}
+                            onChange={(e) =>
+                                form.setData(
+                                    'initials',
+                                    e.target.value.toUpperCase(),
+                                )
+                            }
+                            maxLength={10}
+                            placeholder="e.g. JD"
+                            autoComplete="off"
+                        />
+                        <p className="mt-1 text-xs text-slate-500">
+                            Used for drafter/checker badges. Leave blank to
+                            derive from name.
+                        </p>
+                        <InputError
+                            className="mt-2"
+                            message={form.errors.initials}
+                        />
+                    </div>
+
+                    <div>
                         <InputLabel htmlFor="email" value="Email" />
                         <TextInput
                             id="email"
@@ -85,6 +113,23 @@ export default function UsersCreate({ roles = [], employmentStatuses = {} }) {
                         <InputError
                             className="mt-2"
                             message={form.errors.position}
+                        />
+                    </div>
+
+                    <div>
+                        <InputLabel htmlFor="birthday" value="Birthday" />
+                        <TextInput
+                            id="birthday"
+                            type="date"
+                            className="mt-1 block w-full"
+                            value={form.data.birthday}
+                            onChange={(e) =>
+                                form.setData('birthday', e.target.value)
+                            }
+                        />
+                        <InputError
+                            className="mt-2"
+                            message={form.errors.birthday}
                         />
                     </div>
 

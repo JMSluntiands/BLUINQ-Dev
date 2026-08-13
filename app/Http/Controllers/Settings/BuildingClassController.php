@@ -17,7 +17,7 @@ class BuildingClassController extends Controller
     {
         [$search, $perPage] = $this->resolveListFilters($request);
 
-        $query = BuildingClass::query()->active()->orderBy('code')->orderBy('name');
+        $query = BuildingClass::query()->active()->orderByCodeNatural();
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -52,7 +52,7 @@ class BuildingClassController extends Controller
         ]);
 
         BuildingClass::query()->create([
-            'code' => $validated['code'],
+            'code' => BuildingClass::normalizeCode($validated['code']) ?? $validated['code'],
             'name' => $validated['name'],
             'status' => $validated['status'],
         ]);
@@ -90,6 +90,8 @@ class BuildingClassController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'status' => ['required', 'string', 'in:active,inactive'],
         ]);
+
+        $validated['code'] = BuildingClass::normalizeCode($validated['code']) ?? $validated['code'];
 
         $buildingClass->update($validated);
 

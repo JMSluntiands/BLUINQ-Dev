@@ -567,7 +567,9 @@ export default function DraftingJobShowLayout({
     onAddInvoice,
     canViewRevision = true,
     canAddRevision = false,
+    canDeleteRevision = false,
     onEditRevision,
+    onDeleteRevision,
     onAddRevision,
     updateUrl = '',
     onEditJobDetails,
@@ -703,19 +705,32 @@ export default function DraftingJobShowLayout({
             label: 'Date Out',
             render: (row) => row.submitted_date ?? '—',
         },
-        ...(onEditRevision
+        ...(onEditRevision || (canDeleteRevision && onDeleteRevision)
             ? [
                   {
                       key: 'actions',
                       label: 'Action',
                       render: (row) => (
-                          <button
-                              type="button"
-                              onClick={() => onEditRevision(row)}
-                              className="text-[11px] font-semibold text-[#0073ea] underline underline-offset-2 hover:text-[#0060c4] dark:text-[#60a5fa]"
-                          >
-                              Edit
-                          </button>
+                          <div className="flex flex-wrap items-center gap-2">
+                              {onEditRevision ? (
+                                  <button
+                                      type="button"
+                                      onClick={() => onEditRevision(row)}
+                                      className="text-[11px] font-semibold text-[#0073ea] underline underline-offset-2 hover:text-[#0060c4] dark:text-[#60a5fa]"
+                                  >
+                                      Edit
+                                  </button>
+                              ) : null}
+                              {canDeleteRevision && onDeleteRevision ? (
+                                  <button
+                                      type="button"
+                                      onClick={() => onDeleteRevision(row)}
+                                      className="text-[11px] font-semibold text-rose-600 underline underline-offset-2 hover:text-rose-500 dark:text-rose-400"
+                                  >
+                                      Delete
+                                  </button>
+                              ) : null}
+                          </div>
                       ),
                   },
               ]
@@ -786,6 +801,8 @@ export default function DraftingJobShowLayout({
                 {backHref ? (
                     <Link
                         href={backHref}
+                        preserveState={false}
+                        preserveScroll={false}
                         className="mb-2 inline-block text-sm font-medium text-[#0073ea] hover:underline dark:text-[#60a5fa]"
                     >
                         {backLabel ?? '← Back to board'}
@@ -800,7 +817,11 @@ export default function DraftingJobShowLayout({
                 <p className="mt-1 text-sm text-[#676879] dark:text-slate-400">
                     {isMasterlist ? 'Lead number' : 'Revision number'}:{' '}
                     <span className="font-medium text-[#323338] dark:text-slate-200">
-                        {draftingRequest.reference}
+                        {isMasterlist
+                            ? draftingRequest.reference || '—'
+                            : draftingRequest.latest_revision ||
+                              revisions[0]?.code ||
+                              '—'}
                     </span>
                     {draftingRequest.is_archived ? ' · Archived' : ''}
                 </p>
@@ -835,21 +856,26 @@ export default function DraftingJobShowLayout({
                 >
                     {isMasterlist ? (
                         draftingRequest.reference || '—'
-                    ) : (
+                    ) : (draftingRequest.latest_revision ||
+                          revisions[0]?.code) ? (
                         <ExternalLink
                             href={revisionLinkHref(
                                 revisions[0] ?? {
-                                    code: draftingRequest.reference,
+                                    code:
+                                        draftingRequest.latest_revision ||
+                                        draftingRequest.reference,
                                     link: null,
                                 },
                                 integrationUrls.sharepoint,
                             )}
                             label={
-                                revisions[0]?.code ??
-                                draftingRequest.reference ??
+                                draftingRequest.latest_revision ||
+                                revisions[0]?.code ||
                                 '—'
                             }
                         />
+                    ) : (
+                        '—'
                     )}
                 </JobDetailField>
                 <JobDetailField

@@ -800,16 +800,12 @@ function JobBoardTableBody({
                 const checkingSlots = job.checking ?? [];
                 const revisions = job.revisions ?? [];
                 const isExpanded = expandedIds.has(job.id);
-                const revisionNo =
-                    !isMasterlist &&
-                    job.latest_revision &&
-                    job.latest_revision !== '—'
-                        ? job.latest_revision
-                        : !isMasterlist &&
-                            job.job_no &&
-                            /^\d{5}$/.test(String(job.job_no))
-                          ? `${job.job_no}-01`
-                          : job.job_no;
+                // APM REVISION NO. = server latest_revision only (never invent from job_no).
+                const revisionNo = isMasterlist
+                    ? job.job_no
+                    : job.latest_revision && job.latest_revision !== '—'
+                      ? job.latest_revision
+                      : '—';
                 const rowTone = job.is_priority
                     ? 'bg-amber-50/70 dark:bg-[#2a1f2e]'
                     : rowIndex % 2 === 1

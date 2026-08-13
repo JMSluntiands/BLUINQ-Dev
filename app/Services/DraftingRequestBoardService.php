@@ -40,6 +40,7 @@ class DraftingRequestBoardService
             ->active()
             ->reviewAccepted()
             ->apm()
+            ->whereHas('revisions')
             ->orderByDesc('is_priority')
             ->orderByDesc('requested_at')
             ->orderByDesc('id');
@@ -237,10 +238,6 @@ class DraftingRequestBoardService
         $totalHours = $this->sumRevisionHours($row->revisions)
             ?? $this->sumAssignmentHours($row->assignments);
 
-        $latestRevision = $row->latestRevisionCode();
-        $accounting = $row->relationLoaded('accountEntries')
-            ? $row->accountEntries->first()?->status
-            : null;
         $statusOptions = DraftingRequest::statusLabels();
         $revisions = $row->revisions
             ->sortBy('id')
@@ -258,6 +255,25 @@ class DraftingRequestBoardService
                 ];
             })
             ->all();
+
+        // REVISION NO. must match a real revision row — never invent "-01".
+        $realCodes = collect($revisions)
+            ->pluck('code')
+            ->map(fn ($code) => trim((string) $code))
+            ->reject(fn ($code) => $code === '' || $code === '—')
+            ->values();
+
+        $latestRevision = $row->latestRevisionCode();
+        if ($latestRevision !== null && ! $realCodes->containsStrict($latestRevision)) {
+            $latestRevision = $realCodes->last();
+        }
+        if ($latestRevision === null || $latestRevision === '') {
+            $latestRevision = $realCodes->last();
+        }
+
+        $accounting = $row->relationLoaded('accountEntries')
+            ? $row->accountEntries->first()?->status
+            : null;
 
         return [
             'id' => $row->id,

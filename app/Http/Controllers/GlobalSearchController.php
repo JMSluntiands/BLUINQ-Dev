@@ -304,7 +304,10 @@ class GlobalSearchController extends Controller
                     'id' => $row->id,
                     'title' => $row->client_name ?: ('Memo #'.$row->id),
                     'subtitle' => $excerpt !== '' ? $excerpt : null,
-                    'url' => route('drafting-memos.index', ['search' => $row->client_name ?: (string) $row->id]),
+                    'url' => route('drafting-memos.index', array_filter([
+                        'client' => $row->client_name ?: null,
+                        'memo' => $row->id,
+                    ])),
                 ];
             })
             ->values()

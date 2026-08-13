@@ -511,6 +511,78 @@
     }
 }
 
+@keyframes login-v3-panel-in {
+    from {
+        opacity: 0;
+        transform: translateY(28px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes login-v3-logo-in {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes login-v3-mark {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes login-v3-grid-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.login-v3-panel {
+    animation: login-v3-panel-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
+}
+
+.login-v3-logo {
+    animation: login-v3-logo-in 0.45s ease-out both;
+}
+
+.login-v3-mark {
+    animation: login-v3-mark 0.8s ease-out 0.15s both;
+}
+
+.login-v3-grid {
+    animation: login-v3-grid-in 0.9s ease-out both;
+}
+
+.login-page--submitting {
+    animation: login-column-glow 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .login-v3-panel,
+    .login-v3-logo,
+    .login-v3-mark,
+    .login-v3-grid,
+    .login-page--submitting {
+        animation: none;
+    }
+}
+
 /* Memo view: keep a light document surface so pasted Word colors stay readable in dark mode */
 .memo-view-paper {
     background-color: #f7f8fb;

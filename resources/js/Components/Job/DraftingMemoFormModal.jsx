@@ -36,6 +36,9 @@ function filterQueryString(filters = {}) {
     if (filters.sort) {
         params.set('sort', filters.sort);
     }
+    if (filters.memo) {
+        params.set('memo', String(filters.memo));
+    }
     const query = params.toString();
 
     return query ? `?${query}` : '';
@@ -45,10 +48,11 @@ function filterQueryString(filters = {}) {
  * @param {{
  *   show: boolean;
  *   memo?: object | null;
- *   clients?: string[];
+ *   clients?: Array<string | { name: string }>;
  *   tags?: Array<{ id: number; name: string }>;
  *   filters?: object;
  *   canManageTags?: boolean;
+ *   defaultClientName?: string;
  *   onClose: () => void;
  * }} props
  */
@@ -59,6 +63,7 @@ export default function DraftingMemoFormModal({
     tags = [],
     filters = {},
     canManageTags = false,
+    defaultClientName = '',
     onClose,
 }) {
     const isEditing = Boolean(memo?.id);
@@ -70,8 +75,10 @@ export default function DraftingMemoFormModal({
     const [tagError, setTagError] = useState(null);
 
     const clientOptions = useMemo(() => {
-        const names = [...clients];
-        const current = memo?.client_name?.trim();
+        const names = clients.map((client) =>
+            typeof client === 'string' ? client : client.name,
+        );
+        const current = (memo?.client_name ?? defaultClientName)?.trim();
 
         if (
             current &&
@@ -83,7 +90,7 @@ export default function DraftingMemoFormModal({
         }
 
         return names;
-    }, [clients, memo?.client_name]);
+    }, [clients, memo?.client_name, defaultClientName]);
 
     const form = useForm({
         client_name: '',
@@ -102,7 +109,7 @@ export default function DraftingMemoFormModal({
 
         form.clearErrors();
         form.setData({
-            client_name: memo?.client_name ?? '',
+            client_name: memo?.client_name ?? defaultClientName ?? '',
             description: memo?.description ?? '',
             reference_url: memo?.reference_url ?? '',
             memo_date: memo?.memo_date_raw ?? todayInputValue(),
@@ -114,7 +121,8 @@ export default function DraftingMemoFormModal({
         setTagError(null);
         setAvailableTags(tags);
         setEditorKey((key) => key + 1);
-    }, [show, memo?.id, tags]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [show, memo?.id, tags, defaultClientName]);
 
     const toggleTag = (tagId) => {
         const current = form.data.tag_ids;

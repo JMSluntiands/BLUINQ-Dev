@@ -13,6 +13,8 @@ class DraftingRequestActivity extends Model
 
     public const ACTION_FORWARDED_TO_APM = 'forwarded_to_apm';
 
+    public const ACTION_RETURNED_TO_MASTERLIST = 'returned_to_masterlist';
+
     public const ACTION_COMMENT_POSTED = 'comment_posted';
 
     public const ACTION_RUN_COMMENT_POSTED = 'run_comment_posted';
@@ -30,6 +32,8 @@ class DraftingRequestActivity extends Model
     public const ACTION_REVISION_ADDED = 'revision_added';
 
     public const ACTION_REVISION_UPDATED = 'revision_updated';
+
+    public const ACTION_REVISION_DELETED = 'revision_deleted';
 
     public const ACTION_QUOTE_ADDED = 'quote_added';
 

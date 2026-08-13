@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDraftingMemoRequest;
 use App\Http\Requests\StoreDraftingMemoTagRequest;
 use App\Http\Requests\UpdateDraftingMemoRequest;
+use App\Models\Client;
 use App\Models\DraftingMemo;
 use App\Models\DraftingMemoTag;
 use App\Models\DraftingRequest;
@@ -26,10 +27,11 @@ class DraftingMemoController extends Controller
     {
         [$search, $perPage, $client, $tagId, $sort] = $this->resolveFilters($request);
 
+        $user = $request->user();
+        $selectedId = $request->integer('memo') ?: null;
+
         $query = DraftingMemo::query()
-            ->with(['tags:id,name', 'user:id,name'])
-            ->orderByDesc('memo_date')
-            ->orderByDesc('id');
+            ->with(['tags:id,name', 'user:id,name']);
 
         if ($client !== '') {
             $query->where('client_name', $client);
@@ -49,22 +51,44 @@ class DraftingMemoController extends Controller
         }
 
         if ($sort === 'date_asc') {
-            $query->reorder()->orderBy('memo_date')->orderBy('id');
+            $query->orderBy('memo_date')->orderBy('id');
+        } else {
+            $query->orderByDesc('memo_date')->orderByDesc('id');
         }
 
-        $user = $request->user();
+        $memos = $query
+            ->paginate($perPage)
+            ->through(fn (DraftingMemo $memo) => $this->formatMemo($memo))
+            ->withQueryString();
+
+        $selectedMemo = null;
+        if ($selectedId !== null) {
+            $fromPage = collect($memos->items())->firstWhere('id', $selectedId);
+            if ($fromPage !== null) {
+                $selectedMemo = $fromPage;
+            } else {
+                $loaded = DraftingMemo::query()
+                    ->with(['tags:id,name', 'user:id,name'])
+                    ->find($selectedId);
+                $selectedMemo = $loaded ? $this->formatMemo($loaded) : null;
+            }
+        }
+
+        if ($selectedMemo === null && $memos->count() > 0) {
+            $selectedMemo = $memos->items()[0];
+            $selectedId = $selectedMemo['id'];
+        }
 
         return Inertia::render('Job/DraftingMemos/Index', [
-            'memos' => $query
-                ->paginate($perPage)
-                ->through(fn (DraftingMemo $memo) => $this->formatMemo($memo))
-                ->withQueryString(),
+            'memos' => $memos,
+            'selectedMemo' => $selectedMemo,
             'filters' => [
                 'search' => $search,
                 'per_page' => $perPage,
                 'client' => $client,
                 'tag_id' => $tagId,
                 'sort' => $sort,
+                'memo' => $selectedId,
             ],
             'clients' => $this->clientOptions(),
             'tags' => DraftingMemoTag::query()
@@ -262,12 +286,17 @@ class DraftingMemoController extends Controller
     }
 
     /**
-     * Client names from Project Management jobs and existing memos.
+     * Client names from the Clients directory, drafting requests, and existing memos.
      *
-     * @return list<string>
+     * @return list<array{name: string, memo_count: int}>
      */
     private function clientOptions(): array
     {
+        $fromClients = Client::query()
+            ->selectable()
+            ->orderBy('name')
+            ->pluck('name');
+
         $fromJobs = DraftingRequest::query()
             ->whereNotNull('company_name')
             ->where('company_name', '!=', '')
@@ -282,13 +311,31 @@ class DraftingMemoController extends Controller
             ->orderBy('client_name')
             ->pluck('client_name');
 
-        return $fromJobs
+        $memoCounts = DraftingMemo::query()
+            ->selectRaw('client_name, count(*) as memo_count')
+            ->whereNotNull('client_name')
+            ->where('client_name', '!=', '')
+            ->groupBy('client_name')
+            ->pluck('memo_count', 'client_name');
+
+        return $fromClients
+            ->merge($fromJobs)
             ->merge($fromMemos)
             ->map(fn ($name) => trim((string) $name))
             ->filter()
             ->unique(fn (string $name) => mb_strtolower($name))
             ->sort(SORT_NATURAL | SORT_FLAG_CASE)
             ->values()
+            ->map(function (string $name) use ($memoCounts) {
+                $countKey = $memoCounts->keys()->first(
+                    fn (string $key) => mb_strtolower($key) === mb_strtolower($name),
+                );
+
+                return [
+                    'name' => $name,
+                    'memo_count' => $countKey !== null ? (int) $memoCounts[$countKey] : 0,
+                ];
+            })
             ->all();
     }
 
@@ -298,9 +345,9 @@ class DraftingMemoController extends Controller
     private function resolveFilters(Request $request): array
     {
         $search = Str::limit(trim((string) $request->input('search', '')), 255);
-        $perPage = (int) $request->input('per_page', 10);
+        $perPage = (int) $request->input('per_page', 20);
         if ($perPage < 5 || $perPage > 50) {
-            $perPage = 10;
+            $perPage = 20;
         }
 
         $client = Str::limit(trim((string) $request->input('client', '')), 255);
@@ -321,6 +368,7 @@ class DraftingMemoController extends Controller
             'client' => $request->input('client'),
             'tag_id' => $request->input('tag_id'),
             'sort' => $request->input('sort'),
+            'memo' => $request->input('memo'),
         ], fn ($value) => $value !== null && $value !== '');
     }
 }

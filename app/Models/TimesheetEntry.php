@@ -22,7 +22,10 @@ class TimesheetEntry extends Model
 
     public const TASK_DOWNTIME = 'downtime';
 
-    public const TASK_SA_CLOCK_IN = 'sa_clock_in';
+    public const TASK_OUTSOURCE = 'outsource';
+
+    /** @deprecated Use TASK_OUTSOURCE */
+    public const TASK_OUTSOURCING = self::TASK_OUTSOURCE;
 
     /**
      * Tasks that can be added from Weekly Timesheet "Add task".
@@ -47,7 +50,24 @@ class TimesheetEntry extends Model
         self::TASK_DRAFTING => 'Drafting',
         self::TASK_CHECKING => 'Checking',
         self::TASK_DOWNTIME => 'Downtime',
-        self::TASK_SA_CLOCK_IN => 'SA Clock In',
+        self::TASK_OUTSOURCE => 'Outsource',
+    ];
+
+    /**
+     * Labels for stored task types, including retired activity values.
+     *
+     * @var array<string, string>
+     */
+    public const TASK_TYPE_LABELS = [
+        self::TASK_ADMIN => 'Admin',
+        self::TASK_TRAINING => 'Training',
+        self::TASK_MEETING => 'Meeting',
+        self::TASK_DRAFTING => 'Drafting',
+        self::TASK_CHECKING => 'Checking',
+        self::TASK_DOWNTIME => 'Downtime',
+        self::TASK_OUTSOURCE => 'Outsource',
+        'outsourcing' => 'Outsource',
+        'sa_clock_in' => 'Outsource',
     ];
 
     /**

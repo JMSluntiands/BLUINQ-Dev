@@ -1,6 +1,5 @@
-import DataTable, { DataTableSortHeader } from '@/Components/DataTable';
-import DraftingMemoFormModal from '@/Components/Job/DraftingMemoFormModal';
 import DangerButton from '@/Components/DangerButton';
+import DraftingMemoFormModal from '@/Components/Job/DraftingMemoFormModal';
 import FlashNoticeModal from '@/Components/FlashNoticeModal';
 import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
@@ -11,23 +10,21 @@ import {
     ArrowTopRightOnSquareIcon,
     CalendarDaysIcon,
     DocumentTextIcon,
+    MagnifyingGlassIcon,
     PencilSquareIcon,
     PlusIcon,
     TagIcon,
     TrashIcon,
-    XMarkIcon,
+    UserCircleIcon,
 } from '@heroicons/react/24/outline';
-import { createColumnHelper } from '@tanstack/react-table';
 import { Head, router } from '@inertiajs/react';
-import { useCallback, useMemo, useState } from 'react';
-
-const columnHelper = createColumnHelper();
-
-const iconBtn =
-    'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#676879] transition-colors hover:bg-[#e6e9ef] hover:text-[#0073ea] focus:outline-none focus:ring-2 focus:ring-[#0073ea] focus:ring-offset-1 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-sky-400 dark:focus:ring-offset-slate-900';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const tagPillClass =
-    'inline-flex rounded border border-[#c5c7d0] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#676879] dark:border-[#3a3f55] dark:text-slate-300';
+    'inline-flex rounded border border-slate-300 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:border-slate-600 dark:text-slate-300';
+
+const fieldClass =
+    'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100';
 
 const FLASH_MESSAGES = {
     'drafting-memo-created': 'Drafting memo added.',
@@ -53,49 +50,133 @@ function filterQueryString(filters = {}) {
     if (filters.sort) {
         params.set('sort', filters.sort);
     }
+    if (filters.memo) {
+        params.set('memo', String(filters.memo));
+    }
     const query = params.toString();
 
     return query ? `?${query}` : '';
 }
 
-function MemoDescriptionModal({ memo, onClose }) {
+function referenceLinks(memo) {
+    const raw = String(memo?.reference_url ?? '').trim();
+    if (!raw) {
+        return [];
+    }
+
+    return raw
+        .split(/[\n,]+/)
+        .map((url) => url.trim())
+        .filter(Boolean);
+}
+
+function MemoPreview({ memo, canManageMemos, onEdit, onDelete }) {
     if (!memo) {
-        return null;
+        return (
+            <div className="flex h-full min-h-[28rem] flex-col items-center justify-center px-6 text-center">
+                <DocumentTextIcon
+                    className="h-10 w-10 text-slate-300 dark:text-slate-600"
+                    aria-hidden
+                />
+                <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-200">
+                    Select a memo to preview
+                </p>
+                <p className="mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">
+                    Choose an item from the list to read the full content,
+                    attachments, and reference links.
+                </p>
+            </div>
+        );
     }
 
     const tags = memo.tags ?? [];
-    const hasMeta = Boolean(memo.reference_url) || Boolean(memo.has_attachment);
+    const links = referenceLinks(memo);
 
     return (
-        <Modal show={Boolean(memo)} onClose={onClose} maxWidth="3xl">
-            <div className="flex max-h-[min(90vh,52rem)] flex-col">
-                <div className="flex items-start justify-between gap-4 border-b border-[#e6e9ef] px-5 py-4 dark:border-[#2f3347] sm:px-6">
-                    <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400">
-                            <DocumentTextIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                            Drafting memo
-                        </div>
-                        <h2 className="mt-1.5 text-xl font-semibold leading-snug tracking-tight text-[#323338] dark:text-white">
+        <div className="flex h-full min-h-0 flex-col">
+            <div className="shrink-0 border-b border-slate-200 px-5 py-4 dark:border-slate-700">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                            Preview
+                        </p>
+                        <h3 className="mt-1 truncate text-lg font-semibold text-slate-900 dark:text-white">
                             {memo.client_name}
-                        </h2>
-                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-[#676879] dark:text-slate-400">
-                            <span className="inline-flex items-center gap-1.5 tabular-nums">
-                                <CalendarDaysIcon className="h-4 w-4 shrink-0" aria-hidden />
-                                {memo.memo_date}
-                            </span>
-                            {memo.author && memo.author !== '—' && (
-                                <span className="text-[#c5c7d0] dark:text-slate-600">·</span>
-                            )}
-                            {memo.author && memo.author !== '—' && (
-                                <span>Logged by {memo.author}</span>
-                            )}
+                        </h3>
+                        <p className="mt-1 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">
+                            {memo.description_excerpt}
+                        </p>
+                    </div>
+                    {canManageMemos ? (
+                        <div className="flex shrink-0 items-center gap-1">
+                            <button
+                                type="button"
+                                onClick={() => onEdit(memo)}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-sky-600 dark:hover:bg-slate-800 dark:hover:text-sky-400"
+                                title="Edit"
+                                aria-label="Edit memo"
+                            >
+                                <PencilSquareIcon className="h-5 w-5" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => onDelete(memo)}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                                title="Delete"
+                                aria-label="Delete memo"
+                            >
+                                <TrashIcon className="h-5 w-5" />
+                            </button>
                         </div>
-                        {tags.length > 0 && (
-                            <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                                <TagIcon
-                                    className="h-3.5 w-3.5 text-[#676879] dark:text-slate-500"
-                                    aria-hidden
-                                />
+                    ) : null}
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="inline-flex items-center gap-1.5 font-medium tabular-nums text-slate-700 dark:text-slate-200">
+                        <CalendarDaysIcon className="h-3.5 w-3.5" aria-hidden />
+                        {memo.memo_date}
+                    </span>
+                    {tags.length > 0 ? (
+                        <>
+                            <span className="text-slate-300 dark:text-slate-600">
+                                ·
+                            </span>
+                            <span className="inline-flex flex-wrap items-center gap-1.5">
+                                <TagIcon className="h-3.5 w-3.5" aria-hidden />
+                                {tags.map((tag) => (
+                                    <span key={tag.id} className={tagPillClass}>
+                                        {tag.name}
+                                    </span>
+                                ))}
+                            </span>
+                        </>
+                    ) : null}
+                </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+                <div className="memo-view-paper rounded-xl border border-slate-200 bg-white px-4 py-4 dark:border-slate-700 dark:bg-slate-950/40 sm:px-5 sm:py-5">
+                    <div
+                        className="memo-view-richtext rich-text-content text-sm leading-relaxed text-slate-800 dark:text-slate-100"
+                        dangerouslySetInnerHTML={{
+                            __html: memo.description || '<p>—</p>',
+                        }}
+                    />
+                </div>
+            </div>
+
+            <div className="shrink-0 space-y-3 border-t border-slate-200 bg-slate-50/80 px-5 py-4 dark:border-slate-700 dark:bg-slate-800/40">
+                <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                            Tags
+                        </p>
+                        {tags.length === 0 ? (
+                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                —
+                            </p>
+                        ) : (
+                            <div className="mt-1.5 flex flex-wrap gap-1.5">
                                 {tags.map((tag) => (
                                     <span key={tag.id} className={tagPillClass}>
                                         {tag.name}
@@ -104,69 +185,84 @@ function MemoDescriptionModal({ memo, onClose }) {
                             </div>
                         )}
                     </div>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className={iconBtn}
-                        aria-label="Close memo"
-                    >
-                        <XMarkIcon className="h-5 w-5" />
-                    </button>
-                </div>
-
-                {hasMeta && (
-                    <div className="flex flex-wrap gap-2 border-b border-[#e6e9ef] bg-[#fafbfc] px-5 py-3 dark:border-[#2f3347] dark:bg-[#151622] sm:px-6">
-                        {memo.reference_url && (
-                            <a
-                                href={memo.reference_url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1.5 rounded-md border border-[#c5c7d0] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#0073ea] transition hover:border-[#0073ea] hover:bg-[#e6f4ff] dark:border-[#2f3347] dark:bg-[#1a1b2e] dark:text-[#1890ff] dark:hover:bg-[#243044]"
-                            >
-                                <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" aria-hidden />
-                                Reference link
-                            </a>
-                        )}
-                        {memo.has_attachment && (
+                    <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                            Attachments
+                        </p>
+                        {memo.has_attachment ? (
                             <a
                                 href={memo.attachment_url}
-                                className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-[#c5c7d0] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#323338] transition hover:border-[#0073ea] dark:border-[#2f3347] dark:bg-[#1a1b2e] dark:text-slate-200"
+                                className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-sky-500 hover:text-sky-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
                                 title={memo.attachment_name}
                             >
-                                <ArrowDownTrayIcon className="h-3.5 w-3.5 shrink-0 text-[#0073ea]" aria-hidden />
-                                <span className="truncate">{memo.attachment_name}</span>
+                                <ArrowDownTrayIcon
+                                    className="h-3.5 w-3.5 shrink-0 text-sky-600"
+                                    aria-hidden
+                                />
+                                <span className="truncate">
+                                    {memo.attachment_name}
+                                </span>
                             </a>
+                        ) : (
+                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                —
+                            </p>
                         )}
                     </div>
-                )}
-
-                <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
-                    <div className="memo-view-paper rounded-xl border border-[#e6e9ef] px-4 py-4 sm:px-5 sm:py-5">
-                        <div
-                            className="memo-view-richtext rich-text-content text-sm leading-relaxed"
-                            dangerouslySetInnerHTML={{
-                                __html: memo.description || '<p>—</p>',
-                            }}
-                        />
-                    </div>
                 </div>
 
-                <div className="flex justify-end border-t border-[#e6e9ef] px-5 py-3 dark:border-[#2f3347] sm:px-6">
-                    <SecondaryButton
-                        type="button"
-                        onClick={onClose}
-                        className="rounded-lg normal-case tracking-normal"
-                    >
-                        Close
-                    </SecondaryButton>
+                <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                        Reference links
+                    </p>
+                    {links.length === 0 ? (
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                            —
+                        </p>
+                    ) : (
+                        <ul className="mt-1.5 space-y-1">
+                            {links.map((url) => (
+                                <li key={url}>
+                                    <a
+                                        href={url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex max-w-full items-center gap-1.5 text-sm font-medium text-sky-600 hover:underline dark:text-sky-400"
+                                    >
+                                        <ArrowTopRightOnSquareIcon
+                                            className="h-3.5 w-3.5 shrink-0"
+                                            aria-hidden
+                                        />
+                                        <span className="truncate">{url}</span>
+                                    </a>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+
+                <div className="flex items-center gap-2 border-t border-slate-200 pt-3 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                    <UserCircleIcon
+                        className="h-5 w-5 shrink-0 text-slate-400"
+                        aria-hidden
+                    />
+                    <span>
+                        Memo posted by{' '}
+                        <span className="font-semibold text-slate-800 dark:text-white">
+                            {memo.author && memo.author !== '—'
+                                ? memo.author
+                                : 'Unknown'}
+                        </span>
+                    </span>
                 </div>
             </div>
-        </Modal>
+        </div>
     );
 }
 
 export default function Index({
     memos,
+    selectedMemo = null,
     filters = {},
     clients = [],
     tags = [],
@@ -174,11 +270,22 @@ export default function Index({
     canManageTags = false,
 }) {
     const rows = memos?.data ?? [];
-    const q = filterQueryString(filters);
     const [formMemo, setFormMemo] = useState(null);
     const [formOpen, setFormOpen] = useState(false);
-    const [viewMemo, setViewMemo] = useState(null);
     const [deleteTarget, setDeleteTarget] = useState(null);
+    const [activeMemo, setActiveMemo] = useState(selectedMemo);
+
+    useEffect(() => {
+        setActiveMemo(selectedMemo);
+    }, [selectedMemo]);
+
+    const clientNames = useMemo(
+        () =>
+            clients.map((client) =>
+                typeof client === 'string' ? client : client.name,
+            ),
+        [clients],
+    );
 
     const applyFilters = useCallback(
         (next) => {
@@ -186,16 +293,22 @@ export default function Index({
                 route('drafting-memos.index'),
                 {
                     search: next.search ?? filters.search ?? '',
-                    per_page: next.per_page ?? filters.per_page ?? 10,
+                    per_page: next.per_page ?? filters.per_page ?? 20,
                     client: next.client ?? filters.client ?? '',
                     tag_id: next.tag_id ?? filters.tag_id ?? '',
                     sort: next.sort ?? filters.sort ?? 'date_desc',
+                    memo: next.memo ?? filters.memo ?? '',
                 },
-                { preserveState: true, preserveScroll: true },
+                { preserveState: true, preserveScroll: true, replace: true },
             );
         },
         [filters],
     );
+
+    const selectMemo = (memo) => {
+        setActiveMemo(memo);
+        applyFilters({ memo: memo.id });
+    };
 
     const openCreate = () => {
         setFormMemo(null);
@@ -206,6 +319,11 @@ export default function Index({
         setFormMemo(memo);
         setFormOpen(true);
     }, []);
+
+    const q = filterQueryString({
+        ...filters,
+        memo: activeMemo?.id ?? filters.memo,
+    });
 
     const confirmDelete = useCallback(() => {
         if (!deleteTarget) {
@@ -218,201 +336,15 @@ export default function Index({
         setDeleteTarget(null);
     }, [deleteTarget, q]);
 
-    const columns = useMemo(() => {
-        const baseColumns = [
-            columnHelper.accessor('client_name', {
-                header: ({ column }) => (
-                    <DataTableSortHeader column={column}>
-                        Client name
-                    </DataTableSortHeader>
-                ),
-                cell: ({ getValue }) => (
-                    <span className="font-semibold uppercase text-[#323338] dark:text-white">
-                        {getValue()}
-                    </span>
-                ),
-            }),
-            columnHelper.accessor('description_excerpt', {
-                id: 'description',
-                header: () => (
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400">
-                        Memo / description
-                    </span>
-                ),
-                enableSorting: false,
-                cell: ({ row }) => {
-                    const memo = row.original;
-
-                    return (
-                        <button
-                            type="button"
-                            onClick={() => setViewMemo(memo)}
-                            className="line-clamp-2 text-left text-[#676879] transition hover:text-[#0073ea] dark:text-slate-400 dark:hover:text-[#1890ff]"
-                        >
-                            {memo.description_excerpt}
-                        </button>
-                    );
-                },
-            }),
-            columnHelper.display({
-                id: 'attachment',
-                header: () => (
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400">
-                        Email attachment
-                    </span>
-                ),
-                cell: ({ row }) => {
-                    const memo = row.original;
-
-                    if (!memo.has_attachment) {
-                        return (
-                            <span className="text-[#676879] dark:text-slate-500">
-                                —
-                            </span>
-                        );
-                    }
-
-                    return (
-                        <a
-                            href={memo.attachment_url}
-                            className="inline-flex max-w-[12rem] items-center gap-2 rounded-md border border-[#c5c7d0] bg-[#f5f6f8] px-2 py-1.5 text-xs text-[#323338] transition hover:border-[#0073ea] dark:border-[#2f3347] dark:bg-[#151622] dark:text-slate-200"
-                            title={memo.attachment_name}
-                        >
-                            <ArrowDownTrayIcon className="h-4 w-4 shrink-0 text-[#0073ea]" />
-                            <span className="truncate">
-                                {memo.attachment_name}
-                            </span>
-                        </a>
-                    );
-                },
-            }),
-            columnHelper.accessor('reference_url', {
-                header: () => (
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400">
-                        Reference
-                    </span>
-                ),
-                enableSorting: false,
-                cell: ({ getValue }) => {
-                    const url = getValue();
-
-                    if (!url) {
-                        return (
-                            <span className="text-[#676879] dark:text-slate-500">
-                                —
-                            </span>
-                        );
-                    }
-
-                    return (
-                        <a
-                            href={url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="font-semibold uppercase text-[#0073ea] hover:underline dark:text-[#1890ff]"
-                        >
-                            Link
-                        </a>
-                    );
-                },
-            }),
-            columnHelper.accessor('memo_date', {
-                header: ({ column }) => (
-                    <DataTableSortHeader column={column}>
-                        Date
-                    </DataTableSortHeader>
-                ),
-                cell: ({ getValue }) => (
-                    <span className="whitespace-nowrap tabular-nums text-[#676879] dark:text-slate-400">
-                        {getValue()}
-                    </span>
-                ),
-            }),
-            columnHelper.accessor('tags', {
-                header: () => (
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400">
-                        Tags
-                    </span>
-                ),
-                enableSorting: false,
-                cell: ({ getValue }) => {
-                    const memoTags = getValue() ?? [];
-
-                    if (!memoTags.length) {
-                        return (
-                            <span className="text-[#676879] dark:text-slate-500">
-                                —
-                            </span>
-                        );
-                    }
-
-                    return (
-                        <div className="flex max-w-[14rem] flex-wrap gap-1">
-                            {memoTags.map((tag) => (
-                                <span key={tag.id} className={tagPillClass}>
-                                    {tag.name}
-                                </span>
-                            ))}
-                        </div>
-                    );
-                },
-            }),
-        ];
-
-        if (!canManageMemos) {
-            return baseColumns;
-        }
-
-        return [
-            ...baseColumns,
-            columnHelper.display({
-                id: 'actions',
-                enableSorting: false,
-                header: () => (
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400">
-                        Actions
-                    </span>
-                ),
-                meta: { align: 'right' },
-                cell: ({ row }) => {
-                    const memo = row.original;
-
-                    return (
-                        <div className="flex flex-wrap items-center justify-end gap-0.5">
-                            <button
-                                type="button"
-                                onClick={() => openEdit(memo)}
-                                className={iconBtn}
-                                title="Edit"
-                                aria-label={`Edit memo for ${memo.client_name}`}
-                            >
-                                <PencilSquareIcon className="h-5 w-5" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setDeleteTarget(memo)}
-                                className={iconBtn + ' hover:text-rose-600 dark:hover:text-rose-400'}
-                                title="Delete"
-                                aria-label={`Delete memo for ${memo.client_name}`}
-                            >
-                                <TrashIcon className="h-5 w-5" />
-                            </button>
-                        </div>
-                    );
-                },
-            }),
-        ];
-    }, [canManageMemos, openEdit]);
-
     return (
         <AuthenticatedLayout
             header={
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h2 className="text-xl font-semibold leading-tight text-[#323338] dark:text-white">
+                        <h2 className="text-xl font-semibold leading-tight text-slate-800 dark:text-slate-100">
                             Drafting Memos
                         </h2>
-                        <p className="mt-1 text-sm text-[#676879] dark:text-slate-400">
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                             Latest memos visible and editable by the team.
                         </p>
                     </div>
@@ -420,9 +352,9 @@ export default function Index({
                         <button
                             type="button"
                             onClick={openCreate}
-                            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#0073ea] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0060c4] dark:bg-[#1890ff] dark:hover:bg-[#1478e0]"
+                            className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-sky-600 px-4 text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-600"
                         >
-                            <PlusIcon className="h-4 w-4" aria-hidden />
+                            <PlusIcon className="h-4 w-4 shrink-0" aria-hidden />
                             Add memo
                         </button>
                     )}
@@ -430,115 +362,185 @@ export default function Index({
             }
         >
             <Head title="Drafting Memos" />
-
             <FlashNoticeModal messages={FLASH_MESSAGES} />
 
-            <div className="overflow-hidden rounded-xl border border-[#e6e9ef] bg-white shadow-sm dark:border-[#2f3347] dark:bg-[#1a1b2e] dark:shadow-none">
-                <div className="border-b border-[#e6e9ef] px-4 py-4 dark:border-[#2f3347] sm:px-6">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                        <h3 className="text-sm font-semibold uppercase tracking-wide text-[#323338] dark:text-white">
-                            Latest memos
-                        </h3>
-                        <div className="grid w-full max-w-3xl grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                            <div className="sm:col-span-2">
-                                <label
-                                    htmlFor="memo-search"
-                                    className="text-xs font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400"
-                                >
-                                    Search tags
-                                </label>
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:grid lg:min-h-[70vh] lg:grid-cols-12">
+                {/* Memo list */}
+                <section className="flex min-h-0 flex-col border-b border-slate-200 dark:border-slate-700 lg:col-span-5 lg:border-b-0 lg:border-r">
+                    <div className="shrink-0 space-y-3 border-b border-slate-200 px-4 py-3 dark:border-slate-700 sm:px-5">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-800 dark:text-white">
+                                Latest memos
+                            </h3>
+                            <select
+                                value={filters.sort ?? 'date_desc'}
+                                aria-label="Date sort"
+                                onChange={(event) =>
+                                    applyFilters({
+                                        sort: event.target.value,
+                                        memo: '',
+                                    })
+                                }
+                                className={fieldClass}
+                            >
+                                <option value="date_desc">Newest first</option>
+                                <option value="date_asc">Oldest first</option>
+                            </select>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                            <div className="relative min-w-[10rem] flex-1">
+                                <MagnifyingGlassIcon
+                                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                                    aria-hidden
+                                />
                                 <input
-                                    id="memo-search"
                                     type="search"
                                     defaultValue={filters.search ?? ''}
-                                    placeholder="Search tags…"
+                                    placeholder="Search…"
+                                    aria-label="Search memos"
                                     onKeyDown={(event) => {
                                         if (event.key === 'Enter') {
                                             applyFilters({
-                                                search: event.currentTarget.value,
+                                                search: event.currentTarget
+                                                    .value,
+                                                memo: '',
                                             });
                                         }
                                     }}
-                                    className="mt-1 block w-full rounded-md border border-[#c5c7d0] bg-white px-3 py-2 text-sm text-[#323338] shadow-sm focus:border-[#0073ea] focus:outline-none focus:ring-1 focus:ring-[#0073ea] dark:border-[#2f3347] dark:bg-[#151622] dark:text-slate-200"
+                                    className={
+                                        fieldClass + ' w-full !pl-9'
+                                    }
                                 />
                             </div>
-                            <div>
-                                <label
-                                    htmlFor="memo-client-filter"
-                                    className="text-xs font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400"
-                                >
-                                    Client
-                                </label>
-                                <select
-                                    id="memo-client-filter"
-                                    value={filters.client ?? ''}
-                                    onChange={(event) =>
-                                        applyFilters({ client: event.target.value })
-                                    }
-                                    className="mt-1 block w-full rounded-md border border-[#c5c7d0] bg-white px-3 py-2 text-sm text-[#323338] shadow-sm focus:border-[#0073ea] focus:outline-none focus:ring-1 focus:ring-[#0073ea] dark:border-[#2f3347] dark:bg-[#151622] dark:text-slate-200"
-                                >
-                                    <option value="">All clients</option>
-                                    {clients.map((client) => (
-                                        <option key={client} value={client}>
-                                            {client}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label
-                                    htmlFor="memo-tag-filter"
-                                    className="text-xs font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400"
-                                >
-                                    Tag
-                                </label>
-                                <select
-                                    id="memo-tag-filter"
-                                    value={filters.tag_id ?? ''}
-                                    onChange={(event) =>
-                                        applyFilters({
-                                            tag_id: event.target.value,
-                                        })
-                                    }
-                                    className="mt-1 block w-full rounded-md border border-[#c5c7d0] bg-white px-3 py-2 text-sm text-[#323338] shadow-sm focus:border-[#0073ea] focus:outline-none focus:ring-1 focus:ring-[#0073ea] dark:border-[#2f3347] dark:bg-[#151622] dark:text-slate-200"
-                                >
-                                    <option value="">All tags</option>
-                                    {tags.map((tag) => (
-                                        <option key={tag.id} value={tag.id}>
-                                            {tag.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            <select
+                                value={filters.client ?? ''}
+                                aria-label="Filter by client"
+                                onChange={(event) =>
+                                    applyFilters({
+                                        client: event.target.value,
+                                        memo: '',
+                                    })
+                                }
+                                className={fieldClass + ' min-w-[9rem]'}
+                            >
+                                <option value="">All clients</option>
+                                {clientNames.map((name) => (
+                                    <option key={name} value={name}>
+                                        {name}
+                                    </option>
+                                ))}
+                            </select>
+                            <select
+                                value={filters.tag_id ?? ''}
+                                aria-label="Filter by tag"
+                                onChange={(event) =>
+                                    applyFilters({
+                                        tag_id: event.target.value,
+                                        memo: '',
+                                    })
+                                }
+                                className={fieldClass + ' min-w-[8rem]'}
+                            >
+                                <option value="">All tags</option>
+                                {tags.map((tag) => (
+                                    <option key={tag.id} value={tag.id}>
+                                        {tag.name}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                     </div>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <label
-                            htmlFor="memo-sort"
-                            className="text-xs font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400"
-                        >
-                            Date sort
-                        </label>
-                        <select
-                            id="memo-sort"
-                            value={filters.sort ?? 'date_desc'}
-                            onChange={(event) =>
-                                applyFilters({ sort: event.target.value })
-                            }
-                            className="rounded-md border border-[#c5c7d0] bg-white px-3 py-2 text-sm text-[#323338] shadow-sm focus:border-[#0073ea] focus:outline-none focus:ring-1 focus:ring-[#0073ea] dark:border-[#2f3347] dark:bg-[#151622] dark:text-slate-200"
-                        >
-                            <option value="date_desc">Newest first</option>
-                            <option value="date_asc">Oldest first</option>
-                        </select>
-                    </div>
-                </div>
 
-                <DataTable
-                    columns={columns}
-                    data={rows}
-                    emptyMessage="No drafting memos yet."
-                />
-                <Pagination pagination={memos} />
+                    <div className="hidden grid-cols-[minmax(0,7rem)_minmax(0,1fr)_4.5rem_minmax(0,6rem)] gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:border-slate-700 dark:bg-slate-800/50 sm:grid sm:px-5">
+                        <span>Client</span>
+                        <span>Memo / description</span>
+                        <span>Date</span>
+                        <span>Tags</span>
+                    </div>
+
+                    <ul className="min-h-0 flex-1 overflow-y-auto">
+                        {rows.length === 0 ? (
+                            <li className="px-5 py-16 text-center text-sm text-slate-500 dark:text-slate-400">
+                                No drafting memos yet.
+                            </li>
+                        ) : (
+                            rows.map((memo) => {
+                                const active = activeMemo?.id === memo.id;
+                                const memoTags = memo.tags ?? [];
+
+                                return (
+                                    <li key={memo.id}>
+                                        <button
+                                            type="button"
+                                            onClick={() => selectMemo(memo)}
+                                            className={
+                                                'grid w-full grid-cols-1 gap-1 border-b border-slate-100 px-4 py-3 text-left transition sm:grid-cols-[minmax(0,7rem)_minmax(0,1fr)_4.5rem_minmax(0,6rem)] sm:items-start sm:gap-2 sm:px-5 dark:border-slate-800 ' +
+                                                (active
+                                                    ? 'bg-sky-50 dark:bg-sky-500/10'
+                                                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/50')
+                                            }
+                                        >
+                                            <span
+                                                className={
+                                                    'truncate text-xs font-semibold uppercase tracking-wide ' +
+                                                    (active
+                                                        ? 'text-sky-800 dark:text-sky-300'
+                                                        : 'text-slate-800 dark:text-slate-100')
+                                                }
+                                            >
+                                                {memo.client_name}
+                                            </span>
+                                            <span className="line-clamp-2 text-sm text-slate-600 dark:text-slate-300">
+                                                {memo.description_excerpt}
+                                            </span>
+                                            <span className="text-xs tabular-nums text-slate-500 dark:text-slate-400">
+                                                {memo.memo_date}
+                                            </span>
+                                            <span className="flex flex-wrap gap-1">
+                                                {memoTags.length === 0 ? (
+                                                    <span className="text-xs text-slate-400">
+                                                        —
+                                                    </span>
+                                                ) : (
+                                                    memoTags
+                                                        .slice(0, 3)
+                                                        .map((tag) => (
+                                                            <span
+                                                                key={tag.id}
+                                                                className={
+                                                                    tagPillClass
+                                                                }
+                                                            >
+                                                                {tag.name}
+                                                            </span>
+                                                        ))
+                                                )}
+                                                {memoTags.length > 3 ? (
+                                                    <span className="text-[10px] font-semibold text-slate-400">
+                                                        +{memoTags.length - 3}
+                                                    </span>
+                                                ) : null}
+                                            </span>
+                                        </button>
+                                    </li>
+                                );
+                            })
+                        )}
+                    </ul>
+
+                    <Pagination pagination={memos} />
+                </section>
+
+                {/* Preview */}
+                <section className="flex min-h-[28rem] min-w-0 flex-col lg:col-span-7 lg:min-h-0">
+                    <MemoPreview
+                        memo={activeMemo}
+                        canManageMemos={canManageMemos}
+                        onEdit={openEdit}
+                        onDelete={setDeleteTarget}
+                    />
+                </section>
             </div>
 
             <DraftingMemoFormModal
@@ -546,17 +548,16 @@ export default function Index({
                 memo={formMemo}
                 clients={clients}
                 tags={tags}
-                filters={filters}
+                filters={{
+                    ...filters,
+                    memo: activeMemo?.id ?? filters.memo,
+                }}
                 canManageTags={canManageTags}
+                defaultClientName={filters.client ?? ''}
                 onClose={() => {
                     setFormOpen(false);
                     setFormMemo(null);
                 }}
-            />
-
-            <MemoDescriptionModal
-                memo={viewMemo}
-                onClose={() => setViewMemo(null)}
             />
 
             <Modal
@@ -565,12 +566,12 @@ export default function Index({
                 maxWidth="sm"
             >
                 <div className="p-6">
-                    <h2 className="text-lg font-semibold text-[#323338] dark:text-white">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                         Delete memo?
                     </h2>
-                    <p className="mt-2 text-sm text-[#676879] dark:text-slate-400">
+                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                         This will permanently remove the memo for{' '}
-                        <span className="font-semibold text-[#323338] dark:text-white">
+                        <span className="font-semibold text-slate-900 dark:text-white">
                             {deleteTarget?.client_name}
                         </span>
                         .
@@ -579,15 +580,10 @@ export default function Index({
                         <SecondaryButton
                             type="button"
                             onClick={() => setDeleteTarget(null)}
-                            className="rounded-lg normal-case tracking-normal"
                         >
                             Cancel
                         </SecondaryButton>
-                        <DangerButton
-                            type="button"
-                            onClick={confirmDelete}
-                            className="rounded-lg normal-case tracking-normal"
-                        >
+                        <DangerButton type="button" onClick={confirmDelete}>
                             Delete
                         </DangerButton>
                     </div>

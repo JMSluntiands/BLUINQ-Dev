@@ -35,10 +35,7 @@ export default function LeaveRequestModal({ show, onClose }) {
     const types =
         leaveTypes.length > 0
             ? leaveTypes
-            : [
-                  { value: 'al', label: 'Annual Leave', code: 'AL' },
-                  { value: 'remote', label: 'Remote work', code: 'REMOTE' },
-              ];
+            : [{ value: 'al', label: 'Annual Leave', code: 'AL' }];
 
     return (
         <Modal show={show} onClose={handleClose} maxWidth="lg">

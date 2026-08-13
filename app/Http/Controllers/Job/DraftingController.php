@@ -25,6 +25,7 @@ use App\Models\DraftingRequestUnit;
 use App\Models\User;
 use App\Services\DraftingJobShowService;
 use App\Services\DraftingRequestBoardService;
+use App\Services\DraftingRequestSubmissionService;
 use App\Services\TimesheetDraftingHoursSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -45,6 +46,7 @@ class DraftingController extends Controller
         private DraftingJobShowService $jobShow,
         private DraftingRequestBoardService $board,
         private TimesheetDraftingHoursSyncService $timesheetSync,
+        private DraftingRequestSubmissionService $submission,
     ) {}
 
     public function index(Request $request): Response
@@ -73,9 +75,15 @@ class DraftingController extends Controller
     {
         [$search, $perPage] = $this->resolveListFilters($request);
 
-        $query = $this->baseListQuery($request)
+        $query = DraftingRequest::query()
+            ->with([
+                'buildingType:id,name',
+                'serviceEngagings:id,name',
+            ])
+            ->withCount('files')
             ->archived()
-            ->orderByDesc('archived_at');
+            ->orderByDesc('archived_at')
+            ->orderByDesc('id');
 
         $this->board->applySearch($query, $search);
 
@@ -85,6 +93,7 @@ class DraftingController extends Controller
                 ->through(fn (DraftingRequest $row) => [
                     ...$this->formatListRow($row),
                     'archived_at' => $row->archived_at?->toIso8601String(),
+                    'workflow_stage' => $row->workflow_stage,
                 ])
                 ->withQueryString(),
             'filters' => [
@@ -95,7 +104,7 @@ class DraftingController extends Controller
         ]);
     }
 
-    public function show(Request $request, DraftingRequest $draftingRequest): Response
+    public function show(Request $request, DraftingRequest $draftingRequest): Response|RedirectResponse
     {
         $this->authorizeView($request, $draftingRequest);
 
@@ -111,7 +120,22 @@ class DraftingController extends Controller
         Request $request,
         DraftingRequest $draftingRequest,
         array $listFilterOverrides = [],
-    ): Response {
+    ): Response|RedirectResponse {
+        if (
+            ! $draftingRequest->isArchived()
+            && $draftingRequest->workflow_stage === DraftingRequest::STAGE_APM
+            && ! $draftingRequest->revisions()->exists()
+        ) {
+            $this->submission->returnToMasterlistIfNoRevisions(
+                $draftingRequest,
+                $request->user(),
+            );
+
+            return redirect()
+                ->route('job.list', $this->redirectQuery($request))
+                ->with('status', 'drf-revision-deleted-returned-to-masterlist');
+        }
+
         $draftingRequest->load([
             'buildingType:id,name',
             'buildingClass:id,name,code',
@@ -144,6 +168,7 @@ class DraftingController extends Controller
             'draftingRequest' => [
                 'id' => $draftingRequest->id,
                 'reference' => $draftingRequest->jobNumber(),
+                'latest_revision' => $draftingRequest->latestRevisionCode(),
                 'lead_number' => $draftingRequest->lead_number ?: $draftingRequest->jobNumber(),
                 'status' => $draftingRequest->status,
                 'status_label' => $draftingRequest->statusLabel(),
@@ -193,8 +218,8 @@ class DraftingController extends Controller
                             : $draftingRequest->crmCategory->name)
                         : null),
                 'building_class' => $draftingRequest->buildingClass
-                    ? ($draftingRequest->buildingClass->code
-                        ? "{$draftingRequest->buildingClass->code} — {$draftingRequest->buildingClass->name}"
+                    ? ($draftingRequest->buildingClass->displayCode()
+                        ? "{$draftingRequest->buildingClass->displayCode()} — {$draftingRequest->buildingClass->name}"
                         : $draftingRequest->buildingClass->name)
                     : null,
                 'ndis_sda' => $draftingRequest->ndis_sda,
@@ -781,6 +806,60 @@ class DraftingController extends Controller
         return back()->with('status', 'drf-revision-updated');
     }
 
+    public function destroyRevision(
+        Request $request,
+        DraftingRequest $draftingRequest,
+        DraftingRequestRevision $revision,
+    ): RedirectResponse {
+        $this->authorizeView($request, $draftingRequest);
+
+        if (! $request->user()?->isAdmin()) {
+            abort(403);
+        }
+
+        if ($draftingRequest->isArchived()) {
+            abort(404);
+        }
+
+        if ((int) $revision->drafting_request_id !== (int) $draftingRequest->id) {
+            abort(404);
+        }
+
+        $code = $revision->code;
+        $user = $request->user();
+
+        $returnedToMasterlist = DB::transaction(function () use (
+            $draftingRequest,
+            $revision,
+            $code,
+            $user,
+        ) {
+            $revision->delete();
+
+            DraftingRequestActivity::record(
+                $draftingRequest,
+                $user,
+                DraftingRequestActivity::ACTION_REVISION_DELETED,
+                sprintf('Deleted revision %s.', $code),
+            );
+
+            return $this->submission->returnToMasterlistIfNoRevisions(
+                $draftingRequest->fresh(),
+                $user,
+            );
+        });
+
+        // Always return to the APM board so REVISION NO. refreshes immediately.
+        return redirect()
+            ->route('job.list', $this->redirectQuery($request))
+            ->with(
+                'status',
+                $returnedToMasterlist
+                    ? 'drf-revision-deleted-returned-to-masterlist'
+                    : 'drf-revision-deleted',
+            );
+    }
+
     public function storeAccountEntry(
         StoreDraftingRequestAccountEntryRequest $request,
         DraftingRequest $draftingRequest,
@@ -1246,9 +1325,23 @@ class DraftingController extends Controller
             abort(403);
         }
 
+        if ($draftingRequest->isArchived()) {
+            if (! $user->hasPermission('job.drafting.archive')) {
+                abort(403);
+            }
+
+            if (! in_array($draftingRequest->workflow_stage, [
+                DraftingRequest::STAGE_MASTERLIST,
+                DraftingRequest::STAGE_APM,
+            ], true)) {
+                abort(404);
+            }
+
+            return;
+        }
+
         if ($draftingRequest->workflow_stage === DraftingRequest::STAGE_MASTERLIST) {
-            if ($draftingRequest->review_status !== DraftingRequest::REVIEW_ACCEPTED
-                || $draftingRequest->isArchived()) {
+            if ($draftingRequest->review_status !== DraftingRequest::REVIEW_ACCEPTED) {
                 abort(404);
             }
 
@@ -1340,6 +1433,7 @@ class DraftingController extends Controller
                 $user->hasPermission('job.drafting.revision.view') || $masterlistAccess
             ),
             'addRevision' => $canView && $active && $user->hasPermission('job.drafting.revision.add'),
+            'deleteRevision' => $canView && $active && $user->isAdmin(),
             'viewAccounts' => $canView && (
                 $user->hasPermission('job.drafting.accounts.view') || $masterlistAccess
             ),
@@ -1481,6 +1575,7 @@ class DraftingController extends Controller
                 DraftingRequestActivity::ACTION_REQUEST_SUBMITTED => 'Submitted drafting request',
                 DraftingRequestActivity::ACTION_REQUEST_ACCEPTED => 'Accepted drafting request',
                 DraftingRequestActivity::ACTION_FORWARDED_TO_APM => 'Forwarded to APM',
+                DraftingRequestActivity::ACTION_RETURNED_TO_MASTERLIST => 'Returned to masterlist',
                 DraftingRequestActivity::ACTION_COMMENT_POSTED => 'Posted a comment',
                 DraftingRequestActivity::ACTION_RUN_COMMENT_POSTED => 'Posted a run comment',
                 DraftingRequestActivity::ACTION_ARCHIVED => 'Archived drafting request',
@@ -1490,6 +1585,7 @@ class DraftingController extends Controller
                 DraftingRequestActivity::ACTION_FILES_UPDATED => 'Updated files',
                 DraftingRequestActivity::ACTION_REVISION_ADDED => 'Added revision',
                 DraftingRequestActivity::ACTION_REVISION_UPDATED => 'Updated revision',
+                DraftingRequestActivity::ACTION_REVISION_DELETED => 'Deleted revision',
                 DraftingRequestActivity::ACTION_QUOTE_ADDED => 'Added quote',
                 DraftingRequestActivity::ACTION_QUOTE_UPDATED => 'Updated quote',
                 DraftingRequestActivity::ACTION_INVOICE_ADDED => 'Added invoice',

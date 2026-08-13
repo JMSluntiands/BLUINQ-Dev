@@ -360,13 +360,15 @@ class DraftingRequest extends Model
     }
 
     /**
-     * Latest revision display code (always prefers NNNNN-NN; bare lead → lead-01).
+     * Latest revision display code from real revision rows only.
+     * Does not invent "-01" when no revision exists.
      */
     public function latestRevisionCode(): ?string
     {
         $base = $this->jobNumber();
         $best = null;
         $bestSuffix = -1;
+        $fallback = null;
 
         $revisions = $this->relationLoaded('revisions')
             ? $this->revisions
@@ -378,22 +380,18 @@ class DraftingRequest extends Model
                 continue;
             }
 
+            $fallback ??= $code;
+
             if (preg_match('/^'.preg_quote($base, '/').'-(\d{2})$/', $code, $match)) {
                 $suffix = (int) $match[1];
                 if ($suffix > $bestSuffix) {
                     $bestSuffix = $suffix;
                     $best = $code;
                 }
-                continue;
-            }
-
-            if ($code === $base && $bestSuffix < 1) {
-                $bestSuffix = 1;
-                $best = sprintf('%s-01', $base);
             }
         }
 
-        return $best;
+        return $best ?? $fallback;
     }
 
     /**

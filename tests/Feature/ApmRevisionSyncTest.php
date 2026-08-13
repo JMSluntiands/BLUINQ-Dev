@@ -242,7 +242,16 @@ class ApmRevisionSyncTest extends TestCase
     {
         $user = $this->adminUser();
         [$storeyLevel, $category] = $this->seedLookups();
-        $this->createApmJob($user, $storeyLevel, $category);
+        $job = $this->createApmJob($user, $storeyLevel, $category);
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $job->id,
+            'user_id' => $user->id,
+            'code' => $job->jobNumber().'-01',
+            'log_date' => now()->toDateString(),
+            'category' => $category->code,
+            'status' => DraftingRequest::STATUS_NEW,
+        ]);
 
         $this->actingAs($user)
             ->get(route('job.list'))
@@ -260,6 +269,15 @@ class ApmRevisionSyncTest extends TestCase
         $member = $this->memberUser();
         [$storeyLevel, $category] = $this->seedLookups();
         $job = $this->createApmJob($owner, $storeyLevel, $category);
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $job->id,
+            'user_id' => $owner->id,
+            'code' => $job->jobNumber().'-01',
+            'log_date' => now()->toDateString(),
+            'category' => $category->code,
+            'status' => DraftingRequest::STATUS_NEW,
+        ]);
 
         $this->actingAs($member)
             ->get(route('job.list'))

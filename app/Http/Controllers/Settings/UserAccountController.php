@@ -49,6 +49,31 @@ class UserAccountController extends Controller
         ]);
     }
 
+    public function show(Request $request, User $user): Response
+    {
+        if ($user->archived_at !== null) {
+            abort(404);
+        }
+
+        $viewer = $request->user();
+        $canViewPrivate = $viewer?->isAdmin() ?? false;
+
+        $listQuery = $this->redirectQuery($request);
+        $editUrl = route('settings.users.edit', $user);
+        if ($listQuery !== []) {
+            $editUrl .= '?'.http_build_query($listQuery);
+        }
+
+        return Inertia::render('Profile/Edit', [
+            'profile' => \App\Http\Controllers\ProfileController::payload($user, $canViewPrivate),
+            'canViewPrivate' => $canViewPrivate,
+            'mustVerifyEmail' => false,
+            'status' => null,
+            'backUrl' => route('settings.users.index', $listQuery),
+            'editAccountUrl' => $editUrl,
+        ]);
+    }
+
     public function create(): Response
     {
         return Inertia::render('Settings/Users/Create', [
@@ -61,20 +86,26 @@ class UserAccountController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'initials' => ['nullable', 'string', 'max:10', 'regex:/^[A-Za-z0-9.\- ]*$/'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class.',email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role_id' => ['required', Rule::exists('roles', 'id')],
             'position' => ['nullable', 'string', 'max:255'],
+            'birthday' => ['nullable', 'date'],
             'date_hired' => ['nullable', 'date'],
             'employment_status' => ['required', Rule::in(['regular', 'probationary', 'training'])],
         ]);
 
+        $initials = trim((string) ($validated['initials'] ?? ''));
+
         $user = User::query()->create([
             'name' => $validated['name'],
+            'initials' => $initials === '' ? null : mb_strtoupper($initials),
             'email' => $validated['email'],
             'password' => $validated['password'],
             'role_id' => (int) $validated['role_id'],
             'position' => $validated['position'] ?? null,
+            'birthday' => $validated['birthday'] ?? null,
             'date_hired' => $validated['date_hired'] ?? null,
             'employment_status' => $validated['employment_status'],
             'leave_credits' => 0,
@@ -109,6 +140,7 @@ class UserAccountController extends Controller
                 'initials' => $user->initials,
                 'email' => $user->email,
                 'position' => $user->position,
+                'birthday' => $user->birthday?->format('Y-m-d'),
                 'date_hired' => $user->date_hired?->format('Y-m-d'),
                 'employment_status' => $user->employment_status ?? 'regular',
                 'role' => $user->role?->slug,
@@ -141,6 +173,7 @@ class UserAccountController extends Controller
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'role_id' => ['required', Rule::exists('roles', 'id')],
             'position' => ['nullable', 'string', 'max:255'],
+            'birthday' => ['nullable', 'date'],
             'date_hired' => ['nullable', 'date'],
             'employment_status' => ['required', Rule::in(['regular', 'probationary', 'training'])],
         ]);
@@ -166,6 +199,7 @@ class UserAccountController extends Controller
         $user->email = $validated['email'];
         $user->role_id = (int) $validated['role_id'];
         $user->position = $validated['position'] ?? null;
+        $user->birthday = $validated['birthday'] ?? null;
         $user->date_hired = $validated['date_hired'] ?? null;
         $user->employment_status = $validated['employment_status'];
 

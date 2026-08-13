@@ -5,7 +5,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import Select2 from '@/Components/Select2';
 import TextInput from '@/Components/TextInput';
-import { useForm, usePage } from '@inertiajs/react';
+import { router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 
 function listQueryString(listFilters = {}) {
@@ -75,10 +75,12 @@ export function suggestNextRevisionCode(jobNumber, revisions = []) {
 /**
  * Slim revision modal (APM-owned staffing fields live on the board).
  * Fields: optional Project, Revision Number, Revision Link, Category, Date In, Status.
+ * mode="forward" — pick a masterlist/APM candidate then review before adding to board.
  */
 export default function DraftingRevisionAddModal({
     show = false,
     onClose,
+    mode = 'revision',
     draftingRequestId = null,
     listFilters = {},
     entry = null,
@@ -89,11 +91,13 @@ export default function DraftingRevisionAddModal({
     defaultJobStatus = 'new',
     projectOptions = [],
 }) {
+    const isForwardMode = mode === 'forward';
     const { categoryOptions: pageCategoryOptions = [] } = usePage().props;
     const categories =
         categoryOptions.length > 0 ? categoryOptions : pageCategoryOptions;
     const needsProjectPick = !entry && !draftingRequestId;
     const [selectedProjectId, setSelectedProjectId] = useState('');
+    const [forwarding, setForwarding] = useState(false);
 
     const emptyRevisions = useMemo(() => [], []);
     const selectedProject = useMemo(
@@ -125,19 +129,21 @@ export default function DraftingRevisionAddModal({
     );
 
     const categorySelectOptions = useMemo(() => {
-        const items = categories.map((option) => {
-            const code = String(option.code || '').trim();
-            const name = String(option.name || '').trim();
-            const value = code || name;
+        const items = categories
+            .map((option) => {
+                const code = String(option.code || '').trim();
+                const name = String(option.name || '').trim();
+                const value = code || name;
 
-            return {
-                value,
-                label:
-                    code && name && code !== name
-                        ? `${code} — ${name}`
-                        : name || code,
-            };
-        }).filter((option) => option.value !== '');
+                return {
+                    value,
+                    label:
+                        code && name && code !== name
+                            ? `${code} — ${name}`
+                            : name || code,
+                };
+            })
+            .filter((option) => option.value !== '');
 
         if (
             entry?.category &&
@@ -176,6 +182,7 @@ export default function DraftingRevisionAddModal({
             form.reset();
             form.clearErrors();
             setSelectedProjectId('');
+            setForwarding(false);
             return;
         }
 
@@ -191,13 +198,22 @@ export default function DraftingRevisionAddModal({
             return;
         }
 
+        if (isForwardMode) {
+            return;
+        }
+
         // Only refresh revision code + status when the selected project changes.
         // Keep category / date / link so a Select2 choice is not wiped.
-        form.setData('code', suggestNextRevisionCode(effectiveJobNumber, effectiveRevisions));
+        form.setData(
+            'code',
+            suggestNextRevisionCode(effectiveJobNumber, effectiveRevisions),
+        );
         form.setData('status', effectiveStatus || 'new');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
         show,
         entry,
+        isForwardMode,
         effectiveJobNumber,
         effectiveRevisions,
         effectiveStatus,
@@ -208,6 +224,19 @@ export default function DraftingRevisionAddModal({
         e.preventDefault();
 
         if (!effectiveRequestId) {
+            return;
+        }
+
+        if (isForwardMode) {
+            setForwarding(true);
+            router.get(
+                route('job.board.add.review', effectiveRequestId),
+                {},
+                {
+                    onFinish: () => setForwarding(false),
+                    onError: () => setForwarding(false),
+                },
+            );
             return;
         }
 
@@ -242,12 +271,18 @@ export default function DraftingRevisionAddModal({
         <Modal show={show} onClose={onClose} maxWidth="md">
             <form onSubmit={submit} className="p-6">
                 <h2 className="text-lg font-semibold text-[#323338] dark:text-white">
-                    {isEditing ? 'Edit item' : 'Add from masterlist'}
+                    {isEditing
+                        ? 'Edit item'
+                        : isForwardMode
+                          ? 'Add from masterlist'
+                          : 'Add revision'}
                 </h2>
                 <p className="mt-1 text-sm text-[#676879] dark:text-slate-400">
                     {isEditing
                         ? 'Update revision number, link, category, date in, and status. Drafter, hours, and date out are set on the board.'
-                        : 'Add a revision. Assign drafter, checker, and hours on the Project Management board.'}
+                        : isForwardMode
+                          ? 'Select a masterlist project (or reopenable board job), then review and add it to Project Management.'
+                          : 'Add a revision. Assign drafter, checker, and hours on the Project Management board.'}
                 </p>
 
                 <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -268,124 +303,139 @@ export default function DraftingRevisionAddModal({
                                             ? 'No projects available'
                                             : 'Select project…'
                                     }
-                                    enabled={show && projectSelectOptions.length > 0}
+                                    enabled={
+                                        show && projectSelectOptions.length > 0
+                                    }
                                     required
                                 />
                             </div>
                             {projectSelectOptions.length === 0 ? (
                                 <p className="mt-1 text-xs text-[#676879] dark:text-slate-400">
-                                    No projects on this page allow adding a
-                                    revision. Search or change pages, then try
-                                    again.
+                                    {isForwardMode
+                                        ? 'No masterlist projects are available to add. Encode a project on the masterlist first.'
+                                        : 'No projects on this page allow adding a revision. Search or change pages, then try again.'}
                                 </p>
                             ) : null}
                         </div>
                     ) : null}
 
-                    <div>
-                        <InputLabel
-                            htmlFor="revision-code"
-                            value="Revision Number"
-                        />
-                        <TextInput
-                            id="revision-code"
-                            value={form.data.code}
-                            onChange={(e) =>
-                                form.setData('code', e.target.value)
-                            }
-                            className="mt-1 block w-full"
-                            placeholder="e.g. 26003-01"
-                            readOnly={!isEditing}
-                            required
-                        />
-                        <InputError
-                            message={form.errors.code}
-                            className="mt-1"
-                        />
-                    </div>
+                    {!isForwardMode ? (
+                        <>
+                            <div>
+                                <InputLabel
+                                    htmlFor="revision-code"
+                                    value="Revision Number"
+                                />
+                                <TextInput
+                                    id="revision-code"
+                                    value={form.data.code}
+                                    onChange={(e) =>
+                                        form.setData('code', e.target.value)
+                                    }
+                                    className="mt-1 block w-full"
+                                    placeholder="e.g. 26003-01"
+                                    readOnly={!isEditing}
+                                    required
+                                />
+                                <InputError
+                                    message={form.errors.code}
+                                    className="mt-1"
+                                />
+                            </div>
 
-                    <div>
-                        <InputLabel
-                            htmlFor="revision-link"
-                            value="Revision Link"
-                        />
-                        <TextInput
-                            id="revision-link"
-                            type="url"
-                            value={form.data.link}
-                            onChange={(e) =>
-                                form.setData('link', e.target.value)
-                            }
-                            className="mt-1 block w-full"
-                            placeholder="https://…"
-                        />
-                        <InputError
-                            message={form.errors.link}
-                            className="mt-1"
-                        />
-                    </div>
+                            <div>
+                                <InputLabel
+                                    htmlFor="revision-link"
+                                    value="Revision Link"
+                                />
+                                <TextInput
+                                    id="revision-link"
+                                    type="url"
+                                    value={form.data.link}
+                                    onChange={(e) =>
+                                        form.setData('link', e.target.value)
+                                    }
+                                    className="mt-1 block w-full"
+                                    placeholder="https://…"
+                                />
+                                <InputError
+                                    message={form.errors.link}
+                                    className="mt-1"
+                                />
+                            </div>
 
-                    <div>
-                        <InputLabel htmlFor="revision-log-date" value="Date In" />
-                        <TextInput
-                            id="revision-log-date"
-                            type="date"
-                            value={form.data.log_date}
-                            onChange={(e) =>
-                                form.setData('log_date', e.target.value)
-                            }
-                            className="mt-1 block w-full"
-                            required
-                        />
-                        <InputError
-                            message={form.errors.log_date}
-                            className="mt-1"
-                        />
-                    </div>
+                            <div>
+                                <InputLabel
+                                    htmlFor="revision-log-date"
+                                    value="Date In"
+                                />
+                                <TextInput
+                                    id="revision-log-date"
+                                    type="date"
+                                    value={form.data.log_date}
+                                    onChange={(e) =>
+                                        form.setData(
+                                            'log_date',
+                                            e.target.value,
+                                        )
+                                    }
+                                    className="mt-1 block w-full"
+                                    required
+                                />
+                                <InputError
+                                    message={form.errors.log_date}
+                                    className="mt-1"
+                                />
+                            </div>
 
-                    <div>
-                        <InputLabel
-                            htmlFor="revision-category"
-                            value="Category"
-                        />
-                        <div className="mt-1 select2-field">
-                            <Select2
-                                id="revision-category"
-                                value={form.data.category}
-                                onChange={(value) =>
-                                    form.setData('category', value)
-                                }
-                                options={categorySelectOptions}
-                                placeholder="Select category…"
-                                enabled={show}
-                            />
-                        </div>
-                        <InputError
-                            message={form.errors.category}
-                            className="mt-1"
-                        />
-                    </div>
+                            <div>
+                                <InputLabel
+                                    htmlFor="revision-category"
+                                    value="Category"
+                                />
+                                <div className="mt-1 select2-field">
+                                    <Select2
+                                        id="revision-category"
+                                        value={form.data.category}
+                                        onChange={(value) =>
+                                            form.setData('category', value)
+                                        }
+                                        options={categorySelectOptions}
+                                        placeholder="Select category…"
+                                        enabled={show}
+                                    />
+                                </div>
+                                <InputError
+                                    message={form.errors.category}
+                                    className="mt-1"
+                                />
+                            </div>
 
-                    <div>
-                        <InputLabel htmlFor="revision-status" value="Status" />
-                        <div className="mt-1 select2-field">
-                            <Select2
-                                id="revision-status"
-                                value={form.data.status}
-                                onChange={(value) =>
-                                    form.setData('status', value)
-                                }
-                                options={statusSelectOptions}
-                                placeholder="Select status…"
-                                enabled={show}
-                                required
-                            />
-                        </div>
-                        <InputError
-                            message={form.errors.status}
-                            className="mt-1"
-                        />
-                    </div>
+                            <div>
+                                <InputLabel
+                                    htmlFor="revision-status"
+                                    value="Status"
+                                />
+                                <div className="mt-1 select2-field">
+                                    <Select2
+                                        id="revision-status"
+                                        value={form.data.status}
+                                        onChange={(value) =>
+                                            form.setData('status', value)
+                                        }
+                                        options={statusSelectOptions}
+                                        placeholder="Select status…"
+                                        enabled={show}
+                                        required
+                                    />
+                                </div>
+                                <InputError
+                                    message={form.errors.status}
+                                    className="mt-1"
+                                />
+                            </div>
+                        </>
+                    ) : null}
                 </div>
 
                 <div className="mt-6 flex flex-wrap justify-end gap-2">
@@ -397,11 +447,15 @@ export default function DraftingRevisionAddModal({
                         Cancel
                     </SecondaryButton>
                     <PrimaryButton
-                        loading={form.processing}
+                        loading={isForwardMode ? forwarding : form.processing}
                         disabled={!effectiveRequestId && !isEditing}
                         className="rounded-lg normal-case tracking-normal"
                     >
-                        {isEditing ? 'Save item' : 'Add from masterlist'}
+                        {isEditing
+                            ? 'Save item'
+                            : isForwardMode
+                              ? 'Review & add'
+                              : 'Add revision'}
                     </PrimaryButton>
                 </div>
             </form>

@@ -432,9 +432,7 @@ class LeaveService
 
             foreach ($requests as $request) {
                 if ($day->between($request->start_date, $request->end_date)) {
-                    $marks[$day->toDateString()] = LeaveRequest::normalizeType($request->type) === LeaveRequest::TYPE_REMOTE
-                        ? 'remote'
-                        : 'leave';
+                    $marks[$day->toDateString()] = 'leave';
                     break;
                 }
             }

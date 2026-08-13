@@ -16,6 +16,7 @@ use App\Http\Controllers\Job\DraftingRequestFormController;
 use App\Http\Controllers\Job\MasterlistController;
 use App\Http\Controllers\Job\JobBoardController;
 use App\Http\Controllers\Job\PendingDraftingRequestController;
+use App\Http\Controllers\Design\DesignMenuController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileImageController;
 use App\Http\Controllers\WeeklyTimesheetController;
@@ -219,12 +220,22 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('drafting-memos.attachment');
     Route::post('/drafting-memos/tags', [DraftingMemoController::class, 'storeTag'])
         ->name('drafting-memos.tags.store');
+
+    Route::get('/design/list', [DesignMenuController::class, 'list'])
+        ->name('design.list');
+    Route::get('/design-memos', [DesignMenuController::class, 'memos'])
+        ->name('design-memos.index');
+    Route::get('/design/catalogue', [DesignMenuController::class, 'catalogue'])
+        ->name('design.catalogue');
+
     Route::patch('/job/drafting/{draftingRequest}', [DraftingController::class, 'update'])
         ->name('job.drafting.update');
-    Route::post('/job/drafting/{draftingRequest}/revisions', [DraftingController::class, 'storeRevision'])
-        ->name('job.drafting.revisions.store');
-    Route::patch('/job/drafting/{draftingRequest}/revisions/{revision}', [DraftingController::class, 'updateRevision'])
-        ->name('job.drafting.revisions.update');
+        Route::post('/job/drafting/{draftingRequest}/revisions', [DraftingController::class, 'storeRevision'])
+            ->name('job.drafting.revisions.store');
+        Route::patch('/job/drafting/{draftingRequest}/revisions/{revision}', [DraftingController::class, 'updateRevision'])
+            ->name('job.drafting.revisions.update');
+        Route::delete('/job/drafting/{draftingRequest}/revisions/{revision}', [DraftingController::class, 'destroyRevision'])
+            ->name('job.drafting.revisions.destroy');
     Route::post('/job/drafting/{draftingRequest}/accounts', [DraftingController::class, 'storeAccountEntry'])
         ->name('job.drafting.accounts.store');
     Route::patch('/job/drafting/{draftingRequest}/accounts/{accountEntry}', [DraftingController::class, 'updateAccountEntry'])
@@ -516,6 +527,7 @@ Route::middleware(['auth', 'admin', 'permission.route'])->group(function () {
         Route::get('/create', [UserAccountController::class, 'create'])->name('create');
         Route::post('/', [UserAccountController::class, 'store'])->name('store');
         Route::get('/archive', [UserAccountController::class, 'archive'])->name('archive');
+        Route::get('/{user}', [UserAccountController::class, 'show'])->name('show');
         Route::get('/{user}/edit', [UserAccountController::class, 'edit'])->name('edit');
         Route::patch('/{user}', [UserAccountController::class, 'update'])->name('update');
         Route::delete('/{user}', [UserAccountController::class, 'destroy'])->name('destroy');

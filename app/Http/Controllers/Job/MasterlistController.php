@@ -116,7 +116,7 @@ class MasterlistController extends Controller
             ->with('status', 'masterlist-created');
     }
 
-    public function show(Request $request, DraftingRequest $draftingRequest): Response
+    public function show(Request $request, DraftingRequest $draftingRequest): Response|RedirectResponse
     {
         $this->authorizeMasterlistView($request, $draftingRequest);
 
@@ -277,10 +277,7 @@ class MasterlistController extends Controller
                 ->orderBy('code')
                 ->orderBy('name')
                 ->get(['id', 'name', 'code']),
-            'buildingClasses' => BuildingClass::query()
-                ->active()
-                ->orderBy('name')
-                ->get(['id', 'name', 'code']),
+            'buildingClasses' => BuildingClass::activeForSelect(),
             'externalWallConstructions' => ExternalWallConstruction::query()
                 ->active()
                 ->orderBy('name')

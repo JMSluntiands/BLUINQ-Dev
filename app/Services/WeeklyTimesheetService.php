@@ -339,7 +339,9 @@ class WeeklyTimesheetService
             : $this->taskLabel($entry);
 
         $activityLabel = $isProjectActivity
-            ? (TimesheetEntry::ACTIVITY_TASK_LABELS[$entry->task_type] ?? ucfirst($entry->task_type))
+            ? (TimesheetEntry::ACTIVITY_TASK_LABELS[$entry->task_type]
+                ?? TimesheetEntry::TASK_TYPE_LABELS[$entry->task_type]
+                ?? ucfirst($entry->task_type))
             : null;
 
         return [
@@ -362,8 +364,7 @@ class WeeklyTimesheetService
             return (string) ($entry->revision?->code ?? 'Revision');
         }
 
-        return TimesheetEntry::STANDARD_TASK_LABELS[$entry->task_type]
-            ?? TimesheetEntry::ACTIVITY_TASK_LABELS[$entry->task_type]
+        return TimesheetEntry::TASK_TYPE_LABELS[$entry->task_type]
             ?? ucfirst($entry->task_type);
     }
 

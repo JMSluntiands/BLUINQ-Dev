@@ -212,18 +212,18 @@ export default function DraftingArchive({
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                         <h2 className="text-xl font-semibold leading-tight text-[#323338] dark:text-white">
-                            Archi Team — Drafting archive
+                            Job archive
                         </h2>
                         <p className="mt-1 text-sm text-[#676879] dark:text-[#94a3b8]">
                             {canViewAllRequests
-                                ? 'Archived drafting requests. Restore to return them to the active list.'
-                                : 'Your archived drafting requests.'}
+                                ? 'Archived jobs from masterlist and Project Management. Restore to return them to the active list.'
+                                : 'Your archived jobs. Restore to return them to the active list.'}
                         </p>
                     </div>
                 </div>
             }
         >
-            <Head title="Archi Team — Drafting archive" />
+            <Head title="Job archive" />
 
             <FlashNoticeModal messages={FLASH_MESSAGES} />
 

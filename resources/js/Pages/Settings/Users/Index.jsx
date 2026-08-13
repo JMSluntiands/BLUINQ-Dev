@@ -84,10 +84,13 @@ export default function UsersIndex({ users, filters = {} }) {
                         Name
                     </DataTableSortHeader>
                 ),
-                cell: ({ getValue }) => (
-                    <span className="font-medium text-[#323338]">
+                cell: ({ row, getValue }) => (
+                    <Link
+                        href={route('settings.users.show', row.original.id) + q}
+                        className="font-medium text-[#0073ea] transition hover:underline dark:text-[#1890ff]"
+                    >
                         {getValue()}
-                    </span>
+                    </Link>
                 ),
             }),
             columnHelper.accessor('email', {

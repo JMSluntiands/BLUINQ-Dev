@@ -105,12 +105,6 @@ return [
             'deduct' => null,
             'requires_entitlement' => false,
         ],
-        'remote' => [
-            'label' => 'Remote work',
-            'code' => 'REMOTE',
-            'deduct' => null,
-            'requires_entitlement' => false,
-        ],
     ],
 
     /*

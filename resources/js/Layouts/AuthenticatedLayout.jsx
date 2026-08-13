@@ -15,6 +15,7 @@ import {
     KeyIcon,
     MegaphoneIcon,
     DocumentTextIcon,
+    PaintBrushIcon,
     Squares2X2Icon,
     ShieldCheckIcon,
     SparklesIcon,
@@ -128,6 +129,9 @@ export default function AuthenticatedLayout({ header, children }) {
     const canManageUserMilestones = can('profile.milestones.manage');
     const canDraftingMemos = can('drafting-memos.view');
     const canDraftingArchive = can('job.drafting.archive');
+    const canDesignList = can('design.list.view');
+    const canDesignMemos = can('design-memos.view');
+    const canDesignCatalogue = can('design.catalogue.view');
     const canClientList = can('settings.client.view');
     const canApm =
         canJobList ||
@@ -136,6 +140,8 @@ export default function AuthenticatedLayout({ header, children }) {
         can('job.drafting.view');
     const showArchiMenu =
         canDraftingMemos || canApm || canJobList;
+    const showDesignMenu =
+        canDesignList || canDesignMemos || canDesignCatalogue;
 
     const isDashboard = route().current('dashboard');
     const isAnnouncements =
@@ -168,6 +174,11 @@ export default function AuthenticatedLayout({ header, children }) {
         isJobList ||
         isDraftingShow ||
         isDraftingArchive;
+    const isDesignList = route().current('design.list');
+    const isDesignMemos = route().current('design-memos.index');
+    const isDesignCatalogue = route().current('design.catalogue');
+    const isDesignMenuSection =
+        isDesignList || isDesignMemos || isDesignCatalogue;
     const isUsersIndex = route().current('settings.users.index');
     const isUsersCreate = route().current('settings.users.create');
     const isUsersEdit = route().current('settings.users.edit');
@@ -226,12 +237,19 @@ export default function AuthenticatedLayout({ header, children }) {
         canLevelOfDifficulty;
 
     const [archiMenuOpen, setArchiMenuOpen] = useState(isArchiMenuSection);
+    const [designMenuOpen, setDesignMenuOpen] = useState(isDesignMenuSection);
 
     useEffect(() => {
         if (isArchiMenuSection) {
             setArchiMenuOpen(true);
         }
     }, [isArchiMenuSection]);
+
+    useEffect(() => {
+        if (isDesignMenuSection) {
+            setDesignMenuOpen(true);
+        }
+    }, [isDesignMenuSection]);
 
     return (
         <div className="min-h-screen overflow-x-hidden bg-slate-100 dark:bg-[#0a0c14]">
@@ -361,11 +379,12 @@ export default function AuthenticatedLayout({ header, children }) {
                             Timesheet
                         </NavItem>
                     )}
-                    {showArchiMenu && (
+                    {(showArchiMenu || showDesignMenu) && (
                         <div className="mt-3 space-y-1">
                             <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
                                 Workflow
                             </p>
+                            {showArchiMenu && (
                             <div>
                                 <button
                                     type="button"
@@ -449,6 +468,79 @@ export default function AuthenticatedLayout({ header, children }) {
                                     </div>
                                 )}
                             </div>
+                            )}
+                            {showDesignMenu && (
+                            <div>
+                                <button
+                                    type="button"
+                                    aria-expanded={designMenuOpen}
+                                    onClick={() =>
+                                        setDesignMenuOpen((open) => !open)
+                                    }
+                                    className={
+                                        'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ' +
+                                        (isDesignMenuSection
+                                            ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'
+                                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100')
+                                    }
+                                >
+                                    <PaintBrushIcon
+                                        className={
+                                            'h-5 w-5 shrink-0 ' +
+                                            (isDesignMenuSection
+                                                ? 'text-sky-600'
+                                                : 'text-slate-400 group-hover:text-slate-500')
+                                        }
+                                        aria-hidden
+                                    />
+                                    <span className="min-w-0 flex-1">
+                                        Design menu
+                                    </span>
+                                    <ChevronRightIcon
+                                        className={
+                                            'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ' +
+                                            (designMenuOpen ? 'rotate-90' : '')
+                                        }
+                                        aria-hidden
+                                    />
+                                </button>
+                                {designMenuOpen && (
+                                    <div className="mt-0.5 space-y-0.5 pb-1">
+                                        {canDesignList && (
+                                            <SidebarSubLink
+                                                href={route('design.list')}
+                                                active={isDesignList}
+                                                onNavigate={closeSidebar}
+                                            >
+                                                Design Project Management
+                                            </SidebarSubLink>
+                                        )}
+                                        {canDesignMemos && (
+                                            <SidebarSubLink
+                                                href={route(
+                                                    'design-memos.index',
+                                                )}
+                                                active={isDesignMemos}
+                                                onNavigate={closeSidebar}
+                                            >
+                                                Design Memos
+                                            </SidebarSubLink>
+                                        )}
+                                        {canDesignCatalogue && (
+                                            <SidebarSubLink
+                                                href={route(
+                                                    'design.catalogue',
+                                                )}
+                                                active={isDesignCatalogue}
+                                                onNavigate={closeSidebar}
+                                            >
+                                                Design Catalogue
+                                            </SidebarSubLink>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            )}
                         </div>
                     )}
                     {showSettingsBlock && (

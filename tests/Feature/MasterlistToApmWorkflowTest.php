@@ -54,7 +54,10 @@ class MasterlistToApmWorkflowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Job/Board')
-                ->has('jobs.data', 0));
+                ->has('jobs.data', 0)
+                ->has('masterlistCandidates', 1)
+                ->where('masterlistCandidates.0.id', $row->id)
+                ->where('masterlistCandidates.0.source', 'masterlist'));
     }
 
     public function test_forward_moves_to_apm_and_seeds_revision_code(): void
@@ -210,6 +213,15 @@ class MasterlistToApmWorkflowTest extends TestCase
             'ndis_sda' => false,
         ]);
 
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $submitted->id,
+            'user_id' => $user->id,
+            'code' => $submitted->jobNumber().'-01',
+            'log_date' => now()->toDateString(),
+            'category' => 'WD',
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+        ]);
+
         $this->actingAs($user)
             ->get(route('job.list'))
             ->assertOk()
@@ -294,6 +306,15 @@ class MasterlistToApmWorkflowTest extends TestCase
             'ndis_sda' => false,
         ]);
 
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $apm->id,
+            'user_id' => $user->id,
+            'code' => $apm->jobNumber().'-01',
+            'log_date' => now()->toDateString(),
+            'category' => 'WD',
+            'status' => DraftingRequest::STATUS_NEW,
+        ]);
+
         $request = Request::create('/job/board', 'GET');
         $request->setUserResolver(fn () => $user);
 
@@ -303,6 +324,253 @@ class MasterlistToApmWorkflowTest extends TestCase
 
         $this->assertTrue($ids->contains($apm->id));
         $this->assertFalse($ids->contains($masterlist->id));
+    }
+
+    public function test_archived_jobs_from_masterlist_and_apm_appear_in_archive(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $masterlist = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_NEW,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_MASTERLIST,
+            'requested_at' => now(),
+            'your_name' => 'Archived Masterlist',
+            'company_name' => 'ML Co',
+            'email' => 'archived-ml@example.com',
+            'site_address' => '2 Archive St',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+            'archived_at' => now()->subMinute(),
+        ]);
+
+        $apm = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_NEW,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_APM,
+            'requested_at' => now(),
+            'your_name' => 'Archived APM',
+            'company_name' => 'APM Co',
+            'email' => 'archived-apm@example.com',
+            'site_address' => '3 Archive St',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+            'archived_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('job.drafting.archive'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Drafting/Archive')
+                ->has('draftingRequests.data', 2)
+                ->where('draftingRequests.data.0.id', $apm->id)
+                ->where('draftingRequests.data.1.id', $masterlist->id));
+
+        $this->actingAs($user)
+            ->get(route('job.drafting.show', $masterlist).'?from=archive')
+            ->assertOk();
+    }
+
+    public function test_deleting_last_revision_returns_job_to_masterlist_dropdown(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category, $client, $buildingClass] = $this->seedLookups();
+
+        $this->actingAs($user)->post(route('job.masterlist.store'), $this->validPayload(
+            $storeyLevel->id,
+            $category->id,
+            $client,
+            $buildingClass,
+        ));
+
+        $row = DraftingRequest::query()->firstOrFail();
+        $this->actingAs($user)->post(route('job.board.add', $row));
+
+        $row->refresh();
+        $this->assertSame(DraftingRequest::STAGE_APM, $row->workflow_stage);
+
+        $revision = DraftingRequestRevision::query()
+            ->where('drafting_request_id', $row->id)
+            ->firstOrFail();
+
+        $response = $this->actingAs($user)->delete(
+            route('job.drafting.revisions.destroy', [$row, $revision]),
+        );
+
+        $response->assertRedirect(route('job.list'));
+        $response->assertSessionHas('status', 'drf-revision-deleted-returned-to-masterlist');
+
+        $row->refresh();
+        $this->assertSame(DraftingRequest::STAGE_MASTERLIST, $row->workflow_stage);
+        $this->assertSame(0, $row->revisions()->count());
+
+        $this->actingAs($user)
+            ->get(route('job.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->has('jobs.data', 0)
+                ->has('masterlistCandidates', 1)
+                ->where('masterlistCandidates.0.id', $row->id)
+                ->where('masterlistCandidates.0.source', 'masterlist'));
+    }
+
+    public function test_deleting_one_of_many_revisions_keeps_job_on_apm(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $row = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_NEW,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_APM,
+            'requested_at' => now(),
+            'your_name' => 'Multi Rev',
+            'company_name' => 'Multi Co',
+            'email' => 'multi@example.com',
+            'site_address' => '9 Multi St',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        $first = DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $row->id,
+            'user_id' => $user->id,
+            'code' => $row->jobNumber().'-01',
+            'log_date' => now()->toDateString(),
+            'category' => 'WD',
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+        ]);
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $row->id,
+            'user_id' => $user->id,
+            'code' => $row->jobNumber().'-02',
+            'log_date' => now()->toDateString(),
+            'category' => 'WD',
+            'status' => DraftingRequest::STATUS_NEW,
+        ]);
+
+        $response = $this->actingAs($user)->delete(
+            route('job.drafting.revisions.destroy', [$row, $first]),
+        );
+
+        $response->assertRedirect(route('job.list'));
+        $response->assertSessionHas('status', 'drf-revision-deleted');
+
+        $row->refresh();
+        $this->assertSame(DraftingRequest::STAGE_APM, $row->workflow_stage);
+        $this->assertSame(1, $row->revisions()->count());
+
+        $this->actingAs($user)
+            ->get(route('job.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->has('jobs.data', 1)
+                ->where('jobs.data.0.id', $row->id)
+                ->where('jobs.data.0.latest_revision', $row->jobNumber().'-02'));
+    }
+
+    public function test_board_heals_apm_jobs_with_no_revisions_back_to_masterlist(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $orphan = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_NEW,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_APM,
+            'requested_at' => now(),
+            'your_name' => 'Orphan Job',
+            'company_name' => 'Orphan Co',
+            'email' => 'orphan@example.com',
+            'site_address' => '10 Orphan St',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+            'lead_number' => '26016',
+        ]);
+
+        $this->assertSame(0, $orphan->revisions()->count());
+
+        $this->actingAs($user)
+            ->get(route('job.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->has('jobs.data', 0)
+                ->has('masterlistCandidates', 1)
+                ->where('masterlistCandidates.0.id', $orphan->id)
+                ->where('masterlistCandidates.0.source', 'masterlist'));
+
+        $orphan->refresh();
+        $this->assertSame(DraftingRequest::STAGE_MASTERLIST, $orphan->workflow_stage);
+    }
+
+    public function test_board_revision_no_never_invents_suffix_without_revision_row(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $job = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_NEW,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_APM,
+            'requested_at' => now(),
+            'your_name' => 'Bare Lead',
+            'company_name' => 'Superior Homes (Aust) Pty Ltd',
+            'email' => 'superior@example.com',
+            'site_address' => 'Lot 396A Knutsford Avenue, Kewdale',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+            'lead_number' => '26016',
+        ]);
+
+        // Legacy bare lead stored as revision code (no "-01" row).
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $job->id,
+            'user_id' => $user->id,
+            'code' => '26016',
+            'log_date' => now()->toDateString(),
+            'category' => 'WD',
+            'status' => DraftingRequest::STATUS_NEW,
+        ]);
+
+        $formatted = app(DraftingRequestBoardService::class)->formatBoardRow($job->fresh()->load('revisions'));
+
+        $this->assertSame('26016', $formatted['latest_revision']);
+        $this->assertNotSame('26016-01', $formatted['latest_revision']);
+
+        // After deleting the only revision, board must not keep a fake "-01".
+        $job->revisions()->delete();
+        app(\App\Services\DraftingRequestSubmissionService::class)
+            ->returnToMasterlistIfNoRevisions($job->fresh(), $user);
+
+        $request = Request::create('/job/list', 'GET');
+        $ids = app(DraftingRequestBoardService::class)->baseQuery($request)->pluck('id');
+        $this->assertFalse($ids->contains($job->id));
     }
 
     private function adminUser(): User

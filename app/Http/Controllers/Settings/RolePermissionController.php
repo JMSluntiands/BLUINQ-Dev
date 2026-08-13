@@ -40,6 +40,7 @@ class RolePermissionController extends Controller
             'permissionGroups' => [
                 ['key' => 'general', 'label' => 'General'],
                 ['key' => 'archi-project', 'label' => 'Archi Project'],
+                ['key' => 'design-project', 'label' => 'Design Project'],
                 ['key' => 'workflow-settings', 'label' => 'Workflow settings'],
                 ['key' => 'system', 'label' => 'System settings'],
             ],

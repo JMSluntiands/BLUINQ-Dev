@@ -11,23 +11,6 @@ import { useEffect, useMemo } from 'react';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function CoffeeIcon({ className = 'h-3.5 w-3.5' }) {
-    return (
-        <svg
-            className={className}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            aria-hidden
-        >
-            <path d="M5 8h11v6a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V8z" />
-            <path d="M16 10h1.5a2.5 2.5 0 0 1 0 5H16" />
-            <path d="M7 4l1 2M12 4l1 2M16 4l1 2" strokeLinecap="round" />
-        </svg>
-    );
-}
-
 function addDays(date, days) {
     const next = new Date(date);
     next.setDate(next.getDate() + days);
@@ -114,14 +97,6 @@ function MarkBadge({ type }) {
         return (
             <span className="inline-flex h-7 w-8 items-center justify-center rounded-md bg-emerald-500 text-white">
                 <GiftIcon className="h-3.5 w-3.5" aria-hidden />
-            </span>
-        );
-    }
-
-    if (type === 'remote') {
-        return (
-            <span className="inline-flex h-7 w-8 items-center justify-center rounded-md bg-emerald-500 text-white">
-                <CoffeeIcon />
             </span>
         );
     }
@@ -386,10 +361,6 @@ export default function TeamLeaveTimesheet({
                     <span className="inline-flex items-center gap-1.5">
                         <CalendarDaysIcon className="h-3.5 w-3.5 text-slate-400" />
                         Approved leave
-                    </span>
-                    <span className="inline-flex items-center gap-1.5">
-                        <CoffeeIcon className="h-3.5 w-3.5 text-emerald-500" />
-                        Remote work
                     </span>
                     <span className="inline-flex items-center gap-1.5">
                         <GiftIcon className="h-3.5 w-3.5 text-pink-500" />

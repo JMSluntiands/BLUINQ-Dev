@@ -49,6 +49,40 @@ const mutedTextClass = 'text-sm text-slate-600 dark:text-slate-300';
 
 const selectClass = inputClass;
 
+/** Strip leading "Class " from a building class code for display. */
+function formatBuildingClassCode(code) {
+    return String(code ?? '')
+        .trim()
+        .replace(/^class\s+/i, '');
+}
+
+/** Sort building class codes like 1a, 1b, 2, … 10a (optional "Class " prefix). */
+function compareBuildingClassCodes(left, right) {
+    const normalize = (value) =>
+        formatBuildingClassCode(value).toLowerCase();
+
+    const parse = (value) => {
+        const normalized = normalize(value);
+        const match = normalized.match(/^(\d+)\s*([a-z]*)/);
+        if (!match) {
+            return [Number.MAX_SAFE_INTEGER, normalized];
+        }
+        return [Number(match[1]), match[2] ?? ''];
+    };
+
+    const [leftNum, leftSuffix] = parse(left);
+    const [rightNum, rightSuffix] = parse(right);
+    if (leftNum !== rightNum) {
+        return leftNum - rightNum;
+    }
+    return leftSuffix.localeCompare(rightSuffix);
+}
+
+function buildingClassOptionLabel(row) {
+    const code = formatBuildingClassCode(row.code);
+    return code ? `${code} — ${row.name}` : row.name;
+}
+
 const displayValueClass =
     'text-sm font-medium text-slate-900 dark:text-slate-100';
 
@@ -104,6 +138,14 @@ export default function DraftingRequestForm({
             ? route('public.drafting-request-form.store')
             : route('job.masterlist.store'));
     const loggedInName = auth?.user?.name ?? '';
+
+    const sortedBuildingClasses = useMemo(
+        () =>
+            [...buildingClasses].sort((a, b) =>
+                compareBuildingClassCodes(a.code ?? a.name, b.code ?? b.name),
+            ),
+        [buildingClasses],
+    );
 
     const { data, setData, post, processing, errors, transform } = useForm({
         lead_number: applicant.lead_number ?? '',
@@ -248,21 +290,23 @@ export default function DraftingRequestForm({
     const applyContact = useCallback(
         (contact, client) => {
             if (!contact) {
-                setData({
+                setData((prev) => ({
+                    ...prev,
                     client_contact_id: '',
                     email: '',
                     phone: '',
                     ...(standalone ? { your_name: '' } : {}),
-                });
+                }));
                 return;
             }
-            setData({
+            setData((prev) => ({
+                ...prev,
                 client_contact_id: String(contact.id),
                 email: contact.email || '',
                 phone: contact.mobile || '',
                 ...(standalone ? { your_name: contact.name || '' } : {}),
                 ...(client ? { company_name: client.name ?? '' } : {}),
-            });
+            }));
         },
         [setData, standalone],
     );
@@ -273,14 +317,15 @@ export default function DraftingRequestForm({
                 (row) => String(row.id) === String(value),
             );
             if (!client) {
-                setData({
+                setData((prev) => ({
+                    ...prev,
                     client_id: '',
                     client_contact_id: '',
                     company_name: '',
                     email: '',
                     phone: '',
                     ...(standalone ? { your_name: '' } : {}),
-                });
+                }));
                 return;
             }
 
@@ -288,14 +333,15 @@ export default function DraftingRequestForm({
             const main =
                 contacts.find((c) => c.type === 'main') ?? contacts[0] ?? null;
 
-            setData({
+            setData((prev) => ({
+                ...prev,
                 client_id: String(client.id),
                 company_name: client.name ?? '',
                 client_contact_id: main ? String(main.id) : '',
                 email: main?.email || '',
                 phone: main?.mobile || '',
                 ...(standalone ? { your_name: main?.name || '' } : {}),
-            });
+            }));
         },
         [clients, setData, standalone],
     );
@@ -730,15 +776,13 @@ export default function DraftingRequestForm({
                                         required
                                     >
                                         <option value="">Select…</option>
-                                        {buildingClasses.map((row) => (
+                                        {sortedBuildingClasses.map((row) => (
                                             <option key={row.id} value={row.id}>
-                                                {row.code
-                                                    ? `${row.code} — ${row.name}`
-                                                    : row.name}
+                                                {buildingClassOptionLabel(row)}
                                             </option>
                                         ))}
                                     </select>
-                                    {buildingClasses.length === 0 ? (
+                                    {sortedBuildingClasses.length === 0 ? (
                                         <p className="text-sm text-amber-800 dark:text-amber-200">
                                             No building classes configured. Add
                                             them under Workflow settings →

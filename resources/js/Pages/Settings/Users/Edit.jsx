@@ -30,6 +30,7 @@ export default function UsersEdit({
         initials: user.initials ?? '',
         email: user.email,
         position: user.position ?? '',
+        birthday: user.birthday ?? '',
         date_hired: user.date_hired ?? '',
         employment_status: user.employment_status ?? 'regular',
         role_id: user.role_id,
@@ -133,6 +134,23 @@ export default function UsersEdit({
                         <InputError
                             className="mt-2"
                             message={form.errors.position}
+                        />
+                    </div>
+
+                    <div>
+                        <InputLabel htmlFor="birthday" value="Birthday" />
+                        <TextInput
+                            id="birthday"
+                            type="date"
+                            className="mt-1 block w-full"
+                            value={form.data.birthday}
+                            onChange={(e) =>
+                                form.setData('birthday', e.target.value)
+                            }
+                        />
+                        <InputError
+                            className="mt-2"
+                            message={form.errors.birthday}
                         />
                     </div>
 

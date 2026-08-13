@@ -222,6 +222,66 @@ class DraftingRequestSubmissionService
     }
 
     /**
+     * After the last APM revision is removed, return the job to masterlist
+     * so it leaves the board and can be added again from the dropdown.
+     */
+    public function returnToMasterlistIfNoRevisions(
+        DraftingRequest $draftingRequest,
+        ?User $actor = null,
+    ): bool {
+        if ($draftingRequest->workflow_stage !== DraftingRequest::STAGE_APM) {
+            return false;
+        }
+
+        if ($draftingRequest->revisions()->exists()) {
+            return false;
+        }
+
+        DB::transaction(function () use ($draftingRequest, $actor): void {
+            $draftingRequest->assignments()->delete();
+
+            $draftingRequest->update([
+                'workflow_stage' => DraftingRequest::STAGE_MASTERLIST,
+            ]);
+
+            DraftingRequestActivity::record(
+                $draftingRequest,
+                $actor,
+                DraftingRequestActivity::ACTION_RETURNED_TO_MASTERLIST,
+                sprintf(
+                    'Drafting request %s was returned to the masterlist after its last revision was deleted.',
+                    $draftingRequest->jobNumber(),
+                ),
+            );
+        });
+
+        return true;
+    }
+
+    /**
+     * Heal APM board rows that have no revisions left (e.g. deleted before
+     * return-to-masterlist was wired). Clears board assignments and stage.
+     */
+    public function returnOrphanApmJobsToMasterlist(?User $actor = null): int
+    {
+        $orphans = DraftingRequest::query()
+            ->apm()
+            ->active()
+            ->whereDoesntHave('revisions')
+            ->get();
+
+        $count = 0;
+
+        foreach ($orphans as $draftingRequest) {
+            if ($this->returnToMasterlistIfNoRevisions($draftingRequest, $actor)) {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    /**
      * Add a masterlist job to APM, or reopen an existing APM job with the next revision.
      *
      * @return array{action: 'forwarded'|'reopened', revision_code: string|null}

@@ -33,6 +33,7 @@ class LeaveRequest extends Model
 
     public const TYPE_TOL = 'tol';
 
+    /** @deprecated Removed from selectable leave types; kept for legacy rows. */
     public const TYPE_REMOTE = 'remote';
 
     /**
@@ -52,12 +53,20 @@ class LeaveRequest extends Model
     {
         $type = self::normalizeType($this->type);
 
+        if ($type === self::TYPE_REMOTE) {
+            return 'Remote work';
+        }
+
         return (string) (config("leave.types.{$type}.label") ?? strtoupper($type));
     }
 
     public function typeCode(): string
     {
         $type = self::normalizeType($this->type);
+
+        if ($type === self::TYPE_REMOTE) {
+            return 'REMOTE';
+        }
 
         return (string) (config("leave.types.{$type}.code") ?? strtoupper($type));
     }

@@ -46,6 +46,8 @@ class JobBoardController extends Controller
 
     private function renderBoard(Request $request, bool $groupByStatus): Response
     {
+        $this->submission->returnOrphanApmJobsToMasterlist($request->user());
+
         $filters = $this->board->resolveListFilters($request);
 
         $query = $this->board->baseQuery($request);
@@ -441,10 +443,7 @@ class JobBoardController extends Controller
                 ->orderBy('code')
                 ->orderBy('name')
                 ->get(['id', 'name', 'code']),
-            'buildingClasses' => BuildingClass::query()
-                ->active()
-                ->orderBy('name')
-                ->get(['id', 'name', 'code']),
+            'buildingClasses' => BuildingClass::activeForSelect(),
             'externalWallConstructions' => ExternalWallConstruction::query()
                 ->active()
                 ->orderBy('name')
