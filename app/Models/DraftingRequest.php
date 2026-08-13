@@ -113,6 +113,33 @@ class DraftingRequest extends Model
     }
 
     /**
+     * Single Design WIP group for Design Project Management.
+     *
+     * @return array<string, string>
+     */
+    public static function designListStatusOptions(): array
+    {
+        return self::mergeStatusOptions([
+            self::STATUS_DESIGN_WIP => 'Design WIP',
+        ]);
+    }
+
+    /**
+     * Statuses that belong on Design Project Management.
+     *
+     * @return list<string>
+     */
+    public static function designWipBoardStatuses(): array
+    {
+        return [
+            self::STATUS_DESIGN_WIP,
+            self::STATUS_ASSIGNED,
+            self::STATUS_ON_HOLD,
+            self::STATUS_QUERY,
+        ];
+    }
+
+    /**
      * @param  array<string, string>  $codes
      * @return array<string, string>
      */

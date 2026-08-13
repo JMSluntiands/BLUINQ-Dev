@@ -8,13 +8,6 @@ use Inertia\Response;
 
 class DesignMenuController extends Controller
 {
-    public function list(): Response
-    {
-        return Inertia::render('Design/ProjectManagement', [
-            'title' => 'Design Project Management',
-        ]);
-    }
-
     public function memos(): Response
     {
         return Inertia::render('Design/Memos', [

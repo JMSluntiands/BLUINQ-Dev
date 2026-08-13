@@ -21,8 +21,13 @@ export default function JobBoard({
     jobListSections = {},
     canReviewPublicRequests = false,
     canForwardFromMasterlist = false,
+    showAddFromMasterlist = true,
+    showPendingRequests = true,
     masterlistCandidates = [],
     pendingRequests = [],
+    pageTitle = 'Archi Project Management',
+    pageDescription = null,
+    searchRoute = 'job.list',
 }) {
     const page = usePage();
     const revisionCode = page.props.flash?.revision_code ?? null;
@@ -55,11 +60,13 @@ export default function JobBoard({
     const [liveSearch, setLiveSearch] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
     const hasSearch = Boolean(liveSearch.trim());
-    const searchRoute = 'job.list';
-    const pageTitle = 'Archi Project Management';
-    const pageDescription = canViewAllRequests
-        ? 'All jobs on the project board, grouped by status.'
-        : 'Your jobs on the project board, grouped by status.';
+    const resolvedDescription =
+        pageDescription ??
+        (canViewAllRequests
+            ? 'All jobs on the project board, grouped by status.'
+            : 'Your jobs on the project board, grouped by status.');
+    const canOpenAddFromMasterlist =
+        showAddFromMasterlist && canOpenAddModal;
 
     const projectOptions = useMemo(
         () =>
@@ -119,10 +126,10 @@ export default function JobBoard({
                             {pageTitle}
                         </h2>
                         <p className="mt-1 text-sm text-[#676879] dark:text-[#94a3b8]">
-                            {pageDescription}
+                            {resolvedDescription}
                         </p>
                     </div>
-                    {canOpenAddModal && (
+                    {canOpenAddFromMasterlist && (
                         <button
                             type="button"
                             onClick={() => setShowAddModal(true)}
@@ -181,7 +188,7 @@ export default function JobBoard({
                 <Pagination pagination={jobs} />
             </div>
 
-            {canReviewPublicRequests && (
+            {showPendingRequests && canReviewPublicRequests && (
                 <JobBoardPendingRequests requests={pendingRequests} />
             )}
         </AuthenticatedLayout>

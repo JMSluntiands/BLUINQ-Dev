@@ -221,7 +221,7 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
     Route::post('/drafting-memos/tags', [DraftingMemoController::class, 'storeTag'])
         ->name('drafting-memos.tags.store');
 
-    Route::get('/design/list', [DesignMenuController::class, 'list'])
+    Route::get('/design/list', [JobBoardController::class, 'designList'])
         ->name('design.list');
     Route::get('/design-memos', [DesignMenuController::class, 'memos'])
         ->name('design-memos.index');

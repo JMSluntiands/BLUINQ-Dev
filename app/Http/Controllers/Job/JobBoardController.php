@@ -41,21 +41,55 @@ class JobBoardController extends Controller
 
     public function list(Request $request): Response
     {
-        return $this->renderBoard($request, groupByStatus: true);
+        return $this->renderBoard($request);
     }
 
-    private function renderBoard(Request $request, bool $groupByStatus): Response
+    public function designList(Request $request): Response
+    {
+        return $this->renderBoard($request, [
+            'pageTitle' => 'Design Project Management',
+            'pageDescription' => 'Design WIP jobs on the project board.',
+            'searchRoute' => 'design.list',
+            'statusFilter' => DraftingRequest::designWipBoardStatuses(),
+            'statusGroupOptions' => DraftingRequest::designListStatusOptions(),
+            'showAddFromMasterlist' => false,
+            'showPendingRequests' => false,
+        ]);
+    }
+
+    /**
+     * @param  array{
+     *     pageTitle?: string,
+     *     pageDescription?: string|null,
+     *     searchRoute?: string,
+     *     statusFilter?: list<string>|null,
+     *     statusGroupOptions?: array<string, string>|null,
+     *     showAddFromMasterlist?: bool,
+     *     showPendingRequests?: bool,
+     *     groupByStatus?: bool,
+     * }  $options
+     */
+    private function renderBoard(Request $request, array $options = []): Response
     {
         $this->submission->returnOrphanApmJobsToMasterlist($request->user());
 
         $filters = $this->board->resolveListFilters($request);
+        $groupByStatus = $options['groupByStatus'] ?? true;
+        $statusFilter = $options['statusFilter'] ?? null;
+        $showAddFromMasterlist = $options['showAddFromMasterlist'] ?? true;
+        $showPendingRequests = $options['showPendingRequests'] ?? true;
 
         $query = $this->board->baseQuery($request);
+        if (is_array($statusFilter) && $statusFilter !== []) {
+            $query->whereIn('status', $statusFilter);
+        }
         $this->board->applySearch($query, $filters['search']);
 
         $user = $request->user();
-        $canReviewPublicRequests = $user?->hasPermission('job.drafting-request.review') ?? false;
-        $canForwardFromMasterlist = $user?->hasPermission('job.list.view') ?? false;
+        $canReviewPublicRequests = $showPendingRequests
+            && ($user?->hasPermission('job.drafting-request.review') ?? false);
+        $canForwardFromMasterlist = $showAddFromMasterlist
+            && ($user?->hasPermission('job.list.view') ?? false);
         $canAddRevision = $user?->hasPermission('job.drafting.revision.add') ?? false;
 
         return Inertia::render('Job/Board', [
@@ -71,9 +105,14 @@ class JobBoardController extends Controller
                 })
                 ->withQueryString(),
             'filters' => $filters,
+            'pageTitle' => $options['pageTitle'] ?? 'Archi Project Management',
+            'pageDescription' => $options['pageDescription'] ?? null,
+            'searchRoute' => $options['searchRoute'] ?? 'job.list',
             'canViewAllRequests' => $user?->hasPermission('job.list.view') ?? false,
             'canReviewPublicRequests' => $canReviewPublicRequests,
             'canForwardFromMasterlist' => $canForwardFromMasterlist,
+            'showAddFromMasterlist' => $showAddFromMasterlist,
+            'showPendingRequests' => $showPendingRequests,
             'masterlistCandidates' => $canForwardFromMasterlist
                 ? $this->masterlistCandidatesForBoard($request)
                 : [],
@@ -86,20 +125,12 @@ class JobBoardController extends Controller
                     ->all()
                 : [],
             'assignableUsers' => $this->board->assignableUsers(),
-            'statusOptions' => collect(DraftingRequest::jobBoardStatusOptions())
-                ->map(fn (string $label, string $value) => [
-                    'value' => $value,
-                    'label' => $label,
-                ])
-                ->values()
-                ->all(),
-            'statusGroupOptions' => collect(DraftingRequest::jobListStatusOptions())
-                ->map(fn (string $label, string $value) => [
-                    'value' => $value,
-                    'label' => $label,
-                ])
-                ->values()
-                ->all(),
+            'statusOptions' => $this->formatStatusOptionList(
+                DraftingRequest::jobBoardStatusOptions(),
+            ),
+            'statusGroupOptions' => $this->formatStatusOptionList(
+                $options['statusGroupOptions'] ?? DraftingRequest::jobListStatusOptions(),
+            ),
             'categoryOptions' => CrmCategory::query()
                 ->active()
                 ->where('status', 'active')
@@ -115,6 +146,21 @@ class JobBoardController extends Controller
             'groupByStatus' => $groupByStatus,
             'jobListSections' => [],
         ]);
+    }
+
+    /**
+     * @param  array<string, string>  $options
+     * @return list<array{value: string, label: string}>
+     */
+    private function formatStatusOptionList(array $options): array
+    {
+        return collect($options)
+            ->map(fn (string $label, string $value) => [
+                'value' => $value,
+                'label' => $label,
+            ])
+            ->values()
+            ->all();
     }
 
     /**

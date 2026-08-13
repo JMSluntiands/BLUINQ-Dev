@@ -473,6 +473,48 @@ class ApmRevisionSyncTest extends TestCase
         $this->assertSame(['27000-01', '27000-02'], $codes);
     }
 
+    public function test_design_project_management_shows_only_design_wip_jobs(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $designWip = $this->createApmJob($user, $storeyLevel, $category);
+        $designWip->update(['status' => DraftingRequest::STATUS_DESIGN_WIP]);
+        $this->addBoardRevision($designWip, $user, $category, DraftingRequest::STATUS_DESIGN_WIP);
+
+        $assigned = $this->createApmJob($user, $storeyLevel, $category);
+        $assigned->update([
+            'status' => DraftingRequest::STATUS_ASSIGNED,
+            'site_address' => '2 Sync St',
+        ]);
+        $this->addBoardRevision($assigned, $user, $category, DraftingRequest::STATUS_ASSIGNED);
+
+        $draftingWip = $this->createApmJob($user, $storeyLevel, $category);
+        $draftingWip->update([
+            'status' => DraftingRequest::STATUS_DRAFTING_WIP,
+            'site_address' => '3 Sync St',
+        ]);
+        $this->addBoardRevision($draftingWip, $user, $category, DraftingRequest::STATUS_DRAFTING_WIP);
+
+        $this->actingAs($user)
+            ->get(route('design.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->where('pageTitle', 'Design Project Management')
+                ->where('searchRoute', 'design.list')
+                ->where('statusGroupOptions', [
+                    ['value' => 'design_wip', 'label' => 'Design WIP'],
+                ])
+                ->has('statusOptions', 9)
+                ->has('jobs.data', 2)
+                ->where(
+                    'jobs.data',
+                    fn ($jobs) => collect($jobs)->pluck('id')->sort()->values()->all()
+                        === collect([$designWip->id, $assigned->id])->sort()->values()->all()
+                ));
+    }
+
     private function adminUser(): User
     {
         $adminRoleId = Role::query()->where('slug', 'admin')->value('id');
@@ -531,6 +573,22 @@ class ApmRevisionSyncTest extends TestCase
             'crm_category_id' => $category->id,
             'ceiling_heights' => '2700',
             'ndis_sda' => false,
+        ]);
+    }
+
+    private function addBoardRevision(
+        DraftingRequest $job,
+        User $user,
+        CrmCategory $category,
+        string $status,
+    ): void {
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $job->id,
+            'user_id' => $user->id,
+            'code' => $job->jobNumber().'-01',
+            'log_date' => now()->toDateString(),
+            'category' => $category->code,
+            'status' => $status,
         ]);
     }
 }
