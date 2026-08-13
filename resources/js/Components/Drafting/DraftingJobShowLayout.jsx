@@ -377,6 +377,7 @@ function DrawingStatusPanel({
         items: items.map((item) => ({
             key: item.key,
             checked: Boolean(item.checked),
+            custom_type: item.custom_type ?? '',
         })),
     });
 
@@ -390,6 +391,7 @@ function DrawingStatusPanel({
             items.map((item) => ({
                 key: item.key,
                 checked: Boolean(item.checked),
+                custom_type: item.custom_type ?? '',
             })),
         );
     }, [items]);
@@ -397,10 +399,28 @@ function DrawingStatusPanel({
     const toggleItem = (key) => {
         form.setData(
             'items',
+            form.data.items.map((item) => {
+                if (item.key !== key) {
+                    return item;
+                }
+
+                const checked = !item.checked;
+
+                return {
+                    ...item,
+                    checked,
+                    custom_type:
+                        key === 'others' && !checked ? '' : item.custom_type,
+                };
+            }),
+        );
+    };
+
+    const setCustomType = (value) => {
+        form.setData(
+            'items',
             form.data.items.map((item) =>
-                item.key === key
-                    ? { ...item, checked: !item.checked }
-                    : item,
+                item.key === 'others' ? { ...item, custom_type: value } : item,
             ),
         );
     };
@@ -424,6 +444,14 @@ function DrawingStatusPanel({
     const checkedByKey = Object.fromEntries(
         form.data.items.map((item) => [item.key, item.checked]),
     );
+    const othersItem = form.data.items.find((item) => item.key === 'others');
+    const othersIndex = form.data.items.findIndex(
+        (item) => item.key === 'others',
+    );
+    const othersError =
+        othersIndex >= 0
+            ? form.errors[`items.${othersIndex}.custom_type`]
+            : null;
 
     return (
         <JobPanel
@@ -457,34 +485,77 @@ function DrawingStatusPanel({
                     {items.map((item) => {
                         const checked = Boolean(checkedByKey[item.key]);
                         const is3d = item.key === '3d_model';
+                        const isOthers = item.key === 'others';
+                        const customType = othersItem?.custom_type ?? '';
 
                         return (
                             <li key={item.key}>
-                                <label
-                                    className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2.5 transition ${
+                                <div
+                                    className={`rounded-lg border px-3 py-2.5 transition ${
                                         checked
                                             ? 'border-[#0073ea]/40 bg-[#e6f4ff]/60 dark:border-[#3b82f6]/40 dark:bg-[#243044]/50'
                                             : 'border-[#e6e9ef] bg-[#fafbfc] dark:border-[#2f3347] dark:bg-[#151622]'
-                                    } ${!canEdit ? 'cursor-default' : ''}`}
+                                    }`}
                                 >
-                                    <input
-                                        type="checkbox"
-                                        className="mt-0.5 rounded border-[#c5c7d0] text-[#0073ea] focus:ring-[#0073ea]"
-                                        checked={checked}
-                                        disabled={!canEdit || form.processing}
-                                        onChange={() => toggleItem(item.key)}
-                                    />
-                                    <span className="min-w-0">
-                                        <span className="block text-sm font-medium text-[#323338] dark:text-slate-200">
-                                            {item.label}
-                                        </span>
-                                        {is3d ? (
-                                            <span className="mt-0.5 block text-[11px] text-[#676879] dark:text-slate-500">
-                                                Placeholder — 3D integration TBD
+                                    <label
+                                        className={`flex items-start gap-2 ${
+                                            canEdit
+                                                ? 'cursor-pointer'
+                                                : 'cursor-default'
+                                        }`}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            className="mt-0.5 rounded border-[#c5c7d0] text-[#0073ea] focus:ring-[#0073ea]"
+                                            checked={checked}
+                                            disabled={
+                                                !canEdit || form.processing
+                                            }
+                                            onChange={() =>
+                                                toggleItem(item.key)
+                                            }
+                                        />
+                                        <span className="min-w-0">
+                                            <span className="block text-sm font-medium text-[#323338] dark:text-slate-200">
+                                                {item.label}
                                             </span>
-                                        ) : null}
-                                    </span>
-                                </label>
+                                            {is3d ? (
+                                                <span className="mt-0.5 block text-[11px] text-[#676879] dark:text-slate-500">
+                                                    Placeholder — 3D integration
+                                                    TBD
+                                                </span>
+                                            ) : null}
+                                            {isOthers &&
+                                            !canEdit &&
+                                            checked &&
+                                            customType ? (
+                                                <span className="mt-0.5 block text-[11px] text-[#676879] dark:text-slate-500">
+                                                    {customType}
+                                                </span>
+                                            ) : null}
+                                        </span>
+                                    </label>
+                                    {isOthers && canEdit && checked ? (
+                                        <div className="mt-2 pl-6">
+                                            <TextInput
+                                                value={customType}
+                                                onChange={(e) =>
+                                                    setCustomType(
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                placeholder="Custom type…"
+                                                className="text-xs"
+                                                disabled={form.processing}
+                                                maxLength={120}
+                                            />
+                                            <InputError
+                                                message={othersError}
+                                                className="mt-1"
+                                            />
+                                        </div>
+                                    ) : null}
+                                </div>
                             </li>
                         );
                     })}

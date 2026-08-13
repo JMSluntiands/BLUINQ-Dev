@@ -254,11 +254,12 @@ class DraftingRequest extends Model
             ['key' => 'set_out_plan', 'label' => 'Set Out Plan'],
             ['key' => 'shadow_diagram', 'label' => 'Shadow Diagram'],
             ['key' => '3d_model', 'label' => '3D Model'],
+            ['key' => 'others', 'label' => 'Others'],
         ];
     }
 
     /**
-     * @return list<array{key: string, label: string, checked: bool}>
+     * @return list<array{key: string, label: string, checked: bool, custom_type?: string}>
      */
     public function resolvedDrawingChecklist(): array
     {
@@ -270,15 +271,27 @@ class DraftingRequest extends Model
                 continue;
             }
 
-            $byKey[(string) $item['key']] = (bool) ($item['checked'] ?? false);
+            $byKey[(string) $item['key']] = [
+                'checked' => (bool) ($item['checked'] ?? false),
+                'custom_type' => trim((string) ($item['custom_type'] ?? '')),
+            ];
         }
 
         return array_map(
-            fn (array $item) => [
-                'key' => $item['key'],
-                'label' => $item['label'],
-                'checked' => $byKey[$item['key']] ?? false,
-            ],
+            function (array $item) use ($byKey) {
+                $savedItem = $byKey[$item['key']] ?? [];
+                $row = [
+                    'key' => $item['key'],
+                    'label' => $item['label'],
+                    'checked' => (bool) ($savedItem['checked'] ?? false),
+                ];
+
+                if ($item['key'] === 'others') {
+                    $row['custom_type'] = $savedItem['custom_type'] ?? '';
+                }
+
+                return $row;
+            },
             self::defaultDrawingChecklist(),
         );
     }

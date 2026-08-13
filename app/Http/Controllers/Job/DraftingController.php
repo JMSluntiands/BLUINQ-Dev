@@ -377,11 +377,19 @@ class DraftingController extends Controller
         if ($section === 'drawing_checklist_reset') {
             $draftingRequest->update([
                 'drawing_checklist' => array_map(
-                    fn (array $item) => [
-                        'key' => $item['key'],
-                        'label' => $item['label'],
-                        'checked' => false,
-                    ],
+                    function (array $item) {
+                        $row = [
+                            'key' => $item['key'],
+                            'label' => $item['label'],
+                            'checked' => false,
+                        ];
+
+                        if ($item['key'] === 'others') {
+                            $row['custom_type'] = '';
+                        }
+
+                        return $row;
+                    },
                     DraftingRequest::defaultDrawingChecklist(),
                 ),
             ]);
@@ -405,11 +413,23 @@ class DraftingController extends Controller
                 ->keyBy('key');
 
             $checklist = $defaults
-                ->map(fn (array $item, string $key) => [
-                    'key' => $key,
-                    'label' => $item['label'],
-                    'checked' => (bool) ($incoming->get($key)['checked'] ?? false),
-                ])
+                ->map(function (array $item, string $key) use ($incoming) {
+                    $incomingItem = $incoming->get($key) ?? [];
+                    $checked = (bool) ($incomingItem['checked'] ?? false);
+                    $row = [
+                        'key' => $key,
+                        'label' => $item['label'],
+                        'checked' => $checked,
+                    ];
+
+                    if ($key === 'others') {
+                        $row['custom_type'] = $checked
+                            ? trim((string) ($incomingItem['custom_type'] ?? ''))
+                            : '';
+                    }
+
+                    return $row;
+                })
                 ->values()
                 ->all();
 

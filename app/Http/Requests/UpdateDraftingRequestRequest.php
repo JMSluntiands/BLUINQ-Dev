@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\DraftingRequest;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -135,6 +136,7 @@ class UpdateDraftingRequestRequest extends FormRequest
                 'items' => ['required', 'array'],
                 'items.*.key' => ['required', 'string', 'max:64'],
                 'items.*.checked' => ['required', 'boolean'],
+                'items.*.custom_type' => ['nullable', 'string', 'max:120'],
             ],
             'drawing_checklist_reset' => [
                 'section' => ['required', 'string', 'in:drawing_checklist_reset'],
@@ -187,6 +189,28 @@ class UpdateDraftingRequestRequest extends FormRequest
             'crm_category_ids.required' => 'Select at least one category.',
             'crm_category_ids.min' => 'Select at least one category.',
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            if ($this->input('section') !== 'drawing_checklist') {
+                return;
+            }
+
+            foreach ($this->input('items', []) as $index => $item) {
+                if (($item['key'] ?? '') !== 'others' || empty($item['checked'])) {
+                    continue;
+                }
+
+                if (trim((string) ($item['custom_type'] ?? '')) === '') {
+                    $validator->errors()->add(
+                        "items.{$index}.custom_type",
+                        'Enter a custom drawing type.',
+                    );
+                }
+            }
+        });
     }
 
     protected function prepareForValidation(): void
@@ -248,6 +272,7 @@ class UpdateDraftingRequestRequest extends FormRequest
                 ->map(fn ($item) => [
                     'key' => $item['key'] ?? null,
                     'checked' => filter_var($item['checked'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                    'custom_type' => trim((string) ($item['custom_type'] ?? '')),
                 ])
                 ->all();
 
