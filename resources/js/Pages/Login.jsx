@@ -1,7 +1,21 @@
 import AppLogo from '@/Components/AppLogo';
 import ThemeToggle from '@/Components/ThemeToggle';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { Head, useForm, usePage } from '@inertiajs/react';
+
+function BrandMark({ logoUrl, className = 'max-h-10 max-w-[10rem]' }) {
+    return (
+        <AppLogo
+            logoUrl={logoUrl}
+            alt="Bluinq"
+            className={`block h-auto w-auto object-contain ${className}`}
+            fallback={
+                <span className="text-2xl font-extrabold tracking-tight text-[#0094FF]">
+                    Bluinq
+                </span>
+            }
+        />
+    );
+}
 
 export default function Login({ status }) {
     const { logo_url: logoUrl } = usePage().props;
@@ -29,7 +43,7 @@ export default function Login({ status }) {
 
             <div
                 className={
-                    'login-v3 relative flex min-h-screen flex-col overflow-hidden bg-[#e8f1f8] dark:bg-[#081018] ' +
+                    'login-v6 relative flex min-h-screen items-center justify-center overflow-hidden bg-[#06101a] px-4 py-10 ' +
                     (processing ? 'login-page--submitting' : '')
                 }
                 style={{
@@ -37,121 +51,60 @@ export default function Login({ status }) {
                         "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif",
                 }}
             >
-                {/* Atmosphere */}
                 <div className="pointer-events-none absolute inset-0" aria-hidden>
-                    <div className="absolute inset-0 bg-[#f4f8fb] dark:bg-[#071018]" />
-                    <div className="absolute inset-0 bg-[radial-gradient(90%_70%_at_12%_18%,rgba(0,148,255,0.18),transparent_58%),radial-gradient(70%_50%_at_88%_88%,rgba(14,116,180,0.1),transparent_60%)] dark:bg-[radial-gradient(90%_70%_at_12%_18%,rgba(0,148,255,0.28),transparent_55%),radial-gradient(70%_50%_at_88%_88%,rgba(14,116,180,0.16),transparent_58%)]" />
-
-                    <svg
-                        className="login-v3-grid absolute inset-0 h-full w-full text-[#0094FF]/25 dark:text-sky-400/25"
-                        xmlns="http://www.w3.org/2000/svg"
-                        preserveAspectRatio="xMidYMid slice"
-                    >
-                        <defs>
-                            <pattern
-                                id="login-bg-grid"
-                                width="64"
-                                height="64"
-                                patternUnits="userSpaceOnUse"
-                            >
-                                <path
-                                    d="M 64 0 L 0 0 0 64"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="1"
-                                />
-                            </pattern>
-                            <linearGradient
-                                id="login-grid-fade"
-                                x1="0%"
-                                y1="0%"
-                                x2="100%"
-                                y2="0%"
-                            >
-                                <stop offset="0%" stopColor="white" stopOpacity="1" />
-                                <stop offset="55%" stopColor="white" stopOpacity="0.45" />
-                                <stop offset="100%" stopColor="white" stopOpacity="0" />
-                            </linearGradient>
-                            <mask id="login-grid-mask">
-                                <rect
-                                    width="100%"
-                                    height="100%"
-                                    fill="url(#login-grid-fade)"
-                                />
-                            </mask>
-                        </defs>
-                        <rect
-                            width="100%"
-                            height="100%"
-                            fill="url(#login-bg-grid)"
-                            mask="url(#login-grid-mask)"
-                        />
-                        <g
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.1"
-                            opacity="0.55"
-                            mask="url(#login-grid-mask)"
-                        >
-                            <line x1="8%" y1="0" x2="8%" y2="100%" strokeDasharray="2 16" />
-                            <line x1="0" y1="22%" x2="70%" y2="22%" strokeDasharray="6 12" />
-                            <line x1="0" y1="78%" x2="62%" y2="78%" strokeDasharray="6 12" />
-                            <path d="M 0 100 L 42 42 L 84 100" opacity="0.45" />
-                        </g>
-                    </svg>
-
-                    <p className="login-v3-mark absolute bottom-6 left-6 select-none text-[clamp(4.5rem,18vw,11rem)] font-extrabold leading-none tracking-[-0.07em] text-[#0094FF]/15 dark:text-sky-300/20 sm:bottom-8 sm:left-10">
-                        BLUINQ
-                    </p>
+                    <div className="absolute -left-24 top-[-20%] h-[70vw] max-h-[520px] w-[70vw] max-w-[520px] rounded-full bg-[#0094FF]/25 blur-[90px]" />
+                    <div className="absolute -right-16 bottom-[-15%] h-[55vw] max-h-[420px] w-[55vw] max-w-[420px] rounded-full bg-[#0ea5e9]/20 blur-[100px]" />
+                    <div className="login-v6-lines absolute inset-0 opacity-40" />
                 </div>
 
-                <header className="relative z-20 flex items-center justify-between px-6 py-5 sm:px-10">
-                    <div className="login-v3-logo rounded-xl bg-white px-3.5 py-2.5 shadow-sm ring-1 ring-slate-900/5">
-                        <AppLogo
-                            logoUrl={logoUrl}
-                            alt="Bluinq"
-                            className="block h-auto max-h-11 w-auto max-w-[11rem] object-contain sm:max-h-12 sm:max-w-[12.5rem]"
-                            fallback={
-                                <span className="text-xl font-bold tracking-tight text-[#0094FF]">
-                                    Bluinq
-                                </span>
-                            }
-                        />
-                    </div>
-                    <ThemeToggle className="border border-slate-300/70 bg-white/50 backdrop-blur-sm dark:border-slate-600 dark:bg-slate-900/50" />
-                </header>
+                <div className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6">
+                    <ThemeToggle className="border border-white/15 bg-white/10 text-white hover:bg-white/20 dark:border-white/15 dark:bg-white/10 dark:text-white dark:hover:bg-white/20" />
+                </div>
 
                 {processing && (
                     <div
-                        className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-slate-900/25 backdrop-blur-[2px]"
+                        className="absolute inset-0 z-40 flex items-center justify-center bg-[#06101a]/75 backdrop-blur-md"
                         aria-busy="true"
                         aria-live="polite"
                     >
-                        <ArrowPathIcon
-                            className="h-11 w-11 text-[#0094FF] motion-safe:animate-spin"
-                            aria-hidden
-                        />
-                        <p className="text-sm font-semibold tracking-wide text-slate-800 dark:text-slate-100">
-                            Signing in…
-                        </p>
+                        <div className="flex flex-col items-center gap-5">
+                            <div className="relative flex h-28 w-28 items-center justify-center">
+                                <span className="login-v6-ring pointer-events-none absolute inset-0 rounded-full" />
+                                <span className="login-v6-ring login-v6-ring--slow pointer-events-none absolute inset-2 rounded-full" />
+                                <div className="relative z-10 flex h-[4.75rem] w-[4.75rem] items-center justify-center rounded-2xl bg-white p-3 shadow-[0_0_40px_rgba(0,148,255,0.35)]">
+                                    <BrandMark
+                                        logoUrl={logoUrl}
+                                        className="max-h-10 max-w-[3.75rem]"
+                                    />
+                                </div>
+                            </div>
+                            <p className="text-sm font-semibold tracking-[0.22em] text-white/90 uppercase">
+                                Signing in
+                            </p>
+                        </div>
                     </div>
                 )}
 
-                <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-5 py-8 sm:px-10 lg:items-end lg:px-16 lg:pb-16 lg:pr-[8vw]">
-                    <div className="login-v3-panel w-full max-w-md border border-slate-900/10 bg-white/90 p-7 backdrop-blur-md dark:border-white/10 dark:bg-slate-950/80 sm:p-9">
-                        <p className="text-[11px] font-semibold tracking-[0.28em] text-[#0094FF] uppercase">
-                            Access
-                        </p>
-                        <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
-                            Welcome back
-                        </h1>
-                        <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-                            Sign in to continue to your workspace.
-                        </p>
+                <main className="relative z-10 w-full max-w-[420px]">
+                    <div className="login-v6-card rounded-[30px] border border-white/10 bg-white/8 p-8 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.8)] backdrop-blur-2xl sm:p-10">
+                        <div className="flex flex-col items-center text-center">
+                            <div className="flex h-[4.25rem] items-center justify-center rounded-2xl bg-white px-5 py-3 shadow-sm">
+                                <BrandMark logoUrl={logoUrl} />
+                            </div>
+                            <p className="mt-6 text-[11px] font-semibold tracking-[0.28em] text-sky-300 uppercase">
+                                Workspace
+                            </p>
+                            <h1 className="mt-2 text-3xl font-bold tracking-tight text-white">
+                                Welcome back
+                            </h1>
+                            <p className="mt-2 max-w-xs text-sm leading-relaxed text-slate-300">
+                                Sign in to continue. Your projects are waiting.
+                            </p>
+                        </div>
 
                         {status && (
                             <div
-                                className="mt-6 border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200"
+                                className="mt-6 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-center text-sm text-emerald-100"
                                 role="status"
                             >
                                 {status}
@@ -161,14 +114,14 @@ export default function Login({ status }) {
                         <form
                             method="post"
                             action={route('login')}
-                            className="mt-8 space-y-5"
+                            className="mt-8 space-y-4"
                             onSubmit={submit}
                             noValidate
                         >
                             <div>
                                 <label
                                     htmlFor="email"
-                                    className="block text-sm font-medium text-slate-700 dark:text-slate-200"
+                                    className="block text-sm font-medium text-slate-200"
                                 >
                                     Email
                                 </label>
@@ -181,11 +134,11 @@ export default function Login({ status }) {
                                     onChange={(e) =>
                                         setData('email', e.target.value)
                                     }
-                                    className="mt-2 block w-full border border-slate-200 bg-[#f8fafc] px-3.5 py-3 text-slate-900 outline-none transition focus:border-[#0094FF] focus:bg-white focus:ring-2 focus:ring-[#0094FF]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-sky-400 dark:focus:ring-sky-400/20"
+                                    className="mt-2 block w-full rounded-2xl border border-white/15 bg-white/10 px-3.5 py-3 text-white outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:bg-white/15 focus:ring-2 focus:ring-sky-400/25"
                                     required
                                 />
                                 {errors.email && (
-                                    <p className="mt-2 text-sm text-rose-600 dark:text-rose-400">
+                                    <p className="mt-2 text-sm text-rose-300">
                                         {errors.email}
                                     </p>
                                 )}
@@ -194,7 +147,7 @@ export default function Login({ status }) {
                             <div>
                                 <label
                                     htmlFor="password"
-                                    className="block text-sm font-medium text-slate-700 dark:text-slate-200"
+                                    className="block text-sm font-medium text-slate-200"
                                 >
                                     Password
                                 </label>
@@ -207,44 +160,37 @@ export default function Login({ status }) {
                                     onChange={(e) =>
                                         setData('password', e.target.value)
                                     }
-                                    className="mt-2 block w-full border border-slate-200 bg-[#f8fafc] px-3.5 py-3 text-slate-900 outline-none transition focus:border-[#0094FF] focus:bg-white focus:ring-2 focus:ring-[#0094FF]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-sky-400 dark:focus:ring-sky-400/20"
+                                    className="mt-2 block w-full rounded-2xl border border-white/15 bg-white/10 px-3.5 py-3 text-white outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:bg-white/15 focus:ring-2 focus:ring-sky-400/25"
                                     required
                                 />
                                 {errors.password && (
-                                    <p className="mt-2 text-sm text-rose-600 dark:text-rose-400">
+                                    <p className="mt-2 text-sm text-rose-300">
                                         {errors.password}
                                     </p>
                                 )}
                             </div>
 
-                            <div className="flex items-center justify-between gap-3 pt-1">
-                                <label className="flex cursor-pointer items-center gap-2.5">
-                                    <input
-                                        type="checkbox"
-                                        name="remember"
-                                        checked={data.remember}
-                                        onChange={(e) =>
-                                            setData(
-                                                'remember',
-                                                e.target.checked,
-                                            )
-                                        }
-                                        className="h-4 w-4 border-slate-300 text-[#0094FF] focus:ring-[#0094FF]/40 dark:border-slate-600 dark:bg-slate-900"
-                                    />
-                                    <span className="text-sm text-slate-600 dark:text-slate-300">
-                                        Remember me
-                                    </span>
-                                </label>
-                            </div>
+                            <label className="flex cursor-pointer items-center gap-2.5 pt-1">
+                                <input
+                                    type="checkbox"
+                                    name="remember"
+                                    checked={data.remember}
+                                    onChange={(e) =>
+                                        setData('remember', e.target.checked)
+                                    }
+                                    className="h-4 w-4 rounded border-white/30 bg-white/10 text-[#0094FF] focus:ring-sky-400/40"
+                                />
+                                <span className="text-sm text-slate-300">
+                                    Remember me
+                                </span>
+                            </label>
 
                             <button
                                 type="submit"
                                 disabled={processing}
-                                className="group relative w-full overflow-hidden bg-[#0094FF] px-4 py-3.5 text-sm font-bold tracking-wide text-white transition hover:bg-[#007fd9] focus:outline-none focus:ring-2 focus:ring-[#0094FF]/45 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-offset-slate-950"
+                                className="mt-1 w-full rounded-2xl bg-[#0094FF] px-4 py-3.5 text-sm font-bold tracking-wide text-white transition hover:bg-[#00a2ff] focus:outline-none focus:ring-2 focus:ring-sky-300/50 focus:ring-offset-2 focus:ring-offset-[#06101a] disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                                <span className="relative z-10">
-                                    {processing ? 'Signing in…' : 'Sign in'}
-                                </span>
+                                {processing ? 'Signing in…' : 'Sign in'}
                             </button>
                         </form>
                     </div>
