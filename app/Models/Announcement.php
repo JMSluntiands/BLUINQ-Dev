@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\StoredUpload;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
@@ -86,35 +87,19 @@ class Announcement extends Model
         return $this->likes()->where('user_id', $user->id)->exists();
     }
 
-
     /**
-     * Public URL for the stored announcement image, or null.
-     * Falls back to a controller route when public/storage is not linked
-     * (common on shared hosts that block symlinks).
+     * App URL for the stored announcement cover (storage/ only), or null.
      */
     protected function imageUrl(): Attribute
     {
         return Attribute::get(function (): ?string {
-            if (! $this->image) {
+            if (! StoredUpload::exists($this->image)) {
                 return null;
             }
 
-            $relativePath = str_replace('/', DIRECTORY_SEPARATOR, $this->image);
-            $publicPath = public_path('storage'.DIRECTORY_SEPARATOR.$relativePath);
-            $storedPath = storage_path('app/public/'.$relativePath);
-
-            if (! is_file($publicPath) && ! is_file($storedPath)) {
-                return null;
-            }
-
-            // Bust browser cache when the cover is replaced (same /image route otherwise).
             $version = $this->updated_at?->getTimestamp()
-                ?? (is_file($storedPath) ? (int) filemtime($storedPath) : time());
-
-            if (is_file($publicPath)) {
-                return asset('storage/'.ltrim(str_replace('\\', '/', $this->image), '/'))
-                    .'?v='.$version;
-            }
+                ?? StoredUpload::mtime($this->image)
+                ?? time();
 
             return route('announcements.image', [
                 'announcement' => $this->id,

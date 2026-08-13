@@ -3,7 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use App\Models\Permission;
+use App\Support\StoredUpload;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -207,28 +206,19 @@ class User extends Authenticatable
     }
 
     /**
-     * Public URL for the stored profile image (disk: public), or null.
+     * App URL for the stored profile image (storage/ only), or null.
      */
     protected function profileImageUrl(): Attribute
     {
         return Attribute::get(function (): ?string {
-            if (! $this->profile_image) {
+            if (! StoredUpload::exists($this->profile_image)) {
                 return null;
             }
 
-            $relativePath = str_replace('/', DIRECTORY_SEPARATOR, $this->profile_image);
-            $publicPath = public_path('storage'.DIRECTORY_SEPARATOR.$relativePath);
-
-            if (is_file($publicPath)) {
-                return Storage::disk('public')->url($this->profile_image);
-            }
-
-            $storedPath = storage_path('app/public/'.$relativePath);
-            if (is_file($storedPath)) {
-                return route('profile.image', $this->id);
-            }
-
-            return null;
+            return route('profile.image', [
+                'user' => $this->id,
+                'v' => StoredUpload::mtime($this->profile_image) ?? time(),
+            ]);
         });
     }
 }

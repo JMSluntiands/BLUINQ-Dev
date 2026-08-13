@@ -6,9 +6,10 @@ use App\Http\Requests\StoreAnnouncementRequest;
 use App\Http\Requests\UpdateAnnouncementRequest;
 use App\Models\Announcement;
 use App\Support\AnnouncementHtml;
+use App\Support\StoredUpload;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -145,7 +146,7 @@ class AnnouncementController extends Controller
         ];
 
         if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('announcement-images', 'public');
+            $data['image'] = StoredUpload::store($request->file('image'), 'announcement-images');
         }
 
         Announcement::query()->create($data);
@@ -187,11 +188,8 @@ class AnnouncementController extends Controller
 
         $image = $request->file('image');
         if ($image !== null && $image->isValid()) {
-            if ($announcement->image) {
-                Storage::disk('public')->delete($announcement->image);
-            }
-
-            $data['image'] = $image->store('announcement-images', 'public');
+            StoredUpload::delete($announcement->image);
+            $data['image'] = StoredUpload::store($image, 'announcement-images');
         }
 
         $announcement->update($data);
@@ -314,7 +312,7 @@ class AnnouncementController extends Controller
     }
 
     /**
-     * @param  \Illuminate\Database\Eloquent\Builder<Announcement>  $query
+     * @param  Builder<Announcement>  $query
      */
     private function applySearch($query, string $search): void
     {

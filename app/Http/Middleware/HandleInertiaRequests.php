@@ -82,7 +82,7 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Prefer a public file, otherwise /brand-logo (shared hosts often block storage:link).
+     * Serve logo from storage/ (or public/logo.png Git fallback) via /brand-logo.
      */
     protected function resolveAppLogoUrl(): ?string
     {

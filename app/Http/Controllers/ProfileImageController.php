@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use Illuminate\Support\Facades\Storage;
+use App\Support\StoredUpload;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ProfileImageController extends Controller
@@ -14,7 +14,7 @@ class ProfileImageController extends Controller
             abort(404);
         }
 
-        $path = Storage::disk('public')->path($user->profile_image);
+        $path = StoredUpload::absolutePath($user->profile_image);
 
         if (! is_file($path)) {
             abort(404);

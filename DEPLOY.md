@@ -6,7 +6,7 @@ The app now auto-saves uploads to:
 
 `public_html/persistent-dev/storage`
 
-(sibling of `dev`, still inside `public_html`). The brand logo is also in `public/logo.png` so it ships with Git.
+(sibling of `dev`, still inside `public_html`). Announcement covers, profile photos, inline images, and an uploaded logo are saved **only** under `storage/` — never into `public/`. The committed `public/logo.png` is a Git fallback for login branding.
 
 ## Hostinger Git setting (important)
 

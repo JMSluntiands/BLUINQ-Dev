@@ -17,11 +17,20 @@ export default function UsersCreate({ roles = [], employmentStatuses = {} }) {
         password: '',
         password_confirmation: '',
         role_id: roles[0]?.id ?? '',
+        profile_image: null,
     });
 
     const submit = (e) => {
         e.preventDefault();
-        form.post(route('settings.users.store'));
+        form.transform((data) => {
+            const payload = { ...data };
+            if (!payload.profile_image) {
+                delete payload.profile_image;
+            }
+            return payload;
+        }).post(route('settings.users.store'), {
+            forceFormData: true,
+        });
     };
 
     return (
@@ -44,6 +53,29 @@ export default function UsersCreate({ roles = [], employmentStatuses = {} }) {
 
             <div className="max-w-xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
                 <form onSubmit={submit} className="space-y-6">
+                    <div>
+                        <InputLabel htmlFor="profile_image" value="Profile photo" />
+                        <input
+                            id="profile_image"
+                            type="file"
+                            accept="image/*"
+                            className="mt-2 block w-full text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-sky-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-sky-700 hover:file:bg-sky-100"
+                            onChange={(e) =>
+                                form.setData(
+                                    'profile_image',
+                                    e.target.files?.[0] ?? null,
+                                )
+                            }
+                        />
+                        <p className="mt-1 text-xs text-slate-500">
+                            Saved to storage only. Max 5 MB.
+                        </p>
+                        <InputError
+                            className="mt-2"
+                            message={form.errors.profile_image}
+                        />
+                    </div>
+
                     <div>
                         <InputLabel htmlFor="name" value="Name" />
                         <TextInput

@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\ProfileController;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\LeaveEntitlementService;
+use App\Support\StoredUpload;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -65,7 +68,7 @@ class UserAccountController extends Controller
         }
 
         return Inertia::render('Profile/Edit', [
-            'profile' => \App\Http\Controllers\ProfileController::payload($user, $canViewPrivate),
+            'profile' => ProfileController::payload($user, $canViewPrivate),
             'canViewPrivate' => $canViewPrivate,
             'mustVerifyEmail' => false,
             'status' => null,
@@ -94,6 +97,7 @@ class UserAccountController extends Controller
             'birthday' => ['nullable', 'date'],
             'date_hired' => ['nullable', 'date'],
             'employment_status' => ['required', Rule::in(['regular', 'probationary', 'training'])],
+            'profile_image' => ['nullable', 'image', 'max:5120'],
         ]);
 
         $initials = trim((string) ($validated['initials'] ?? ''));
@@ -116,8 +120,16 @@ class UserAccountController extends Controller
             'leave_balance_year' => (int) now()->year,
         ]);
 
+        if ($request->hasFile('profile_image')) {
+            $user->profile_image = StoredUpload::store(
+                $request->file('profile_image'),
+                'profile-images',
+            );
+            $user->save();
+        }
+
         if ($validated['employment_status'] === 'regular') {
-            app(\App\Services\LeaveEntitlementService::class)->accrueMonthlyAl($user);
+            app(LeaveEntitlementService::class)->accrueMonthlyAl($user);
         }
 
         return redirect()
@@ -145,6 +157,7 @@ class UserAccountController extends Controller
                 'employment_status' => $user->employment_status ?? 'regular',
                 'role' => $user->role?->slug,
                 'role_id' => $user->role_id,
+                'profile_image_url' => $user->profile_image_url,
             ],
             'roles' => $this->roleOptions(),
             'employmentStatuses' => config('leave.employment_statuses', []),
@@ -176,6 +189,7 @@ class UserAccountController extends Controller
             'birthday' => ['nullable', 'date'],
             'date_hired' => ['nullable', 'date'],
             'employment_status' => ['required', Rule::in(['regular', 'probationary', 'training'])],
+            'profile_image' => ['nullable', 'image', 'max:5120'],
         ]);
 
         $newRole = Role::query()->findOrFail((int) $validated['role_id']);
@@ -205,6 +219,14 @@ class UserAccountController extends Controller
 
         if (! empty($validated['password'])) {
             $user->password = $validated['password'];
+        }
+
+        if ($request->hasFile('profile_image')) {
+            StoredUpload::delete($user->profile_image);
+            $user->profile_image = StoredUpload::store(
+                $request->file('profile_image'),
+                'profile-images',
+            );
         }
 
         $user->save();

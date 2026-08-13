@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\AnnouncementHtml;
+use App\Support\StoredUpload;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AnnouncementInlineImageController extends Controller
@@ -15,11 +16,11 @@ class AnnouncementInlineImageController extends Controller
             'image' => ['required', 'image', 'max:5120'],
         ]);
 
-        $path = $request->file('image')->store('announcement-inline-images', 'public');
+        $path = StoredUpload::store($request->file('image'), 'announcement-inline-images');
         $filename = basename($path);
 
         return response()->json([
-            'url' => \App\Support\AnnouncementHtml::relativeInlineImageUrl(
+            'url' => AnnouncementHtml::relativeInlineImageUrl(
                 'announcements.inline-image.show',
                 $filename,
             ),
@@ -30,7 +31,7 @@ class AnnouncementInlineImageController extends Controller
     {
         $filename = basename($filename);
         $path = 'announcement-inline-images/'.$filename;
-        $fullPath = Storage::disk('public')->path($path);
+        $fullPath = StoredUpload::absolutePath($path);
 
         if (! is_file($fullPath)) {
             abort(404);

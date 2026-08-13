@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Job;
 
 use App\Http\Controllers\Controller;
+use App\Support\AnnouncementHtml;
+use App\Support\StoredUpload;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class DraftingCommentInlineImageController extends Controller
@@ -16,11 +17,11 @@ class DraftingCommentInlineImageController extends Controller
             'image' => ['required', 'image', 'max:5120'],
         ]);
 
-        $path = $request->file('image')->store('drafting-comment-inline-images', 'public');
+        $path = StoredUpload::store($request->file('image'), 'drafting-comment-inline-images');
         $filename = basename($path);
 
         return response()->json([
-            'url' => \App\Support\AnnouncementHtml::relativeInlineImageUrl(
+            'url' => AnnouncementHtml::relativeInlineImageUrl(
                 'job.drafting.comments.inline-image.show',
                 $filename,
             ),
@@ -31,7 +32,7 @@ class DraftingCommentInlineImageController extends Controller
     {
         $filename = basename($filename);
         $path = 'drafting-comment-inline-images/'.$filename;
-        $fullPath = Storage::disk('public')->path($path);
+        $fullPath = StoredUpload::absolutePath($path);
 
         if (! is_file($fullPath)) {
             abort(404);

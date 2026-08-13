@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Announcement;
-use Illuminate\Support\Facades\Storage;
+use App\Support\StoredUpload;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AnnouncementImageController extends Controller
@@ -17,7 +17,7 @@ class AnnouncementImageController extends Controller
             abort(404);
         }
 
-        $path = Storage::disk('public')->path($announcement->image);
+        $path = StoredUpload::absolutePath($announcement->image);
 
         if (! is_file($path)) {
             abort(404);
