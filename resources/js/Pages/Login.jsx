@@ -1,6 +1,8 @@
 import AppLogo from '@/Components/AppLogo';
 import ThemeToggle from '@/Components/ThemeToggle';
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { Head, useForm, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 
 function BrandMark({ logoUrl, className = 'max-h-10 max-w-[10rem]' }) {
     return (
@@ -19,6 +21,7 @@ function BrandMark({ logoUrl, className = 'max-h-10 max-w-[10rem]' }) {
 
 export default function Login({ status }) {
     const { logo_url: logoUrl } = usePage().props;
+    const [showPassword, setShowPassword] = useState(false);
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
@@ -151,18 +154,46 @@ export default function Login({ status }) {
                                 >
                                     Password
                                 </label>
-                                <input
-                                    id="password"
-                                    name="password"
-                                    type="password"
-                                    autoComplete="current-password"
-                                    value={data.password}
-                                    onChange={(e) =>
-                                        setData('password', e.target.value)
-                                    }
-                                    className="mt-2 block w-full rounded-2xl border border-white/15 bg-white/10 px-3.5 py-3 text-white outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:bg-white/15 focus:ring-2 focus:ring-sky-400/25"
-                                    required
-                                />
+                                <div className="relative mt-2">
+                                    <input
+                                        id="password"
+                                        name="password"
+                                        type={
+                                            showPassword ? 'text' : 'password'
+                                        }
+                                        autoComplete="current-password"
+                                        value={data.password}
+                                        onChange={(e) =>
+                                            setData('password', e.target.value)
+                                        }
+                                        className="block w-full rounded-2xl border border-white/15 bg-white/10 py-3 pl-3.5 pr-12 text-white outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:bg-white/15 focus:ring-2 focus:ring-sky-400/25"
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setShowPassword((open) => !open)
+                                        }
+                                        className="absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-300 transition hover:text-white"
+                                        aria-label={
+                                            showPassword
+                                                ? 'Hide password'
+                                                : 'Show password'
+                                        }
+                                    >
+                                        {showPassword ? (
+                                            <EyeSlashIcon
+                                                className="h-5 w-5"
+                                                aria-hidden
+                                            />
+                                        ) : (
+                                            <EyeIcon
+                                                className="h-5 w-5"
+                                                aria-hidden
+                                            />
+                                        )}
+                                    </button>
+                                </div>
                                 {errors.password && (
                                     <p className="mt-2 text-sm text-rose-300">
                                         {errors.password}
