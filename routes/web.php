@@ -16,8 +16,8 @@ use App\Http\Controllers\Job\DraftingRequestFormController;
 use App\Http\Controllers\Job\MasterlistController;
 use App\Http\Controllers\Job\JobBoardController;
 use App\Http\Controllers\Job\PendingDraftingRequestController;
+use App\Http\Controllers\Design\DesignCatalogueController;
 use App\Http\Controllers\Design\DesignMemoController;
-use App\Http\Controllers\Design\DesignMenuController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileImageController;
 use App\Http\Controllers\WeeklyTimesheetController;
@@ -236,8 +236,18 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('design-memos.attachment');
     Route::post('/design-memos/tags', [DesignMemoController::class, 'storeTag'])
         ->name('design-memos.tags.store');
-    Route::get('/design/catalogue', [DesignMenuController::class, 'catalogue'])
+    Route::get('/design/catalogue', [DesignCatalogueController::class, 'index'])
         ->name('design.catalogue');
+    Route::post('/design/catalogue', [DesignCatalogueController::class, 'store'])
+        ->name('design.catalogue.store');
+    Route::patch('/design/catalogue/{designCatalogueItem}', [DesignCatalogueController::class, 'update'])
+        ->name('design.catalogue.update');
+    Route::delete('/design/catalogue/{designCatalogueItem}', [DesignCatalogueController::class, 'destroy'])
+        ->name('design.catalogue.destroy');
+    Route::get('/design/catalogue/{designCatalogueItem}/pdf', [DesignCatalogueController::class, 'previewPdf'])
+        ->name('design.catalogue.pdf');
+    Route::post('/design/catalogue/tags', [DesignCatalogueController::class, 'storeTag'])
+        ->name('design.catalogue.tags.store');
 
     Route::patch('/job/drafting/{draftingRequest}', [DraftingController::class, 'update'])
         ->name('job.drafting.update');

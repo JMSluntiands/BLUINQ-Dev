@@ -152,6 +152,11 @@ class User extends Authenticatable
         return $this->canManageDraftingMemoTags();
     }
 
+    public function canManageDesignCatalogueTags(): bool
+    {
+        return $this->canManageDraftingMemoTags();
+    }
+
     public function badgeInitials(): string
     {
         if (! array_key_exists('initials', $this->attributes)) {
