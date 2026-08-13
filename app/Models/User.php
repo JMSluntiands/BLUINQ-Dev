@@ -147,6 +147,11 @@ class User extends Authenticatable
         return $this->isAdmin() || $this->role?->slug === 'project-manager';
     }
 
+    public function canManageDesignMemoTags(): bool
+    {
+        return $this->canManageDraftingMemoTags();
+    }
+
     public function badgeInitials(): string
     {
         if (! array_key_exists('initials', $this->attributes)) {

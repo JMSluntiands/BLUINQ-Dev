@@ -268,6 +268,15 @@ export default function Index({
     tags = [],
     canManageMemos = false,
     canManageTags = false,
+    pageTitle = 'Drafting Memos',
+    pageDescription = 'Latest memos visible and editable by the team.',
+    emptyMessage = 'No drafting memos yet.',
+    indexRoute = 'drafting-memos.index',
+    destroyRoute = 'drafting-memos.destroy',
+    storeRoute = 'drafting-memos.store',
+    updateRoute = 'drafting-memos.update',
+    tagsStoreRoute = 'drafting-memos.tags.store',
+    flashMessages = FLASH_MESSAGES,
 }) {
     const rows = memos?.data ?? [];
     const [formMemo, setFormMemo] = useState(null);
@@ -290,7 +299,7 @@ export default function Index({
     const applyFilters = useCallback(
         (next) => {
             router.get(
-                route('drafting-memos.index'),
+                route(indexRoute),
                 {
                     search: next.search ?? filters.search ?? '',
                     per_page: next.per_page ?? filters.per_page ?? 20,
@@ -302,7 +311,7 @@ export default function Index({
                 { preserveState: true, preserveScroll: true, replace: true },
             );
         },
-        [filters],
+        [filters, indexRoute],
     );
 
     const selectMemo = (memo) => {
@@ -330,11 +339,11 @@ export default function Index({
             return;
         }
 
-        router.delete(route('drafting-memos.destroy', deleteTarget.id) + q, {
+        router.delete(route(destroyRoute, deleteTarget.id) + q, {
             preserveScroll: true,
         });
         setDeleteTarget(null);
-    }, [deleteTarget, q]);
+    }, [deleteTarget, q, destroyRoute]);
 
     return (
         <AuthenticatedLayout
@@ -342,10 +351,10 @@ export default function Index({
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h2 className="text-xl font-semibold leading-tight text-slate-800 dark:text-slate-100">
-                            Drafting Memos
+                            {pageTitle}
                         </h2>
                         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                            Latest memos visible and editable by the team.
+                            {pageDescription}
                         </p>
                     </div>
                     {canManageMemos && (
@@ -361,8 +370,8 @@ export default function Index({
                 </div>
             }
         >
-            <Head title="Drafting Memos" />
-            <FlashNoticeModal messages={FLASH_MESSAGES} />
+            <Head title={pageTitle} />
+            <FlashNoticeModal messages={flashMessages} />
 
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:grid lg:min-h-[70vh] lg:grid-cols-12">
                 {/* Memo list */}
@@ -462,7 +471,7 @@ export default function Index({
                     <ul className="min-h-0 flex-1 overflow-y-auto">
                         {rows.length === 0 ? (
                             <li className="px-5 py-16 text-center text-sm text-slate-500 dark:text-slate-400">
-                                No drafting memos yet.
+                                {emptyMessage}
                             </li>
                         ) : (
                             rows.map((memo) => {
@@ -554,6 +563,9 @@ export default function Index({
                 }}
                 canManageTags={canManageTags}
                 defaultClientName={filters.client ?? ''}
+                storeRoute={storeRoute}
+                updateRoute={updateRoute}
+                tagsStoreRoute={tagsStoreRoute}
                 onClose={() => {
                     setFormOpen(false);
                     setFormMemo(null);

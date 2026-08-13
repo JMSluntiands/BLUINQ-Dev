@@ -16,6 +16,7 @@ use App\Http\Controllers\Job\DraftingRequestFormController;
 use App\Http\Controllers\Job\MasterlistController;
 use App\Http\Controllers\Job\JobBoardController;
 use App\Http\Controllers\Job\PendingDraftingRequestController;
+use App\Http\Controllers\Design\DesignMemoController;
 use App\Http\Controllers\Design\DesignMenuController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileImageController;
@@ -223,8 +224,18 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
 
     Route::get('/design/list', [JobBoardController::class, 'designList'])
         ->name('design.list');
-    Route::get('/design-memos', [DesignMenuController::class, 'memos'])
+    Route::get('/design-memos', [DesignMemoController::class, 'index'])
         ->name('design-memos.index');
+    Route::post('/design-memos', [DesignMemoController::class, 'store'])
+        ->name('design-memos.store');
+    Route::patch('/design-memos/{designMemo}', [DesignMemoController::class, 'update'])
+        ->name('design-memos.update');
+    Route::delete('/design-memos/{designMemo}', [DesignMemoController::class, 'destroy'])
+        ->name('design-memos.destroy');
+    Route::get('/design-memos/{designMemo}/attachment', [DesignMemoController::class, 'downloadAttachment'])
+        ->name('design-memos.attachment');
+    Route::post('/design-memos/tags', [DesignMemoController::class, 'storeTag'])
+        ->name('design-memos.tags.store');
     Route::get('/design/catalogue', [DesignMenuController::class, 'catalogue'])
         ->name('design.catalogue');
 

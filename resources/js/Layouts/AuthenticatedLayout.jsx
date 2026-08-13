@@ -175,7 +175,7 @@ export default function AuthenticatedLayout({ header, children }) {
         isDraftingShow ||
         isDraftingArchive;
     const isDesignList = route().current('design.list');
-    const isDesignMemos = route().current('design-memos.index');
+    const isDesignMemos = route().current('design-memos.*');
     const isDesignCatalogue = route().current('design.catalogue');
     const isDesignMenuSection =
         isDesignList || isDesignMemos || isDesignCatalogue;

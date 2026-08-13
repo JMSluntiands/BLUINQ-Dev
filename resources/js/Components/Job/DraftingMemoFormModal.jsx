@@ -53,6 +53,9 @@ function filterQueryString(filters = {}) {
  *   filters?: object;
  *   canManageTags?: boolean;
  *   defaultClientName?: string;
+ *   storeRoute?: string;
+ *   updateRoute?: string;
+ *   tagsStoreRoute?: string;
  *   onClose: () => void;
  * }} props
  */
@@ -64,6 +67,9 @@ export default function DraftingMemoFormModal({
     filters = {},
     canManageTags = false,
     defaultClientName = '',
+    storeRoute = 'drafting-memos.store',
+    updateRoute = 'drafting-memos.update',
+    tagsStoreRoute = 'drafting-memos.tags.store',
     onClose,
 }) {
     const isEditing = Boolean(memo?.id);
@@ -148,7 +154,7 @@ export default function DraftingMemoFormModal({
 
         try {
             const { data } = await window.axios.post(
-                route('drafting-memos.tags.store'),
+                route(tagsStoreRoute),
                 { name: trimmed },
                 {
                     headers: {
@@ -200,13 +206,13 @@ export default function DraftingMemoFormModal({
                 _method: 'patch',
             }));
             form.post(
-                route('drafting-memos.update', memo.id) + listQs,
+                route(updateRoute, memo.id) + listQs,
                 options,
             );
             return;
         }
 
-        form.post(route('drafting-memos.store') + listQs, options);
+        form.post(route(storeRoute) + listQs, options);
     };
 
     return (
