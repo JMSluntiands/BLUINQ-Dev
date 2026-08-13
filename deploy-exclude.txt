@@ -1,0 +1,28 @@
+# Never upload / overwrite these on live.
+# WinSCP: Transfer settings → Exclude (paste patterns below, without comments)
+# rsync:  rsync -av --exclude-from=deploy-exclude.txt ./ user@host:/path/to/app/
+
+.git/
+.env
+.env.*
+node_modules/
+dist/
+tests/
+.cursor/
+.vscode/
+.idea/
+
+# Uploaded images / files — wiping these deletes live logo, profiles, announcements
+storage/app/public/
+public/storage/
+public/hot
+
+# Live logs and generated cache
+storage/logs/
+storage/framework/cache/
+storage/framework/sessions/
+storage/framework/views/
+
+# Local-only dumps
+database/sql/
+*.sql
