@@ -15,6 +15,7 @@ export default function JobBoard({
     canViewAllRequests = false,
     assignableUsers = [],
     statusOptions = [],
+    statusGroupOptions = [],
     categoryOptions = [],
     groupByStatus = false,
     jobListSections = {},
@@ -171,6 +172,7 @@ export default function JobBoard({
                     showFilesInTotal
                     assignableUsers={assignableUsers}
                     statusOptions={statusOptions}
+                    statusGroupOptions={statusGroupOptions}
                     onCommentsUpdated={() => reloadBoard(['jobs'])}
                     onPriorityUpdated={() => reloadBoard(['jobs'])}
                     onAssignmentsUpdated={() => reloadBoard(['jobs'])}

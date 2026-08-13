@@ -125,6 +125,41 @@ function StaffSlot({ assignment, editable = false, onClick }) {
     );
 }
 
+/** Map legacy / removed codes onto active Archi statuses. */
+const LEGACY_STATUS_TO_ARCHI = {
+    wip: 'drafting_wip',
+    for_quote: 'new',
+    quote_sent: 'submitted',
+    invoiced: 'submitted',
+    paid: 'submitted',
+    for_quotes: 'new',
+    completed_projects: 'submitted',
+    cancelled_jobs: 'cancelled',
+    assigned: 'design_wip',
+    on_hold: 'design_wip',
+    query: 'design_wip',
+};
+
+/**
+ * @param {string | null | undefined} status
+ * @param {Set<string>} known
+ */
+function normalizeArchiStatus(status, known) {
+    const raw = status || 'new';
+
+    if (!known || known.size === 0 || known.has(raw)) {
+        return raw;
+    }
+
+    const mapped = LEGACY_STATUS_TO_ARCHI[raw] ?? raw;
+
+    if (known.has(mapped)) {
+        return mapped;
+    }
+
+    return known.has('new') ? 'new' : mapped;
+}
+
 function EditableStatusSelect({ job, statusOptions = [], disabled = false }) {
     const [busy, setBusy] = useState(false);
 
@@ -600,33 +635,6 @@ const thClass =
 
 const tdClass =
     'border-r border-[#e6e9ef] px-2 py-1.5 align-middle text-xs text-[#323338] last:border-r-0 dark:border-[#2a2d42] dark:text-slate-200';
-
-/** Map legacy / removed codes onto active Archi statuses. */
-const LEGACY_STATUS_TO_ARCHI = {
-    wip: 'drafting_wip',
-    for_quote: 'new',
-    quote_sent: 'submitted',
-    invoiced: 'submitted',
-    paid: 'submitted',
-    for_quotes: 'new',
-    completed_projects: 'submitted',
-    cancelled_jobs: 'cancelled',
-};
-
-/**
- * @param {string | null | undefined} status
- * @param {Set<string>} known
- */
-function normalizeArchiStatus(status, known) {
-    const raw = status || 'new';
-    const mapped = LEGACY_STATUS_TO_ARCHI[raw] ?? raw;
-
-    if (known.has(mapped)) {
-        return mapped;
-    }
-
-    return known.has('new') ? 'new' : mapped;
-}
 
 /**
  * Group jobs by Archi workflow status (Workflows.pdf Status list).
@@ -1275,6 +1283,7 @@ export default function JobBoardGrid({
     fitWidth = false,
     assignableUsers = [],
     statusOptions = [],
+    statusGroupOptions = [],
 }) {
     const [commentJob, setCommentJob] = useState(null);
     const [assignmentTarget, setAssignmentTarget] = useState(null);
@@ -1290,9 +1299,14 @@ export default function JobBoardGrid({
             return [];
         }
 
+        const groupingOptions =
+            statusGroupOptions.length > 0
+                ? statusGroupOptions
+                : statusOptions;
+
         const groups = useListSections
             ? groupJobsByListSection(jobs, jobListSections)
-            : groupJobsByWorkflowStatus(jobs, statusOptions);
+            : groupJobsByWorkflowStatus(jobs, groupingOptions);
 
         if (!hideEmptyStatusGroups) {
             return groups;
@@ -1306,6 +1320,7 @@ export default function JobBoardGrid({
         jobs,
         jobListSections,
         statusOptions,
+        statusGroupOptions,
     ]);
 
     const toggleStatusSection = (status) => {

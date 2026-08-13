@@ -76,6 +76,59 @@ class DraftingRequest extends Model
     }
 
     /**
+     * Full Archi statuses for the job/list table dropdown.
+     *
+     * @return array<string, string>
+     */
+    public static function jobBoardStatusOptions(): array
+    {
+        return self::mergeStatusOptions([
+            self::STATUS_NEW => 'New',
+            self::STATUS_ASSIGNED => 'Assigned',
+            self::STATUS_DESIGN_WIP => 'Design WIP',
+            self::STATUS_DRAFTING_WIP => 'Drafting WIP',
+            self::STATUS_FOR_CHECKING => 'For Checking',
+            self::STATUS_QUERY => 'Query',
+            self::STATUS_SUBMITTED => 'Submitted',
+            self::STATUS_ON_HOLD => 'On Hold',
+            self::STATUS_CANCELLED => 'Cancelled',
+        ]);
+    }
+
+    /**
+     * Status groups on job/list. Assigned, On Hold, and Query fold into Design WIP.
+     *
+     * @return array<string, string>
+     */
+    public static function jobListStatusOptions(): array
+    {
+        return self::mergeStatusOptions([
+            self::STATUS_NEW => 'New',
+            self::STATUS_DESIGN_WIP => 'Design WIP',
+            self::STATUS_DRAFTING_WIP => 'Drafting WIP',
+            self::STATUS_FOR_CHECKING => 'For Checking',
+            self::STATUS_SUBMITTED => 'Submitted',
+            self::STATUS_CANCELLED => 'Cancelled',
+        ]);
+    }
+
+    /**
+     * @param  array<string, string>  $codes
+     * @return array<string, string>
+     */
+    private static function mergeStatusOptions(array $codes): array
+    {
+        $all = self::statusOptions();
+        $options = [];
+
+        foreach ($codes as $code => $fallback) {
+            $options[$code] = $all[$code] ?? $fallback;
+        }
+
+        return $options;
+    }
+
+    /**
      * Labels for dropdowns + legacy rows (old WIP / accounting statuses).
      *
      * @return array<string, string>

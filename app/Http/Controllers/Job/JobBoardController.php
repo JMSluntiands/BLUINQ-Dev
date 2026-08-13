@@ -86,7 +86,14 @@ class JobBoardController extends Controller
                     ->all()
                 : [],
             'assignableUsers' => $this->board->assignableUsers(),
-            'statusOptions' => collect(DraftingRequest::statusOptions())
+            'statusOptions' => collect(DraftingRequest::jobBoardStatusOptions())
+                ->map(fn (string $label, string $value) => [
+                    'value' => $value,
+                    'label' => $label,
+                ])
+                ->values()
+                ->all(),
+            'statusGroupOptions' => collect(DraftingRequest::jobListStatusOptions())
                 ->map(fn (string $label, string $value) => [
                     'value' => $value,
                     'label' => $label,

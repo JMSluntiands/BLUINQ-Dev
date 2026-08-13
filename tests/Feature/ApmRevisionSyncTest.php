@@ -263,6 +263,50 @@ class ApmRevisionSyncTest extends TestCase
                 ->has('categoryOptions'));
     }
 
+    public function test_job_list_status_options_fold_assigned_on_hold_query_into_design_wip(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+        $job = $this->createApmJob($user, $storeyLevel, $category);
+        $job->update(['status' => DraftingRequest::STATUS_ASSIGNED]);
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $job->id,
+            'user_id' => $user->id,
+            'code' => $job->jobNumber().'-01',
+            'log_date' => now()->toDateString(),
+            'category' => $category->code,
+            'status' => DraftingRequest::STATUS_ASSIGNED,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('job.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->where('statusOptions', [
+                    ['value' => 'new', 'label' => 'New'],
+                    ['value' => 'assigned', 'label' => 'Assigned'],
+                    ['value' => 'design_wip', 'label' => 'Design WIP'],
+                    ['value' => 'drafting_wip', 'label' => 'Drafting WIP'],
+                    ['value' => 'for_checking', 'label' => 'For Checking'],
+                    ['value' => 'query', 'label' => 'Query'],
+                    ['value' => 'submitted', 'label' => 'Submitted'],
+                    ['value' => 'on_hold', 'label' => 'On Hold'],
+                    ['value' => 'cancelled', 'label' => 'Cancelled'],
+                ])
+                ->where('statusGroupOptions', [
+                    ['value' => 'new', 'label' => 'New'],
+                    ['value' => 'design_wip', 'label' => 'Design WIP'],
+                    ['value' => 'drafting_wip', 'label' => 'Drafting WIP'],
+                    ['value' => 'for_checking', 'label' => 'For Checking'],
+                    ['value' => 'submitted', 'label' => 'Submitted'],
+                    ['value' => 'cancelled', 'label' => 'Cancelled'],
+                ])
+                ->where('jobs.data.0.id', $job->id)
+                ->where('jobs.data.0.status', DraftingRequest::STATUS_ASSIGNED));
+    }
+
     public function test_member_sees_all_apm_jobs_on_board_and_can_open_them(): void
     {
         $owner = $this->adminUser();
