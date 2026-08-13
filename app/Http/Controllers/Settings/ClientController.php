@@ -83,13 +83,13 @@ class ClientController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'status' => ['nullable', 'string', 'in:active,inactive'],
+            'status' => ['nullable', 'string', Rule::in(Client::statusValues())],
         ]);
 
         $client = DB::transaction(function () use ($validated) {
             $client = Client::query()->create([
                 'name' => $validated['name'],
-                'status' => $validated['status'] ?? 'active',
+                'status' => $validated['status'] ?? Client::STATUS_ACTIVE,
                 'is_default' => false,
             ]);
             $client->ensureCoreContacts();
@@ -118,7 +118,7 @@ class ClientController extends Controller
             'state' => ['nullable', 'string', 'max:255'],
             'post_code' => ['nullable', 'string', 'max:32'],
             'country' => ['nullable', 'string', 'max:255'],
-            'status' => ['required', 'string', 'in:active,inactive'],
+            'status' => ['required', 'string', Rule::in(Client::statusValues())],
             'is_default' => ['sometimes', 'boolean'],
         ]);
 

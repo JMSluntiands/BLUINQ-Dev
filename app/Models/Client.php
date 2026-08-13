@@ -9,6 +9,24 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Client extends Model
 {
+    public const STATUS_ACTIVE = 'active';
+
+    public const STATUS_INACTIVE = 'inactive';
+
+    public const STATUS_PROSPECT = 'prospect';
+
+    /**
+     * @return list<string>
+     */
+    public static function statusValues(): array
+    {
+        return [
+            self::STATUS_ACTIVE,
+            self::STATUS_INACTIVE,
+            self::STATUS_PROSPECT,
+        ];
+    }
+
     protected $fillable = [
         'name',
         'abn',
@@ -43,7 +61,7 @@ class Client extends Model
      */
     public function scopeSelectable(Builder $query): Builder
     {
-        return $query->whereNull('archived_at')->where('status', 'active');
+        return $query->whereNull('archived_at')->where('status', self::STATUS_ACTIVE);
     }
 
     /**

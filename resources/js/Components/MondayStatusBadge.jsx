@@ -20,6 +20,14 @@ export default function MondayStatusBadge({ value }) {
         );
     }
 
+    if (v === 'prospect') {
+        return (
+            <span className="inline-flex items-center rounded-md bg-[#579bfc] px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm">
+                Prospect
+            </span>
+        );
+    }
+
     return (
         <span className="inline-flex items-center rounded-md bg-[#e6e9ef] px-2.5 py-0.5 text-xs font-semibold capitalize text-[#676879]">
             {value}

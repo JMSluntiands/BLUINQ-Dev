@@ -616,6 +616,9 @@ export default function ClientIndex({
                                                 <option value="inactive">
                                                     Inactive
                                                 </option>
+                                                <option value="prospect">
+                                                    Prospect
+                                                </option>
                                             </select>
                                         </div>
                                         <div className="flex items-end">
@@ -744,6 +747,25 @@ export default function ClientIndex({
                         <InputError
                             className="mt-1"
                             message={addClientForm.errors.name}
+                        />
+                    </div>
+                    <div className="mt-4">
+                        <InputLabel htmlFor="new-client-status" value="Status" />
+                        <select
+                            id="new-client-status"
+                            className="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                            value={addClientForm.data.status}
+                            onChange={(e) =>
+                                addClientForm.setData('status', e.target.value)
+                            }
+                        >
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="prospect">Prospect</option>
+                        </select>
+                        <InputError
+                            className="mt-1"
+                            message={addClientForm.errors.status}
                         />
                     </div>
                     <div className="mt-6 flex justify-end gap-2">
