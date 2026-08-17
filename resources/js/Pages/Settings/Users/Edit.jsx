@@ -43,13 +43,14 @@ export default function UsersEdit({
     const submit = (e) => {
         e.preventDefault();
         form.transform((data) => {
-            const payload = { ...data };
-            if (!payload.profile_image) {
+            const payload = { ...data, _method: 'patch' };
+            if (!(payload.profile_image instanceof File)) {
                 delete payload.profile_image;
             }
             return payload;
         }).post(route('settings.users.update', user.id) + listQs, {
             forceFormData: true,
+            onFinish: () => form.transform((data) => data),
         });
     };
 
@@ -311,7 +312,7 @@ export default function UsersEdit({
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <PrimaryButton loading={form.processing}>
+                        <PrimaryButton type="submit" loading={form.processing}>
                             Update
                         </PrimaryButton>
                         <Link
