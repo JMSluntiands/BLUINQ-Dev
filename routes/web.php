@@ -550,7 +550,7 @@ Route::middleware(['auth', 'admin', 'permission.route'])->group(function () {
         Route::get('/archive', [UserAccountController::class, 'archive'])->name('archive');
         Route::get('/{user}', [UserAccountController::class, 'show'])->name('show');
         Route::get('/{user}/edit', [UserAccountController::class, 'edit'])->name('edit');
-        Route::patch('/{user}', [UserAccountController::class, 'update'])->name('update');
+        Route::match(['patch', 'post'], '/{user}', [UserAccountController::class, 'update'])->name('update');
         Route::delete('/{user}', [UserAccountController::class, 'destroy'])->name('destroy');
         Route::post('/{user}/restore', [UserAccountController::class, 'restore'])->name('restore');
     });

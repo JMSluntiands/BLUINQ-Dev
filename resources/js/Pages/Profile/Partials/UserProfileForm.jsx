@@ -201,7 +201,7 @@ export default function UserProfileForm({
                             />
                             <ProfileDetailItem
                                 label="Job title"
-                                value={profile.job_title}
+                                value={profile.job_title || profile.position}
                             />
                         </ProfileDetailsSection>
                     </div>

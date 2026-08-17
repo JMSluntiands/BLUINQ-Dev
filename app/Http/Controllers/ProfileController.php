@@ -44,7 +44,7 @@ class ProfileController extends Controller
             'email' => $user->email,
             'company_name' => $user->company_name,
             'employee_number' => $user->employee_number,
-            'job_title' => $user->job_title,
+            'job_title' => $user->job_title ?: $user->position,
             'position' => $user->position,
             'birthday' => $user->birthday?->format('Y-m-d'),
             'personal_details' => $user->personal_details,

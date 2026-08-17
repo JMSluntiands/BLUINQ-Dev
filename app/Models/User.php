@@ -216,6 +216,23 @@ class User extends Authenticatable
     }
 
     /**
+     * Position is the source of truth for the profile job title.
+     */
+    protected function position(): Attribute
+    {
+        return Attribute::make(
+            set: function (?string $value): array {
+                $normalized = filled($value) ? trim($value) : null;
+
+                return [
+                    'position' => $normalized,
+                    'job_title' => $normalized,
+                ];
+            },
+        );
+    }
+
+    /**
      * App URL for the stored profile image (storage/ only), or null.
      */
     protected function profileImageUrl(): Attribute

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -136,5 +137,54 @@ class ProfileTest extends TestCase
             ->assertNotFound();
 
         $this->assertSame('Original Name', $user->fresh()->name);
+    }
+
+    public function test_updating_user_position_copies_it_to_job_title(): void
+    {
+        $adminRoleId = Role::query()->where('slug', 'admin')->value('id');
+        $admin = User::factory()->create(['role_id' => $adminRoleId]);
+        $member = User::factory()->create([
+            'position' => 'Drafter',
+            'job_title' => 'Drafter',
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('settings.users.update', $member), [
+                '_method' => 'patch',
+                'name' => $member->name,
+                'email' => $member->email,
+                'role_id' => $member->role_id,
+                'employment_status' => 'regular',
+                'position' => 'Project Manager',
+            ])
+            ->assertRedirect();
+
+        $member->refresh();
+        $this->assertSame('Project Manager', $member->position);
+        $this->assertSame('Project Manager', $member->job_title);
+
+        $this->actingAs($admin)
+            ->get(route('settings.users.show', $member))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Profile/Edit')
+                ->where('profile.position', 'Project Manager')
+                ->where('profile.job_title', 'Project Manager'));
+    }
+
+    public function test_profile_job_title_falls_back_to_position(): void
+    {
+        $user = User::factory()->create([
+            'position' => 'Checker',
+        ]);
+        $user->forceFill(['job_title' => null])->saveQuietly();
+
+        $this->actingAs($user)
+            ->get('/profile')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Profile/Edit')
+                ->where('profile.position', 'Checker')
+                ->where('profile.job_title', 'Checker'));
     }
 }

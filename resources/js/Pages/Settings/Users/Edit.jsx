@@ -37,6 +37,7 @@ export default function UsersEdit({
         password: '',
         password_confirmation: '',
         profile_image: null,
+        _method: 'patch',
     });
 
     const submit = (e) => {
@@ -47,7 +48,7 @@ export default function UsersEdit({
                 delete payload.profile_image;
             }
             return payload;
-        }).patch(route('settings.users.update', user.id) + listQs, {
+        }).post(route('settings.users.update', user.id) + listQs, {
             forceFormData: true,
         });
     };
