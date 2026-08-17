@@ -48,7 +48,8 @@ export default function UsersEdit({
                 delete payload.profile_image;
             }
             return payload;
-        }).post(route('settings.users.update', user.id) + listQs, {
+        });
+        form.post(route('settings.users.update', user.id) + listQs, {
             forceFormData: true,
             onFinish: () => form.transform((data) => data),
         });

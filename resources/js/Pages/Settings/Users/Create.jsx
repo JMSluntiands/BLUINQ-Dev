@@ -24,12 +24,14 @@ export default function UsersCreate({ roles = [], employmentStatuses = {} }) {
         e.preventDefault();
         form.transform((data) => {
             const payload = { ...data };
-            if (!payload.profile_image) {
+            if (!(payload.profile_image instanceof File)) {
                 delete payload.profile_image;
             }
             return payload;
-        }).post(route('settings.users.store'), {
+        });
+        form.post(route('settings.users.store'), {
             forceFormData: true,
+            onFinish: () => form.transform((data) => data),
         });
     };
 
