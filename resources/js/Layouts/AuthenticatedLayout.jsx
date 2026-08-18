@@ -10,6 +10,8 @@ import {
     CalendarDaysIcon,
     ChartBarIcon,
     ClipboardDocumentListIcon,
+    ChevronDoubleLeftIcon,
+    ChevronDoubleRightIcon,
     ChevronRightIcon,
     ClockIcon,
     KeyIcon,
@@ -25,7 +27,40 @@ import {
 } from '@heroicons/react/24/outline';
 import { ChevronDownIcon } from '@heroicons/react/20/solid';
 import { Link, usePage } from '@inertiajs/react';
-import { cloneElement, isValidElement, useEffect, useState } from 'react';
+import {
+    cloneElement,
+    isValidElement,
+    useEffect,
+    useRef,
+    useState,
+} from 'react';
+
+const SIDEBAR_MODE_KEY = 'bluinq.sidebar-mode';
+
+function readSidebarMode() {
+    if (typeof window === 'undefined') {
+        return 'expanded';
+    }
+
+    const stored = window.localStorage.getItem(SIDEBAR_MODE_KEY);
+    if (
+        stored === 'expanded' ||
+        stored === 'minimized' ||
+        stored === 'hidden'
+    ) {
+        return stored;
+    }
+
+    return 'expanded';
+}
+
+function navLabel(children) {
+    if (typeof children === 'string' || typeof children === 'number') {
+        return String(children);
+    }
+
+    return undefined;
+}
 
 function roleLabel(role) {
     if (role === 'admin') {
@@ -37,7 +72,15 @@ function roleLabel(role) {
     return role ? String(role) : '';
 }
 
-function NavItem({ href, active, icon, children, onNavigate }) {
+function NavItem({
+    href,
+    active,
+    icon,
+    children,
+    onNavigate,
+    collapsed = false,
+    label,
+}) {
     const resolvedIcon = isValidElement(icon)
         ? cloneElement(icon, {
               className:
@@ -48,19 +91,26 @@ function NavItem({ href, active, icon, children, onNavigate }) {
           })
         : icon;
 
+    const title = label ?? navLabel(children);
+
     return (
         <Link
             href={href}
             onClick={onNavigate}
+            title={collapsed ? title : undefined}
             className={
-                'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ' +
+                'group flex items-center rounded-lg text-sm font-medium transition ' +
+                (collapsed
+                    ? 'justify-center px-2 py-2.5'
+                    : 'gap-3 px-3 py-2.5') +
+                ' ' +
                 (active
                     ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'
                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100')
             }
         >
             {resolvedIcon}
-            {children}
+            {!collapsed ? children : null}
         </Link>
     );
 }
@@ -83,11 +133,37 @@ function SidebarSubLink({ href, active, children, onNavigate }) {
 }
 
 export default function AuthenticatedLayout({ header, children }) {
-    const { auth, logo_url: logoUrl, pendingLeaveCount = 0, pendingDraftingRequestCount = 0, pendingPasswordChangeCount = 0 } = usePage().props;
+    const {
+        auth,
+        logo_url: logoUrl,
+        pendingLeaveCount = 0,
+        pendingDraftingRequestCount = 0,
+        pendingPasswordChangeCount = 0,
+    } = usePage().props;
     const user = auth.user;
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [sidebarMode, setSidebarMode] = useState(readSidebarMode);
+    const lastVisibleMode = useRef(
+        sidebarMode === 'hidden' ? 'expanded' : sidebarMode,
+    );
 
     const closeSidebar = () => setSidebarOpen(false);
+    const isMinimized = sidebarMode === 'minimized';
+    const isHidden = sidebarMode === 'hidden';
+
+    const persistSidebarMode = (mode) => {
+        setSidebarMode(mode);
+        if (mode === 'expanded' || mode === 'minimized') {
+            lastVisibleMode.current = mode;
+        }
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem(SIDEBAR_MODE_KEY, mode);
+        }
+    };
+
+    const toggleDesktopSidebar = () => {
+        persistSidebarMode(isHidden ? lastVisibleMode.current : 'hidden');
+    };
 
     const permissions = user?.permissions ?? [];
     const can = (slug) => permissions.includes(slug);
@@ -104,9 +180,7 @@ export default function AuthenticatedLayout({ header, children }) {
     const canScopeOfWork = can('settings.scope-of-work.view');
     const canDeliverables = can('settings.deliverables.view');
     const canLevelOfDifficulty = can('settings.level-of-difficulty.view');
-    const canArrivalInputFiles = can(
-        'settings.crm.arrival-input-files.view',
-    );
+    const canArrivalInputFiles = can('settings.crm.arrival-input-files.view');
     const canCrmCategories = can('settings.crm.categories.view');
     const canUserAccounts =
         user?.role === 'admin' && can('settings.user-accounts.manage');
@@ -138,8 +212,7 @@ export default function AuthenticatedLayout({ header, children }) {
         canReviewDraftingRequests ||
         canDraftingArchive ||
         can('job.drafting.view');
-    const showArchiMenu =
-        canDraftingMemos || canApm || canJobList;
+    const showArchiMenu = canDraftingMemos || canApm || canJobList;
     const showDesignMenu =
         canDesignList || canDesignMemos || canDesignCatalogue;
 
@@ -160,8 +233,7 @@ export default function AuthenticatedLayout({ header, children }) {
         route().current('settings.user-milestones.index') ||
         route().current('settings.user-milestones.show');
     const isDraftingShow =
-        route().current('job.drafting') ||
-        route().current('job.drafting.show');
+        route().current('job.drafting') || route().current('job.drafting.show');
     const isDraftingMemos = route().current('drafting-memos.index');
     const isDraftingArchive = route().current('job.drafting.archive');
     const isMasterlist =
@@ -170,10 +242,7 @@ export default function AuthenticatedLayout({ header, children }) {
         route().current('job.masterlist.edit') ||
         route().current('job.drafting-request-form');
     const isArchiMenuSection =
-        isDraftingMemos ||
-        isJobList ||
-        isDraftingShow ||
-        isDraftingArchive;
+        isDraftingMemos || isJobList || isDraftingShow || isDraftingArchive;
     const isDesignList = route().current('design.list');
     const isDesignMemos = route().current('design-memos.*');
     const isDesignCatalogue = route().current('design.catalogue*');
@@ -185,15 +254,16 @@ export default function AuthenticatedLayout({ header, children }) {
     const isUsersArchive = route().current('settings.users.archive');
     const isUsersSection =
         isUsersIndex || isUsersCreate || isUsersEdit || isUsersArchive;
-    const isPasswordRequests = route().current('settings.password-requests.index');
+    const isPasswordRequests = route().current(
+        'settings.password-requests.index',
+    );
     const isPermissions = route().current('settings.permissions.edit');
     const isActivityLogs = route().current('settings.activity-logs.index');
     const isProfile = route().current('profile.edit');
     const isRolesIndex = route().current('settings.roles.index');
     const isRolesCreate = route().current('settings.roles.create');
     const isRolesEdit = route().current('settings.roles.edit');
-    const isRolesSection =
-        isRolesIndex || isRolesCreate || isRolesEdit;
+    const isRolesSection = isRolesIndex || isRolesCreate || isRolesEdit;
     const isClientSection =
         route().current('settings.client.index') ||
         route().current('settings.client.archive');
@@ -257,7 +327,9 @@ export default function AuthenticatedLayout({ header, children }) {
             <div
                 className={
                     'fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm transition-opacity lg:hidden ' +
-                    (sidebarOpen ? 'opacity-100' : 'pointer-events-none opacity-0')
+                    (sidebarOpen
+                        ? 'opacity-100'
+                        : 'pointer-events-none opacity-0')
                 }
                 onClick={closeSidebar}
                 aria-hidden={!sidebarOpen}
@@ -266,11 +338,22 @@ export default function AuthenticatedLayout({ header, children }) {
             {/* Sidebar */}
             <aside
                 className={
-                    'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white shadow-lg transition-transform duration-200 ease-out dark:border-slate-800 dark:bg-slate-900 lg:translate-x-0 ' +
-                    (sidebarOpen ? 'translate-x-0' : '-translate-x-full')
+                    'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-200 bg-white shadow-lg transition-[width,transform] duration-200 ease-out dark:border-slate-800 dark:bg-slate-900 ' +
+                    (isMinimized ? 'w-64 lg:w-16' : 'w-64') +
+                    ' ' +
+                    (sidebarOpen ? 'translate-x-0' : '-translate-x-full') +
+                    ' ' +
+                    (isHidden ? 'lg:-translate-x-full' : 'lg:translate-x-0')
                 }
             >
-                <div className="relative flex shrink-0 items-center justify-center border-b border-slate-200 px-4 py-4 dark:border-slate-800">
+                <div
+                    className={
+                        'relative flex shrink-0 items-center border-b border-slate-200 py-4 dark:border-slate-800 ' +
+                        (isMinimized
+                            ? 'justify-center px-2 lg:flex-col lg:gap-2'
+                            : 'justify-center px-4')
+                    }
+                >
                     <Link
                         href={
                             can('dashboard.view')
@@ -281,34 +364,84 @@ export default function AuthenticatedLayout({ header, children }) {
                         }
                         onClick={closeSidebar}
                         className="flex min-w-0 flex-col items-center justify-center text-center"
+                        title="Bluinq"
                     >
                         <AppLogo
                             logoUrl={logoUrl}
                             alt=""
-                            className="mx-auto h-7 w-auto max-w-[9.5rem] object-contain lg:h-8"
+                            className={
+                                'mx-auto w-auto object-contain ' +
+                                (isMinimized
+                                    ? 'h-7 max-w-[9.5rem] lg:h-6 lg:max-w-[2.25rem]'
+                                    : 'h-7 max-w-[9.5rem] lg:h-8')
+                            }
                             fallback={
                                 <span className="text-xl font-semibold tracking-tight text-sky-600">
-                                    Bluinq
+                                    {isMinimized ? 'B' : 'Bluinq'}
                                 </span>
                             }
                         />
                     </Link>
-                    <button
-                        type="button"
-                        className="absolute end-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden"
-                        onClick={closeSidebar}
-                        aria-label="Close sidebar"
+                    <div
+                        className={
+                            'absolute end-2 top-1/2 flex -translate-y-1/2 items-center gap-0.5 ' +
+                            (isMinimized ? 'lg:static lg:translate-y-0' : '')
+                        }
                     >
-                        <XMarkIcon className="h-5 w-5" aria-hidden />
-                    </button>
+                        <button
+                            type="button"
+                            className="hidden rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 lg:inline-flex"
+                            onClick={() =>
+                                persistSidebarMode(
+                                    isMinimized ? 'expanded' : 'minimized',
+                                )
+                            }
+                            aria-label={
+                                isMinimized
+                                    ? 'Expand sidebar'
+                                    : 'Minimize sidebar'
+                            }
+                            title={
+                                isMinimized
+                                    ? 'Expand sidebar'
+                                    : 'Minimize sidebar'
+                            }
+                        >
+                            {isMinimized ? (
+                                <ChevronDoubleRightIcon
+                                    className="h-4 w-4"
+                                    aria-hidden
+                                />
+                            ) : (
+                                <ChevronDoubleLeftIcon
+                                    className="h-4 w-4"
+                                    aria-hidden
+                                />
+                            )}
+                        </button>
+                        <button
+                            type="button"
+                            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden"
+                            onClick={closeSidebar}
+                            aria-label="Close sidebar"
+                        >
+                            <XMarkIcon className="h-5 w-5" aria-hidden />
+                        </button>
+                    </div>
                 </div>
 
-                <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+                <nav
+                    className={
+                        'flex-1 space-y-1 overflow-y-auto ' +
+                        (isMinimized ? 'p-3 lg:p-2' : 'p-3')
+                    }
+                >
                     {can('dashboard.view') && (
                         <NavItem
                             href={route('dashboard')}
                             active={isDashboard}
                             onNavigate={closeSidebar}
+                            collapsed={isMinimized}
                             icon={
                                 <Squares2X2Icon
                                     className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
@@ -324,6 +457,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             href={route('announcements.index')}
                             active={isAnnouncements}
                             onNavigate={closeSidebar}
+                            collapsed={isMinimized}
                             icon={
                                 <MegaphoneIcon
                                     className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
@@ -339,6 +473,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             href={route('job.masterlist')}
                             active={isMasterlist}
                             onNavigate={closeSidebar}
+                            collapsed={isMinimized}
                             icon={
                                 <ClipboardDocumentListIcon
                                     className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
@@ -354,6 +489,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             href={route('job.status-chart')}
                             active={isJobStatusChart}
                             onNavigate={closeSidebar}
+                            collapsed={isMinimized}
                             icon={
                                 <ChartBarIcon
                                     className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
@@ -369,6 +505,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             href={route('timesheet.index')}
                             active={isTimesheet}
                             onNavigate={closeSidebar}
+                            collapsed={isMinimized}
                             icon={
                                 <ClockIcon
                                     className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
@@ -381,165 +518,227 @@ export default function AuthenticatedLayout({ header, children }) {
                     )}
                     {(showArchiMenu || showDesignMenu) && (
                         <div className="mt-3 space-y-1">
-                            <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                            <p
+                                className={
+                                    'px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 ' +
+                                    (isMinimized ? 'lg:hidden' : '')
+                                }
+                            >
                                 Workflow
                             </p>
                             {showArchiMenu && (
-                            <div>
-                                <button
-                                    type="button"
-                                    aria-expanded={archiMenuOpen}
-                                    onClick={() =>
-                                        setArchiMenuOpen((open) => !open)
-                                    }
-                                    className={
-                                        'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ' +
-                                        (isArchiMenuSection
-                                            ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'
-                                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100')
-                                    }
-                                >
-                                    <BriefcaseIcon
+                                <div>
+                                    <button
+                                        type="button"
+                                        aria-expanded={archiMenuOpen}
+                                        title="Archi menu"
+                                        onClick={() => {
+                                            if (isMinimized) {
+                                                persistSidebarMode('expanded');
+                                                setArchiMenuOpen(true);
+                                                return;
+                                            }
+                                            setArchiMenuOpen((open) => !open);
+                                        }}
                                         className={
-                                            'h-5 w-5 shrink-0 ' +
+                                            'group flex w-full items-center rounded-lg text-left text-sm font-medium transition ' +
+                                            (isMinimized
+                                                ? 'justify-center px-2 py-2.5 lg:px-2'
+                                                : 'gap-3 px-3 py-2.5') +
+                                            ' ' +
                                             (isArchiMenuSection
-                                                ? 'text-sky-600'
-                                                : 'text-slate-400 group-hover:text-slate-500')
+                                                ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'
+                                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100')
                                         }
-                                        aria-hidden
-                                    />
-                                    <span className="min-w-0 flex-1">
-                                        Archi menu
-                                    </span>
-                                    <ChevronRightIcon
-                                        className={
-                                            'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ' +
-                                            (archiMenuOpen ? 'rotate-90' : '')
-                                        }
-                                        aria-hidden
-                                    />
-                                </button>
-                                {archiMenuOpen && (
-                                    <div className="mt-0.5 space-y-0.5 pb-1">
-                                        {canDraftingMemos && (
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'drafting-memos.index',
-                                                )}
-                                                active={isDraftingMemos}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                Drafting Memos
-                                            </SidebarSubLink>
-                                        )}
-                                        {canJobList && (
-                                            <SidebarSubLink
-                                                href={route('job.list')}
-                                                active={
-                                                    isJobList || isDraftingShow
-                                                }
-                                                onNavigate={closeSidebar}
-                                            >
-                                                <span className="flex flex-1 items-center justify-between gap-2">
-                                                    Archi Project Management
-                                                    {canReviewDraftingRequests &&
-                                                        pendingDraftingRequestCount >
-                                                            0 && (
-                                                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold leading-none text-white">
-                                                                {
-                                                                    pendingDraftingRequestCount
-                                                                }
-                                                            </span>
-                                                        )}
-                                                </span>
-                                            </SidebarSubLink>
-                                        )}
-                                        {canJobList && (
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'job.drafting.archive',
-                                                )}
-                                                active={isDraftingArchive}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                Archive
-                                            </SidebarSubLink>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+                                    >
+                                        <BriefcaseIcon
+                                            className={
+                                                'h-5 w-5 shrink-0 ' +
+                                                (isArchiMenuSection
+                                                    ? 'text-sky-600'
+                                                    : 'text-slate-400 group-hover:text-slate-500')
+                                            }
+                                            aria-hidden
+                                        />
+                                        <span
+                                            className={
+                                                'min-w-0 flex-1 ' +
+                                                (isMinimized ? 'lg:hidden' : '')
+                                            }
+                                        >
+                                            Archi menu
+                                        </span>
+                                        <ChevronRightIcon
+                                            className={
+                                                'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ' +
+                                                (archiMenuOpen
+                                                    ? 'rotate-90'
+                                                    : '') +
+                                                (isMinimized
+                                                    ? ' lg:hidden'
+                                                    : '')
+                                            }
+                                            aria-hidden
+                                        />
+                                    </button>
+                                    {archiMenuOpen && (
+                                        <div
+                                            className={
+                                                'mt-0.5 space-y-0.5 pb-1 ' +
+                                                (isMinimized ? 'lg:hidden' : '')
+                                            }
+                                        >
+                                            {canDraftingMemos && (
+                                                <SidebarSubLink
+                                                    href={route(
+                                                        'drafting-memos.index',
+                                                    )}
+                                                    active={isDraftingMemos}
+                                                    onNavigate={closeSidebar}
+                                                    collapsed={isMinimized}
+                                                >
+                                                    Drafting Memos
+                                                </SidebarSubLink>
+                                            )}
+                                            {canJobList && (
+                                                <SidebarSubLink
+                                                    href={route('job.list')}
+                                                    active={
+                                                        isJobList ||
+                                                        isDraftingShow
+                                                    }
+                                                    onNavigate={closeSidebar}
+                                                    collapsed={isMinimized}
+                                                >
+                                                    <span className="flex flex-1 items-center justify-between gap-2">
+                                                        Archi Project Management
+                                                        {canReviewDraftingRequests &&
+                                                            pendingDraftingRequestCount >
+                                                                0 && (
+                                                                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold leading-none text-white">
+                                                                    {
+                                                                        pendingDraftingRequestCount
+                                                                    }
+                                                                </span>
+                                                            )}
+                                                    </span>
+                                                </SidebarSubLink>
+                                            )}
+                                            {canJobList && (
+                                                <SidebarSubLink
+                                                    href={route(
+                                                        'job.drafting.archive',
+                                                    )}
+                                                    active={isDraftingArchive}
+                                                    onNavigate={closeSidebar}
+                                                    collapsed={isMinimized}
+                                                >
+                                                    Archive
+                                                </SidebarSubLink>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             )}
                             {showDesignMenu && (
-                            <div>
-                                <button
-                                    type="button"
-                                    aria-expanded={designMenuOpen}
-                                    onClick={() =>
-                                        setDesignMenuOpen((open) => !open)
-                                    }
-                                    className={
-                                        'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ' +
-                                        (isDesignMenuSection
-                                            ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'
-                                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100')
-                                    }
-                                >
-                                    <PaintBrushIcon
+                                <div>
+                                    <button
+                                        type="button"
+                                        aria-expanded={designMenuOpen}
+                                        title="Design menu"
+                                        onClick={() => {
+                                            if (isMinimized) {
+                                                persistSidebarMode('expanded');
+                                                setDesignMenuOpen(true);
+                                                return;
+                                            }
+                                            setDesignMenuOpen((open) => !open);
+                                        }}
                                         className={
-                                            'h-5 w-5 shrink-0 ' +
+                                            'group flex w-full items-center rounded-lg text-left text-sm font-medium transition ' +
+                                            (isMinimized
+                                                ? 'justify-center px-2 py-2.5 lg:px-2'
+                                                : 'gap-3 px-3 py-2.5') +
+                                            ' ' +
                                             (isDesignMenuSection
-                                                ? 'text-sky-600'
-                                                : 'text-slate-400 group-hover:text-slate-500')
+                                                ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'
+                                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100')
                                         }
-                                        aria-hidden
-                                    />
-                                    <span className="min-w-0 flex-1">
-                                        Design menu
-                                    </span>
-                                    <ChevronRightIcon
-                                        className={
-                                            'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ' +
-                                            (designMenuOpen ? 'rotate-90' : '')
-                                        }
-                                        aria-hidden
-                                    />
-                                </button>
-                                {designMenuOpen && (
-                                    <div className="mt-0.5 space-y-0.5 pb-1">
-                                        {canDesignList && (
-                                            <SidebarSubLink
-                                                href={route('design.list')}
-                                                active={isDesignList}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                Design Project Management
-                                            </SidebarSubLink>
-                                        )}
-                                        {canDesignMemos && (
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'design-memos.index',
-                                                )}
-                                                active={isDesignMemos}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                Design Memos
-                                            </SidebarSubLink>
-                                        )}
-                                        {canDesignCatalogue && (
-                                            <SidebarSubLink
-                                                href={route(
-                                                    'design.catalogue',
-                                                )}
-                                                active={isDesignCatalogue}
-                                                onNavigate={closeSidebar}
-                                            >
-                                                Design Catalogue
-                                            </SidebarSubLink>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+                                    >
+                                        <PaintBrushIcon
+                                            className={
+                                                'h-5 w-5 shrink-0 ' +
+                                                (isDesignMenuSection
+                                                    ? 'text-sky-600'
+                                                    : 'text-slate-400 group-hover:text-slate-500')
+                                            }
+                                            aria-hidden
+                                        />
+                                        <span
+                                            className={
+                                                'min-w-0 flex-1 ' +
+                                                (isMinimized ? 'lg:hidden' : '')
+                                            }
+                                        >
+                                            Design menu
+                                        </span>
+                                        <ChevronRightIcon
+                                            className={
+                                                'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ' +
+                                                (designMenuOpen
+                                                    ? 'rotate-90'
+                                                    : '') +
+                                                (isMinimized
+                                                    ? ' lg:hidden'
+                                                    : '')
+                                            }
+                                            aria-hidden
+                                        />
+                                    </button>
+                                    {designMenuOpen && (
+                                        <div
+                                            className={
+                                                'mt-0.5 space-y-0.5 pb-1 ' +
+                                                (isMinimized ? 'lg:hidden' : '')
+                                            }
+                                        >
+                                            {canDesignList && (
+                                                <SidebarSubLink
+                                                    href={route('design.list')}
+                                                    active={isDesignList}
+                                                    onNavigate={closeSidebar}
+                                                    collapsed={isMinimized}
+                                                >
+                                                    Design Project Management
+                                                </SidebarSubLink>
+                                            )}
+                                            {canDesignMemos && (
+                                                <SidebarSubLink
+                                                    href={route(
+                                                        'design-memos.index',
+                                                    )}
+                                                    active={isDesignMemos}
+                                                    onNavigate={closeSidebar}
+                                                    collapsed={isMinimized}
+                                                >
+                                                    Design Memos
+                                                </SidebarSubLink>
+                                            )}
+                                            {canDesignCatalogue && (
+                                                <SidebarSubLink
+                                                    href={route(
+                                                        'design.catalogue',
+                                                    )}
+                                                    active={isDesignCatalogue}
+                                                    onNavigate={closeSidebar}
+                                                    collapsed={isMinimized}
+                                                >
+                                                    Design Catalogue
+                                                </SidebarSubLink>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             )}
                         </div>
                     )}
@@ -550,6 +749,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                     href={route('settings.workflow')}
                                     active={isWorkflowSection}
                                     onNavigate={closeSidebar}
+                                    collapsed={isMinimized}
                                     icon={
                                         <WrenchScrewdriverIcon
                                             className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
@@ -565,6 +765,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                     href={route('settings.client.index')}
                                     active={isClientSection}
                                     onNavigate={closeSidebar}
+                                    collapsed={isMinimized}
                                     icon={
                                         <UsersIcon
                                             className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
@@ -584,7 +785,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                             'px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 ' +
                                             (showWorkflowSettings
                                                 ? 'pt-3'
-                                                : 'pt-1')
+                                                : 'pt-1') +
+                                            (isMinimized ? ' lg:hidden' : '')
                                         }
                                     >
                                         HR
@@ -594,6 +796,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                             href={route('leave.approvals')}
                                             active={isLeaveApprovals}
                                             onNavigate={closeSidebar}
+                                            collapsed={isMinimized}
+                                            label="Approvals"
                                             icon={
                                                 <ClipboardDocumentListIcon
                                                     className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
@@ -616,6 +820,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                             href={route('leave.credits.index')}
                                             active={isLeaveCredits}
                                             onNavigate={closeSidebar}
+                                            collapsed={isMinimized}
                                             icon={
                                                 <CalendarDaysIcon
                                                     className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
@@ -633,6 +838,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                             )}
                                             active={isUserMilestones}
                                             onNavigate={closeSidebar}
+                                            collapsed={isMinimized}
                                             icon={
                                                 <SparklesIcon
                                                     className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
@@ -658,7 +864,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                             canViewLeaveCredits ||
                                             canManageUserMilestones
                                                 ? 'pt-3'
-                                                : 'pt-1')
+                                                : 'pt-1') +
+                                            (isMinimized ? ' lg:hidden' : '')
                                         }
                                     >
                                         Other settings
@@ -668,6 +875,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                             href={route('settings.users.index')}
                                             active={isUsersSection}
                                             onNavigate={closeSidebar}
+                                            collapsed={isMinimized}
                                             icon={
                                                 <UsersIcon
                                                     className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
@@ -680,9 +888,13 @@ export default function AuthenticatedLayout({ header, children }) {
                                     )}
                                     {canUserAccounts && (
                                         <NavItem
-                                            href={route('settings.password-requests.index')}
+                                            href={route(
+                                                'settings.password-requests.index',
+                                            )}
                                             active={isPasswordRequests}
                                             onNavigate={closeSidebar}
+                                            collapsed={isMinimized}
+                                            label="Password requests"
                                             icon={
                                                 <KeyIcon
                                                     className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
@@ -692,9 +904,12 @@ export default function AuthenticatedLayout({ header, children }) {
                                         >
                                             <span className="flex flex-1 items-center justify-between gap-2">
                                                 Password requests
-                                                {pendingPasswordChangeCount > 0 && (
+                                                {pendingPasswordChangeCount >
+                                                    0 && (
                                                     <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold leading-none text-white">
-                                                        {pendingPasswordChangeCount}
+                                                        {
+                                                            pendingPasswordChangeCount
+                                                        }
                                                     </span>
                                                 )}
                                             </span>
@@ -705,6 +920,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                             href={route('settings.roles.index')}
                                             active={isRolesSection}
                                             onNavigate={closeSidebar}
+                                            collapsed={isMinimized}
                                             icon={
                                                 <ShieldCheckIcon
                                                     className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
@@ -722,6 +938,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                             )}
                                             active={isPermissions}
                                             onNavigate={closeSidebar}
+                                            collapsed={isMinimized}
                                             icon={
                                                 <KeyIcon
                                                     className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
@@ -739,6 +956,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                             )}
                                             active={isActivityLogs}
                                             onNavigate={closeSidebar}
+                                            collapsed={isMinimized}
                                             icon={
                                                 <ClockIcon
                                                     className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
@@ -755,13 +973,23 @@ export default function AuthenticatedLayout({ header, children }) {
                     )}
                 </nav>
 
-                <div className="shrink-0 border-t border-slate-200 p-3 dark:border-slate-800">
+                <div
+                    className={
+                        'shrink-0 border-t border-slate-200 dark:border-slate-800 ' +
+                        (isMinimized ? 'p-2 lg:p-2' : 'p-3')
+                    }
+                >
                     {can('profile.view') ? (
                         <Link
                             href={route('profile.edit')}
                             onClick={closeSidebar}
+                            title={user.name}
                             className={
-                                'flex gap-3 rounded-lg p-2 transition hover:bg-slate-50 dark:hover:bg-slate-800 ' +
+                                'flex rounded-lg p-2 transition hover:bg-slate-50 dark:hover:bg-slate-800 ' +
+                                (isMinimized
+                                    ? 'justify-center gap-0 lg:gap-0'
+                                    : 'gap-3') +
+                                ' ' +
                                 (isProfile
                                     ? 'bg-sky-50 ring-1 ring-sky-100 dark:bg-sky-950/40 dark:ring-sky-900/50'
                                     : '')
@@ -770,10 +998,19 @@ export default function AuthenticatedLayout({ header, children }) {
                         >
                             <UserAvatar
                                 user={user}
-                                className="h-10 w-10 text-sm"
+                                className={
+                                    isMinimized
+                                        ? 'h-10 w-10 text-sm lg:h-8 lg:w-8 lg:text-xs'
+                                        : 'h-10 w-10 text-sm'
+                                }
                                 ringClassName="ring-2 ring-slate-100 dark:ring-slate-700"
                             />
-                            <div className="min-w-0 flex-1">
+                            <div
+                                className={
+                                    'min-w-0 flex-1 ' +
+                                    (isMinimized ? 'lg:hidden' : '')
+                                }
+                            >
                                 <p className="truncate text-xs font-medium text-slate-700 dark:text-slate-200">
                                     {user.name}
                                 </p>
@@ -789,13 +1026,28 @@ export default function AuthenticatedLayout({ header, children }) {
                             </div>
                         </Link>
                     ) : (
-                        <div className="flex gap-3 p-2">
+                        <div
+                            className={
+                                'flex p-2 ' +
+                                (isMinimized ? 'justify-center gap-0' : 'gap-3')
+                            }
+                            title={user.name}
+                        >
                             <UserAvatar
                                 user={user}
-                                className="h-10 w-10 text-sm"
+                                className={
+                                    isMinimized
+                                        ? 'h-10 w-10 text-sm lg:h-8 lg:w-8 lg:text-xs'
+                                        : 'h-10 w-10 text-sm'
+                                }
                                 ringClassName="ring-2 ring-slate-100 dark:ring-slate-700"
                             />
-                            <div className="min-w-0 flex-1">
+                            <div
+                                className={
+                                    'min-w-0 flex-1 ' +
+                                    (isMinimized ? 'lg:hidden' : '')
+                                }
+                            >
                                 <p className="truncate text-xs font-medium text-slate-700 dark:text-slate-200">
                                     {user.name}
                                 </p>
@@ -815,7 +1067,16 @@ export default function AuthenticatedLayout({ header, children }) {
             </aside>
 
             {/* Main: navbar + content */}
-            <div className="flex min-h-screen min-w-0 flex-col lg:pl-64">
+            <div
+                className={
+                    'flex min-h-screen min-w-0 flex-col transition-[padding] duration-200 ' +
+                    (isHidden
+                        ? 'lg:pl-0'
+                        : isMinimized
+                          ? 'lg:pl-16'
+                          : 'lg:pl-64')
+                }
+            >
                 <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:gap-4 sm:px-6">
                     <button
                         type="button"
@@ -824,6 +1085,22 @@ export default function AuthenticatedLayout({ header, children }) {
                         aria-label="Open sidebar"
                     >
                         <Bars3Icon className="h-6 w-6" aria-hidden />
+                    </button>
+                    <button
+                        type="button"
+                        className="hidden shrink-0 rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 lg:inline-flex"
+                        onClick={toggleDesktopSidebar}
+                        aria-label={isHidden ? 'Show sidebar' : 'Hide sidebar'}
+                        title={isHidden ? 'Show sidebar' : 'Hide sidebar'}
+                    >
+                        {isHidden ? (
+                            <ChevronDoubleRightIcon
+                                className="h-5 w-5"
+                                aria-hidden
+                            />
+                        ) : (
+                            <Bars3Icon className="h-6 w-6" aria-hidden />
+                        )}
                     </button>
 
                     <GlobalSearch />
