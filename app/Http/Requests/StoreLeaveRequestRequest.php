@@ -43,6 +43,7 @@ class StoreLeaveRequestRequest extends FormRequest
             'end_portion' => ['required', Rule::in(LeaveRequest::portions())],
             'type' => ['required', Rule::in(array_values(array_unique($types)))],
             'reason' => ['required', 'string', 'max:1000'],
+            'attachment' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
             'medical_certificate' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
         ];
     }
@@ -61,8 +62,10 @@ class StoreLeaveRequestRequest extends FormRequest
             'end_portion.required' => 'Please choose the ending portion of the day.',
             'type.required' => 'Please select a leave type.',
             'reason.required' => 'Please provide a reason for your leave request.',
-            'medical_certificate.mimes' => 'The medical certificate must be a PDF, JPG, or PNG file.',
-            'medical_certificate.max' => 'The medical certificate may not be larger than 10 MB.',
+            'attachment.mimes' => 'The attachment must be a PDF, JPG, or PNG file.',
+            'attachment.max' => 'The attachment may not be larger than 10 MB.',
+            'medical_certificate.mimes' => 'The attachment must be a PDF, JPG, or PNG file.',
+            'medical_certificate.max' => 'The attachment may not be larger than 10 MB.',
         ];
     }
 
@@ -135,15 +138,37 @@ class StoreLeaveRequestRequest extends FormRequest
                 return;
             }
 
+            $requestedDays = LeaveRequest::calculateRequestedDays(
+                $startDate,
+                $endDate,
+                $startPortion,
+                $endPortion,
+                $user->holiday_region,
+            );
+
+            if ($requestedDays <= 0) {
+                $validator->errors()->add(
+                    'end_date',
+                    'The selected range only contains weekends or public holidays.',
+                );
+
+                return;
+            }
+
             if (
-                LeaveRequest::requiresMedicalCertificateFor($type, $startDate, $endDate)
+                LeaveRequest::requiresMedicalCertificateFor(
+                    $type,
+                    $startDate,
+                    $endDate,
+                    $user->holiday_region,
+                )
+                && ! $this->hasFile('attachment')
                 && ! $this->hasFile('medical_certificate')
             ) {
                 $threshold = LeaveRequest::medicalCertificateThreshold();
-                $validator->errors()->add(
-                    'medical_certificate',
-                    "A medical certificate is required for more than {$threshold} consecutive sick leave days.",
-                );
+                $message = "A medical certificate is required for more than {$threshold} consecutive sick leave days.";
+                $validator->errors()->add('attachment', $message);
+                $validator->errors()->add('medical_certificate', $message);
             }
         });
     }

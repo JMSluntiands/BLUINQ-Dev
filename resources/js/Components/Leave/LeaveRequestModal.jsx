@@ -6,7 +6,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
 import { useForm, usePage } from '@inertiajs/react';
 
-function inclusiveDayCount(startDate, endDate) {
+function businessDayCount(startDate, endDate, holidayDates = []) {
     if (!startDate || !endDate) {
         return 0;
     }
@@ -22,23 +22,57 @@ function inclusiveDayCount(startDate, endDate) {
         return 0;
     }
 
-    return Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+    const holidaySet = new Set(holidayDates);
+    let total = 0;
+
+    for (const cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
+        const day = cursor.getDay();
+        const dateKey = cursor.toISOString().slice(0, 10);
+        if (day === 0 || day === 6) {
+            continue;
+        }
+        if (holidaySet.has(dateKey)) {
+            continue;
+        }
+        total += 1;
+    }
+
+    return total;
 }
 
-function calculateRequestedDays(startDate, endDate, startPortion, endPortion) {
-    const baseDays = inclusiveDayCount(startDate, endDate);
+function calculateRequestedDays(
+    startDate,
+    endDate,
+    startPortion,
+    endPortion,
+    holidayDates = [],
+) {
+    const baseDays = businessDayCount(startDate, endDate, holidayDates);
 
     if (!baseDays) {
         return 0;
     }
 
     let total = baseDays;
+    const holidaySet = new Set(holidayDates);
+    const startDay = startDate ? new Date(`${startDate}T00:00:00`).getDay() : null;
+    const endDay = endDate ? new Date(`${endDate}T00:00:00`).getDay() : null;
+    const startIsWorkingDay =
+        startDate &&
+        startDay !== 0 &&
+        startDay !== 6 &&
+        !holidaySet.has(startDate);
+    const endIsWorkingDay =
+        endDate &&
+        endDay !== 0 &&
+        endDay !== 6 &&
+        !holidaySet.has(endDate);
 
-    if (startPortion === 'afternoon') {
+    if (startPortion === 'afternoon' && startIsWorkingDay) {
         total -= 0.5;
     }
 
-    if (endPortion === 'morning') {
+    if (endPortion === 'morning' && endIsWorkingDay) {
         total -= 0.5;
     }
 
@@ -60,7 +94,12 @@ export default function LeaveRequestModal({
     leaveRequestUsers = [],
     currentUserId = null,
 }) {
-    const { leaveTypes = [], leaveBalances = null } = usePage().props;
+    const {
+        leaveTypes = [],
+        leaveBalances = null,
+        leaveHolidayConfig = {},
+        auth,
+    } = usePage().props;
 
     const { data, setData, post, processing, errors, reset } = useForm({
         user_id: currentUserId ? String(currentUserId) : '',
@@ -100,6 +139,18 @@ export default function LeaveRequestModal({
             : [{ value: 'al', label: 'Annual Leave', code: 'AL' }];
     const requestingForSelf =
         !canManageLeave || String(data.user_id || '') === String(currentUserId || '');
+    const selectedUser = canManageLeave
+        ? leaveRequestUsers.find(
+              (user) => String(user.id) === String(data.user_id || currentUserId || ''),
+          ) ?? null
+        : null;
+    const holidayRegion =
+        selectedUser?.holiday_region ?? auth.user?.holiday_region ?? null;
+    const holidayDates = holidayRegion
+        ? Object.values(leaveHolidayConfig?.[holidayRegion] ?? {}).flatMap((yearHolidays) =>
+              Object.keys(yearHolidays ?? {}),
+          )
+        : [];
 
     const medicalCertificateAfterDays =
         types.find((type) => type.value === 'sl')
@@ -109,10 +160,11 @@ export default function LeaveRequestModal({
         data.end_date,
         data.start_portion,
         data.end_portion,
+        holidayDates,
     );
     const needsMedicalCertificate =
         data.type === 'sl' &&
-        inclusiveDayCount(data.start_date, data.end_date) >
+        dayCount >
             medicalCertificateAfterDays;
 
     const submit = (event) => {
@@ -322,7 +374,8 @@ export default function LeaveRequestModal({
                             <span className="font-semibold text-slate-900 dark:text-white">
                                 {formatDays(dayCount)}
                             </span>{' '}
-                            day{dayCount === 1 ? '' : 's'} of leave.
+                            working day{dayCount === 1 ? '' : 's'} of leave
+                            (excluding weekends and holidays).
                         </p>
                     )}
 
@@ -336,12 +389,9 @@ export default function LeaveRequestModal({
 
                     {needsMedicalCertificate && (
                         <div>
-                            <InputLabel
-                                htmlFor="medical_certificate"
-                                value="Medical certificate"
-                            />
+                            <InputLabel htmlFor="attachment" value="Attachment" />
                             <input
-                                id="medical_certificate"
+                                id="attachment"
                                 type="file"
                                 accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
                                 onChange={(event) =>
@@ -354,10 +404,35 @@ export default function LeaveRequestModal({
                                 required
                             />
                             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                PDF, JPG, or PNG. Maximum 10 MB.
+                                Upload PDF, JPG, or PNG. Maximum 10 MB.
                             </p>
                             <InputError
-                                message={errors.medical_certificate}
+                                message={errors.attachment ?? errors.medical_certificate}
+                                className="mt-1"
+                            />
+                        </div>
+                    )}
+
+                    {!needsMedicalCertificate && (
+                        <div>
+                            <InputLabel htmlFor="attachment" value="Attachment" />
+                            <input
+                                id="attachment"
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                                onChange={(event) =>
+                                    setData(
+                                        'medical_certificate',
+                                        event.target.files?.[0] ?? null,
+                                    )
+                                }
+                                className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-sky-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-sky-700 hover:file:bg-sky-100 dark:text-slate-200 dark:file:bg-sky-500/20 dark:file:text-sky-300"
+                            />
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                Optional supporting file or image. PDF, JPG, or PNG only.
+                            </p>
+                            <InputError
+                                message={errors.attachment ?? errors.medical_certificate}
                                 className="mt-1"
                             />
                         </div>

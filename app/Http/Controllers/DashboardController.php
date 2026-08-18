@@ -93,10 +93,12 @@ class DashboardController extends Controller
                         'id' => $row->id,
                         'name' => $row->name,
                         'email' => $row->email,
+                        'holiday_region' => $row->holiday_region,
                     ])
                     ->values()
                     ->all()
                 : [],
+            'leaveHolidayConfig' => config('holidays', []),
             'leaveCalendar' => $user
                 ? $this->leave->calendarPayload($calendarStart, $calendarEnd)
                 : [],

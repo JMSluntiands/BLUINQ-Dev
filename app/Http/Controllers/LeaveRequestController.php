@@ -149,11 +149,10 @@ class LeaveRequestController extends Controller
 
     private function storeMedicalCertificate(Request $request, LeaveRequest $leaveRequest): void
     {
-        if (! $request->hasFile('medical_certificate')) {
+        $file = $request->file('attachment') ?? $request->file('medical_certificate');
+        if ($file === null) {
             return;
         }
-
-        $file = $request->file('medical_certificate');
         $path = $file->store('leave-requests/'.$leaveRequest->id, self::ATTACHMENT_DISK);
 
         $leaveRequest->update([

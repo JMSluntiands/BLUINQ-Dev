@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use App\Services\HolidayService;
 
 class LeaveRequest extends Model
 {
@@ -172,6 +173,32 @@ class LeaveRequest extends Model
         return (int) $start->diffInDays($end) + 1;
     }
 
+    /**
+     * @return array<string, true>
+     */
+    public static function holidayDateLookup(
+        string $startDate,
+        string $endDate,
+        ?string $region = null,
+    ): array {
+        $region = HolidayService::normalizeRegion($region);
+        if ($region === null) {
+            return [];
+        }
+
+        $matches = [];
+
+        foreach ((array) config("holidays.{$region}", []) as $yearHolidays) {
+            foreach ((array) $yearHolidays as $date => $name) {
+                if ($date >= $startDate && $date <= $endDate) {
+                    $matches[$date] = true;
+                }
+            }
+        }
+
+        return $matches;
+    }
+
     public static function medicalCertificateThreshold(): int
     {
         return (int) config('leave.sl.medical_certificate_after_days', 2);
@@ -181,9 +208,10 @@ class LeaveRequest extends Model
         string $type,
         string $startDate,
         string $endDate,
+        ?string $region = null,
     ): bool {
         return self::normalizeType($type) === self::TYPE_SL
-            && self::inclusiveDayCount($startDate, $endDate) > self::medicalCertificateThreshold();
+            && self::calculateRequestedDays($startDate, $endDate, null, null, $region) > self::medicalCertificateThreshold();
     }
 
     public static function normalizePortion(?string $portion): string
@@ -198,16 +226,45 @@ class LeaveRequest extends Model
         string $endDate,
         ?string $startPortion = null,
         ?string $endPortion = null,
+        ?string $region = null,
     ): float {
-        $days = (float) self::inclusiveDayCount($startDate, $endDate);
+        $start = Carbon::parse($startDate)->startOfDay();
+        $end = Carbon::parse($endDate)->startOfDay();
+        $holidayLookup = self::holidayDateLookup($startDate, $endDate, $region);
+        $workDates = [];
+
+        for ($cursor = $start->copy(); $cursor->lte($end); $cursor->addDay()) {
+            if ($cursor->isWeekend()) {
+                continue;
+            }
+
+            $dateKey = $cursor->toDateString();
+            if (isset($holidayLookup[$dateKey])) {
+                continue;
+            }
+
+            $workDates[] = $dateKey;
+        }
+
+        $days = (float) count($workDates);
+        if ($days <= 0) {
+            return 0;
+        }
+
         $normalizedStart = self::normalizePortion($startPortion);
         $normalizedEnd = self::normalizePortion($endPortion);
 
-        if ($normalizedStart === self::PORTION_AFTERNOON) {
+        if (
+            $normalizedStart === self::PORTION_AFTERNOON
+            && in_array($startDate, $workDates, true)
+        ) {
             $days -= 0.5;
         }
 
-        if ($normalizedEnd === self::PORTION_MORNING) {
+        if (
+            $normalizedEnd === self::PORTION_MORNING
+            && in_array($endDate, $workDates, true)
+        ) {
             $days -= 0.5;
         }
 
@@ -240,6 +297,7 @@ class LeaveRequest extends Model
             $this->end_date->toDateString(),
             $this->start_portion,
             $this->end_portion,
+            $this->user?->holiday_region,
         );
     }
 
