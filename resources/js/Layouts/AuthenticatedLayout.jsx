@@ -3,7 +3,10 @@ import Dropdown from '@/Components/Dropdown';
 import GlobalSearch from '@/Components/GlobalSearch';
 import ThemeToggle from '@/Components/ThemeToggle';
 import UserAvatar from '@/Components/UserAvatar';
-import { isAnyWorkflowRoute } from '@/config/workflowSettingsModules';
+import {
+    canAccessVisibleWorkflowSettings,
+    isAnyWorkflowRoute,
+} from '@/config/workflowSettingsModules';
 import {
     Bars3Icon,
     BriefcaseIcon,
@@ -291,20 +294,7 @@ export default function AuthenticatedLayout({ header, children }) {
         canManageLeave ||
         canViewLeaveCredits ||
         canManageUserMilestones;
-    const showWorkflowSettings =
-        canServiceEngaging ||
-        canExternalWallConstruction ||
-        canRoofType ||
-        canScopeOfWork ||
-        canDeliverables ||
-        canBuildingType ||
-        canStoreyLevel ||
-        canSdaType ||
-        canBuildingClass ||
-        canWorkflowStatus ||
-        canArrivalInputFiles ||
-        canCrmCategories ||
-        canLevelOfDifficulty;
+    const showWorkflowSettings = canAccessVisibleWorkflowSettings(can);
 
     const [archiMenuOpen, setArchiMenuOpen] = useState(isArchiMenuSection);
     const [designMenuOpen, setDesignMenuOpen] = useState(isDesignMenuSection);

@@ -1,10 +1,9 @@
 import {
-    WORKFLOW_SETTINGS_MODULES,
+    visibleWorkflowSettingsModules,
     isWorkflowModuleActive,
 } from '@/config/workflowSettingsModules';
-import { ChevronRightIcon } from '@heroicons/react/24/outline';
 import { Link, usePage } from '@inertiajs/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 function SidebarSubLink({ href, active, children }) {
     return (
@@ -28,7 +27,7 @@ export default function WorkflowSettingsSidebar({ activeModuleKey }) {
 
     const modules = useMemo(
         () =>
-            WORKFLOW_SETTINGS_MODULES.filter((module) =>
+            visibleWorkflowSettingsModules().filter((module) =>
                 can(module.permission),
             ),
         [permissions],
@@ -38,14 +37,6 @@ export default function WorkflowSettingsSidebar({ activeModuleKey }) {
         activeModuleKey ??
         modules.find((module) => isWorkflowModuleActive(module))?.key ??
         null;
-
-    const [openKey, setOpenKey] = useState(resolvedActiveKey);
-
-    useEffect(() => {
-        if (resolvedActiveKey) {
-            setOpenKey(resolvedActiveKey);
-        }
-    }, [resolvedActiveKey]);
 
     return (
         <aside className="w-full shrink-0 lg:w-64">
@@ -57,21 +48,12 @@ export default function WorkflowSettingsSidebar({ activeModuleKey }) {
                     {modules.map((module) => {
                         const Icon = module.icon;
                         const isActive = module.key === resolvedActiveKey;
-                        const isOpen = openKey === module.key;
                         const { routes } = module;
 
                         return (
                             <div key={module.key}>
-                                <button
-                                    type="button"
-                                    aria-expanded={isOpen}
-                                    onClick={() =>
-                                        setOpenKey((current) =>
-                                            current === module.key
-                                                ? null
-                                                : module.key,
-                                        )
-                                    }
+                                <Link
+                                    href={route(routes.index)}
                                     className={
                                         'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ' +
                                         (isActive
@@ -91,15 +73,8 @@ export default function WorkflowSettingsSidebar({ activeModuleKey }) {
                                     <span className="min-w-0 flex-1">
                                         {module.label}
                                     </span>
-                                    <ChevronRightIcon
-                                        className={
-                                            'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ' +
-                                            (isOpen ? 'rotate-90' : '')
-                                        }
-                                        aria-hidden
-                                    />
-                                </button>
-                                {isOpen && (
+                                </Link>
+                                {isActive && (
                                     <div className="mt-0.5 space-y-0.5 pb-1">
                                         {routes.create ? (
                                             <SidebarSubLink

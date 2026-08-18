@@ -20,6 +20,7 @@ export const WORKFLOW_SETTINGS_MODULES = [
         label: 'Service Engaging',
         permission: 'settings.service-engaging.view',
         icon: WrenchScrewdriverIcon,
+        navHidden: true,
         routes: {
             index: 'settings.service-engaging.index',
             create: 'settings.service-engaging.create',
@@ -140,6 +141,7 @@ export const WORKFLOW_SETTINGS_MODULES = [
         label: 'Arrival input files',
         permission: 'settings.crm.arrival-input-files.view',
         icon: ArrowDownTrayIcon,
+        navHidden: true,
         routes: {
             index: 'settings.crm.arrival-input-files.index',
             create: 'settings.crm.arrival-input-files.create',
@@ -164,6 +166,7 @@ export const WORKFLOW_SETTINGS_MODULES = [
         label: 'Level of difficulty',
         permission: 'settings.level-of-difficulty.view',
         icon: ChartBarIcon,
+        navHidden: true,
         routes: {
             index: 'settings.level-of-difficulty.index',
             create: 'settings.level-of-difficulty.create',
@@ -188,5 +191,15 @@ export function isAnyWorkflowRoute() {
 
     return WORKFLOW_SETTINGS_MODULES.some((module) =>
         isWorkflowModuleActive(module),
+    );
+}
+
+export function visibleWorkflowSettingsModules() {
+    return WORKFLOW_SETTINGS_MODULES.filter((module) => !module.navHidden);
+}
+
+export function canAccessVisibleWorkflowSettings(can) {
+    return visibleWorkflowSettingsModules().some((module) =>
+        can(module.permission),
     );
 }
