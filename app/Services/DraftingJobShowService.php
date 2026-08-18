@@ -16,9 +16,10 @@ class DraftingJobShowService
         return $draftingRequest->revisions()
             ->with(['drafter:id,name,initials', 'checker:id,name,initials'])
             ->get()
-            ->map(function (DraftingRequestRevision $revision) {
+            ->map(function (DraftingRequestRevision $revision) use ($draftingRequest) {
                 $status = $revision->status;
                 $statusOptions = DraftingRequest::statusLabels();
+                $dateOut = $revision->submitted_date ?? $draftingRequest->date_out;
 
                 return [
                 'id' => $revision->id,
@@ -44,8 +45,8 @@ class DraftingJobShowService
                     ? ($statusOptions[$status] ?? ucfirst(str_replace('_', ' ', $status)))
                     : null,
                 'area_size' => $revision->area_size,
-                'submitted_date' => $revision->submitted_date?->format('d M Y'),
-                'submitted_date_value' => $revision->submitted_date?->format('Y-m-d'),
+                'submitted_date' => $dateOut?->format('d M Y'),
+                'submitted_date_value' => $dateOut?->format('Y-m-d'),
             ];
             })
             ->all();
