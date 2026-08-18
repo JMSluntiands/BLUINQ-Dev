@@ -4,6 +4,7 @@
 
 @layer base {
     html {
+        font-size: 14px;
         @apply overflow-x-hidden bg-slate-100 text-slate-900;
     }
 
