@@ -136,7 +136,7 @@ export default function JobBoard({
                             className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#0073ea] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0060c4] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0073ea] focus-visible:ring-offset-1 dark:hover:bg-[#1478e0]"
                         >
                             <PlusIcon className="h-4 w-4" aria-hidden />
-                            Add from masterlist
+                            Add item
                         </button>
                     )}
                 </div>
