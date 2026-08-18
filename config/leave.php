@@ -35,9 +35,11 @@ return [
     | Sick Leave (SL)
     |--------------------------------------------------------------------------
     | 15 days/year, refresh every calendar year, no carry-over.
+    | A medical certificate is required for more than 2 consecutive days.
     */
     'sl' => [
         'annual_days' => 15,
+        'medical_certificate_after_days' => 2,
     ],
 
     /*

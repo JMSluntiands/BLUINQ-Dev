@@ -34,6 +34,7 @@ class User extends Authenticatable
         'position',
         'date_hired',
         'employment_status',
+        'holiday_region',
         'birthday',
         'personal_details',
         'personal_file_url',
@@ -84,12 +85,12 @@ class User extends Authenticatable
             'archived_at' => 'datetime',
             'birthday' => 'date',
             'date_hired' => 'date',
-            'leave_credits' => 'integer',
-            'al_credits' => 'integer',
-            'al_carried_over' => 'integer',
+            'leave_credits' => 'float',
+            'al_credits' => 'float',
+            'al_carried_over' => 'float',
             'al_carry_expires_on' => 'date',
-            'sl_credits' => 'integer',
-            'medical_days_used' => 'integer',
+            'sl_credits' => 'float',
+            'medical_days_used' => 'float',
             'leave_balance_year' => 'integer',
         ];
     }
@@ -131,6 +132,52 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role?->slug === 'admin';
+    }
+
+    public function isProjectManager(): bool
+    {
+        return $this->role?->slug === 'project-manager';
+    }
+
+    /**
+     * Admin, project managers, and HR (leave managers) see the team leave summary.
+     */
+    public function canViewTeamTimesheet(): bool
+    {
+        return $this->isAdmin()
+            || $this->isProjectManager()
+            || $this->hasPermission('leave.manage');
+    }
+
+    /**
+     * Users assigned to drafting jobs as drafters, checkers, or staff.
+     */
+    public function isConnectedToDrafting(): bool
+    {
+        if (
+            DraftingRequestRevision::query()
+                ->where('drafter_user_id', $this->id)
+                ->exists()
+        ) {
+            return true;
+        }
+
+        if (
+            DraftingRequestRevision::query()
+                ->where('checker_user_id', $this->id)
+                ->exists()
+        ) {
+            return true;
+        }
+
+        return DraftingRequestAssignment::query()
+            ->where('user_id', $this->id)
+            ->exists();
+    }
+
+    public function canApproveTimesheetEntries(): bool
+    {
+        return $this->isAdmin() || $this->isProjectManager();
     }
 
     public function hasPermission(string $slug): bool

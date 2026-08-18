@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\ProfileController;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\HolidayService;
 use App\Services\LeaveEntitlementService;
 use App\Support\StoredUpload;
 use Illuminate\Http\RedirectResponse;
@@ -82,6 +83,7 @@ class UserAccountController extends Controller
         return Inertia::render('Settings/Users/Create', [
             'roles' => $this->roleOptions(),
             'employmentStatuses' => config('leave.employment_statuses', []),
+            'holidayRegions' => HolidayService::regionOptions(),
         ]);
     }
 
@@ -97,6 +99,10 @@ class UserAccountController extends Controller
             'birthday' => ['nullable', 'date'],
             'date_hired' => ['nullable', 'date'],
             'employment_status' => ['required', Rule::in(['regular', 'probationary', 'training'])],
+            'holiday_region' => ['nullable', Rule::in(HolidayService::regionKeys())],
+            'personal_details' => ['nullable', 'string', 'max:5000'],
+            'claims_excel_url' => ['nullable', 'url', 'max:2048'],
+            'personal_file_url' => ['nullable', 'url', 'max:2048'],
             'profile_image' => ['nullable', 'image', 'max:5120'],
         ]);
 
@@ -112,6 +118,10 @@ class UserAccountController extends Controller
             'birthday' => $validated['birthday'] ?? null,
             'date_hired' => $validated['date_hired'] ?? null,
             'employment_status' => $validated['employment_status'],
+            'holiday_region' => $validated['holiday_region'] ?? null,
+            'personal_details' => $validated['personal_details'] ?? null,
+            'claims_excel_url' => $validated['claims_excel_url'] ?? null,
+            'personal_file_url' => $validated['personal_file_url'] ?? null,
             'leave_credits' => 0,
             'al_credits' => 0,
             'sl_credits' => $validated['employment_status'] === 'regular'
@@ -155,12 +165,17 @@ class UserAccountController extends Controller
                 'birthday' => $user->birthday?->format('Y-m-d'),
                 'date_hired' => $user->date_hired?->format('Y-m-d'),
                 'employment_status' => $user->employment_status ?? 'regular',
+                'holiday_region' => $user->holiday_region,
+                'personal_details' => $user->personal_details,
+                'claims_excel_url' => $user->claims_excel_url,
+                'personal_file_url' => $user->personal_file_url,
                 'role' => $user->role?->slug,
                 'role_id' => $user->role_id,
                 'profile_image_url' => $user->profile_image_url,
             ],
             'roles' => $this->roleOptions(),
             'employmentStatuses' => config('leave.employment_statuses', []),
+            'holidayRegions' => HolidayService::regionOptions(),
             'listFilters' => $this->redirectQuery($request),
         ]);
     }
@@ -189,6 +204,10 @@ class UserAccountController extends Controller
             'birthday' => ['nullable', 'date'],
             'date_hired' => ['nullable', 'date'],
             'employment_status' => ['required', Rule::in(['regular', 'probationary', 'training'])],
+            'holiday_region' => ['nullable', Rule::in(HolidayService::regionKeys())],
+            'personal_details' => ['nullable', 'string', 'max:5000'],
+            'claims_excel_url' => ['nullable', 'url', 'max:2048'],
+            'personal_file_url' => ['nullable', 'url', 'max:2048'],
             'profile_image' => ['nullable', 'image', 'max:5120'],
         ]);
 
@@ -216,6 +235,10 @@ class UserAccountController extends Controller
         $user->birthday = $validated['birthday'] ?? null;
         $user->date_hired = $validated['date_hired'] ?? null;
         $user->employment_status = $validated['employment_status'];
+        $user->holiday_region = $validated['holiday_region'] ?? null;
+        $user->personal_details = $validated['personal_details'] ?? null;
+        $user->claims_excel_url = $validated['claims_excel_url'] ?? null;
+        $user->personal_file_url = $validated['personal_file_url'] ?? null;
 
         if (! empty($validated['password'])) {
             $user->password = $validated['password'];

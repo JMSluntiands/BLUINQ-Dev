@@ -137,6 +137,8 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
 
     Route::post('/leave', [LeaveRequestController::class, 'store'])
         ->name('leave.store');
+    Route::get('/leave/{leaveRequest}/certificate', [LeaveRequestController::class, 'downloadCertificate'])
+        ->name('leave.certificate');
     Route::get('/leave/approvals', [LeaveRequestController::class, 'approvals'])
         ->name('leave.approvals');
     Route::post('/leave/{leaveRequest}/approve', [LeaveRequestController::class, 'approve'])
@@ -169,6 +171,8 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('job.board');
     Route::post('/job/board/add/{draftingRequest}', [JobBoardController::class, 'addToBoard'])
         ->name('job.board.add');
+    Route::post('/job/board/add/{draftingRequest}/quick', [JobBoardController::class, 'quickAddToBoard'])
+        ->name('job.board.add.quick');
     Route::get('/job/board/add/{draftingRequest}/review', [JobBoardController::class, 'reviewBeforeAdd'])
         ->name('job.board.add.review');
     Route::post('/job/board/add/{draftingRequest}/confirm', [JobBoardController::class, 'confirmAddToBoard'])

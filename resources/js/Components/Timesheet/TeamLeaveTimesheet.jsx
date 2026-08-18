@@ -84,7 +84,29 @@ function buildMonthDays(monthValue) {
     return days;
 }
 
-function MarkBadge({ type }) {
+function holidayBadge(country) {
+    if (country === 'ph') {
+        return 'PH';
+    }
+
+    if (country === 'wa') {
+        return 'WA';
+    }
+
+    return 'SG';
+}
+
+function MarkBadge({ mark }) {
+    if (mark?.type === 'holiday') {
+        return (
+            <span className="inline-flex h-7 min-w-8 items-center justify-center rounded-md bg-amber-100 px-1.5 text-[10px] font-bold text-amber-800 dark:bg-amber-500/20 dark:text-amber-200">
+                {holidayBadge(mark.country)}
+            </span>
+        );
+    }
+
+    const type = mark?.type;
+
     if (type === 'leave') {
         return (
             <span className="inline-flex h-7 w-8 items-center justify-center rounded-md bg-slate-400 text-white dark:bg-slate-500">
@@ -130,8 +152,8 @@ function CalendarCell({ day, mark, highlight }) {
                 </span>
             )}
             {mark && (
-                <div className="mt-0.5">
-                    <MarkBadge type={mark} />
+                <div className="mt-0.5" title={mark.title}>
+                    <MarkBadge mark={mark} />
                 </div>
             )}
         </div>
@@ -143,6 +165,7 @@ export default function TeamLeaveTimesheet({
     teamMembers = [],
     calendarMonth,
     filters = {},
+    showUserFilter = true,
 }) {
     const today = new Date();
     const todayKey = dateKey(today);
@@ -217,15 +240,17 @@ export default function TeamLeaveTimesheet({
         <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm dark:border-slate-700/70 dark:bg-slate-900/90">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800 sm:px-5">
                 <div className="flex flex-wrap items-center gap-3">
-                    <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                        <span className="font-medium">User</span>
-                        <SearchableSelect
-                            value={String(selectedUserId)}
-                            onChange={(userId) => reload({ user_id: userId })}
-                            options={userFilterOptions}
-                            placeholder="Search team member..."
-                        />
-                    </label>
+                    {showUserFilter ? (
+                        <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                            <span className="font-medium">User</span>
+                            <SearchableSelect
+                                value={String(selectedUserId)}
+                                onChange={(userId) => reload({ user_id: userId })}
+                                options={userFilterOptions}
+                                placeholder="Search team member..."
+                            />
+                        </label>
+                    ) : null}
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -346,7 +371,27 @@ export default function TeamLeaveTimesheet({
                                     <CalendarCell
                                         key={`${user.id}-${day.key}`}
                                         day={day}
-                                        mark={user.marks?.[day.key]}
+                                        mark={
+                                            user.marks?.[day.key]
+                                                ? {
+                                                      type: user.marks[day.key],
+                                                      title:
+                                                          user.marks[day.key] ===
+                                                          'birthday'
+                                                              ? 'Birthday'
+                                                              : 'Approved leave',
+                                                  }
+                                                : user.holiday_marks?.[day.key]
+                                                  ? {
+                                                        type: 'holiday',
+                                                        title: `${user.holiday_marks[day.key].country_label}: ${user.holiday_marks[day.key].name}`,
+                                                        country:
+                                                            user.holiday_marks[
+                                                                day.key
+                                                            ].country,
+                                                    }
+                                                  : null
+                                        }
                                         highlight={day.key === todayKey}
                                     />
                                 ))}
@@ -365,6 +410,12 @@ export default function TeamLeaveTimesheet({
                     <span className="inline-flex items-center gap-1.5">
                         <GiftIcon className="h-3.5 w-3.5 text-pink-500" />
                         Birthday
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-500/20 dark:text-amber-200">
+                            PH/WA/SG
+                        </span>
+                        Public holiday by user region
                     </span>
                 </div>
             </div>

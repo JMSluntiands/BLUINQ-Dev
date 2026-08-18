@@ -14,6 +14,7 @@ class LeaveService
 {
     public function __construct(
         private LeaveEntitlementService $entitlements,
+        private HolidayService $holidays,
     ) {}
 
     /**
@@ -49,6 +50,7 @@ class LeaveService
                 'al_carried_over',
                 'al_carry_expires_on',
                 'employment_status',
+                'holiday_region',
                 'date_hired',
                 'sl_credits',
                 'medical_days_used',
@@ -71,15 +73,22 @@ class LeaveService
                 $rangeStart,
                 $rangeEnd,
             );
+            $holidayMarks = $this->buildHolidayMarksForUser(
+                $user,
+                $rangeStart,
+                $rangeEnd,
+            );
 
             return [
                 'id' => $user->id,
                 'name' => $user->name,
                 'initials' => $user->badgeInitials(),
                 'profile_image_url' => $user->profile_image_url,
+                'holiday_region' => $user->holiday_region,
                 'balance' => $balances['al_available'],
                 'balances' => $balances,
                 'marks' => $marks,
+                'holiday_marks' => $holidayMarks,
             ];
         })->values()->all();
     }
@@ -134,7 +143,7 @@ class LeaveService
 
     public function addCredits(
         User $employee,
-        int $amount,
+        float $amount,
         User $actor,
         ?string $notes = null,
         string $bucket = 'al',
@@ -164,8 +173,8 @@ class LeaveService
 
     public function updateBalances(
         User $employee,
-        int $alCredits,
-        int $slCredits,
+        float $alCredits,
+        float $slCredits,
         User $actor,
         ?string $notes = null,
     ): void {
@@ -174,8 +183,8 @@ class LeaveService
             $this->entitlements->ensureYearInitialized($employee);
             $employee->refresh();
 
-            $previousAl = (int) $employee->al_credits;
-            $previousSl = (int) $employee->sl_credits;
+            $previousAl = (float) $employee->al_credits;
+            $previousSl = (float) $employee->sl_credits;
 
             $employee->forceFill([
                 'al_credits' => $alCredits,
@@ -193,11 +202,11 @@ class LeaveService
                 amount: $delta,
                 action: 'manual_edit',
                 notes: trim(sprintf(
-                    'AL %d→%d, SL %d→%d.%s',
-                    $previousAl,
-                    $alCredits,
-                    $previousSl,
-                    $slCredits,
+                    'AL %s→%s, SL %s→%s.%s',
+                    $this->formatDays($previousAl),
+                    $this->formatDays($alCredits),
+                    $this->formatDays($previousSl),
+                    $this->formatDays($slCredits),
                     $notes ? ' '.$notes : '',
                 )),
             );
@@ -235,12 +244,12 @@ class LeaveService
 
     private function deductAnnualLeave(
         User $employee,
-        int $days,
+        float $days,
         User $actor,
         LeaveRequest $leaveRequest,
     ): void {
         $carried = $this->entitlements->usableCarriedOver($employee);
-        $available = (int) $employee->al_credits + $carried;
+        $available = (float) $employee->al_credits + $carried;
 
         if ($available < $days) {
             throw new RuntimeException(
@@ -253,7 +262,7 @@ class LeaveService
 
         $employee->forceFill([
             'al_carried_over' => $carried - $fromCarry,
-            'al_credits' => (int) $employee->al_credits - $fromCurrent,
+            'al_credits' => (float) $employee->al_credits - $fromCurrent,
             'al_carry_expires_on' => ($carried - $fromCarry) > 0
                 ? $employee->al_carry_expires_on
                 : null,
@@ -273,13 +282,13 @@ class LeaveService
 
     private function deductSickLeave(
         User $employee,
-        int $days,
+        float $days,
         User $actor,
         LeaveRequest $leaveRequest,
     ): void {
-        $medicalCap = (int) config('leave.hl.max_days_including_sl', 60);
-        $medicalUsed = (int) $employee->medical_days_used;
-        $sl = (int) $employee->sl_credits;
+        $medicalCap = (float) config('leave.hl.max_days_including_sl', 60);
+        $medicalUsed = (float) $employee->medical_days_used;
+        $sl = (float) $employee->sl_credits;
 
         if ($sl < $days) {
             throw new RuntimeException(
@@ -309,12 +318,12 @@ class LeaveService
 
     private function deductHospitalizationLeave(
         User $employee,
-        int $days,
+        float $days,
         User $actor,
         LeaveRequest $leaveRequest,
     ): void {
-        $medicalCap = (int) config('leave.hl.max_days_including_sl', 60);
-        $medicalUsed = (int) $employee->medical_days_used;
+        $medicalCap = (float) config('leave.hl.max_days_including_sl', 60);
+        $medicalUsed = (float) $employee->medical_days_used;
         $remaining = $medicalCap - $medicalUsed;
 
         if ($days > $remaining) {
@@ -339,7 +348,7 @@ class LeaveService
     private function logCreditChange(
         User $employee,
         User $actor,
-        int $amount,
+        float $amount,
         string $action,
         ?string $notes = null,
         ?LeaveRequest $leaveRequest = null,
@@ -348,17 +357,28 @@ class LeaveService
         $balances = $this->entitlements->balancesFor($employee);
 
         $description = match ($action) {
-            'manual_add' => "Added {$amount} leave credit(s) to {$employee->name}. AL: {$balances['al_available']}, SL: {$balances['sl_credits']}.",
-            'manual_edit' => "Edited leave balances for {$employee->name}. AL: {$balances['al_available']}, SL: {$balances['sl_credits']}.",
+            'manual_add' => sprintf(
+                'Added %s leave credit(s) to %s. AL: %s, SL: %s.',
+                $this->formatDays($amount),
+                $employee->name,
+                $this->formatDays($balances['al_available']),
+                $this->formatDays($balances['sl_credits']),
+            ),
+            'manual_edit' => sprintf(
+                'Edited leave balances for %s. AL: %s, SL: %s.',
+                $employee->name,
+                $this->formatDays($balances['al_available']),
+                $this->formatDays($balances['sl_credits']),
+            ),
             'leave_approved' => sprintf(
-                'Deducted %d day(s) from %s for approved %s #%d. AL: %d, SL: %d, medical used: %d.',
-                abs($amount),
+                'Deducted %s day(s) from %s for approved %s #%d. AL: %s, SL: %s, medical used: %s.',
+                $this->formatDays(abs($amount)),
                 $employee->name,
                 $leaveRequest?->typeCode() ?? 'LEAVE',
                 $leaveRequest?->id ?? 0,
-                $balances['al_available'],
-                $balances['sl_credits'],
-                $balances['medical_days_used'],
+                $this->formatDays($balances['al_available']),
+                $this->formatDays($balances['sl_credits']),
+                $this->formatDays($balances['medical_days_used']),
             ),
             default => "Leave credits updated for {$employee->name}.",
         };
@@ -442,6 +462,25 @@ class LeaveService
     }
 
     /**
+     * @return array<string, array{country: string, country_label: string, name: string}>
+     */
+    private function buildHolidayMarksForUser(
+        User $user,
+        Carbon $rangeStart,
+        Carbon $rangeEnd,
+    ): array {
+        $holidayMap = $this->holidays->forRange(
+            $rangeStart,
+            $rangeEnd,
+            $user->holiday_region,
+        );
+
+        return collect($holidayMap)->mapWithKeys(
+            fn (array $entries, string $date) => [$date => $entries[0]],
+        )->all();
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function formatForApproval(LeaveRequest $request): array
@@ -481,7 +520,12 @@ class LeaveService
             'end_date' => $request->end_date->format('Y-m-d'),
             'start_display' => $request->start_date->format('M j, Y'),
             'end_display' => $request->end_date->format('M j, Y'),
+            'start_portion' => $request->start_portion,
+            'end_portion' => $request->end_portion,
+            'start_portion_label' => $request->startPortionLabel(),
+            'end_portion_label' => $request->endPortionLabel(),
             'days' => $days,
+            'days_display' => $this->formatDays($days),
             'type' => $type,
             'type_label' => $request->typeLabel(),
             'type_code' => $request->typeCode(),
@@ -494,6 +538,22 @@ class LeaveService
             'has_enough_credits' => $hasEnoughCredits,
             'credits_required' => $needsDeduction ? $days : 0,
             'deducts_credits' => $needsDeduction,
+            'has_attachment' => $request->hasAttachment(),
+            'attachment_name' => $request->attachment_name,
+            'attachment_url' => $request->hasAttachment()
+                ? route('leave.certificate', $request->id)
+                : null,
         ];
+    }
+
+    private function formatDays(float $days): string
+    {
+        $rounded = round($days, 1);
+
+        if ((float) (int) $rounded === $rounded) {
+            return (string) (int) $rounded;
+        }
+
+        return number_format($rounded, 1, '.', '');
     }
 }

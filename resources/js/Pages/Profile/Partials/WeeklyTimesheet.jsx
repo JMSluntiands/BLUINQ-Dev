@@ -248,9 +248,10 @@ function AddTaskMenu({ availableRevisions, standardTasks, weekStart, onClose }) 
     );
 }
 
-export default function WeeklyTimesheet({ weeklyTimesheet }) {
+export default function WeeklyTimesheet({ weeklyTimesheet, canApprove = false }) {
     const { auth } = usePage().props;
-    const canApprove = auth.user?.role === 'admin';
+    const canApproveEntries =
+        canApprove || auth.user?.role === 'admin' || auth.user?.role === 'project-manager';
     const [addMenuOpen, setAddMenuOpen] = useState(false);
     const saveTimers = useRef({});
 
@@ -278,7 +279,7 @@ export default function WeeklyTimesheet({ weeklyTimesheet }) {
     const navigateWeek = (offsetDays) => {
         const nextWeek = addDays(weekStart, offsetDays);
         router.get(
-            route('profile.edit'),
+            route('timesheet.index'),
             { week: toIsoDate(nextWeek) },
             { preserveState: false, preserveScroll: true },
         );
@@ -501,7 +502,7 @@ export default function WeeklyTimesheet({ weeklyTimesheet }) {
                                         <td className="border border-slate-200 px-2 py-2 dark:border-gray-800">
                                             <ApprovalCell
                                                 status={row.approval}
-                                                canApprove={canApprove}
+                                                canApprove={canApproveEntries}
                                                 onApprove={() =>
                                                     updateApproval(
                                                         row.id,
@@ -557,8 +558,8 @@ export default function WeeklyTimesheet({ weeklyTimesheet }) {
                 the job number with the activity underneath. Revision task hours
                 sync with APM drafting hours automatically. Overtime is calculated
                 for any day over {STANDARD_HOURS} hours.
-                {canApprove
-                    ? ' You can approve or decline entries as admin.'
+                {canApproveEntries
+                    ? ' You can approve or decline entries as admin or manager.'
                     : ' Approval is handled by admin or manager.'}
             </div>
         </div>

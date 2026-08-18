@@ -17,8 +17,8 @@ class UpdateLeaveCreditsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'al_credits' => ['required', 'integer', 'min:0', 'max:365'],
-            'sl_credits' => ['required', 'integer', 'min:0', 'max:365'],
+            'al_credits' => ['required', 'numeric', 'min:0', 'max:365', 'multiple_of:0.5'],
+            'sl_credits' => ['required', 'numeric', 'min:0', 'max:365', 'multiple_of:0.5'],
             'notes' => ['nullable', 'string', 'max:500'],
         ];
     }
@@ -33,6 +33,8 @@ class UpdateLeaveCreditsRequest extends FormRequest
             'sl_credits.required' => 'Enter the SL balance.',
             'al_credits.min' => 'AL cannot be negative.',
             'sl_credits.min' => 'SL cannot be negative.',
+            'al_credits.multiple_of' => 'AL must be in 0.5 increments.',
+            'sl_credits.multiple_of' => 'SL must be in 0.5 increments.',
         ];
     }
 }

@@ -30,7 +30,7 @@ class WeeklyTimesheetController extends Controller
         );
 
         return redirect()
-            ->route('profile.edit', ['week' => $weekStart->toDateString()])
+            ->route('timesheet.index', ['week' => $weekStart->toDateString()])
             ->with('status', 'timesheet-entry-added');
     }
 

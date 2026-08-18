@@ -25,15 +25,43 @@ class HolidayService
     ];
 
     /**
+     * @return list<string>
+     */
+    public static function regionKeys(): array
+    {
+        return array_keys(self::COUNTRIES);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function regionOptions(): array
+    {
+        return collect(self::COUNTRIES)
+            ->mapWithKeys(fn (array $meta, string $key) => [$key => $meta['label']])
+            ->all();
+    }
+
+    public static function normalizeRegion(?string $region): ?string
+    {
+        return in_array($region, self::regionKeys(), true) ? $region : null;
+    }
+
+    /**
      * @return array<string, list<array{name: string, country: string, country_label: string}>>
      */
-    public function forRange(Carbon $rangeStart, Carbon $rangeEnd): array
+    public function forRange(Carbon $rangeStart, Carbon $rangeEnd, ?string $region = null): array
     {
         $startKey = $rangeStart->toDateString();
         $endKey = $rangeEnd->toDateString();
         $holidays = [];
+        $region = self::normalizeRegion($region);
 
         foreach (config('holidays', []) as $country => $years) {
+            if ($region !== null && $country !== $region) {
+                continue;
+            }
+
             $meta = self::COUNTRIES[$country] ?? [
                 'code' => $country,
                 'label' => ucwords(str_replace('_', ' ', $country)),
@@ -62,12 +90,17 @@ class HolidayService
     /**
      * @return list<array{id: string, name: string, date: string, month: string, day: string, country: string, country_label: string}>
      */
-    public function upcoming(int $limit = 5, ?Carbon $from = null): array
+    public function upcoming(int $limit = 5, ?Carbon $from = null, ?string $region = null): array
     {
         $from = ($from ?? Carbon::today())->startOfDay();
         $entries = [];
+        $region = self::normalizeRegion($region);
 
         foreach (config('holidays', []) as $country => $years) {
+            if ($region !== null && $country !== $region) {
+                continue;
+            }
+
             $meta = self::COUNTRIES[$country] ?? [
                 'code' => $country,
                 'label' => ucwords(str_replace('_', ' ', $country)),

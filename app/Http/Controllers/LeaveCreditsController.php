@@ -67,7 +67,7 @@ class LeaveCreditsController extends Controller
 
         $this->leave->addCredits(
             $employee,
-            (int) $request->validated('amount'),
+            (float) $request->validated('amount'),
             $request->user(),
             $request->validated('notes'),
             $request->validated('bucket'),
@@ -82,8 +82,8 @@ class LeaveCreditsController extends Controller
 
         $this->leave->updateBalances(
             $employee,
-            (int) $request->validated('al_credits'),
-            (int) $request->validated('sl_credits'),
+            (float) $request->validated('al_credits'),
+            (float) $request->validated('sl_credits'),
             $request->user(),
             $request->validated('notes'),
         );

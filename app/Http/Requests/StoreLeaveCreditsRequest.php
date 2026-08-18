@@ -19,7 +19,7 @@ class StoreLeaveCreditsRequest extends FormRequest
     {
         return [
             'user_id' => ['required', 'integer', 'exists:users,id'],
-            'amount' => ['required', 'integer', 'min:1', 'max:365'],
+            'amount' => ['required', 'numeric', 'min:0.5', 'max:365', 'multiple_of:0.5'],
             'bucket' => ['required', Rule::in(['al', 'sl'])],
             'notes' => ['nullable', 'string', 'max:500'],
         ];
@@ -33,7 +33,8 @@ class StoreLeaveCreditsRequest extends FormRequest
         return [
             'user_id.required' => 'Please select an employee.',
             'amount.required' => 'Please enter the number of credits to add.',
-            'amount.min' => 'Credits must be at least 1.',
+            'amount.min' => 'Credits must be at least 0.5.',
+            'amount.multiple_of' => 'Credits must be in 0.5 increments.',
             'bucket.required' => 'Please choose AL or SL.',
         ];
     }

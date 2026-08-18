@@ -8,12 +8,16 @@ use App\Services\LeaveService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LeaveRequestController extends Controller
 {
+    private const ATTACHMENT_DISK = 'local';
+
     public function __construct(
         private LeaveService $leave,
     ) {}
@@ -55,16 +59,36 @@ class LeaveRequestController extends Controller
 
     public function store(StoreLeaveRequestRequest $request): RedirectResponse
     {
-        LeaveRequest::query()->create([
+        $leaveRequest = LeaveRequest::query()->create([
             'user_id' => $request->user()->id,
             'start_date' => $request->validated('start_date'),
             'end_date' => $request->validated('end_date'),
+            'start_portion' => $request->validated('start_portion'),
+            'end_portion' => $request->validated('end_portion'),
             'type' => LeaveRequest::normalizeType($request->validated('type')),
             'reason' => $request->validated('reason'),
             'status' => LeaveRequest::STATUS_PENDING,
         ]);
 
+        $this->storeMedicalCertificate($request, $leaveRequest);
+
         return back()->with('status', 'leave-request-submitted');
+    }
+
+    public function downloadCertificate(Request $request, LeaveRequest $leaveRequest): StreamedResponse
+    {
+        $user = $request->user();
+        $isOwner = $user?->id === $leaveRequest->user_id;
+        $canManage = $user?->hasPermission('leave.manage') ?? false;
+
+        abort_unless($isOwner || $canManage, 403);
+        abort_unless($leaveRequest->hasAttachment(), 404);
+
+        return Storage::disk($leaveRequest->attachment_disk ?? self::ATTACHMENT_DISK)
+            ->download(
+                $leaveRequest->attachment_path,
+                $leaveRequest->attachment_name ?? 'medical-certificate.pdf',
+            );
     }
 
     public function approve(Request $request, LeaveRequest $leaveRequest): RedirectResponse
@@ -118,5 +142,21 @@ class LeaveRequestController extends Controller
         ]);
 
         return back()->with('status', 'leave-rejected');
+    }
+
+    private function storeMedicalCertificate(Request $request, LeaveRequest $leaveRequest): void
+    {
+        if (! $request->hasFile('medical_certificate')) {
+            return;
+        }
+
+        $file = $request->file('medical_certificate');
+        $path = $file->store('leave-requests/'.$leaveRequest->id, self::ATTACHMENT_DISK);
+
+        $leaveRequest->update([
+            'attachment_disk' => self::ATTACHMENT_DISK,
+            'attachment_path' => $path,
+            'attachment_name' => $file->getClientOriginalName(),
+        ]);
     }
 }

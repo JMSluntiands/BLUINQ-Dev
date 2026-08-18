@@ -343,7 +343,66 @@ class DraftingController extends Controller
                 ])
                 ->values()
                 ->all(),
+            'projectOptions' => $capabilities['addFromMasterlist']
+                ? $this->masterlistCandidatesForShow($user)
+                : [],
         ]);
+    }
+
+    /**
+     * @return list<array{id: int, value: string, label: string, lead_no: string, source: string}>
+     */
+    private function masterlistCandidatesForShow(User $user): array
+    {
+        $statusLabels = DraftingRequest::statusLabels();
+
+        $format = function ($rows, string $source) use ($statusLabels): array {
+            return $rows->map(function (DraftingRequest $row) use ($source, $statusLabels) {
+                $leadNo = $row->jobNumber();
+                $client = $row->company_name ?: ($row->your_name ?: '—');
+                $job    = $row->site_address ?: '—';
+                $label  = "{$leadNo} — {$client} — {$job}";
+
+                if ($source === 'apm') {
+                    $status      = $row->status ?? DraftingRequest::STATUS_NEW;
+                    $statusLabel = $statusLabels[$status] ?? ucfirst(str_replace('_', ' ', $status));
+                    $label      .= " ({$statusLabel})";
+                }
+
+                return [
+                    'id'      => $row->id,
+                    'value'   => (string) $row->id,
+                    'lead_no' => $leadNo,
+                    'label'   => $label,
+                    'source'  => $source,
+                ];
+            })->values()->all();
+        };
+
+        $byId = [];
+
+        foreach ($format(
+            DraftingRequest::query()->masterlist()->reviewAccepted()->active()
+                ->orderByDesc('requested_at')->orderByDesc('id')->limit(200)->get(),
+            'masterlist',
+        ) as $row) {
+            $byId[$row['id']] = $row;
+        }
+
+        foreach ($format(
+            DraftingRequest::query()->apm()->reviewAccepted()->active()
+                ->whereIn('status', [
+                    DraftingRequest::STATUS_SUBMITTED,
+                    DraftingRequest::STATUS_PAID,
+                    DraftingRequest::STATUS_INVOICED,
+                ])
+                ->orderByDesc('updated_at')->orderByDesc('id')->limit(200)->get(),
+            'apm',
+        ) as $row) {
+            $byId[$row['id']] = $row;
+        }
+
+        return array_values($byId);
     }
 
     public function update(
@@ -1453,6 +1512,7 @@ class DraftingController extends Controller
                 $user->hasPermission('job.drafting.revision.view') || $masterlistAccess
             ),
             'addRevision' => $canView && $active && $user->hasPermission('job.drafting.revision.add'),
+            'addFromMasterlist' => $canView && $active && $user->hasPermission('job.list.view'),
             'deleteRevision' => $canView && $active && $user->isAdmin(),
             'viewAccounts' => $canView && (
                 $user->hasPermission('job.drafting.accounts.view') || $masterlistAccess

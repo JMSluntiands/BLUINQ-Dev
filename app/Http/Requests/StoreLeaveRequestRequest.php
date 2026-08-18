@@ -27,8 +27,11 @@ class StoreLeaveRequestRequest extends FormRequest
         return [
             'start_date' => ['required', 'date', 'after_or_equal:today'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            'start_portion' => ['required', Rule::in(LeaveRequest::portions())],
+            'end_portion' => ['required', Rule::in(LeaveRequest::portions())],
             'type' => ['required', Rule::in(array_values(array_unique($types)))],
-            'reason' => ['nullable', 'string', 'max:1000'],
+            'reason' => ['required', 'string', 'max:1000'],
+            'medical_certificate' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
         ];
     }
 
@@ -42,7 +45,12 @@ class StoreLeaveRequestRequest extends FormRequest
             'start_date.after_or_equal' => 'Start date cannot be in the past.',
             'end_date.required' => 'Please select an end date.',
             'end_date.after_or_equal' => 'End date must be on or after the start date.',
+            'start_portion.required' => 'Please choose the starting portion of the day.',
+            'end_portion.required' => 'Please choose the ending portion of the day.',
             'type.required' => 'Please select a leave type.',
+            'reason.required' => 'Please provide a reason for your leave request.',
+            'medical_certificate.mimes' => 'The medical certificate must be a PDF, JPG, or PNG file.',
+            'medical_certificate.max' => 'The medical certificate may not be larger than 10 MB.',
         ];
     }
 
@@ -68,13 +76,61 @@ class StoreLeaveRequestRequest extends FormRequest
                     'Staff on probationary or training status are not entitled to this leave type.',
                 );
             }
+
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            $startDate = (string) $this->input('start_date');
+            $endDate = (string) $this->input('end_date');
+            $startPortion = (string) $this->input('start_portion');
+            $endPortion = (string) $this->input('end_portion');
+
+            if (! LeaveRequest::isPortionRangeValid(
+                $startDate,
+                $endDate,
+                $startPortion,
+                $endPortion,
+            )) {
+                $validator->errors()->add(
+                    'end_portion',
+                    'The ending portion must be on or after the starting portion for the same day.',
+                );
+
+                return;
+            }
+
+            if (
+                LeaveRequest::requiresMedicalCertificateFor($type, $startDate, $endDate)
+                && ! $this->hasFile('medical_certificate')
+            ) {
+                $threshold = LeaveRequest::medicalCertificateThreshold();
+                $validator->errors()->add(
+                    'medical_certificate',
+                    "A medical certificate is required for more than {$threshold} consecutive sick leave days.",
+                );
+            }
         });
     }
 
     protected function prepareForValidation(): void
     {
+        $updates = [];
+
         if ($this->input('type') === LeaveRequest::TYPE_LEAVE) {
-            $this->merge(['type' => LeaveRequest::TYPE_AL]);
+            $updates['type'] = LeaveRequest::TYPE_AL;
+        }
+
+        if (! $this->filled('start_portion')) {
+            $updates['start_portion'] = LeaveRequest::PORTION_MORNING;
+        }
+
+        if (! $this->filled('end_portion')) {
+            $updates['end_portion'] = LeaveRequest::PORTION_AFTERNOON;
+        }
+
+        if ($updates !== []) {
+            $this->merge($updates);
         }
     }
 }

@@ -38,6 +38,7 @@ class DashboardController extends Controller
             ? Carbon::createFromFormat('Y-m', $calendarMonth)->startOfMonth()
             : Carbon::today()->startOfMonth();
         [$calendarStart, $calendarEnd] = $this->leave->monthGridRange($month);
+        $holidayRegion = $user?->holiday_region;
 
         $leaderboardMonth = $request->string('leaderboard_month')->toString();
         $leaderboardMonth = preg_match('/^\d{4}-\d{2}$/', $leaderboardMonth)
@@ -85,9 +86,13 @@ class DashboardController extends Controller
             'leaveCalendar' => $user
                 ? $this->leave->calendarPayload($calendarStart, $calendarEnd)
                 : [],
-            'holidays' => $this->holidays->forRange($calendarStart, $calendarEnd),
+            'holidays' => $this->holidays->forRange(
+                $calendarStart,
+                $calendarEnd,
+                $holidayRegion,
+            ),
             'calendarEvents' => $this->calendarEvents->forRange($calendarStart, $calendarEnd),
-            'upcomingHolidays' => $this->holidays->upcoming(),
+            'upcomingHolidays' => $this->holidays->upcoming(region: $holidayRegion),
             'upcomingBirthdays' => $this->leave->upcomingBirthdays(),
             'calendarMonth' => $month->format('Y-m'),
             'onLeaveToday' => $user

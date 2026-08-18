@@ -1,34 +1,56 @@
 import TeamLeaveTimesheet from '@/Components/Timesheet/TeamLeaveTimesheet';
+import WeeklyTimesheet from '@/Pages/Profile/Partials/WeeklyTimesheet';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 
 export default function Index({
+    mode = 'team',
     leaveCalendar = [],
     teamMembers = [],
     calendarMonth,
     filters = {},
+    weeklyTimesheet = null,
+    canApproveTimesheet = false,
 }) {
+    const isTeamMode = mode === 'team';
+    const isWeeklyMode = mode === 'weekly';
+
+    const headerTitle = isTeamMode ? 'Timesheet' : 'My timesheet';
+    const headerDescription = isTeamMode
+        ? 'Team leave overview — approved leave only'
+        : isWeeklyMode
+          ? 'Weekly hours, tasks, and overtime'
+          : 'Your leave and public holidays';
+
     return (
         <AuthenticatedLayout
             header={
                 <div>
                     <h2 className="text-xl font-semibold leading-tight text-slate-800 dark:text-slate-100">
-                        Timesheet
+                        {headerTitle}
                     </h2>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                        Team leave overview — approved leave only
+                        {headerDescription}
                     </p>
                 </div>
             }
         >
-            <Head title="Timesheet" />
+            <Head title={headerTitle} />
 
-            <TeamLeaveTimesheet
-                users={leaveCalendar}
-                teamMembers={teamMembers}
-                calendarMonth={calendarMonth}
-                filters={filters}
-            />
+            {isWeeklyMode ? (
+                <WeeklyTimesheet
+                    weeklyTimesheet={weeklyTimesheet}
+                    canApprove={canApproveTimesheet}
+                />
+            ) : (
+                <TeamLeaveTimesheet
+                    users={leaveCalendar}
+                    teamMembers={teamMembers}
+                    calendarMonth={calendarMonth}
+                    filters={filters}
+                    showUserFilter={isTeamMode}
+                />
+            )}
         </AuthenticatedLayout>
     );
 }

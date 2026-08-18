@@ -6,20 +6,115 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
 import { useForm, usePage } from '@inertiajs/react';
 
+function inclusiveDayCount(startDate, endDate) {
+    if (!startDate || !endDate) {
+        return 0;
+    }
+
+    const start = new Date(`${startDate}T00:00:00`);
+    const end = new Date(`${endDate}T00:00:00`);
+
+    if (
+        Number.isNaN(start.getTime()) ||
+        Number.isNaN(end.getTime()) ||
+        end < start
+    ) {
+        return 0;
+    }
+
+    return Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+}
+
+function calculateRequestedDays(startDate, endDate, startPortion, endPortion) {
+    const baseDays = inclusiveDayCount(startDate, endDate);
+
+    if (!baseDays) {
+        return 0;
+    }
+
+    let total = baseDays;
+
+    if (startPortion === 'afternoon') {
+        total -= 0.5;
+    }
+
+    if (endPortion === 'morning') {
+        total -= 0.5;
+    }
+
+    return Math.max(0.5, total);
+}
+
+function formatDays(days) {
+    if (!days) {
+        return '0';
+    }
+
+    return Number.isInteger(days) ? String(days) : days.toFixed(1);
+}
+
 export default function LeaveRequestModal({ show, onClose }) {
     const { leaveTypes = [], leaveBalances = null } = usePage().props;
 
     const { data, setData, post, processing, errors, reset } = useForm({
         start_date: '',
         end_date: '',
+        start_portion: 'morning',
+        end_portion: 'afternoon',
+        day_type: 'whole',
+        half_day_portion: 'morning',
+        // day_type and half_day_portion are UI-only; start_portion/end_portion are sent to server
         type: 'al',
         reason: '',
+        medical_certificate: null,
     });
+
+    const handleDayTypeChange = (value) => {
+        setData((prev) => ({
+            ...prev,
+            day_type: value,
+            start_portion: value === 'whole' ? 'morning' : prev.half_day_portion,
+            end_portion: value === 'whole' ? 'afternoon' : prev.half_day_portion,
+        }));
+    };
+
+    const handleHalfDayPortionChange = (value) => {
+        setData((prev) => ({
+            ...prev,
+            half_day_portion: value,
+            start_portion: value,
+            end_portion: value,
+        }));
+    };
+
+    const types =
+        leaveTypes.length > 0
+            ? leaveTypes
+            : [{ value: 'al', label: 'Annual Leave', code: 'AL' }];
+
+    const medicalCertificateAfterDays =
+        types.find((type) => type.value === 'sl')
+            ?.medical_certificate_after_days ?? 2;
+    const dayCount = calculateRequestedDays(
+        data.start_date,
+        data.end_date,
+        data.start_portion,
+        data.end_portion,
+    );
+    const needsMedicalCertificate =
+        data.type === 'sl' &&
+        inclusiveDayCount(data.start_date, data.end_date) >
+            medicalCertificateAfterDays;
 
     const submit = (event) => {
         event.preventDefault();
         post(route('leave.store'), {
             preserveScroll: true,
+            forceFormData: true,
+            transform: (d) => {
+                const { day_type, half_day_portion, ...payload } = d;
+                return payload;
+            },
             onSuccess: () => {
                 reset();
                 onClose();
@@ -31,11 +126,6 @@ export default function LeaveRequestModal({ show, onClose }) {
         reset();
         onClose();
     };
-
-    const types =
-        leaveTypes.length > 0
-            ? leaveTypes
-            : [{ value: 'al', label: 'Annual Leave', code: 'AL' }];
 
     return (
         <Modal show={show} onClose={handleClose} maxWidth="lg">
@@ -145,7 +235,103 @@ export default function LeaveRequestModal({ show, onClose }) {
                     </div>
 
                     <div>
-                        <InputLabel htmlFor="reason" value="Reason (optional)" />
+                        <InputLabel value="Day type" />
+                        <div className="mt-1 flex gap-3">
+                            {[
+                                { value: 'whole', label: 'Whole day' },
+                                { value: 'half', label: 'Half day' },
+                            ].map(({ value, label }) => (
+                                <label
+                                    key={value}
+                                    className={
+                                        'flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition ' +
+                                        (data.day_type === value
+                                            ? 'border-sky-500 bg-sky-50 text-sky-700 dark:border-sky-400 dark:bg-sky-500/10 dark:text-sky-300'
+                                            : 'border-slate-300 bg-white text-slate-700 hover:border-sky-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200')
+                                    }
+                                >
+                                    <input
+                                        type="radio"
+                                        name="day_type"
+                                        value={value}
+                                        checked={data.day_type === value}
+                                        onChange={() => handleDayTypeChange(value)}
+                                        className="sr-only"
+                                    />
+                                    {label}
+                                </label>
+                            ))}
+                        </div>
+                        <InputError message={errors.start_portion} className="mt-1" />
+                        <InputError message={errors.end_portion} className="mt-1" />
+                    </div>
+
+                    {data.day_type === 'half' && (
+                        <div>
+                            <InputLabel htmlFor="half_day_portion" value="Which half?" />
+                            <select
+                                id="half_day_portion"
+                                value={data.half_day_portion}
+                                onChange={(event) =>
+                                    handleHalfDayPortionChange(event.target.value)
+                                }
+                                className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                            >
+                                <option value="morning">Morning</option>
+                                <option value="afternoon">Afternoon</option>
+                            </select>
+                        </div>
+                    )}
+
+                    {dayCount > 0 && (
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                            This request will use{' '}
+                            <span className="font-semibold text-slate-900 dark:text-white">
+                                {formatDays(dayCount)}
+                            </span>{' '}
+                            day{dayCount === 1 ? '' : 's'} of leave.
+                        </p>
+                    )}
+
+                    {data.type === 'sl' && (
+                        <p className="rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-800 dark:bg-sky-500/10 dark:text-sky-200">
+                            A medical certificate is required for more than{' '}
+                            {medicalCertificateAfterDays} consecutive sick leave
+                            days.
+                        </p>
+                    )}
+
+                    {needsMedicalCertificate && (
+                        <div>
+                            <InputLabel
+                                htmlFor="medical_certificate"
+                                value="Medical certificate"
+                            />
+                            <input
+                                id="medical_certificate"
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                                onChange={(event) =>
+                                    setData(
+                                        'medical_certificate',
+                                        event.target.files?.[0] ?? null,
+                                    )
+                                }
+                                className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-sky-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-sky-700 hover:file:bg-sky-100 dark:text-slate-200 dark:file:bg-sky-500/20 dark:file:text-sky-300"
+                                required
+                            />
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                PDF, JPG, or PNG. Maximum 10 MB.
+                            </p>
+                            <InputError
+                                message={errors.medical_certificate}
+                                className="mt-1"
+                            />
+                        </div>
+                    )}
+
+                    <div>
+                        <InputLabel htmlFor="reason" value="Reason" />
                         <textarea
                             id="reason"
                             value={data.reason}
@@ -153,6 +339,7 @@ export default function LeaveRequestModal({ show, onClose }) {
                                 setData('reason', event.target.value)
                             }
                             rows={3}
+                            required
                             className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                             placeholder="Brief reason for your request..."
                         />

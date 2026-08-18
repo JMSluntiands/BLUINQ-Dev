@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Job;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDraftingRequestFormRequest;
+use App\Http\Requests\StoreDraftingRequestRevisionRequest;
 use App\Http\Requests\UpdateDraftingRequestAssignmentRequest;
 use App\Http\Requests\UpdateDraftingRequestBoardFieldsRequest;
 use App\Models\BuildingClass;
@@ -322,6 +323,67 @@ class JobBoardController extends Controller
         $this->assertAddableToBoard($draftingRequest);
 
         $result = $this->submission->addOrReopenOnBoard($draftingRequest, $user);
+
+        if ($result['action'] === 'reopened') {
+            return redirect()
+                ->route('job.drafting.show', $draftingRequest)
+                ->with('status', 'board-reopened')
+                ->with('revision_code', $result['revision_code']);
+        }
+
+        return redirect()
+            ->route('job.drafting.show', $draftingRequest)
+            ->with('status', 'masterlist-forwarded');
+    }
+
+    /**
+     * Accept slim revision fields from the modal and add the project to the board directly.
+     */
+    public function quickAddToBoard(
+        Request $request,
+        DraftingRequest $draftingRequest,
+    ): RedirectResponse {
+        abort_unless(
+            $request->user()?->hasPermission('job.list.view'),
+            403,
+        );
+
+        $user = $request->user();
+
+        if ($user === null) {
+            abort(403);
+        }
+
+        $this->assertAddableToBoard($draftingRequest);
+
+        $categoryCodes = \App\Models\CrmCategory::query()
+            ->active()
+            ->orderBy('code')
+            ->get(['code', 'name'])
+            ->flatMap(fn ($row) => array_filter([$row->code, $row->name]))
+            ->unique()
+            ->values()
+            ->all();
+
+        $validated = $request->validate([
+            'code'     => ['required', 'string', 'max:64'],
+            'link'     => ['nullable', 'string', 'max:2048', 'url'],
+            'log_date' => ['required', 'date'],
+            'category' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::in($categoryCodes)],
+            'status'   => ['required', 'string', \Illuminate\Validation\Rule::in(DraftingRequest::statusValues())],
+        ]);
+
+        // Store the revision first.
+        $draftingRequest->revisions()->create([
+            'user_id'  => $user->id,
+            'code'     => $validated['code'],
+            'link'     => $validated['link'] ?? null,
+            'log_date' => $validated['log_date'],
+            'category' => $validated['category'],
+            'status'   => $validated['status'],
+        ]);
+
+        $result = $this->submission->addOrReopenOnBoard($draftingRequest->fresh(), $user);
 
         if ($result['action'] === 'reopened') {
             return redirect()

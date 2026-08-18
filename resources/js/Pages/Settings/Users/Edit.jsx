@@ -21,6 +21,7 @@ export default function UsersEdit({
     user,
     roles = [],
     employmentStatuses = {},
+    holidayRegions = {},
     listFilters = {},
 }) {
     const listQs = filterQueryString(listFilters);
@@ -33,6 +34,10 @@ export default function UsersEdit({
         birthday: user.birthday ?? '',
         date_hired: user.date_hired ?? '',
         employment_status: user.employment_status ?? 'regular',
+        holiday_region: user.holiday_region ?? '',
+        personal_details: user.personal_details ?? '',
+        claims_excel_url: user.claims_excel_url ?? '',
+        personal_file_url: user.personal_file_url ?? '',
         role_id: user.role_id,
         password: '',
         password_confirmation: '',
@@ -242,6 +247,92 @@ export default function UsersEdit({
                         <InputError
                             className="mt-2"
                             message={form.errors.employment_status}
+                        />
+                    </div>
+
+                    <div>
+                        <InputLabel
+                            htmlFor="holiday_region"
+                            value="Public holiday region"
+                        />
+                        <select
+                            id="holiday_region"
+                            className="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                            value={form.data.holiday_region}
+                            onChange={(e) =>
+                                form.setData('holiday_region', e.target.value)
+                            }
+                        >
+                            <option value="">All regions</option>
+                            {Object.entries(holidayRegions).map(
+                                ([value, label]) => (
+                                    <option key={value} value={value}>
+                                        {label}
+                                    </option>
+                                ),
+                            )}
+                        </select>
+                        <p className="mt-1 text-xs text-slate-500">
+                            Choose PH, WA, or SG so the user sees the correct
+                            public holidays on their timesheet.
+                        </p>
+                        <InputError
+                            className="mt-2"
+                            message={form.errors.holiday_region}
+                        />
+                    </div>
+
+                    <div>
+                        <InputLabel htmlFor="personal_details" value="Details" />
+                        <textarea
+                            id="personal_details"
+                            className="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                            rows={4}
+                            value={form.data.personal_details}
+                            onChange={(e) =>
+                                form.setData('personal_details', e.target.value)
+                            }
+                            placeholder="Additional personal details"
+                        />
+                        <InputError
+                            className="mt-2"
+                            message={form.errors.personal_details}
+                        />
+                    </div>
+
+                    <div>
+                        <InputLabel htmlFor="claims_excel_url" value="Claims" />
+                        <TextInput
+                            id="claims_excel_url"
+                            type="url"
+                            className="mt-1 block w-full"
+                            value={form.data.claims_excel_url}
+                            onChange={(e) =>
+                                form.setData('claims_excel_url', e.target.value)
+                            }
+                            placeholder="https://..."
+                        />
+                        <InputError
+                            className="mt-2"
+                            message={form.errors.claims_excel_url}
+                        />
+                    </div>
+
+                    <div>
+                        <InputLabel htmlFor="personal_file_url" value="SharePoint" />
+                        <TextInput
+                            id="personal_file_url"
+                            type="url"
+                            className="mt-1 block w-full"
+                            value={form.data.personal_file_url}
+                            onChange={(e) =>
+                                form.setData('personal_file_url', e.target.value)
+                            }
+                            placeholder="https://..."
+                        />
+                        <InputError
+                            className="mt-2"
+                            message={form.errors.personal_file_url}
                         />
                     </div>
 

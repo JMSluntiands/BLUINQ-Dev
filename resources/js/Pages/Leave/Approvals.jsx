@@ -6,6 +6,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import UserAvatar from '@/Components/UserAvatar';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {
+    ArrowDownTrayIcon,
     CheckCircleIcon,
     XCircleIcon,
 } from '@heroicons/react/24/outline';
@@ -26,6 +27,10 @@ const FLASH_MESSAGES = {
     'leave-insufficient-credits':
         'Cannot approve — employee does not have enough leave credits.',
 };
+
+function formatDayLabel(value) {
+    return `${value} day${value === '1' ? '' : 's'}`;
+}
 
 function StatusBadge({ status }) {
     const styles = {
@@ -77,12 +82,24 @@ function ReviewModal({ request, action, onClose }) {
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     {request.user.name} · {request.type_label} ·{' '}
                     {request.start_display} – {request.end_display} (
-                    {request.days} day{request.days !== 1 ? 's' : ''})
+                    {formatDayLabel(request.days_display)})
+                </p>
+                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                    {request.start_portion_label} to {request.end_portion_label}
                 </p>
                 {request.reason && (
                     <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                         {request.reason}
                     </p>
+                )}
+                {request.has_attachment && request.attachment_url && (
+                    <a
+                        href={request.attachment_url}
+                        className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-sky-700 hover:text-sky-600 dark:text-sky-300 dark:hover:text-sky-200"
+                    >
+                        <ArrowDownTrayIcon className="h-4 w-4" />
+                        {request.attachment_name || 'Medical certificate'}
+                    </a>
                 )}
 
                 <div className="mt-4">
@@ -234,14 +251,28 @@ export default function Approvals({
                                     </div>
                                     <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">
                                         {request.start_display} –{' '}
-                                        {request.end_display} · {request.days}{' '}
-                                        day{request.days !== 1 ? 's' : ''}
+                                        {request.end_display} ·{' '}
+                                        {formatDayLabel(request.days_display)}
+                                    </p>
+                                    <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                                        {request.start_portion_label} to{' '}
+                                        {request.end_portion_label}
                                     </p>
                                     {request.reason && (
                                         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                                             {request.reason}
                                         </p>
                                     )}
+                                    {request.has_attachment &&
+                                        request.attachment_url && (
+                                            <a
+                                                href={request.attachment_url}
+                                                className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-sky-700 hover:text-sky-600 dark:text-sky-300 dark:hover:text-sky-200"
+                                            >
+                                                <ArrowDownTrayIcon className="h-4 w-4" />
+                                                Medical certificate
+                                            </a>
+                                        )}
                                     {request.status === 'pending' &&
                                         request.deducts_credits && (
                                             <p

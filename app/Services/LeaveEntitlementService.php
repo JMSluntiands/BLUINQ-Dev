@@ -69,31 +69,31 @@ class LeaveEntitlementService
 
         $status = $user->employment_status ?? 'regular';
         $statuses = config('leave.employment_statuses', []);
-        $medicalCap = (int) config('leave.hl.max_days_including_sl', 60);
-        $medicalUsed = (int) $user->medical_days_used;
+        $medicalCap = (float) config('leave.hl.max_days_including_sl', 60);
+        $medicalUsed = (float) $user->medical_days_used;
         $carried = $this->usableCarriedOver($user);
-        $alAvailable = (int) $user->al_credits + $carried;
+        $alAvailable = (float) $user->al_credits + $carried;
 
         return [
             'entitled' => $this->isEntitled($user),
             'employment_status' => $status,
             'employment_status_label' => $statuses[$status] ?? ucfirst($status),
             'al_available' => $alAvailable,
-            'al_credits' => (int) $user->al_credits,
+            'al_credits' => (float) $user->al_credits,
             'al_carried_over' => $carried,
             'al_carry_expires_on' => $carried > 0 ? $user->al_carry_expires_on?->toDateString() : null,
             'al_entitlement' => $this->annualAlEntitlement($user),
             'continuous_years' => $this->continuousYears($user),
-            'sl_credits' => (int) $user->sl_credits,
+            'sl_credits' => (float) $user->sl_credits,
             'medical_days_used' => $medicalUsed,
             'medical_remaining' => max(0, $medicalCap - $medicalUsed),
             'leave_credits' => $alAvailable,
         ];
     }
 
-    public function usableCarriedOver(User $user): int
+    public function usableCarriedOver(User $user): float
     {
-        $carried = (int) $user->al_carried_over;
+        $carried = (float) $user->al_carried_over;
         if ($carried <= 0) {
             return 0;
         }
@@ -107,8 +107,8 @@ class LeaveEntitlementService
 
     public function syncLegacyLeaveCredits(User $user): void
     {
-        $available = (int) $user->al_credits + $this->usableCarriedOver($user);
-        if ((int) $user->leave_credits !== $available) {
+        $available = (float) $user->al_credits + $this->usableCarriedOver($user);
+        if ((float) $user->leave_credits !== $available) {
             $user->forceFill(['leave_credits' => $available])->save();
         }
     }
@@ -148,7 +148,7 @@ class LeaveEntitlementService
                 return;
             }
 
-            $previousAl = (int) $user->al_credits + $this->usableCarriedOver($user);
+            $previousAl = (float) $user->al_credits + $this->usableCarriedOver($user);
             $carryMax = (int) config('leave.al.carry_over_max', 7);
             $carried = min($carryMax, max(0, $previousAl));
             $expireMonth = (int) config('leave.al.carry_expire_month', 6);
@@ -175,7 +175,7 @@ class LeaveEntitlementService
     {
         $today = $today ?? Carbon::today();
 
-        if ((int) $user->al_carried_over <= 0) {
+        if ((float) $user->al_carried_over <= 0) {
             return;
         }
 
@@ -220,7 +220,7 @@ class LeaveEntitlementService
         $entitlement = $this->annualAlEntitlement($user, (int) $asOf->year);
         $monthly = (int) config('leave.al.monthly_accrual', 1);
         $base = (int) config('leave.al.base_days', 12);
-        $current = (int) $user->al_credits;
+        $current = (float) $user->al_credits;
 
         if ($current >= $entitlement) {
             $user->forceFill(['al_last_accrual_month' => $monthKey])->save();
@@ -267,7 +267,7 @@ class LeaveEntitlementService
         User::query()->active()->orderBy('id')->chunkById(50, function ($users) use ($asOf, &$stats): void {
             foreach ($users as $user) {
                 $beforeYear = $user->leave_balance_year;
-                $beforeCarry = (int) $user->al_carried_over;
+                $beforeCarry = (float) $user->al_carried_over;
 
                 $this->ensureYearInitialized($user, $asOf);
                 $user->refresh();
@@ -276,7 +276,7 @@ class LeaveEntitlementService
                     $stats['initialized']++;
                 }
 
-                if ($beforeCarry > 0 && (int) $user->al_carried_over === 0) {
+                if ($beforeCarry > 0 && (float) $user->al_carried_over === 0.0) {
                     $stats['expired_carry']++;
                 }
 

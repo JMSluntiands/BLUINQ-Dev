@@ -54,6 +54,7 @@ export default function DraftingShow({
     categoryOptions = [],
     formOptions = {},
     drafterUsers = [],
+    projectOptions = [],
 }) {
     const revisionCode = usePage().props.flash?.revision_code ?? null;
     const flashMessages = {
@@ -83,6 +84,7 @@ export default function DraftingShow({
         archive = false,
         viewRevision = false,
         addRevision = false,
+        addFromMasterlist = false,
         deleteRevision = false,
         viewAccounts = false,
         addAccount = false,
@@ -111,6 +113,7 @@ export default function DraftingShow({
     const [editSection, setEditSection] = useState(null);
     const [filesEditPanel, setFilesEditPanel] = useState(null);
     const [revisionModalOpen, setRevisionModalOpen] = useState(false);
+    const [forwardModalOpen, setForwardModalOpen] = useState(false);
     const [editingRevision, setEditingRevision] = useState(null);
     const [deleteRevisionTarget, setDeleteRevisionTarget] = useState(null);
     const [quoteModalOpen, setQuoteModalOpen] = useState(false);
@@ -256,6 +259,15 @@ export default function DraftingShow({
                     defaultJobStatus={draftingRequest.status ?? 'new'}
                 />
 
+                <DraftingRevisionAddModal
+                    show={forwardModalOpen}
+                    onClose={() => setForwardModalOpen(false)}
+                    mode="forward"
+                    projectOptions={projectOptions}
+                    statusOptions={statusOptions}
+                    categoryOptions={categoryOptions}
+                />
+
                 <DraftingAccountAddModal
                     show={quoteModalOpen || editingQuote != null}
                     onClose={() => {
@@ -308,8 +320,10 @@ export default function DraftingShow({
                     onEditInvoice={(row) => setEditingInvoice(row)}
                     canViewRevision={viewRevision}
                     canAddRevision={addRevision}
+                    canAddFromMasterlist={addFromMasterlist}
                     canDeleteRevision={deleteRevision}
                     onAddRevision={() => setRevisionModalOpen(true)}
+                    onAddFromMasterlist={() => setForwardModalOpen(true)}
                     onEditRevision={
                         addRevision ? (row) => setEditingRevision(row) : undefined
                     }

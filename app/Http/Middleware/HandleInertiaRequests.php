@@ -69,6 +69,9 @@ class HandleInertiaRequests extends Middleware
                     'code' => $meta['code'],
                     'deduct' => $meta['deduct'],
                     'requires_entitlement' => (bool) ($meta['requires_entitlement'] ?? false),
+                    'medical_certificate_after_days' => $key === 'sl'
+                        ? (int) config('leave.sl.medical_certificate_after_days', 2)
+                        : null,
                 ])
                 ->values()
                 ->all(),

@@ -198,10 +198,6 @@ export default function DraftingRevisionAddModal({
             return;
         }
 
-        if (isForwardMode) {
-            return;
-        }
-
         // Only refresh revision code + status when the selected project changes.
         // Keep category / date / link so a Select2 choice is not wiped.
         form.setData(
@@ -229,10 +225,13 @@ export default function DraftingRevisionAddModal({
 
         if (isForwardMode) {
             setForwarding(true);
-            router.get(
-                route('job.board.add.review', effectiveRequestId),
-                {},
+            form.post(
+                route('job.board.add.quick', effectiveRequestId),
                 {
+                    onSuccess: () => {
+                        form.reset();
+                        onClose();
+                    },
                     onFinish: () => setForwarding(false),
                     onError: () => setForwarding(false),
                 },
@@ -274,7 +273,7 @@ export default function DraftingRevisionAddModal({
                     {isEditing
                         ? 'Edit item'
                         : isForwardMode
-                          ? 'Add from masterlist'
+                          ? 'Add item'
                           : 'Add revision'}
                 </h2>
                 <p className="mt-1 text-sm text-[#676879] dark:text-slate-400">
@@ -319,7 +318,7 @@ export default function DraftingRevisionAddModal({
                         </div>
                     ) : null}
 
-                    {!isForwardMode ? (
+                    {(!isForwardMode || selectedProjectId) ? (
                         <>
                             <div>
                                 <InputLabel
@@ -334,7 +333,7 @@ export default function DraftingRevisionAddModal({
                                     }
                                     className="mt-1 block w-full"
                                     placeholder="e.g. 26003-01"
-                                    readOnly={!isEditing}
+                                    readOnly={!isEditing && !isForwardMode}
                                     required
                                 />
                                 <InputError
@@ -454,7 +453,7 @@ export default function DraftingRevisionAddModal({
                         {isEditing
                             ? 'Save item'
                             : isForwardMode
-                              ? 'Review & add'
+                              ? 'Add item'
                               : 'Add revision'}
                     </PrimaryButton>
                 </div>
