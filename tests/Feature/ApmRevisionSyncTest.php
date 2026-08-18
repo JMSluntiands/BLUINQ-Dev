@@ -7,6 +7,7 @@ use App\Models\DraftingRequest;
 use App\Models\DraftingRequestAssignment;
 use App\Models\DraftingRequestRevision;
 use App\Models\Role;
+use App\Models\ServiceEngaging;
 use App\Models\StoreyLevel;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -287,8 +288,8 @@ class ApmRevisionSyncTest extends TestCase
                 ->where('statusOptions', [
                     ['value' => 'new', 'label' => 'New'],
                     ['value' => 'assigned', 'label' => 'Assigned'],
-                    ['value' => 'design_wip', 'label' => 'Design WIP'],
-                    ['value' => 'drafting_wip', 'label' => 'Drafting WIP'],
+                    ['value' => 'design_wip', 'label' => 'Work In Progress'],
+                    ['value' => 'drafting_wip', 'label' => 'Work In Progress'],
                     ['value' => 'for_checking', 'label' => 'For Checking'],
                     ['value' => 'query', 'label' => 'Query'],
                     ['value' => 'submitted', 'label' => 'Submitted'],
@@ -297,8 +298,8 @@ class ApmRevisionSyncTest extends TestCase
                 ])
                 ->where('statusGroupOptions', [
                     ['value' => 'new', 'label' => 'New'],
-                    ['value' => 'design_wip', 'label' => 'Design WIP'],
-                    ['value' => 'drafting_wip', 'label' => 'Drafting WIP'],
+                    ['value' => 'design_wip', 'label' => 'Work In Progress'],
+                    ['value' => 'drafting_wip', 'label' => 'Work In Progress'],
                     ['value' => 'for_checking', 'label' => 'For Checking'],
                     ['value' => 'submitted', 'label' => 'Submitted'],
                     ['value' => 'cancelled', 'label' => 'Cancelled'],
@@ -478,23 +479,50 @@ class ApmRevisionSyncTest extends TestCase
         $user = $this->adminUser();
         [$storeyLevel, $category] = $this->seedLookups();
 
-        $designWip = $this->createApmJob($user, $storeyLevel, $category);
-        $designWip->update(['status' => DraftingRequest::STATUS_DESIGN_WIP]);
-        $this->addBoardRevision($designWip, $user, $category, DraftingRequest::STATUS_DESIGN_WIP);
+        $designService = ServiceEngaging::query()->create([
+            'name' => 'Design Review',
+            'status' => 'active',
+        ]);
+        $draftingService = ServiceEngaging::query()->create([
+            'name' => 'Construction Drafting',
+            'status' => 'active',
+        ]);
+
+        $newJob = $this->createApmJob($user, $storeyLevel, $category);
+        $newJob->serviceEngagings()->sync([$designService->id]);
+        $this->addBoardRevision($newJob, $user, $category, DraftingRequest::STATUS_NEW);
 
         $assigned = $this->createApmJob($user, $storeyLevel, $category);
+        $assigned->serviceEngagings()->sync([$designService->id]);
         $assigned->update([
             'status' => DraftingRequest::STATUS_ASSIGNED,
             'site_address' => '2 Sync St',
         ]);
         $this->addBoardRevision($assigned, $user, $category, DraftingRequest::STATUS_ASSIGNED);
 
-        $draftingWip = $this->createApmJob($user, $storeyLevel, $category);
-        $draftingWip->update([
-            'status' => DraftingRequest::STATUS_DRAFTING_WIP,
+        $forChecking = $this->createApmJob($user, $storeyLevel, $category);
+        $forChecking->serviceEngagings()->sync([$designService->id]);
+        $forChecking->update([
+            'status' => DraftingRequest::STATUS_FOR_CHECKING,
             'site_address' => '3 Sync St',
         ]);
-        $this->addBoardRevision($draftingWip, $user, $category, DraftingRequest::STATUS_DRAFTING_WIP);
+        $this->addBoardRevision($forChecking, $user, $category, DraftingRequest::STATUS_FOR_CHECKING);
+
+        $submitted = $this->createApmJob($user, $storeyLevel, $category);
+        $submitted->serviceEngagings()->sync([$designService->id]);
+        $submitted->update([
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+            'site_address' => '4 Sync St',
+        ]);
+        $this->addBoardRevision($submitted, $user, $category, DraftingRequest::STATUS_SUBMITTED);
+
+        $nonDesign = $this->createApmJob($user, $storeyLevel, $category);
+        $nonDesign->serviceEngagings()->sync([$draftingService->id]);
+        $nonDesign->update([
+            'status' => DraftingRequest::STATUS_DRAFTING_WIP,
+            'site_address' => '5 Sync St',
+        ]);
+        $this->addBoardRevision($nonDesign, $user, $category, DraftingRequest::STATUS_DRAFTING_WIP);
 
         $this->actingAs($user)
             ->get(route('design.list'))
@@ -503,15 +531,25 @@ class ApmRevisionSyncTest extends TestCase
                 ->component('Job/Board')
                 ->where('pageTitle', 'Design Project Management')
                 ->where('searchRoute', 'design.list')
+                ->where('showAddFromMasterlist', true)
                 ->where('statusGroupOptions', [
-                    ['value' => 'design_wip', 'label' => 'Design WIP'],
+                    ['value' => 'new', 'label' => 'New'],
+                    ['value' => 'drafting_wip', 'label' => 'Work In Progress'],
+                    ['value' => 'for_checking', 'label' => 'For Checking'],
+                    ['value' => 'submitted', 'label' => 'Submitted'],
+                    ['value' => 'cancelled', 'label' => 'Cancelled'],
                 ])
                 ->has('statusOptions', 9)
-                ->has('jobs.data', 2)
+                ->has('jobs.data', 4)
                 ->where(
                     'jobs.data',
                     fn ($jobs) => collect($jobs)->pluck('id')->sort()->values()->all()
-                        === collect([$designWip->id, $assigned->id])->sort()->values()->all()
+                        === collect([
+                            $newJob->id,
+                            $assigned->id,
+                            $forChecking->id,
+                            $submitted->id,
+                        ])->sort()->values()->all()
                 ));
     }
 

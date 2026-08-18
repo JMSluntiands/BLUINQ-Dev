@@ -49,12 +49,13 @@ class JobBoardController extends Controller
     {
         return $this->renderBoard($request, [
             'pageTitle' => 'Design Project Management',
-            'pageDescription' => 'Design WIP jobs on the project board.',
+            'pageDescription' => 'All design jobs on the project board, grouped by status.',
             'searchRoute' => 'design.list',
-            'statusFilter' => DraftingRequest::designWipBoardStatuses(),
             'statusGroupOptions' => DraftingRequest::designListStatusOptions(),
-            'showAddFromMasterlist' => false,
+            'showAddFromMasterlist' => true,
             'showPendingRequests' => false,
+            'forwardPermission' => 'design.list.view',
+            'designPhaseOnly' => true,
         ]);
     }
 
@@ -67,6 +68,8 @@ class JobBoardController extends Controller
      *     statusGroupOptions?: array<string, string>|null,
      *     showAddFromMasterlist?: bool,
      *     showPendingRequests?: bool,
+     *     forwardPermission?: string,
+     *     designPhaseOnly?: bool,
      *     groupByStatus?: bool,
      * }  $options
      */
@@ -79,8 +82,13 @@ class JobBoardController extends Controller
         $statusFilter = $options['statusFilter'] ?? null;
         $showAddFromMasterlist = $options['showAddFromMasterlist'] ?? true;
         $showPendingRequests = $options['showPendingRequests'] ?? true;
+        $forwardPermission = $options['forwardPermission'] ?? 'job.list.view';
+        $designPhaseOnly = $options['designPhaseOnly'] ?? false;
 
         $query = $this->board->baseQuery($request);
+        if ($designPhaseOnly) {
+            $this->board->applyDesignPhaseFilter($query);
+        }
         if (is_array($statusFilter) && $statusFilter !== []) {
             $query->whereIn('status', $statusFilter);
         }
@@ -90,7 +98,7 @@ class JobBoardController extends Controller
         $canReviewPublicRequests = $showPendingRequests
             && ($user?->hasPermission('job.drafting-request.review') ?? false);
         $canForwardFromMasterlist = $showAddFromMasterlist
-            && ($user?->hasPermission('job.list.view') ?? false);
+            && ($user?->hasPermission($forwardPermission) ?? false);
         $canAddRevision = $user?->hasPermission('job.drafting.revision.add') ?? false;
 
         return Inertia::render('Job/Board', [

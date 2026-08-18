@@ -118,6 +118,36 @@ class DraftingRequestBoardService
     }
 
     /**
+     * Limit a board query to design-phase requests.
+     *
+     * @param  Builder<DraftingRequest>  $query
+     */
+    public function applyDesignPhaseFilter(Builder $query): void
+    {
+        $keywords = array_values(array_filter(
+            array_map(
+                static fn (mixed $keyword) => trim((string) $keyword),
+                config('drafting.design_phase_service_keywords', []),
+            ),
+            static fn (string $keyword) => $keyword !== '',
+        ));
+
+        if ($keywords === []) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $query->whereHas('serviceEngagings', function (Builder $serviceQuery) use ($keywords) {
+            $serviceQuery->where(function (Builder $nameQuery) use ($keywords) {
+                foreach ($keywords as $keyword) {
+                    $nameQuery->orWhere('name', 'like', '%'.$keyword.'%');
+                }
+            });
+        });
+    }
+
+    /**
      * @return array{search: string, per_page: int}
      */
     public function resolveListFilters(Request $request): array

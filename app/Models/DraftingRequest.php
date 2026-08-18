@@ -112,30 +112,19 @@ class DraftingRequest extends Model
     }
 
     /**
-     * Single Design WIP group for Design Project Management.
+     * Group labels for Design Project Management.
      *
      * @return array<string, string>
      */
     public static function designListStatusOptions(): array
     {
         return self::mergeStatusOptions([
-            self::STATUS_DESIGN_WIP => 'Work in Progress',
+            self::STATUS_NEW => 'New',
+            self::STATUS_DRAFTING_WIP => 'Work In Progress',
+            self::STATUS_FOR_CHECKING => 'For Checking',
+            self::STATUS_SUBMITTED => 'Submitted',
+            self::STATUS_CANCELLED => 'Cancelled',
         ]);
-    }
-
-    /**
-     * Statuses that belong on Design Project Management.
-     *
-     * @return list<string>
-     */
-    public static function designWipBoardStatuses(): array
-    {
-        return [
-            self::STATUS_DESIGN_WIP,
-            self::STATUS_ASSIGNED,
-            self::STATUS_ON_HOLD,
-            self::STATUS_QUERY,
-        ];
     }
 
     /**
