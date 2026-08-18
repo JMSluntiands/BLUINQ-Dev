@@ -6,7 +6,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import Select2 from '@/Components/Select2';
 import TextInput from '@/Components/TextInput';
 import { useForm } from '@inertiajs/react';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 
 const selectClass =
     'mt-1 block w-full rounded-md border-[#c5c7d0] text-sm shadow-sm focus:border-[#0073ea] focus:ring-[#0073ea]';
@@ -60,6 +60,13 @@ export default function DraftingEditModals({
         lead_number:
             draftingRequest.lead_number ?? draftingRequest.reference ?? '',
         status: draftingRequest.status ?? 'new',
+        client_id: draftingRequest.client_id ? String(draftingRequest.client_id) : '',
+        client_contact_id: draftingRequest.client_contact_id
+            ? String(draftingRequest.client_contact_id)
+            : '',
+        manager_user_id: draftingRequest.manager_user_id
+            ? String(draftingRequest.manager_user_id)
+            : '',
         storey_level_id: draftingRequest.storey_level_id ?? '',
         crm_category_id: draftingRequest.crm_category_id ?? '',
         crm_category_ids: (
@@ -105,6 +112,91 @@ export default function DraftingEditModals({
         ];
     })();
 
+    const clientOptions = useMemo(
+        () =>
+            (formOptions.clients ?? []).map((client) => ({
+                value: String(client.id),
+                label: client.name,
+            })),
+        [formOptions.clients],
+    );
+
+    const managerOptions = useMemo(
+        () =>
+            (formOptions.managerUsers ?? []).map((user) => ({
+                value: String(user.id),
+                label: user.email ? `${user.name} (${user.email})` : user.name,
+            })),
+        [formOptions.managerUsers],
+    );
+
+    const selectedClient = useMemo(
+        () =>
+            (formOptions.clients ?? []).find(
+                (client) => String(client.id) === String(jobForm.data.client_id),
+            ) ?? null,
+        [formOptions.clients, jobForm.data.client_id],
+    );
+
+    const contactOptions = useMemo(() => {
+        const contacts = selectedClient?.contacts ?? [];
+
+        return contacts.map((contact) => ({
+            value: String(contact.id),
+            label: contact.label || contact.type_label || `Contact #${contact.id}`,
+        }));
+    }, [selectedClient]);
+
+    const applyContact = useCallback(
+        (contact, client) => {
+            jobForm.setData((prev) => ({
+                ...prev,
+                client_id: client ? String(client.id) : '',
+                client_contact_id: contact ? String(contact.id) : '',
+            }));
+        },
+        [jobForm],
+    );
+
+    const handleClientChange = useCallback(
+        (value) => {
+            const client =
+                (formOptions.clients ?? []).find(
+                    (row) => String(row.id) === String(value),
+                ) ?? null;
+
+            if (!client) {
+                jobForm.setData((prev) => ({
+                    ...prev,
+                    client_id: '',
+                    client_contact_id: '',
+                }));
+                return;
+            }
+
+            const contacts = client.contacts ?? [];
+            const main =
+                contacts.find((contact) => contact.type === 'main') ??
+                contacts[0] ??
+                null;
+
+            applyContact(main, client);
+        },
+        [applyContact, formOptions.clients, jobForm],
+    );
+
+    const handleContactChange = useCallback(
+        (value) => {
+            const contact =
+                (selectedClient?.contacts ?? []).find(
+                    (row) => String(row.id) === String(value),
+                ) ?? null;
+
+            applyContact(contact, selectedClient);
+        },
+        [applyContact, selectedClient],
+    );
+
     useEffect(() => {
         if (section !== 'job') {
             return;
@@ -115,6 +207,15 @@ export default function DraftingEditModals({
             lead_number:
                 draftingRequest.lead_number ?? draftingRequest.reference ?? '',
             status: draftingRequest.status ?? 'new',
+            client_id: draftingRequest.client_id
+                ? String(draftingRequest.client_id)
+                : '',
+            client_contact_id: draftingRequest.client_contact_id
+                ? String(draftingRequest.client_contact_id)
+                : '',
+            manager_user_id: draftingRequest.manager_user_id
+                ? String(draftingRequest.manager_user_id)
+                : '',
             storey_level_id: draftingRequest.storey_level_id ?? '',
             crm_category_id: draftingRequest.crm_category_id ?? '',
             crm_category_ids: (
@@ -273,6 +374,61 @@ export default function DraftingEditModals({
                     ) : null}
                     <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                            <InputLabel value="Client" />
+                            <Select2
+                                className="mt-1"
+                                value={jobForm.data.client_id}
+                                onChange={handleClientChange}
+                                options={clientOptions}
+                                placeholder="Select client"
+                                isClearable
+                            />
+                            <InputError
+                                className="mt-1"
+                                message={jobForm.errors.client_id}
+                            />
+                        </div>
+                        <div>
+                            <InputLabel value="Client Contact" />
+                            <Select2
+                                className="mt-1"
+                                value={jobForm.data.client_contact_id}
+                                onChange={handleContactChange}
+                                options={contactOptions}
+                                placeholder={
+                                    selectedClient
+                                        ? 'Select contact'
+                                        : 'Select client first'
+                                }
+                                isClearable
+                                disabled={!selectedClient}
+                            />
+                            <InputError
+                                className="mt-1"
+                                message={jobForm.errors.client_contact_id}
+                            />
+                        </div>
+                        <div>
+                            <InputLabel value="Manager" />
+                            <Select2
+                                className="mt-1"
+                                value={jobForm.data.manager_user_id}
+                                onChange={(value) =>
+                                    jobForm.setData(
+                                        'manager_user_id',
+                                        value ? String(value) : '',
+                                    )
+                                }
+                                options={managerOptions}
+                                placeholder="Select manager"
+                                isClearable
+                            />
+                            <InputError
+                                className="mt-1"
+                                message={jobForm.errors.manager_user_id}
+                            />
+                        </div>
                         <div>
                             <InputLabel htmlFor="edit-lead_number" value="Lead number" />
                             <TextInput

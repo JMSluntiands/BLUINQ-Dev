@@ -11,6 +11,7 @@ use App\Models\ExternalWallConstruction;
 use App\Models\RoofType;
 use App\Models\SdaType;
 use App\Models\StoreyLevel;
+use App\Models\User;
 use App\Services\DraftingRequestBoardService;
 use App\Services\DraftingRequestSubmissionService;
 use Illuminate\Http\RedirectResponse;
@@ -96,6 +97,7 @@ class MasterlistController extends Controller
             'applicant' => [
                 'requested_at' => now(config('app.timezone'))->seconds(0)->format('Y-m-d\TH:i'),
                 'your_name' => $request->user()?->name,
+                'manager_user_id' => $request->user()?->id,
                 'lead_number' => '',
             ],
             ...$this->formOptions(),
@@ -150,6 +152,7 @@ class MasterlistController extends Controller
         $applicant['lead_number'] = '';
         $applicant['requested_at'] = now(config('app.timezone'))->seconds(0)->format('Y-m-d\TH:i');
         $applicant['your_name'] = $request->user()?->name ?? $applicant['your_name'];
+        $applicant['manager_user_id'] = $draftingRequest->manager_user_id ?? $request->user()?->id;
 
         return Inertia::render('Job/DraftingRequestForm', [
             'standalone' => false,
@@ -227,6 +230,7 @@ class MasterlistController extends Controller
             'company_name' => $draftingRequest->company_name,
             'email' => $draftingRequest->email,
             'phone' => $draftingRequest->phone,
+            'manager_user_id' => $draftingRequest->manager_user_id,
             'service_engaging_ids' => $draftingRequest->serviceEngagings()->pluck('service_engagings.id')->all(),
             'crm_category_id' => $draftingRequest->crm_category_id,
             'crm_category_ids' => $draftingRequest->crmCategories()->pluck('crm_categories.id')->all()
@@ -263,6 +267,16 @@ class MasterlistController extends Controller
     {
         return [
             'clients' => \App\Support\ClientFormOptions::forForms($includeClientId),
+            'managerUsers' => User::query()
+                ->active()
+                ->whereHas('role', fn ($query) => $query->whereIn('slug', ['admin', 'project-manager']))
+                ->orderBy('name')
+                ->get(['id', 'name', 'email'])
+                ->map(fn (User $user) => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ]),
             'categories' => CrmCategory::query()
                 ->active()
                 ->orderBy('code')

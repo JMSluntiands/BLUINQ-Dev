@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Requests\StoreDashboardActivityRequest;
 use App\Models\DraftingRequest;
+use App\Models\User;
 use App\Services\AttendanceService;
 use App\Services\CalendarEventService;
 use App\Services\DraftingRequestBoardService;
@@ -83,6 +84,19 @@ class DashboardController extends Controller
             'canManageAnnouncements' => $user?->hasPermission('announcements.manage') ?? false,
             'canApplyLeave' => $user?->hasPermission('leave.apply') ?? false,
             'canManageLeave' => $user?->hasPermission('leave.manage') ?? false,
+            'leaveRequestUsers' => $user?->hasPermission('leave.manage')
+                ? User::query()
+                    ->active()
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'email'])
+                    ->map(fn (User $row) => [
+                        'id' => $row->id,
+                        'name' => $row->name,
+                        'email' => $row->email,
+                    ])
+                    ->values()
+                    ->all()
+                : [],
             'leaveCalendar' => $user
                 ? $this->leave->calendarPayload($calendarStart, $calendarEnd)
                 : [],

@@ -179,6 +179,7 @@ class DraftingRequest extends Model
 
     protected $fillable = [
         'user_id',
+        'manager_user_id',
         'lead_number',
         'status',
         'is_priority',
@@ -481,6 +482,14 @@ class DraftingRequest extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function manager(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'manager_user_id');
     }
 
     /**

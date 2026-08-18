@@ -30,10 +30,12 @@ function FieldBlock({ label, hint, children, error, className = '' }) {
     );
 }
 
-/** Two columns from `lg` — children may use `className="lg:col-span-2"` for full width. */
-function FormRow({ children }) {
+/** Two columns from `lg` by default — children may use `className="lg:col-span-2"` for full width. */
+function FormRow({ children, className = '' }) {
     return (
-        <div className="grid w-full min-w-0 grid-cols-1 gap-x-6 gap-y-8 sm:gap-x-8 lg:grid-cols-2 lg:items-start lg:gap-x-10 lg:gap-y-10">
+        <div
+            className={`grid w-full min-w-0 grid-cols-1 gap-x-6 gap-y-8 sm:gap-x-8 lg:grid-cols-2 lg:items-start lg:gap-x-10 lg:gap-y-10 ${className}`}
+        >
             {children}
         </div>
     );
@@ -105,6 +107,7 @@ function DisplayValue({ value, emptyLabel = '—' }) {
 export default function DraftingRequestForm({
     applicant,
     clients = [],
+    managerUsers = [],
     categories = [],
     sdaTypes = [],
     storeyLevels = [],
@@ -157,6 +160,9 @@ export default function DraftingRequestForm({
         client_contact_id: applicant.client_contact_id
             ? String(applicant.client_contact_id)
             : '',
+        manager_user_id: applicant.manager_user_id
+            ? String(applicant.manager_user_id)
+            : '',
         company_name: applicant.company_name ?? '',
         email: applicant.email ?? '',
         phone: applicant.phone ?? '',
@@ -197,8 +203,14 @@ export default function DraftingRequestForm({
         } else {
             next.client_contact_id = Number(next.client_contact_id);
         }
+        if (next.manager_user_id === '' || next.manager_user_id == null) {
+            next.manager_user_id = null;
+        } else {
+            next.manager_user_id = Number(next.manager_user_id);
+        }
         if (standalone) {
             delete next.lead_number;
+            delete next.manager_user_id;
         } else if (!next.lead_number?.trim()) {
             next.lead_number = null;
         } else {
@@ -226,6 +238,15 @@ export default function DraftingRequestForm({
                 label: row.code ? `${row.code} — ${row.name}` : row.name,
             })),
         [sdaTypes],
+    );
+
+    const managerOptions = useMemo(
+        () =>
+            managerUsers.map((user) => ({
+                value: String(user.id),
+                label: user.email ? `${user.name} (${user.email})` : user.name,
+            })),
+        [managerUsers],
     );
 
     const categoryOptions = useMemo(() => {
@@ -509,6 +530,36 @@ export default function DraftingRequestForm({
                                     />
                                 </FieldBlock>
 
+                                {!standalone ? (
+                                    <FieldBlock
+                                        label={
+                                            <InputLabel htmlFor="manager_user_id">
+                                                Manager
+                                            </InputLabel>
+                                        }
+                                        hint="Select from manager accounts."
+                                        error={errors.manager_user_id}
+                                    >
+                                        <div className="select2-field">
+                                            <Select2
+                                                id="manager_user_id"
+                                                value={data.manager_user_id}
+                                                onChange={(value) =>
+                                                    setData(
+                                                        'manager_user_id',
+                                                        value ? String(value) : '',
+                                                    )
+                                                }
+                                                options={managerOptions}
+                                                placeholder="Select manager…"
+                                                allowClear
+                                            />
+                                        </div>
+                                    </FieldBlock>
+                                ) : null}
+                            </FormRow>
+
+                            <FormRow className="md:grid-cols-2 md:items-start">
                                 <FieldBlock
                                     label={
                                         <InputLabel htmlFor="client_id">
@@ -540,7 +591,6 @@ export default function DraftingRequestForm({
                                         </p>
                                     ) : null}
                                 </FieldBlock>
-
                                 <FieldBlock
                                     label={
                                         <InputLabel htmlFor="client_contact_id">
@@ -568,8 +618,11 @@ export default function DraftingRequestForm({
                                         />
                                     </div>
                                 </FieldBlock>
+                            </FormRow>
 
+                            <FormRow>
                                 <FieldBlock
+                                    className="lg:col-span-2"
                                     label={
                                         <InputLabel value="Client contact" />
                                     }

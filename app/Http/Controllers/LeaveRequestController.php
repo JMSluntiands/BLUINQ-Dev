@@ -59,8 +59,11 @@ class LeaveRequestController extends Controller
 
     public function store(StoreLeaveRequestRequest $request): RedirectResponse
     {
+        $actor = $request->user();
+        $targetUserId = (int) ($request->validated('user_id') ?: $actor->id);
+
         $leaveRequest = LeaveRequest::query()->create([
-            'user_id' => $request->user()->id,
+            'user_id' => $targetUserId,
             'start_date' => $request->validated('start_date'),
             'end_date' => $request->validated('end_date'),
             'start_portion' => $request->validated('start_portion'),

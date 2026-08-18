@@ -124,6 +124,50 @@ class LeaveRequestTest extends TestCase
         $this->assertSame(0, LeaveRequest::query()->count());
     }
 
+    public function test_admin_can_submit_leave_for_another_user(): void
+    {
+        $admin = $this->adminUser();
+        $target = $this->regularUser();
+        $date = now()->addDay()->toDateString();
+
+        $this->actingAs($admin)
+            ->from(route('dashboard'))
+            ->post(route('leave.store'), [
+                'user_id' => $target->id,
+                'start_date' => $date,
+                'end_date' => $date,
+                'type' => LeaveRequest::TYPE_AL,
+                'reason' => 'Requested by admin',
+            ])
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHasNoErrors();
+
+        $leaveRequest = LeaveRequest::query()->first();
+        $this->assertNotNull($leaveRequest);
+        $this->assertSame($target->id, $leaveRequest->user_id);
+    }
+
+    public function test_regular_user_cannot_submit_leave_for_another_user(): void
+    {
+        $user = $this->regularUser();
+        $other = $this->regularUser();
+        $date = now()->addDay()->toDateString();
+
+        $this->actingAs($user)
+            ->from(route('dashboard'))
+            ->post(route('leave.store'), [
+                'user_id' => $other->id,
+                'start_date' => $date,
+                'end_date' => $date,
+                'type' => LeaveRequest::TYPE_AL,
+                'reason' => 'Spoof attempt',
+            ])
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHasErrors('user_id');
+
+        $this->assertSame(0, LeaveRequest::query()->count());
+    }
+
     public function test_same_day_half_day_leave_uses_half_a_day(): void
     {
         $user = $this->regularUser();

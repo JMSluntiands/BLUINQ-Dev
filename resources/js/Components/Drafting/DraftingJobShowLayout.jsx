@@ -657,10 +657,12 @@ export default function DraftingJobShowLayout({
     const [editingArea, setEditingArea] = useState(false);
     const isMasterlist = variant === 'masterlist';
 
-    const contactLine = [
-        draftingRequest.your_name,
-        draftingRequest.email ? `(${draftingRequest.email})` : null,
-        draftingRequest.phone || null,
+    const clientContactLine = [
+        draftingRequest.client_contact_name ?? draftingRequest.your_name,
+        (draftingRequest.client_contact_email ?? draftingRequest.email)
+            ? `(${draftingRequest.client_contact_email ?? draftingRequest.email})`
+            : null,
+        draftingRequest.client_contact_phone ?? draftingRequest.phone ?? null,
     ]
         .filter(Boolean)
         .join(' ');
@@ -957,8 +959,12 @@ export default function DraftingJobShowLayout({
                     hint="Connected to Project Management"
                 />
                 <JobDetailField
-                    label="Contact"
-                    value={contactLine || null}
+                    label="Client contact"
+                    value={clientContactLine || null}
+                />
+                <JobDetailField
+                    label="Manager"
+                    value={draftingRequest.manager_name || null}
                 />
                 <JobDetailField
                     label="Site address"

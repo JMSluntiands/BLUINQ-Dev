@@ -11,6 +11,7 @@ use App\Http\Requests\StoreDraftingRequestRevisionRequest;
 use App\Http\Requests\UpdateDraftingRequestRevisionRequest;
 use App\Http\Requests\UpdateDraftingRequestRequest;
 use App\Http\Requests\UpdateDraftingRequestStatusRequest;
+use App\Models\ClientContact;
 use App\Models\CrmCategory;
 use App\Models\DraftingRequest;
 use App\Models\ExternalWallConstruction;
@@ -142,6 +143,7 @@ class DraftingController extends Controller
             'storeyLevel:id,name,code',
             'crmCategory:id,name,code',
             'crmCategories:id,name,code',
+            'clientContact:id,client_id,name,email,mobile',
             'externalWallConstruction:id,name',
             'roofType:id,name',
             'serviceEngagings:id,name',
@@ -149,6 +151,7 @@ class DraftingController extends Controller
             'units',
             'files' => fn ($query) => $query->orderBy('kind')->orderBy('id'),
             'user:id,name,email',
+            'manager:id,name,email',
             'comments' => fn ($query) => $query
                 ->with([
                     'user:id,name,initials,profile_image',
@@ -180,6 +183,14 @@ class DraftingController extends Controller
                 'company_name' => $draftingRequest->company_name,
                 'email' => $draftingRequest->email,
                 'phone' => $draftingRequest->phone,
+                'client_id' => $draftingRequest->client_id,
+                'client_contact_id' => $draftingRequest->client_contact_id,
+                'client_contact_name' => $draftingRequest->clientContact?->name,
+                'client_contact_email' => $draftingRequest->clientContact?->email,
+                'client_contact_phone' => $draftingRequest->clientContact?->mobile,
+                'manager_user_id' => $draftingRequest->manager_user_id,
+                'manager_name' => $draftingRequest->manager?->name,
+                'manager_email' => $draftingRequest->manager?->email,
                 'building_type_id' => $draftingRequest->building_type_id,
                 'storey_level_id' => $draftingRequest->storey_level_id,
                 'crm_category_id' => $draftingRequest->crm_category_id,
@@ -304,10 +315,23 @@ class DraftingController extends Controller
             'capabilities' => $capabilities,
             'canUseRunComments' => $user->isAdmin(),
             'formOptions' => $capabilities['editJobDetails'] ? [
+                'clients' => \App\Support\ClientFormOptions::forForms($draftingRequest->client_id),
                 'categories' => CrmCategory::query()->active()->orderBy('code')->orderBy('name')->get(['id', 'name', 'code']),
                 'storeyLevels' => StoreyLevel::query()->active()->orderBy('code')->orderBy('name')->get(['id', 'name', 'code']),
                 'externalWallConstructions' => ExternalWallConstruction::query()->active()->orderBy('name')->get(['id', 'name']),
                 'roofTypes' => RoofType::query()->active()->orderBy('name')->get(['id', 'name']),
+                'managerUsers' => User::query()
+                    ->active()
+                    ->whereHas('role', fn ($query) => $query->whereIn('slug', ['admin', 'project-manager']))
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'email'])
+                    ->map(fn (User $u) => [
+                        'id' => $u->id,
+                        'name' => $u->name,
+                        'email' => $u->email,
+                    ])
+                    ->values()
+                    ->all(),
             ] : null,
             'statusOptions' => collect(DraftingRequest::statusOptions())
                 ->map(fn (string $label, string $value) => [
@@ -515,9 +539,60 @@ class DraftingController extends Controller
         $units = $validated['units'] ?? null;
         unset($validated['units']);
 
+        $clientId = array_key_exists('client_id', $validated)
+            ? (int) ($validated['client_id'] ?: 0)
+            : null;
+        $clientContactId = array_key_exists('client_contact_id', $validated)
+            ? (int) ($validated['client_contact_id'] ?: 0)
+            : null;
+
         $previousLead = $section === 'job' && array_key_exists('lead_number', $validated)
             ? $draftingRequest->jobNumber()
             : null;
+
+        if ($section === 'job') {
+            if ($clientId !== null && $clientId <= 0) {
+                $validated['client_id'] = null;
+                $validated['client_contact_id'] = null;
+                $validated['company_name'] = '';
+                $validated['your_name'] = '';
+                $validated['email'] = '';
+                $validated['phone'] = '';
+            } else {
+                if ($clientContactId > 0) {
+                    $contact = ClientContact::query()
+                        ->whereKey($clientContactId)
+                        ->when(
+                            $clientId > 0,
+                            fn ($query) => $query->where('client_id', $clientId),
+                        )
+                        ->first();
+
+                    if ($contact !== null) {
+                        $validated['client_id'] = $contact->client_id;
+                        $validated['client_contact_id'] = $contact->id;
+                        $validated['your_name'] = $contact->name ?? '';
+                        $validated['email'] = $contact->email ?? '';
+                        $validated['phone'] = $contact->mobile ?? '';
+                    }
+                } else {
+                    $validated['client_contact_id'] = null;
+                    $validated['your_name'] = '';
+                    $validated['email'] = '';
+                    $validated['phone'] = '';
+                }
+
+                if (($validated['client_id'] ?? null) !== null) {
+                    $clientName = \App\Models\Client::query()
+                        ->whereKey($validated['client_id'])
+                        ->value('name');
+
+                    if ($clientName !== null) {
+                        $validated['company_name'] = $clientName;
+                    }
+                }
+            }
+        }
 
         $draftingRequest->update($validated);
 

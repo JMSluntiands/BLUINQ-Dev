@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\LeaveRequest;
+use App\Models\User;
 use App\Services\LeaveEntitlementService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -12,7 +13,11 @@ class StoreLeaveRequestRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasPermission('leave.apply') ?? false;
+        $user = $this->user();
+
+        return $user?->hasPermission('leave.apply')
+            || $user?->hasPermission('leave.manage')
+            || false;
     }
 
     /**
@@ -25,6 +30,13 @@ class StoreLeaveRequestRequest extends FormRequest
         $types[] = LeaveRequest::TYPE_LEAVE;
 
         return [
+            'user_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('users', 'id')->where(
+                    fn ($q) => $q->whereNull('archived_at'),
+                ),
+            ],
             'start_date' => ['required', 'date', 'after_or_equal:today'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'start_portion' => ['required', Rule::in(LeaveRequest::portions())],
@@ -57,8 +69,31 @@ class StoreLeaveRequestRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            $user = $this->user();
+            $actor = $this->user();
+            if (! $actor) {
+                return;
+            }
+
+            $targetUserId = (int) ($this->input('user_id') ?: $actor->id);
+            $user = $targetUserId === $actor->id
+                ? $actor
+                : User::query()->find($targetUserId);
+
             if (! $user) {
+                $validator->errors()->add('user_id', 'Please select a valid user.');
+
+                return;
+            }
+
+            if (
+                $targetUserId !== $actor->id
+                && ! ($actor->hasPermission('leave.manage') ?? false)
+            ) {
+                $validator->errors()->add(
+                    'user_id',
+                    'You are not allowed to submit leave requests for other users.',
+                );
+
                 return;
             }
 
@@ -131,6 +166,10 @@ class StoreLeaveRequestRequest extends FormRequest
 
         if ($updates !== []) {
             $this->merge($updates);
+        }
+
+        if ($this->input('user_id') === '' || $this->input('user_id') === null) {
+            $this->merge(['user_id' => null]);
         }
     }
 }

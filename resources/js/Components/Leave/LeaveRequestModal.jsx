@@ -53,10 +53,17 @@ function formatDays(days) {
     return Number.isInteger(days) ? String(days) : days.toFixed(1);
 }
 
-export default function LeaveRequestModal({ show, onClose }) {
+export default function LeaveRequestModal({
+    show,
+    onClose,
+    canManageLeave = false,
+    leaveRequestUsers = [],
+    currentUserId = null,
+}) {
     const { leaveTypes = [], leaveBalances = null } = usePage().props;
 
     const { data, setData, post, processing, errors, reset } = useForm({
+        user_id: currentUserId ? String(currentUserId) : '',
         start_date: '',
         end_date: '',
         start_portion: 'morning',
@@ -91,6 +98,8 @@ export default function LeaveRequestModal({ show, onClose }) {
         leaveTypes.length > 0
             ? leaveTypes
             : [{ value: 'al', label: 'Annual Leave', code: 'AL' }];
+    const requestingForSelf =
+        !canManageLeave || String(data.user_id || '') === String(currentUserId || '');
 
     const medicalCertificateAfterDays =
         types.find((type) => type.value === 'sl')
@@ -134,11 +143,35 @@ export default function LeaveRequestModal({ show, onClose }) {
                     Create leave request
                 </h2>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    Submit your request for admin approval. It will appear on the
-                    team calendar once approved.
+                    {canManageLeave
+                        ? 'Create a leave request for yourself or another user. It will appear on the team calendar once approved.'
+                        : 'Submit your request for admin approval. It will appear on the team calendar once approved.'}
                 </p>
 
-                {leaveBalances && (
+                {canManageLeave && (
+                    <div className="mt-4">
+                        <InputLabel htmlFor="leave_user_id" value="User" />
+                        <select
+                            id="leave_user_id"
+                            value={data.user_id}
+                            onChange={(event) =>
+                                setData('user_id', event.target.value)
+                            }
+                            className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                        >
+                            {leaveRequestUsers.map((user) => (
+                                <option key={user.id} value={String(user.id)}>
+                                    {user.email
+                                        ? `${user.name} (${user.email})`
+                                        : user.name}
+                                </option>
+                            ))}
+                        </select>
+                        <InputError message={errors.user_id} className="mt-1" />
+                    </div>
+                )}
+
+                {leaveBalances && requestingForSelf && (
                     <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs dark:border-slate-700 dark:bg-slate-800/60 sm:grid-cols-4">
                         <div>
                             <p className="text-slate-500 dark:text-slate-400">AL</p>
@@ -167,7 +200,7 @@ export default function LeaveRequestModal({ show, onClose }) {
                     </div>
                 )}
 
-                {!leaveBalances?.entitled && (
+                {!leaveBalances?.entitled && requestingForSelf && (
                     <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
                         Probationary/training staff are not entitled to AL, SL, or
                         HL. You may still request other leave types for approval.

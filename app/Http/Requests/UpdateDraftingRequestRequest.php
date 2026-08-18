@@ -68,6 +68,27 @@ class UpdateDraftingRequestRequest extends FormRequest
                     ),
                 ],
                 'status' => ['required', 'string', Rule::in(DraftingRequest::statusValues())],
+                'client_id' => [
+                    'nullable',
+                    'integer',
+                    Rule::exists('clients', 'id')->where(
+                        fn ($q) => $q->whereNull('archived_at'),
+                    ),
+                ],
+                'client_contact_id' => [
+                    'nullable',
+                    'integer',
+                    Rule::exists('client_contacts', 'id')->where(
+                        fn ($q) => $q->whereNull('archived_at'),
+                    ),
+                ],
+                'manager_user_id' => [
+                    'nullable',
+                    'integer',
+                    Rule::exists('users', 'id')->where(
+                        fn ($q) => $q->whereNull('archived_at'),
+                    ),
+                ],
                 'building_type_id' => [
                     'nullable',
                     'integer',

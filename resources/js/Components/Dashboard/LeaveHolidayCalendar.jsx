@@ -333,11 +333,14 @@ export default function LeaveHolidayCalendar({
     holidays = {},
     calendarEvents = {},
     canApplyLeave = false,
+    canManageLeave = false,
+    leaveRequestUsers = [],
     canAddCalendarEvent = false,
     currentUserId = null,
     canDeleteAnyEvent = false,
     calendarMonth,
 }) {
+    const canOpenLeaveRequest = canApplyLeave || canManageLeave;
     const today = new Date();
     const todayKey = dateKey(today);
     const activeMonth =
@@ -460,7 +463,7 @@ export default function LeaveHolidayCalendar({
                             </button>
                         )}
 
-                        {canApplyLeave && (
+                        {canOpenLeaveRequest && (
                             <button
                                 type="button"
                                 onClick={() => setShowLeaveModal(true)}
@@ -552,10 +555,13 @@ export default function LeaveHolidayCalendar({
                 </div>
             </div>
 
-            {canApplyLeave && (
+            {canOpenLeaveRequest && (
                 <LeaveRequestModal
                     show={showLeaveModal}
                     onClose={() => setShowLeaveModal(false)}
+                    canManageLeave={canManageLeave}
+                    leaveRequestUsers={leaveRequestUsers}
+                    currentUserId={currentUserId}
                 />
             )}
 

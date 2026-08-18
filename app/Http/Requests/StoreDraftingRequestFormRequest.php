@@ -49,6 +49,13 @@ class StoreDraftingRequestFormRequest extends FormRequest
                     },
                 ),
             ],
+            'manager_user_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('users', 'id')->where(
+                    fn ($q) => $q->whereNull('archived_at'),
+                ),
+            ],
             'company_name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'string', 'lowercase', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
@@ -150,6 +157,7 @@ class StoreDraftingRequestFormRequest extends FormRequest
             'roof_type_id',
             'client_id',
             'client_contact_id',
+            'manager_user_id',
             'building_class_id',
             'building_type_id',
             'storey_level_id',

@@ -292,6 +292,8 @@ export default function Dashboard() {
         canViewAnnouncements = false,
         canManageAnnouncements = false,
         canApplyLeave = false,
+        canManageLeave = false,
+        leaveRequestUsers = [],
         leaveCalendar = [],
         holidays = {},
         calendarEvents = {},
@@ -606,6 +608,8 @@ export default function Dashboard() {
                 holidays={holidays}
                 calendarEvents={calendarEvents}
                 canApplyLeave={canApplyLeave}
+                canManageLeave={canManageLeave}
+                leaveRequestUsers={leaveRequestUsers}
                 canAddCalendarEvent
                 currentUserId={auth.user?.id ?? null}
                 canDeleteAnyEvent={auth.user?.role === 'admin'}
