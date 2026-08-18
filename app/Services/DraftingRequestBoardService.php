@@ -1037,7 +1037,7 @@ class DraftingRequestBoardService
                 'color' => '#c026d3',
             ],
             [
-                'status' => 'Drafting WIP',
+                'status' => 'Work In Progress',
                 'count' => $counts['drafting_wip'] ?? 0,
                 'color' => '#f87171',
             ],
@@ -1091,8 +1091,7 @@ class DraftingRequestBoardService
         return match ($boardStatus) {
             'new' => 'New',
             'assigned' => 'Assigned',
-            'design_wip' => 'Design WIP',
-            'drafting_wip', 'wip' => 'Drafting WIP',
+            'design_wip', 'drafting_wip', 'wip' => 'Work In Progress',
             'for_checking' => 'For Checking',
             'query' => 'Query',
             'submitted' => 'Submitted',
@@ -1132,7 +1131,7 @@ class DraftingRequestBoardService
             DraftingRequest::STATUS_ON_HOLD,
             DraftingRequest::STATUS_QUERY,
         ], true)) {
-            return 'design_wip';
+            return 'drafting_wip';
         }
 
         if (in_array($status, [
@@ -1140,7 +1139,7 @@ class DraftingRequestBoardService
             DraftingRequest::STATUS_WIP,
             DraftingRequest::STATUS_FOR_CHECKING,
         ], true)) {
-            return $this->isDesignPhaseRequest($row) ? 'design_wip' : 'drafting_wip';
+            return 'drafting_wip';
         }
 
         return 'for_quotes';

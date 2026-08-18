@@ -30,8 +30,8 @@ export const JOB_STATUS_STYLES = {
 export const JOB_STATUS_LABELS = {
     new: 'New',
     assigned: 'Assigned',
-    design_wip: 'Design WIP',
-    drafting_wip: 'Drafting WIP',
+    design_wip: 'Work in Progress',
+    drafting_wip: 'Work in Progress',
     wip: 'WIP',
     for_checking: 'For Checking',
     query: 'Query',
@@ -48,7 +48,6 @@ export const JOB_STATUS_LABELS = {
 export const JOB_BOARD_STATUS_ORDER = [
     'new',
     'assigned',
-    'design_wip',
     'drafting_wip',
     'wip',
     'for_checking',

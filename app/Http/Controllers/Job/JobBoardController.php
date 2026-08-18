@@ -156,10 +156,16 @@ class JobBoardController extends Controller
     private function formatStatusOptionList(array $options): array
     {
         return collect($options)
-            ->map(fn (string $label, string $value) => [
-                'value' => $value,
-                'label' => $label,
-            ])
+            ->map(function (string $label, string $value): array {
+                if (in_array($value, ['design_wip', 'drafting_wip', 'wip'], true)) {
+                    $label = 'Work In Progress';
+                }
+
+                return [
+                    'value' => $value,
+                    'label' => $label,
+                ];
+            })
             ->values()
             ->all();
     }

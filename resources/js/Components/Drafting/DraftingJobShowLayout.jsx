@@ -1126,18 +1126,6 @@ export default function DraftingJobShowLayout({
             canAdd={canAddRevision}
             onAdd={onAddRevision}
             addLabel="Add revision"
-            headerActions={
-                canAddFromMasterlist && onAddFromMasterlist ? (
-                    <button
-                        type="button"
-                        onClick={onAddFromMasterlist}
-                        className="inline-flex items-center gap-1 rounded-md border border-[#c5c7d0] bg-white px-2.5 py-1 text-xs font-semibold text-[#0073ea] shadow-sm transition hover:bg-[#e6f4ff] dark:border-[#3b82f6]/50 dark:bg-[#1a1b2e] dark:text-[#60a5fa] dark:hover:bg-[#243044]"
-                    >
-                        <PlusIcon className="h-3.5 w-3.5" aria-hidden />
-                        Add item
-                    </button>
-                ) : null
-            }
         >
             <div className="p-4">
                 <DataTable

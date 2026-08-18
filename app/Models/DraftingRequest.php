@@ -65,8 +65,8 @@ class DraftingRequest extends Model
         return [
             self::STATUS_NEW => 'New',
             self::STATUS_ASSIGNED => 'Assigned',
-            self::STATUS_DESIGN_WIP => 'Design WIP',
-            self::STATUS_DRAFTING_WIP => 'Drafting WIP',
+            self::STATUS_DESIGN_WIP => 'Work in Progress',
+            self::STATUS_DRAFTING_WIP => 'Work In Progress',
             self::STATUS_FOR_CHECKING => 'For Checking',
             self::STATUS_QUERY => 'Query',
             self::STATUS_SUBMITTED => 'Submitted',
@@ -85,8 +85,8 @@ class DraftingRequest extends Model
         return self::mergeStatusOptions([
             self::STATUS_NEW => 'New',
             self::STATUS_ASSIGNED => 'Assigned',
-            self::STATUS_DESIGN_WIP => 'Design WIP',
-            self::STATUS_DRAFTING_WIP => 'Drafting WIP',
+            self::STATUS_DESIGN_WIP => 'Work in Progress',
+            self::STATUS_DRAFTING_WIP => 'Work In Progress',
             self::STATUS_FOR_CHECKING => 'For Checking',
             self::STATUS_QUERY => 'Query',
             self::STATUS_SUBMITTED => 'Submitted',
@@ -104,8 +104,7 @@ class DraftingRequest extends Model
     {
         return self::mergeStatusOptions([
             self::STATUS_NEW => 'New',
-            self::STATUS_DESIGN_WIP => 'Design WIP',
-            self::STATUS_DRAFTING_WIP => 'Drafting WIP',
+            self::STATUS_DRAFTING_WIP => 'Work In Progress',
             self::STATUS_FOR_CHECKING => 'For Checking',
             self::STATUS_SUBMITTED => 'Submitted',
             self::STATUS_CANCELLED => 'Cancelled',
@@ -120,7 +119,7 @@ class DraftingRequest extends Model
     public static function designListStatusOptions(): array
     {
         return self::mergeStatusOptions([
-            self::STATUS_DESIGN_WIP => 'Design WIP',
+            self::STATUS_DESIGN_WIP => 'Work in Progress',
         ]);
     }
 
@@ -167,7 +166,7 @@ class DraftingRequest extends Model
             self::STATUS_ASSIGNED => 'Assigned',
             self::STATUS_ON_HOLD => 'On Hold',
             self::STATUS_QUERY => 'Query',
-            self::STATUS_WIP => 'Drafting WIP',
+            self::STATUS_WIP => 'Work In Progress',
             self::STATUS_FOR_QUOTE => 'For Quote',
             self::STATUS_QUOTE_SENT => 'Quote Sent',
             self::STATUS_INVOICED => 'Invoiced',
