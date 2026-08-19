@@ -37,7 +37,7 @@ class StoreDraftingRequestAccountEntryRequest extends FormRequest
             'status' => [
                 'required',
                 'string',
-                Rule::in(DraftingRequestAccountEntry::statusOptionsFor($kind)),
+                Rule::in(DraftingRequestAccountEntry::accountStatusOptions()),
             ],
         ];
     }
@@ -59,7 +59,7 @@ class StoreDraftingRequestAccountEntryRequest extends FormRequest
     {
         if ($this->has('status') && is_string($this->input('status'))) {
             $this->merge([
-                'status' => mb_strtoupper(trim($this->input('status'))),
+                'status' => DraftingRequestAccountEntry::normalizeStatus($this->input('status')),
             ]);
         }
     }

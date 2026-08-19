@@ -51,10 +51,6 @@ class UpdateDraftingRequestAccountEntryRequest extends FormRequest
      */
     public function rules(): array
     {
-        /** @var DraftingRequestAccountEntry|null $accountEntry */
-        $accountEntry = $this->route('accountEntry');
-        $kind = $accountEntry?->kind ?? DraftingRequestAccountEntry::KIND_QUOTE;
-
         return [
             'number' => ['required', 'string', 'max:64'],
             'category' => ['required', 'string', 'max:64'],
@@ -62,7 +58,7 @@ class UpdateDraftingRequestAccountEntryRequest extends FormRequest
             'status' => [
                 'required',
                 'string',
-                Rule::in(DraftingRequestAccountEntry::statusOptionsFor($kind)),
+                Rule::in(DraftingRequestAccountEntry::accountStatusOptions()),
             ],
         ];
     }
@@ -84,7 +80,7 @@ class UpdateDraftingRequestAccountEntryRequest extends FormRequest
     {
         if ($this->has('status') && is_string($this->input('status'))) {
             $this->merge([
-                'status' => mb_strtoupper(trim($this->input('status'))),
+                'status' => DraftingRequestAccountEntry::normalizeStatus($this->input('status')),
             ]);
         }
     }

@@ -96,6 +96,43 @@ class DraftingRequestAccountEntry extends Model
     }
 
     /**
+     * Map submitted or legacy status to the canonical workflow name.
+     */
+    public static function normalizeStatus(string $status): string
+    {
+        $trimmed = trim($status);
+
+        if ($trimmed === '') {
+            return $trimmed;
+        }
+
+        $upper = mb_strtoupper($trimmed);
+
+        $legacyMap = [
+            self::LEGACY_QUOTE_STATUS_FOR_QUOTE => self::QUOTE_STATUS_FOR_QUOTE,
+            self::LEGACY_QUOTE_STATUS_SENT => self::QUOTE_STATUS_SENT,
+            self::LEGACY_QUOTE_STATUS_ACCEPTED => self::QUOTE_STATUS_ACCEPTED,
+            self::LEGACY_QUOTE_STATUS_DECLINED => self::QUOTE_STATUS_DECLINED,
+            self::LEGACY_QUOTE_STATUS_REVISED => self::QUOTE_STATUS_REVISED,
+            self::LEGACY_INVOICE_STATUS_INVOICED => self::INVOICE_STATUS_INVOICED,
+            self::LEGACY_INVOICE_STATUS_PAID => self::INVOICE_STATUS_PAID,
+            self::LEGACY_INVOICE_STATUS_OVERDUE => self::INVOICE_STATUS_OVERDUE,
+        ];
+
+        if (isset($legacyMap[$upper])) {
+            return $legacyMap[$upper];
+        }
+
+        foreach (self::accountStatusOptions() as $option) {
+            if (mb_strtoupper($option) === $upper) {
+                return $option;
+            }
+        }
+
+        return $trimmed;
+    }
+
+    /**
      * Accepted values for validation (DB list + legacy uppercase).
      *
      * @return list<string>

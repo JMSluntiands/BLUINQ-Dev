@@ -1036,7 +1036,7 @@ class DraftingController extends Controller
             'rate' => isset($validated['rate']) && $validated['rate'] !== ''
                 ? trim($validated['rate'])
                 : null,
-            'status' => mb_strtoupper(trim($validated['status'])),
+            'status' => DraftingRequestAccountEntry::normalizeStatus($validated['status']),
         ]);
 
         $isQuote = $kind === DraftingRequestAccountEntry::KIND_QUOTE;
@@ -1078,7 +1078,7 @@ class DraftingController extends Controller
             'rate' => isset($validated['rate']) && $validated['rate'] !== ''
                 ? trim($validated['rate'])
                 : null,
-            'status' => mb_strtoupper(trim($validated['status'])),
+            'status' => DraftingRequestAccountEntry::normalizeStatus($validated['status']),
         ]);
 
         $isQuote = $accountEntry->kind === DraftingRequestAccountEntry::KIND_QUOTE;
