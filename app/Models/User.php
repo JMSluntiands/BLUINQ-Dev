@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -33,6 +34,7 @@ class User extends Authenticatable
         'job_title',
         'position',
         'date_hired',
+        'last_day',
         'employment_status',
         'holiday_region',
         'birthday',
@@ -85,6 +87,7 @@ class User extends Authenticatable
             'archived_at' => 'datetime',
             'birthday' => 'date',
             'date_hired' => 'date',
+            'last_day' => 'date',
             'leave_credits' => 'float',
             'al_credits' => 'float',
             'al_carried_over' => 'float',
@@ -127,6 +130,14 @@ class User extends Authenticatable
     public function milestones(): HasMany
     {
         return $this->hasMany(UserMilestone::class)->orderByDesc('milestone_date');
+    }
+
+    /**
+     * @return HasOne<UserProfile, $this>
+     */
+    public function profile(): HasOne
+    {
+        return $this->hasOne(UserProfile::class);
     }
 
     public function isAdmin(): bool

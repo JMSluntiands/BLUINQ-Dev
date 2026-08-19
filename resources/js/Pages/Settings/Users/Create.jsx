@@ -2,6 +2,9 @@ import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
+import UserHrProfileFields, {
+    userHrProfileFormDefaults,
+} from '@/Components/Settings/UserHrProfileFields';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 
@@ -9,6 +12,7 @@ export default function UsersCreate({
     roles = [],
     employmentStatuses = {},
     holidayRegions = {},
+    hrProfileOptions = {},
 }) {
     const form = useForm({
         name: '',
@@ -26,6 +30,7 @@ export default function UsersCreate({
         password_confirmation: '',
         role_id: roles[0]?.id ?? '',
         profile_image: null,
+        ...userHrProfileFormDefaults({}, hrProfileOptions),
     });
 
     const submit = (e) => {
@@ -61,7 +66,7 @@ export default function UsersCreate({
         >
             <Head title="User accounts — Create" />
 
-            <div className="max-w-xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="max-w-4xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
                 <form onSubmit={submit} className="space-y-6">
                     <div>
                         <InputLabel htmlFor="profile_image" value="Profile photo" />
@@ -311,6 +316,11 @@ export default function UsersCreate({
                             message={form.errors.personal_file_url}
                         />
                     </div>
+
+                    <UserHrProfileFields
+                        form={form}
+                        hrProfileOptions={hrProfileOptions}
+                    />
 
                     <div>
                         <InputLabel htmlFor="role_id" value="Role" />

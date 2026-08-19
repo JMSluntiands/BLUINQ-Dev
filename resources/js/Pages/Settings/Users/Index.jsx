@@ -1,6 +1,9 @@
 import DataTable, { DataTableSortHeader } from '@/Components/DataTable';
 import DangerButton from '@/Components/DangerButton';
 import FlashNoticeModal from '@/Components/FlashNoticeModal';
+import InputError from '@/Components/InputError';
+import InputLabel from '@/Components/InputLabel';
+import TextInput from '@/Components/TextInput';
 import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -57,21 +60,44 @@ export default function UsersIndex({ users, filters = {} }) {
     const rows = users?.data ?? [];
     const hasSearch = Boolean((filters.search ?? '').trim());
     const [archiveTarget, setArchiveTarget] = useState(null);
+    const [lastDay, setLastDay] = useState('');
+    const [lastDayError, setLastDayError] = useState('');
 
     const confirmArchive = useCallback(() => {
         if (!archiveTarget) {
             return;
         }
+
+        if (!lastDay) {
+            setLastDayError('Enter the employee last day before archiving.');
+            return;
+        }
+
         const qs = filterQueryString(filters);
         router.delete(
             route('settings.users.destroy', archiveTarget.id) + qs,
-            { preserveScroll: true },
+            {
+                data: { last_day: lastDay },
+                preserveScroll: true,
+                onSuccess: () => {
+                    setArchiveTarget(null);
+                    setLastDay('');
+                    setLastDayError('');
+                },
+                onError: (errors) => {
+                    setLastDayError(
+                        errors.last_day ??
+                            'Enter the employee last day before archiving.',
+                    );
+                },
+            },
         );
-        setArchiveTarget(null);
-    }, [archiveTarget, filters]);
+    }, [archiveTarget, filters, lastDay]);
 
     const requestArchive = useCallback((id, name) => {
         setArchiveTarget({ id, name });
+        setLastDay('');
+        setLastDayError('');
     }, []);
 
     const q = filterQueryString(filters);
@@ -213,23 +239,50 @@ export default function UsersIndex({ users, filters = {} }) {
 
             <Modal
                 show={archiveTarget != null}
-                onClose={() => setArchiveTarget(null)}
+                onClose={() => {
+                    setArchiveTarget(null);
+                    setLastDay('');
+                    setLastDayError('');
+                }}
                 maxWidth="md"
             >
                 <div className="p-6">
                     <h2 className="text-lg font-semibold text-[#323338]">
-                        Archive user account?
+                        Archive resigned user?
                     </h2>
                     <p className="mt-2 text-sm leading-relaxed text-[#676879]">
                         <span className="font-medium text-[#323338]">
                             “{archiveTarget?.name}”
                         </span>{' '}
                         will be archived and cannot sign in until restored.
+                        Enter their last day of work first.
                     </p>
+                    <div className="mt-4">
+                        <InputLabel htmlFor="archive-last-day" value="Last day" />
+                        <TextInput
+                            id="archive-last-day"
+                            type="date"
+                            className="mt-1 block w-full"
+                            value={lastDay}
+                            onChange={(e) => {
+                                setLastDay(e.target.value);
+                                setLastDayError('');
+                            }}
+                            required
+                        />
+                        <InputError
+                            className="mt-2"
+                            message={lastDayError}
+                        />
+                    </div>
                     <div className="mt-6 flex flex-wrap justify-end gap-2">
                         <SecondaryButton
                             type="button"
-                            onClick={() => setArchiveTarget(null)}
+                            onClick={() => {
+                                setArchiveTarget(null);
+                                setLastDay('');
+                                setLastDayError('');
+                            }}
                             className="rounded-lg normal-case tracking-normal"
                         >
                             Cancel

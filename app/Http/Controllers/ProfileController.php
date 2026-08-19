@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\LeaveEntitlementService;
+use App\Support\UserHrProfile;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -17,7 +18,7 @@ class ProfileController extends Controller
     public function edit(Request $request): Response
     {
         $user = $request->user();
-        $user->loadMissing(['role', 'milestones']);
+        $user->loadMissing(['role', 'milestones', 'profile']);
 
         return Inertia::render('Profile/Edit', [
             'profile' => self::payload($user, canViewPrivate: true),
@@ -34,7 +35,7 @@ class ProfileController extends Controller
      */
     public static function payload(User $user, bool $canViewPrivate): array
     {
-        $user->loadMissing(['role', 'milestones']);
+        $user->loadMissing(['role', 'milestones', 'profile']);
 
         $payload = [
             'id' => $user->id,
@@ -68,11 +69,13 @@ class ProfileController extends Controller
         return [
             ...$payload,
             'date_hired' => $user->date_hired?->format('Y-m-d'),
+            'last_day' => $user->last_day?->format('Y-m-d'),
             'employment_status' => $user->employment_status ?? 'regular',
             'leave_credits' => $balances['al_available'],
             'leave_balances' => $balances,
             'personal_file_url' => $user->personal_file_url,
             'claims_excel_url' => $user->claims_excel_url,
+            ...UserHrProfile::payload($user->profile),
         ];
     }
 }

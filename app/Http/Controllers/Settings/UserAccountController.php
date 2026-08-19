@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\HolidayService;
 use App\Services\LeaveEntitlementService;
 use App\Support\StoredUpload;
+use App\Support\UserHrProfile;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -84,6 +85,7 @@ class UserAccountController extends Controller
             'roles' => $this->roleOptions(),
             'employmentStatuses' => config('leave.employment_statuses', []),
             'holidayRegions' => HolidayService::regionOptions(),
+            'hrProfileOptions' => UserHrProfile::options(),
         ]);
     }
 
@@ -104,6 +106,7 @@ class UserAccountController extends Controller
             'claims_excel_url' => ['nullable', 'url', 'max:2048'],
             'personal_file_url' => ['nullable', 'url', 'max:2048'],
             'profile_image' => ['nullable', 'image', 'max:5120'],
+            ...UserHrProfile::rules(),
         ]);
 
         $initials = trim((string) ($validated['initials'] ?? ''));
@@ -130,6 +133,8 @@ class UserAccountController extends Controller
             'leave_balance_year' => (int) now()->year,
         ]);
 
+        $user->profile()->create(UserHrProfile::extract($validated));
+
         if ($request->hasFile('profile_image')) {
             $user->profile_image = StoredUpload::store(
                 $request->file('profile_image'),
@@ -153,7 +158,7 @@ class UserAccountController extends Controller
             abort(404);
         }
 
-        $user->load('role');
+        $user->load(['role', 'profile']);
 
         return Inertia::render('Settings/Users/Edit', [
             'user' => [
@@ -172,10 +177,12 @@ class UserAccountController extends Controller
                 'role' => $user->role?->slug,
                 'role_id' => $user->role_id,
                 'profile_image_url' => $user->profile_image_url,
+                ...UserHrProfile::formDefaults($user->profile),
             ],
             'roles' => $this->roleOptions(),
             'employmentStatuses' => config('leave.employment_statuses', []),
             'holidayRegions' => HolidayService::regionOptions(),
+            'hrProfileOptions' => UserHrProfile::options(),
             'listFilters' => $this->redirectQuery($request),
         ]);
     }
@@ -209,6 +216,7 @@ class UserAccountController extends Controller
             'claims_excel_url' => ['nullable', 'url', 'max:2048'],
             'personal_file_url' => ['nullable', 'url', 'max:2048'],
             'profile_image' => ['nullable', 'image', 'max:5120'],
+            ...UserHrProfile::rules(),
         ]);
 
         $newRole = Role::query()->findOrFail((int) $validated['role_id']);
@@ -254,6 +262,11 @@ class UserAccountController extends Controller
 
         $user->save();
 
+        $user->profile()->updateOrCreate(
+            ['user_id' => $user->id],
+            UserHrProfile::extract($validated),
+        );
+
         return redirect()
             ->route('settings.users.index', $this->redirectQuery($request))
             ->with('status', 'user-updated');
@@ -288,7 +301,14 @@ class UserAccountController extends Controller
             }
         }
 
-        $user->forceFill(['archived_at' => now()])->save();
+        $validated = $request->validate([
+            'last_day' => ['required', 'date'],
+        ]);
+
+        $user->forceFill([
+            'last_day' => $validated['last_day'],
+            'archived_at' => now(),
+        ])->save();
 
         return redirect()
             ->route('settings.users.index', $this->redirectQuery($request))
@@ -322,6 +342,7 @@ class UserAccountController extends Controller
                     'position' => $u->position,
                     'role' => $u->role?->slug,
                     'role_name' => $u->role?->name,
+                    'last_day' => $u->last_day?->format('Y-m-d'),
                     'archived_at' => $u->archived_at?->toIso8601String(),
                 ])
                 ->withQueryString(),
@@ -340,7 +361,10 @@ class UserAccountController extends Controller
                 ->with('status', 'user-not-archived');
         }
 
-        $user->forceFill(['archived_at' => null])->save();
+        $user->forceFill([
+            'archived_at' => null,
+            'last_day' => null,
+        ])->save();
 
         return redirect()
             ->route('settings.users.archive', $this->redirectQuery($request))

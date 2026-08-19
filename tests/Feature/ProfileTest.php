@@ -172,6 +172,80 @@ class ProfileTest extends TestCase
                 ->where('profile.job_title', 'Project Manager'));
     }
 
+    public function test_admin_can_save_hr_profile_fields_on_user_account(): void
+    {
+        $adminRoleId = Role::query()->where('slug', 'admin')->value('id');
+        $admin = User::factory()->create(['role_id' => $adminRoleId]);
+        $member = User::factory()->create([
+            'employment_status' => 'regular',
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('settings.users.update', $member), [
+                '_method' => 'patch',
+                'name' => $member->name,
+                'email' => $member->email,
+                'role_id' => $member->role_id,
+                'employment_status' => 'regular',
+                'gender' => 'female',
+                'nationality' => 'Filipino',
+                'mobile_number' => '09171234567',
+                'tax_code' => 'S1',
+                'department' => 'Drafting',
+                'branch' => 'Manila',
+                'residential_country' => 'Philippines',
+                'hometown_country' => 'Philippines',
+            ])
+            ->assertRedirect();
+
+        $member->refresh();
+        $member->load('profile');
+
+        $this->assertNotNull($member->profile);
+        $this->assertSame('female', $member->profile->gender);
+        $this->assertSame('Filipino', $member->profile->nationality);
+        $this->assertSame('09171234567', $member->profile->mobile_number);
+        $this->assertSame('S1', $member->profile->tax_code);
+        $this->assertSame('Drafting', $member->profile->department);
+        $this->assertSame('Manila', $member->profile->branch);
+
+        $this->actingAs($admin)
+            ->get(route('settings.users.show', $member))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Profile/Edit')
+                ->where('profile.gender_label', 'Female')
+                ->where('profile.mobile_number', '09171234567')
+                ->where('profile.department', 'Drafting'));
+    }
+
+    public function test_admin_must_enter_last_day_before_archiving_user(): void
+    {
+        $adminRoleId = Role::query()->where('slug', 'admin')->value('id');
+        $admin = User::factory()->create(['role_id' => $adminRoleId]);
+        $member = User::factory()->create([
+            'employment_status' => 'regular',
+        ]);
+
+        $this->actingAs($admin)
+            ->delete(route('settings.users.destroy', $member))
+            ->assertSessionHasErrors('last_day');
+
+        $member->refresh();
+        $this->assertNull($member->archived_at);
+        $this->assertNull($member->last_day);
+
+        $this->actingAs($admin)
+            ->delete(route('settings.users.destroy', $member), [
+                'last_day' => '2026-08-15',
+            ])
+            ->assertRedirect(route('settings.users.index'));
+
+        $member->refresh();
+        $this->assertNotNull($member->archived_at);
+        $this->assertSame('2026-08-15', $member->last_day?->format('Y-m-d'));
+    }
+
     public function test_profile_job_title_falls_back_to_position(): void
     {
         $user = User::factory()->create([

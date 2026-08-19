@@ -12,6 +12,19 @@ import { useCallback, useMemo, useState } from 'react';
 
 const columnHelper = createColumnHelper();
 
+function formatDate(value) {
+    if (!value) {
+        return '—';
+    }
+    try {
+        return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
+            dateStyle: 'medium',
+        });
+    } catch {
+        return value;
+    }
+}
+
 function formatArchivedAt(value) {
     if (!value) {
         return '—';
@@ -107,6 +120,18 @@ export default function UsersArchive({ users, filters = {} }) {
                     <span className="inline-flex rounded-md bg-[#e6e9ef] px-2.5 py-0.5 text-xs font-semibold text-[#676879]">
                         {row.original.role_name ??
                             roleLabel(row.original.role)}
+                    </span>
+                ),
+            }),
+            columnHelper.accessor('last_day', {
+                header: ({ column }) => (
+                    <DataTableSortHeader column={column}>
+                        Last day
+                    </DataTableSortHeader>
+                ),
+                cell: ({ getValue }) => (
+                    <span className="text-[#676879]">
+                        {formatDate(getValue())}
                     </span>
                 ),
             }),

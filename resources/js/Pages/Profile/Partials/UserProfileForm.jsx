@@ -2,9 +2,15 @@ import UserAvatar from '@/Components/UserAvatar';
 import {
     ArrowTopRightOnSquareIcon,
     BriefcaseIcon,
+    BuildingLibraryIcon,
+    HeartIcon,
+    HomeIcon,
+    IdentificationIcon,
     LinkIcon,
     LockClosedIcon,
+    PhoneIcon,
     SparklesIcon,
+    UserGroupIcon,
     UserIcon,
 } from '@heroicons/react/24/outline';
 import { resolveBadgeInitials } from '@/utils/badgeInitials';
@@ -136,6 +142,158 @@ function StaffPhotoBadge({ profileImageUrl, name, initials }) {
     );
 }
 
+function ProfileAddressFields({ profile, prefix }) {
+    const rows = [
+        ['Unit / street', profile[`${prefix}_unit_street`]],
+        ['Barangay', profile[`${prefix}_barangay`]],
+        ['City', profile[`${prefix}_city`]],
+        ['State / province', profile[`${prefix}_state`]],
+        ['Region', profile[`${prefix}_region`]],
+        ['Country', profile[`${prefix}_country`]],
+        ['Post / ZIP', profile[`${prefix}_postcode`]],
+    ];
+
+    const formatted = profile[`${prefix}_address`];
+
+    if (rows.every(([, value]) => !value) && formatted) {
+        return (
+            <ProfileDetailItem
+                label="Address"
+                value={formatted}
+                className="sm:items-start"
+            />
+        );
+    }
+
+    return rows.map(([label, value]) => (
+        <ProfileDetailItem
+            key={`${prefix}-${label}`}
+            label={`${label}`}
+            value={value}
+        />
+    ));
+}
+
+function EmploymentSection({ profile }) {
+    return (
+        <ProfileDetailsSection
+            title="Employment details"
+            icon={LockClosedIcon}
+            footer={
+                <div className="border-t border-slate-100 dark:border-gray-800/80">
+                    <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-gray-800/80">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500">
+                            <LinkIcon className="h-4 w-4" />
+                        </span>
+                        <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-gray-400">
+                            Links & resources
+                        </h3>
+                    </div>
+                    <dl className="divide-y divide-slate-100 dark:divide-gray-800/80">
+                        <ProfileDetailItem label="Claims">
+                            <ExternalLink href={profile.claims_excel_url}>
+                                Open claims spreadsheet
+                            </ExternalLink>
+                        </ProfileDetailItem>
+                        <ProfileDetailItem label="SharePoint">
+                            <ExternalLink href={profile.personal_file_url}>
+                                Open personal file
+                            </ExternalLink>
+                        </ProfileDetailItem>
+                    </dl>
+                </div>
+            }
+        >
+            <ProfileDetailItem
+                label="Date hired"
+                value={formatDate(profile.date_hired)}
+            />
+            {profile.last_day ? (
+                <ProfileDetailItem
+                    label="Last day"
+                    value={formatDate(profile.last_day)}
+                />
+            ) : null}
+            <ProfileDetailItem
+                label="Employment status"
+                value={
+                    profile.leave_balances?.employment_status_label ??
+                    profile.employment_status ??
+                    'Regular'
+                }
+            />
+            <ProfileDetailItem
+                label="Department"
+                value={profile.department}
+            />
+            <ProfileDetailItem label="Branch" value={profile.branch} />
+            <ProfileDetailItem
+                label="Annual Leave (AL)"
+                value={String(
+                    profile.leave_balances?.al_available ??
+                        profile.leave_credits ??
+                        0,
+                )}
+            />
+            <ProfileDetailItem
+                label="Sick Leave (SL)"
+                value={String(profile.leave_balances?.sl_credits ?? 0)}
+            />
+            <ProfileDetailItem
+                label="Medical remaining (SL+HL)"
+                value={String(profile.leave_balances?.medical_remaining ?? 0)}
+            />
+        </ProfileDetailsSection>
+    );
+}
+
+function MilestonesSection({ milestones = [] }) {
+    return (
+        <ProfileWideSection title="Achievements / milestones" icon={SparklesIcon}>
+            {milestones.length === 0 ? (
+                <p className="text-slate-400 dark:text-gray-600">
+                    No milestones recorded yet.
+                </p>
+            ) : (
+                <div className="-mx-4 overflow-x-auto sm:mx-0">
+                    <table className="min-w-full divide-y divide-slate-100 dark:divide-gray-800/80">
+                        <thead>
+                            <tr>
+                                <th className="px-4 pb-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-gray-500">
+                                    Date
+                                </th>
+                                <th className="px-4 pb-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-gray-500">
+                                    Achievement / milestone
+                                </th>
+                                <th className="px-4 pb-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-gray-500">
+                                    Impact / result
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-gray-800/80">
+                            {milestones.map((milestone) => (
+                                <tr key={milestone.id} className="align-top">
+                                    <td className="whitespace-nowrap px-4 py-2.5 font-medium tabular-nums">
+                                        {milestone.milestone_date_label}
+                                    </td>
+                                    <td className="px-4 py-2.5">
+                                        {milestone.title}
+                                    </td>
+                                    <td className="px-4 py-2.5 text-slate-600 dark:text-gray-400">
+                                        {milestone.impact_result?.trim()
+                                            ? milestone.impact_result
+                                            : '—'}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </ProfileWideSection>
+    );
+}
+
 export default function UserProfileForm({
     profile,
     canViewPrivate = false,
@@ -207,85 +365,176 @@ export default function UserProfileForm({
                     </div>
                 </div>
 
-                <div
-                    className={
-                        canViewPrivate
-                            ? 'grid gap-4 lg:grid-cols-2 lg:items-start'
-                            : 'grid gap-4'
-                    }
-                >
-                    {canViewPrivate ? (
-                        <ProfileDetailsSection
-                            title="Employment details"
-                            icon={LockClosedIcon}
-                            footer={
-                                <div className="border-t border-slate-100 dark:border-gray-800/80">
-                                    <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-gray-800/80">
-                                        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500">
-                                            <LinkIcon className="h-4 w-4" />
-                                        </span>
-                                        <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-gray-400">
-                                            Links & resources
-                                        </h3>
-                                    </div>
-                                    <dl className="divide-y divide-slate-100 dark:divide-gray-800/80">
-                                        <ProfileDetailItem label="Claims">
-                                            <ExternalLink
-                                                href={profile.claims_excel_url}
-                                            >
-                                                Open claims spreadsheet
-                                            </ExternalLink>
-                                        </ProfileDetailItem>
-                                        <ProfileDetailItem label="SharePoint">
-                                            <ExternalLink
-                                                href={
-                                                    profile.personal_file_url
-                                                }
-                                            >
-                                                Open personal file
-                                            </ExternalLink>
-                                        </ProfileDetailItem>
-                                    </dl>
-                                </div>
-                            }
-                        >
-                            <ProfileDetailItem
-                                label="Date hired"
-                                value={formatDate(profile.date_hired)}
-                            />
-                            <ProfileDetailItem
-                                label="Employment status"
-                                value={
-                                    profile.leave_balances
-                                        ?.employment_status_label ??
-                                    profile.employment_status ??
-                                    'Regular'
-                                }
-                            />
-                            <ProfileDetailItem
-                                label="Annual Leave (AL)"
-                                value={String(
-                                    profile.leave_balances?.al_available ??
-                                        profile.leave_credits ??
-                                        0,
-                                )}
-                            />
-                            <ProfileDetailItem
-                                label="Sick Leave (SL)"
-                                value={String(
-                                    profile.leave_balances?.sl_credits ?? 0,
-                                )}
-                            />
-                            <ProfileDetailItem
-                                label="Medical remaining (SL+HL)"
-                                value={String(
-                                    profile.leave_balances
-                                        ?.medical_remaining ?? 0,
-                                )}
-                            />
-                        </ProfileDetailsSection>
-                    ) : null}
+                {canViewPrivate ? (
+                    <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+                        <div className="space-y-4">
+                            <EmploymentSection profile={profile} />
 
+                            <ProfileDetailsSection
+                                title="Personal information"
+                                icon={UserIcon}
+                            >
+                                <ProfileDetailItem
+                                    label="Birthday"
+                                    value={formatDate(profile.birthday)}
+                                />
+                                <ProfileDetailItem
+                                    label="Gender"
+                                    value={profile.gender_label}
+                                />
+                                <ProfileDetailItem
+                                    label="Nationality"
+                                    value={profile.nationality}
+                                />
+                                <ProfileDetailItem
+                                    label="Religion"
+                                    value={profile.religion}
+                                />
+                                <ProfileDetailItem
+                                    label="Marital status"
+                                    value={profile.marital_status_label}
+                                />
+                                <ProfileDetailItem
+                                    label="Details"
+                                    value={profile.personal_details}
+                                    className="sm:items-start"
+                                />
+                            </ProfileDetailsSection>
+
+                            <ProfileDetailsSection
+                                title="Contact information"
+                                icon={PhoneIcon}
+                            >
+                                <ProfileDetailItem
+                                    label="Mobile number"
+                                    value={profile.mobile_number}
+                                />
+                                <ProfileDetailItem
+                                    label="Personal email"
+                                    value={profile.personal_email}
+                                />
+                            </ProfileDetailsSection>
+
+                            <ProfileDetailsSection
+                                title="Residential address"
+                                icon={HomeIcon}
+                            >
+                                <ProfileAddressFields
+                                    profile={profile}
+                                    prefix="residential"
+                                />
+                            </ProfileDetailsSection>
+                        </div>
+
+                        <div className="space-y-4">
+                            <ProfileDetailsSection
+                                title="Government IDs & tax"
+                                icon={IdentificationIcon}
+                            >
+                                <ProfileDetailItem
+                                    label="SSS number"
+                                    value={profile.sss_number}
+                                />
+                                <ProfileDetailItem
+                                    label="Pag-IBIG number"
+                                    value={profile.pagibig_number}
+                                />
+                                <ProfileDetailItem
+                                    label="PhilHealth number"
+                                    value={profile.philhealth_number}
+                                />
+                                <ProfileDetailItem
+                                    label="HMO number"
+                                    value={profile.hmo_number}
+                                />
+                                <ProfileDetailItem
+                                    label="TIN number"
+                                    value={profile.tin_number}
+                                />
+                                <ProfileDetailItem
+                                    label="Tax code"
+                                    value={profile.tax_code_label}
+                                />
+                            </ProfileDetailsSection>
+
+                            <ProfileDetailsSection
+                                title="Banking & e-wallet"
+                                icon={BuildingLibraryIcon}
+                            >
+                                <ProfileDetailItem
+                                    label="Bank name"
+                                    value={profile.bank_name}
+                                />
+                                <ProfileDetailItem
+                                    label="Bank account number"
+                                    value={profile.bank_account_number}
+                                />
+                                <ProfileDetailItem
+                                    label="E-wallet account number"
+                                    value={profile.ewallet_account_number}
+                                />
+                            </ProfileDetailsSection>
+
+                            <ProfileDetailsSection
+                                title="Hometown address"
+                                icon={HomeIcon}
+                            >
+                                <ProfileAddressFields
+                                    profile={profile}
+                                    prefix="hometown"
+                                />
+                            </ProfileDetailsSection>
+
+                            <ProfileDetailsSection
+                                title="Emergency contact"
+                                icon={HeartIcon}
+                            >
+                                <ProfileDetailItem
+                                    label="Person to notify"
+                                    value={profile.emergency_contact_name}
+                                />
+                                <ProfileDetailItem
+                                    label="Relationship"
+                                    value={profile.emergency_relationship}
+                                />
+                                <ProfileDetailItem
+                                    label="Contact number"
+                                    value={profile.emergency_contact_number}
+                                />
+                            </ProfileDetailsSection>
+
+                            <ProfileDetailsSection
+                                title="Spouse details"
+                                icon={UserGroupIcon}
+                            >
+                                <ProfileDetailItem
+                                    label="Name"
+                                    value={profile.spouse_name}
+                                />
+                                <ProfileDetailItem
+                                    label="Nationality"
+                                    value={profile.spouse_nationality}
+                                />
+                                <ProfileDetailItem
+                                    label="Contact number"
+                                    value={profile.spouse_contact_number}
+                                />
+                                <ProfileDetailItem
+                                    label="Email"
+                                    value={profile.spouse_email}
+                                />
+                                <ProfileDetailItem
+                                    label="No. of children"
+                                    value={profile.number_of_children}
+                                />
+                                <ProfileDetailItem
+                                    label="Working?"
+                                    value={profile.spouse_working_label}
+                                />
+                            </ProfileDetailsSection>
+                        </div>
+                    </div>
+                ) : (
                     <div className="space-y-4">
                         <ProfileDetailsSection title="Personal" icon={UserIcon}>
                             <ProfileDetailItem
@@ -298,61 +547,10 @@ export default function UserProfileForm({
                                 className="sm:items-start"
                             />
                         </ProfileDetailsSection>
-
-                        <ProfileWideSection
-                            title="Achievements / milestones"
-                            icon={SparklesIcon}
-                        >
-                            {(profile.milestones ?? []).length === 0 ? (
-                                <p className="text-slate-400 dark:text-gray-600">
-                                    No milestones recorded yet.
-                                </p>
-                            ) : (
-                                <div className="-mx-4 overflow-x-auto sm:mx-0">
-                                    <table className="min-w-full divide-y divide-slate-100 dark:divide-gray-800/80">
-                                        <thead>
-                                            <tr>
-                                                <th className="px-4 pb-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-gray-500">
-                                                    Date
-                                                </th>
-                                                <th className="px-4 pb-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-gray-500">
-                                                    Achievement / milestone
-                                                </th>
-                                                <th className="px-4 pb-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-gray-500">
-                                                    Impact / result
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100 dark:divide-gray-800/80">
-                                            {profile.milestones.map(
-                                                (milestone) => (
-                                                    <tr
-                                                        key={milestone.id}
-                                                        className="align-top"
-                                                    >
-                                                        <td className="whitespace-nowrap px-4 py-2.5 font-medium tabular-nums">
-                                                            {
-                                                                milestone.milestone_date_label
-                                                            }
-                                                        </td>
-                                                        <td className="px-4 py-2.5">
-                                                            {milestone.title}
-                                                        </td>
-                                                        <td className="px-4 py-2.5 text-slate-600 dark:text-gray-400">
-                                                            {milestone.impact_result?.trim()
-                                                                ? milestone.impact_result
-                                                                : '—'}
-                                                        </td>
-                                                    </tr>
-                                                ),
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </ProfileWideSection>
                     </div>
-                </div>
+                )}
+
+                <MilestonesSection milestones={profile.milestones} />
 
                 {mustVerifyEmail && profile.email_verified_at === null && (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">

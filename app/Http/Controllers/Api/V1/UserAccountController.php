@@ -170,7 +170,14 @@ class UserAccountController extends Controller
             }
         }
 
-        $user->forceFill(['archived_at' => now()])->save();
+        $validated = $request->validate([
+            'last_day' => ['required', 'date'],
+        ]);
+
+        $user->forceFill([
+            'last_day' => $validated['last_day'],
+            'archived_at' => now(),
+        ])->save();
 
         return response()->json(['message' => 'Archived.']);
     }
@@ -197,8 +204,9 @@ class UserAccountController extends Controller
                 'id' => $u->id,
                 'name' => $u->name,
                 'email' => $u->email,
-                'role' => $u->role?->slug,
-                'archived_at' => $u->archived_at?->toIso8601String(),
+                    'role' => $u->role?->slug,
+                    'last_day' => $u->last_day?->format('Y-m-d'),
+                    'archived_at' => $u->archived_at?->toIso8601String(),
             ])
             ->withQueryString();
 
@@ -211,7 +219,10 @@ class UserAccountController extends Controller
             return response()->json(['message' => 'Not archived.'], 409);
         }
 
-        $user->forceFill(['archived_at' => null])->save();
+        $user->forceFill([
+            'archived_at' => null,
+            'last_day' => null,
+        ])->save();
         $user->load('role');
 
         return response()->json([

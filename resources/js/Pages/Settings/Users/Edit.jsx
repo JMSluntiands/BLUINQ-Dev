@@ -2,6 +2,9 @@ import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
+import UserHrProfileFields, {
+    userHrProfileFormDefaults,
+} from '@/Components/Settings/UserHrProfileFields';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 
@@ -22,6 +25,7 @@ export default function UsersEdit({
     roles = [],
     employmentStatuses = {},
     holidayRegions = {},
+    hrProfileOptions = {},
     listFilters = {},
 }) {
     const listQs = filterQueryString(listFilters);
@@ -43,6 +47,7 @@ export default function UsersEdit({
         password_confirmation: '',
         profile_image: null,
         _method: 'patch',
+        ...userHrProfileFormDefaults(user, hrProfileOptions),
     });
 
     const submit = (e) => {
@@ -78,7 +83,7 @@ export default function UsersEdit({
         >
             <Head title="User accounts — Edit" />
 
-            <div className="max-w-xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="max-w-4xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
                 <form onSubmit={submit} className="space-y-6">
                     <div>
                         <InputLabel htmlFor="profile_image" value="Profile photo" />
@@ -335,6 +340,11 @@ export default function UsersEdit({
                             message={form.errors.personal_file_url}
                         />
                     </div>
+
+                    <UserHrProfileFields
+                        form={form}
+                        hrProfileOptions={hrProfileOptions}
+                    />
 
                     <div>
                         <InputLabel htmlFor="role_id" value="Role" />
