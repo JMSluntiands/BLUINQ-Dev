@@ -164,6 +164,10 @@ class JobBoardController extends Controller
     private function formatStatusOptionList(array $options): array
     {
         return collect($options)
+            ->reject(function (string $label, string $value) use ($options): bool {
+                return in_array($value, ['design_wip', 'wip'], true)
+                    && array_key_exists('drafting_wip', $options);
+            })
             ->map(function (string $label, string $value): array {
                 if (in_array($value, ['design_wip', 'drafting_wip', 'wip'], true)) {
                     $label = 'Work In Progress';

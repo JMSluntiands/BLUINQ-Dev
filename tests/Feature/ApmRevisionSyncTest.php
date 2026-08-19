@@ -288,7 +288,6 @@ class ApmRevisionSyncTest extends TestCase
                 ->where('statusOptions', [
                     ['value' => 'new', 'label' => 'New'],
                     ['value' => 'assigned', 'label' => 'Assigned'],
-                    ['value' => 'design_wip', 'label' => 'Work In Progress'],
                     ['value' => 'drafting_wip', 'label' => 'Work In Progress'],
                     ['value' => 'for_checking', 'label' => 'For Checking'],
                     ['value' => 'query', 'label' => 'Query'],
@@ -298,7 +297,6 @@ class ApmRevisionSyncTest extends TestCase
                 ])
                 ->where('statusGroupOptions', [
                     ['value' => 'new', 'label' => 'New'],
-                    ['value' => 'design_wip', 'label' => 'Work In Progress'],
                     ['value' => 'drafting_wip', 'label' => 'Work In Progress'],
                     ['value' => 'for_checking', 'label' => 'For Checking'],
                     ['value' => 'submitted', 'label' => 'Submitted'],
@@ -539,7 +537,7 @@ class ApmRevisionSyncTest extends TestCase
                     ['value' => 'submitted', 'label' => 'Submitted'],
                     ['value' => 'cancelled', 'label' => 'Cancelled'],
                 ])
-                ->has('statusOptions', 9)
+                ->has('statusOptions', 8)
                 ->has('jobs.data', 4)
                 ->where(
                     'jobs.data',

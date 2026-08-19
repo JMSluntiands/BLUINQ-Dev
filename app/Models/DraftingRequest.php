@@ -65,7 +65,6 @@ class DraftingRequest extends Model
         return [
             self::STATUS_NEW => 'New',
             self::STATUS_ASSIGNED => 'Assigned',
-            self::STATUS_DESIGN_WIP => 'Work in Progress',
             self::STATUS_DRAFTING_WIP => 'Work In Progress',
             self::STATUS_FOR_CHECKING => 'For Checking',
             self::STATUS_QUERY => 'Query',
@@ -85,7 +84,6 @@ class DraftingRequest extends Model
         return self::mergeStatusOptions([
             self::STATUS_NEW => 'New',
             self::STATUS_ASSIGNED => 'Assigned',
-            self::STATUS_DESIGN_WIP => 'Work in Progress',
             self::STATUS_DRAFTING_WIP => 'Work In Progress',
             self::STATUS_FOR_CHECKING => 'For Checking',
             self::STATUS_QUERY => 'Query',

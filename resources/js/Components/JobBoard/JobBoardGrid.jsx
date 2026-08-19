@@ -170,26 +170,43 @@ function EditableStatusSelect({ job, statusOptions = [], disabled = false }) {
     }
 
     const current = job.status ?? 'new';
-    const options = statusOptions.some((option) => option.value === current)
-        ? statusOptions
+    const hasDraftingWip = statusOptions.some(
+        (option) => option.value === 'drafting_wip',
+    );
+    const collapsedCurrent =
+        hasDraftingWip &&
+        (current === 'design_wip' || current === 'wip')
+            ? 'drafting_wip'
+            : current;
+    const dropdownOptions = statusOptions.filter((option) => {
+        if (!hasDraftingWip) {
+            return true;
+        }
+
+        return option.value !== 'design_wip' && option.value !== 'wip';
+    });
+    const options = dropdownOptions.some(
+        (option) => option.value === collapsedCurrent,
+    )
+        ? dropdownOptions
         : [
               {
-                  value: current,
+                  value: collapsedCurrent,
                   label:
                       job.status_label ??
-                      JOB_STATUS_LABELS[current] ??
-                      current,
+                      JOB_STATUS_LABELS[collapsedCurrent] ??
+                      collapsedCurrent,
               },
-              ...statusOptions,
+              ...dropdownOptions,
           ];
 
     return (
         <select
-            value={current}
+            value={collapsedCurrent}
             disabled={busy}
             onChange={(event) => {
                 const next = event.target.value;
-                if (next === job.status) {
+                if (next === job.status || next === collapsedCurrent) {
                     return;
                 }
                 setBusy(true);
