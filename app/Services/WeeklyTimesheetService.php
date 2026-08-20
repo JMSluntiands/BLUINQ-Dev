@@ -380,7 +380,7 @@ class WeeklyTimesheetService
             ->reviewAccepted()
             ->whereIn('workflow_stage', [
                 DraftingRequest::STAGE_MASTERLIST,
-                DraftingRequest::STAGE_APM,
+                ...DraftingRequest::projectBoardStages(),
             ])
             ->where('status', '!=', DraftingRequest::STATUS_CANCELLED);
     }

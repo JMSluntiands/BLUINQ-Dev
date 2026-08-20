@@ -24,8 +24,9 @@ class UpdateDraftingRequestRequest extends FormRequest
             return false;
         }
 
-        $canViewApm = $draftingRequest->workflow_stage === DraftingRequest::STAGE_APM
-            && $user->hasPermission('job.drafting.view');
+        $canViewApm = $draftingRequest->isOnProjectBoard()
+            && ($user->hasPermission('job.drafting.view')
+                || $user->hasPermission('design.list.view'));
         $canViewMasterlist = $draftingRequest->workflow_stage === DraftingRequest::STAGE_MASTERLIST
             && $user->hasPermission('job.drafting-request.view');
 

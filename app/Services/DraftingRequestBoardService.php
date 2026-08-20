@@ -18,9 +18,9 @@ class DraftingRequestBoardService
     /**
      * @return Builder<DraftingRequest>
      */
-    public function baseQuery(Request $request): Builder
+    public function baseQuery(Request $request, string $board = 'apm'): Builder
     {
-        return DraftingRequest::query()
+        $query = DraftingRequest::query()
             ->with([
                 'crmCategory:id,name,code',
                 'crmCategories:id,name,code',
@@ -39,11 +39,35 @@ class DraftingRequestBoardService
             ->withCount(['files', 'comments'])
             ->active()
             ->reviewAccepted()
-            ->apm()
-            ->whereHas('revisions')
+            ->whereHas('revisions');
+
+        $this->applyBoardStageFilter($query, $board);
+
+        return $query
             ->orderByDesc('is_priority')
             ->orderByDesc('requested_at')
             ->orderByDesc('id');
+    }
+
+    /**
+     * @param  Builder<DraftingRequest>  $query
+     */
+    public function applyBoardStageFilter(Builder $query, string $board): void
+    {
+        if ($board === 'design') {
+            $query->where(function (Builder $outer) {
+                $outer->where('workflow_stage', DraftingRequest::STAGE_DESIGN)
+                    ->orWhere(function (Builder $legacy) {
+                        $legacy->where('workflow_stage', DraftingRequest::STAGE_APM);
+                        $this->applyDesignPhaseFilter($legacy);
+                    });
+            });
+
+            return;
+        }
+
+        $query->where('workflow_stage', DraftingRequest::STAGE_APM);
+        $this->applyExcludeDesignPhaseFilter($query);
     }
 
     /**
@@ -124,6 +148,24 @@ class DraftingRequestBoardService
      */
     public function applyDesignPhaseFilter(Builder $query): void
     {
+        $this->constrainByDesignPhase($query, include: true);
+    }
+
+    /**
+     * Hide design-phase requests from the APM board.
+     *
+     * @param  Builder<DraftingRequest>  $query
+     */
+    public function applyExcludeDesignPhaseFilter(Builder $query): void
+    {
+        $this->constrainByDesignPhase($query, include: false);
+    }
+
+    /**
+     * @param  Builder<DraftingRequest>  $query
+     */
+    private function constrainByDesignPhase(Builder $query, bool $include): void
+    {
         $keywords = array_values(array_filter(
             array_map(
                 static fn (mixed $keyword) => trim((string) $keyword),
@@ -133,12 +175,16 @@ class DraftingRequestBoardService
         ));
 
         if ($keywords === []) {
-            $query->whereRaw('1 = 0');
+            if ($include) {
+                $query->whereRaw('1 = 0');
+            }
 
             return;
         }
 
-        $query->whereHas('serviceEngagings', function (Builder $serviceQuery) use ($keywords) {
+        $method = $include ? 'whereHas' : 'whereDoesntHave';
+
+        $query->{$method}('serviceEngagings', function (Builder $serviceQuery) use ($keywords) {
             $serviceQuery->where(function (Builder $nameQuery) use ($keywords) {
                 foreach ($keywords as $keyword) {
                     $nameQuery->orWhere('name', 'like', '%'.$keyword.'%');
@@ -1186,8 +1232,9 @@ class DraftingRequestBoardService
         return $sections;
     }
 
-    private function isDesignPhaseRequest(DraftingRequest $row): bool
+    public function isDesignPhaseRequest(DraftingRequest $row): bool
     {
+        $row->loadMissing('serviceEngagings');
         $haystack = mb_strtolower($row->serviceEngagings->pluck('name')->join(' '));
 
         if ($haystack === '') {

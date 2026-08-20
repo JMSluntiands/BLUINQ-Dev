@@ -90,8 +90,10 @@ export default function DraftingRevisionAddModal({
     categoryOptions = [],
     defaultJobStatus = 'new',
     projectOptions = [],
+    board = 'apm',
 }) {
     const isForwardMode = mode === 'forward';
+    const isDesignBoard = board === 'design';
     const { categoryOptions: pageCategoryOptions = [] } = usePage().props;
     const categories =
         categoryOptions.length > 0 ? categoryOptions : pageCategoryOptions;
@@ -175,6 +177,7 @@ export default function DraftingRevisionAddModal({
         log_date: '',
         category: '',
         status: defaultJobStatus || 'new',
+        board,
     });
 
     useEffect(() => {
@@ -193,6 +196,7 @@ export default function DraftingRevisionAddModal({
                 log_date: entry.log_date_value ?? '',
                 category: entry.category ?? '',
                 status: entry.status ?? '',
+                board,
             });
 
             return;
@@ -225,17 +229,15 @@ export default function DraftingRevisionAddModal({
 
         if (isForwardMode) {
             setForwarding(true);
-            form.post(
-                route('job.board.add.quick', effectiveRequestId),
-                {
-                    onSuccess: () => {
-                        form.reset();
-                        onClose();
-                    },
-                    onFinish: () => setForwarding(false),
-                    onError: () => setForwarding(false),
+            form.setData('board', board);
+            form.post(route('job.board.add.quick', effectiveRequestId), {
+                onSuccess: () => {
+                    form.reset();
+                    onClose();
                 },
-            );
+                onFinish: () => setForwarding(false),
+                onError: () => setForwarding(false),
+            });
             return;
         }
 
@@ -280,9 +282,19 @@ export default function DraftingRevisionAddModal({
                     {isEditing
                         ? 'Update revision number, link, category, date in, and status. Drafter, hours, and date out are set on the board.'
                         : isForwardMode
-                          ? 'Select a masterlist project (or reopenable board job), then review and add it to Project Management.'
+                          ? isDesignBoard
+                            ? 'Select a masterlist project, then add it to Design Project Management.'
+                            : 'Select a masterlist project (or reopenable board job), then review and add it to Archi Project Management.'
                           : 'Add a revision. Assign drafter, checker, and hours on the Project Management board.'}
                 </p>
+                {form.errors.board || form.errors.workflow_stage ? (
+                    <InputError
+                        message={
+                            form.errors.board || form.errors.workflow_stage
+                        }
+                        className="mt-3"
+                    />
+                ) : null}
 
                 <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {needsProjectPick ? (
@@ -311,7 +323,9 @@ export default function DraftingRevisionAddModal({
                             {projectSelectOptions.length === 0 ? (
                                 <p className="mt-1 text-xs text-[#676879] dark:text-slate-400">
                                     {isForwardMode
-                                        ? 'No masterlist projects are available to add. Encode a project on the masterlist first.'
+                                        ? isDesignBoard
+                                            ? 'No design masterlist projects are available to add. Encode a design project on the masterlist first.'
+                                            : 'No masterlist projects are available to add. Encode a project on the masterlist first.'
                                         : 'No projects on this page allow adding a revision. Search or change pages, then try again.'}
                                 </p>
                             ) : null}

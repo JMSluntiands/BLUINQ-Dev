@@ -79,11 +79,11 @@ class DraftingRequestSubmissionService
         bool $allowApmStage = false,
     ): DraftingRequest {
         $isMasterlist = $draftingRequest->workflow_stage === DraftingRequest::STAGE_MASTERLIST;
-        $isEditableApm = $allowApmStage
-            && $draftingRequest->workflow_stage === DraftingRequest::STAGE_APM
+        $isEditableBoard = $allowApmStage
+            && $draftingRequest->isOnProjectBoard()
             && $draftingRequest->review_status === DraftingRequest::REVIEW_ACCEPTED;
 
-        if (! $isMasterlist && ! $isEditableApm) {
+        if (! $isMasterlist && ! $isEditableBoard) {
             throw ValidationException::withMessages([
                 'workflow_stage' => 'Only masterlist entries can be edited here.',
             ]);
@@ -173,15 +173,28 @@ class DraftingRequestSubmissionService
 
     public function forwardToApm(DraftingRequest $draftingRequest, User $actor): void
     {
+        $this->forwardToBoard($draftingRequest, $actor, 'apm');
+    }
+
+    public function forwardToBoard(DraftingRequest $draftingRequest, User $actor, string $board = 'apm'): void
+    {
+        $board = $board === 'design' ? 'design' : 'apm';
+        $stage = $board === 'design'
+            ? DraftingRequest::STAGE_DESIGN
+            : DraftingRequest::STAGE_APM;
+        $boardLabel = $board === 'design'
+            ? 'Design Project Management'
+            : 'Archi Project Management';
+
         if ($draftingRequest->workflow_stage !== DraftingRequest::STAGE_MASTERLIST) {
             throw ValidationException::withMessages([
-                'workflow_stage' => 'This entry has already been forwarded to APM.',
+                'workflow_stage' => "This entry has already been forwarded to {$boardLabel}.",
             ]);
         }
 
         if ($draftingRequest->review_status !== DraftingRequest::REVIEW_ACCEPTED) {
             throw ValidationException::withMessages([
-                'review_status' => 'Only accepted masterlist entries can be forwarded to APM.',
+                'review_status' => "Only accepted masterlist entries can be forwarded to {$boardLabel}.",
             ]);
         }
 
@@ -189,9 +202,9 @@ class DraftingRequestSubmissionService
             abort(404);
         }
 
-        DB::transaction(function () use ($draftingRequest, $actor): void {
+        DB::transaction(function () use ($draftingRequest, $actor, $stage, $boardLabel): void {
             $draftingRequest->update([
-                'workflow_stage' => DraftingRequest::STAGE_APM,
+                'workflow_stage' => $stage,
             ]);
 
             if (! $draftingRequest->revisions()->exists()) {
@@ -214,8 +227,9 @@ class DraftingRequestSubmissionService
                 $actor,
                 DraftingRequestActivity::ACTION_FORWARDED_TO_APM,
                 sprintf(
-                    'Drafting request %s was forwarded to Archi Project Management.',
+                    'Drafting request %s was forwarded to %s.',
                     $draftingRequest->jobNumber(),
+                    $boardLabel,
                 ),
             );
         });
@@ -229,7 +243,7 @@ class DraftingRequestSubmissionService
         DraftingRequest $draftingRequest,
         ?User $actor = null,
     ): bool {
-        if ($draftingRequest->workflow_stage !== DraftingRequest::STAGE_APM) {
+        if (! $draftingRequest->isOnProjectBoard()) {
             return false;
         }
 
@@ -265,7 +279,7 @@ class DraftingRequestSubmissionService
     public function returnOrphanApmJobsToMasterlist(?User $actor = null): int
     {
         $orphans = DraftingRequest::query()
-            ->apm()
+            ->onProjectBoard()
             ->active()
             ->whereDoesntHave('revisions')
             ->get();
@@ -282,18 +296,23 @@ class DraftingRequestSubmissionService
     }
 
     /**
-     * Add a masterlist job to APM, or reopen an existing APM job with the next revision.
+     * Add a masterlist job to APM or Design, or reopen an existing board job.
      *
      * @return array{action: 'forwarded'|'reopened', revision_code: string|null}
      */
-    public function addOrReopenOnBoard(DraftingRequest $draftingRequest, User $actor): array
-    {
+    public function addOrReopenOnBoard(
+        DraftingRequest $draftingRequest,
+        User $actor,
+        string $board = 'apm',
+    ): array {
+        $board = $board === 'design' ? 'design' : 'apm';
+
         if ($draftingRequest->isArchived()) {
             abort(404);
         }
 
         if ($draftingRequest->workflow_stage === DraftingRequest::STAGE_MASTERLIST) {
-            $this->forwardToApm($draftingRequest, $actor);
+            $this->forwardToBoard($draftingRequest, $actor, $board);
 
             $code = DraftingRequestRevision::query()
                 ->where('drafting_request_id', $draftingRequest->id)
@@ -306,9 +325,20 @@ class DraftingRequestSubmissionService
             ];
         }
 
-        if ($draftingRequest->workflow_stage === DraftingRequest::STAGE_APM
+        $targetStage = $board === 'design'
+            ? DraftingRequest::STAGE_DESIGN
+            : DraftingRequest::STAGE_APM;
+
+        if ($draftingRequest->workflow_stage !== $targetStage
+            && $draftingRequest->isOnProjectBoard()) {
+            $draftingRequest->update([
+                'workflow_stage' => $targetStage,
+            ]);
+        }
+
+        if ($draftingRequest->fresh()?->workflow_stage === $targetStage
             && $draftingRequest->review_status === DraftingRequest::REVIEW_ACCEPTED) {
-            return $this->reopenOnBoard($draftingRequest, $actor);
+            return $this->reopenOnBoard($draftingRequest->fresh(), $actor);
         }
 
         abort(404);

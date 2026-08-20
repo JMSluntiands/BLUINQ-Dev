@@ -49,6 +49,21 @@ class DraftingRequest extends Model
 
     public const STAGE_APM = 'apm';
 
+    public const STAGE_DESIGN = 'design';
+
+    /**
+     * @return list<string>
+     */
+    public static function projectBoardStages(): array
+    {
+        return [self::STAGE_APM, self::STAGE_DESIGN];
+    }
+
+    public function isOnProjectBoard(): bool
+    {
+        return in_array($this->workflow_stage, self::projectBoardStages(), true);
+    }
+
     /**
      * Status (Archi) — from workflow_statuses (kind=archi), with Workflows.pdf fallback.
      *
@@ -329,6 +344,24 @@ class DraftingRequest extends Model
     public function scopeApm(Builder $query): Builder
     {
         return $query->where('workflow_stage', self::STAGE_APM);
+    }
+
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeDesign(Builder $query): Builder
+    {
+        return $query->where('workflow_stage', self::STAGE_DESIGN);
+    }
+
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeOnProjectBoard(Builder $query): Builder
+    {
+        return $query->whereIn('workflow_stage', self::projectBoardStages());
     }
 
     /**

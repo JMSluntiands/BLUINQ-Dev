@@ -42,7 +42,9 @@ class JobBoardController extends Controller
 
     public function list(Request $request): Response
     {
-        return $this->renderBoard($request);
+        return $this->renderBoard($request, [
+            'board' => 'apm',
+        ]);
     }
 
     public function designList(Request $request): Response
@@ -55,7 +57,7 @@ class JobBoardController extends Controller
             'showAddFromMasterlist' => true,
             'showPendingRequests' => false,
             'forwardPermission' => 'design.list.view',
-            'designPhaseOnly' => true,
+            'board' => 'design',
         ]);
     }
 
@@ -69,7 +71,7 @@ class JobBoardController extends Controller
      *     showAddFromMasterlist?: bool,
      *     showPendingRequests?: bool,
      *     forwardPermission?: string,
-     *     designPhaseOnly?: bool,
+     *     board?: string,
      *     groupByStatus?: bool,
      * }  $options
      */
@@ -83,12 +85,9 @@ class JobBoardController extends Controller
         $showAddFromMasterlist = $options['showAddFromMasterlist'] ?? true;
         $showPendingRequests = $options['showPendingRequests'] ?? true;
         $forwardPermission = $options['forwardPermission'] ?? 'job.list.view';
-        $designPhaseOnly = $options['designPhaseOnly'] ?? false;
+        $board = ($options['board'] ?? 'apm') === 'design' ? 'design' : 'apm';
 
-        $query = $this->board->baseQuery($request);
-        if ($designPhaseOnly) {
-            $this->board->applyDesignPhaseFilter($query);
-        }
+        $query = $this->board->baseQuery($request, $board);
         if (is_array($statusFilter) && $statusFilter !== []) {
             $query->whereIn('status', $statusFilter);
         }
@@ -117,13 +116,14 @@ class JobBoardController extends Controller
             'pageTitle' => $options['pageTitle'] ?? 'Archi Project Management',
             'pageDescription' => $options['pageDescription'] ?? null,
             'searchRoute' => $options['searchRoute'] ?? 'job.list',
+            'board' => $board,
             'canViewAllRequests' => $user?->hasPermission('job.list.view') ?? false,
             'canReviewPublicRequests' => $canReviewPublicRequests,
             'canForwardFromMasterlist' => $canForwardFromMasterlist,
             'showAddFromMasterlist' => $showAddFromMasterlist,
             'showPendingRequests' => $showPendingRequests,
             'masterlistCandidates' => $canForwardFromMasterlist
-                ? $this->masterlistCandidatesForBoard($request)
+                ? $this->masterlistCandidatesForBoard($request, $board)
                 : [],
             'pendingRequests' => $canReviewPublicRequests
                 ? $this->review->pendingQuery()
@@ -183,11 +183,11 @@ class JobBoardController extends Controller
     }
 
     /**
-     * Masterlist entries and reopenable APM jobs for the board Add control.
+     * Masterlist entries and reopenable board jobs for the Add control.
      *
      * @return list<array{id: int, value: string, label: string, lead_no: string, source: string}>
      */
-    private function masterlistCandidatesForBoard(Request $request): array
+    private function masterlistCandidatesForBoard(Request $request, string $board = 'apm'): array
     {
         $user = $request->user();
         $search = trim((string) ($request->input('q') ?? $request->input('search') ?? ''));
@@ -201,16 +201,16 @@ class JobBoardController extends Controller
         }
 
         foreach ($this->formatAddCandidates(
-            $this->reopenableApmCandidateQuery($user)->limit(200)->get(),
-            'apm',
+            $this->reopenableBoardCandidateQuery($user, $board)->limit(200)->get(),
+            $board,
         ) as $row) {
             $byId[$row['id']] = $row;
         }
 
         if ($search !== '') {
             foreach ($this->formatAddCandidates(
-                $this->searchApmCandidateQuery($user, $search)->limit(50)->get(),
-                'apm',
+                $this->searchBoardCandidateQuery($user, $search, $board)->limit(50)->get(),
+                $board,
             ) as $row) {
                 $byId[$row['id']] = $row;
             }
@@ -267,14 +267,13 @@ class JobBoardController extends Controller
     }
 
     /**
-     * Completed-bucket APM jobs that are useful to reopen by default.
+     * Completed-bucket jobs that are useful to reopen on this board.
      *
      * @return \Illuminate\Database\Eloquent\Builder<DraftingRequest>
      */
-    private function reopenableApmCandidateQuery(?User $user)
+    private function reopenableBoardCandidateQuery(?User $user, string $board)
     {
-        return DraftingRequest::query()
-            ->apm()
+        $query = DraftingRequest::query()
             ->reviewAccepted()
             ->active()
             ->whereIn('status', [
@@ -285,19 +284,24 @@ class JobBoardController extends Controller
             ->orderByDesc('updated_at')
             ->orderByDesc('requested_at')
             ->orderByDesc('id');
+
+        $this->board->applyBoardStageFilter($query, $board);
+
+        return $query;
     }
 
     /**
      * @return \Illuminate\Database\Eloquent\Builder<DraftingRequest>
      */
-    private function searchApmCandidateQuery(?User $user, string $search)
+    private function searchBoardCandidateQuery(?User $user, string $search, string $board)
     {
         $query = DraftingRequest::query()
-            ->apm()
             ->reviewAccepted()
             ->active()
             ->orderByDesc('updated_at')
             ->orderByDesc('id');
+
+        $this->board->applyBoardStageFilter($query, $board);
 
         $digits = preg_replace('/\D+/', '', $search) ?? '';
 
@@ -327,10 +331,8 @@ class JobBoardController extends Controller
 
     public function addToBoard(Request $request, DraftingRequest $draftingRequest): RedirectResponse
     {
-        abort_unless(
-            $request->user()?->hasPermission('job.list.view'),
-            403,
-        );
+        $board = $this->requestedBoard($request);
+        $this->assertCanAddToBoard($request, $board);
 
         $user = $request->user();
 
@@ -340,18 +342,9 @@ class JobBoardController extends Controller
 
         $this->assertAddableToBoard($draftingRequest);
 
-        $result = $this->submission->addOrReopenOnBoard($draftingRequest, $user);
+        $result = $this->submission->addOrReopenOnBoard($draftingRequest, $user, $board);
 
-        if ($result['action'] === 'reopened') {
-            return redirect()
-                ->route('job.drafting.show', $draftingRequest)
-                ->with('status', 'board-reopened')
-                ->with('revision_code', $result['revision_code']);
-        }
-
-        return redirect()
-            ->route('job.drafting.show', $draftingRequest)
-            ->with('status', 'masterlist-forwarded');
+        return $this->redirectAfterBoardAdd($draftingRequest, $result, $board);
     }
 
     /**
@@ -361,10 +354,8 @@ class JobBoardController extends Controller
         Request $request,
         DraftingRequest $draftingRequest,
     ): RedirectResponse {
-        abort_unless(
-            $request->user()?->hasPermission('job.list.view'),
-            403,
-        );
+        $board = $this->requestedBoard($request);
+        $this->assertCanAddToBoard($request, $board);
 
         $user = $request->user();
 
@@ -383,36 +374,36 @@ class JobBoardController extends Controller
             ->values()
             ->all();
 
+        $allowedStatuses = array_values(array_unique([
+            ...array_keys(DraftingRequest::jobBoardStatusOptions()),
+            ...DraftingRequest::statusValues(),
+        ]));
+
         $validated = $request->validate([
             'code'     => ['required', 'string', 'max:64'],
-            'link'     => ['nullable', 'string', 'max:2048', 'url'],
+            'link'     => ['nullable', 'string', 'max:2048'],
             'log_date' => ['required', 'date'],
             'category' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::in($categoryCodes)],
-            'status'   => ['required', 'string', \Illuminate\Validation\Rule::in(DraftingRequest::statusValues())],
+            'status'   => ['required', 'string', \Illuminate\Validation\Rule::in($allowedStatuses)],
         ]);
 
         // Store the revision first.
         $draftingRequest->revisions()->create([
             'user_id'  => $user->id,
             'code'     => $validated['code'],
-            'link'     => $validated['link'] ?? null,
+            'link'     => filled($validated['link'] ?? null) ? $validated['link'] : null,
             'log_date' => $validated['log_date'],
             'category' => $validated['category'],
             'status'   => $validated['status'],
         ]);
 
-        $result = $this->submission->addOrReopenOnBoard($draftingRequest->fresh(), $user);
+        $draftingRequest->forceFill([
+            'status' => $validated['status'],
+        ])->save();
 
-        if ($result['action'] === 'reopened') {
-            return redirect()
-                ->route('job.drafting.show', $draftingRequest)
-                ->with('status', 'board-reopened')
-                ->with('revision_code', $result['revision_code']);
-        }
+        $result = $this->submission->addOrReopenOnBoard($draftingRequest->fresh(), $user, $board);
 
-        return redirect()
-            ->route('job.drafting.show', $draftingRequest)
-            ->with('status', 'masterlist-forwarded');
+        return $this->redirectAfterBoardAdd($draftingRequest, $result, $board);
     }
 
     /**
@@ -454,10 +445,8 @@ class JobBoardController extends Controller
         StoreDraftingRequestFormRequest $request,
         DraftingRequest $draftingRequest,
     ): RedirectResponse {
-        abort_unless(
-            $request->user()?->hasPermission('job.list.view'),
-            403,
-        );
+        $board = $this->requestedBoard($request);
+        $this->assertCanAddToBoard($request, $board);
 
         $user = $request->user();
 
@@ -469,18 +458,9 @@ class JobBoardController extends Controller
 
         $this->submission->update($request, $draftingRequest, $user, allowApmStage: true);
 
-        $result = $this->submission->addOrReopenOnBoard($draftingRequest->fresh(), $user);
+        $result = $this->submission->addOrReopenOnBoard($draftingRequest->fresh(), $user, $board);
 
-        if ($result['action'] === 'reopened') {
-            return redirect()
-                ->route('job.drafting.show', $draftingRequest)
-                ->with('status', 'board-reopened')
-                ->with('revision_code', $result['revision_code']);
-        }
-
-        return redirect()
-            ->route('job.drafting.show', $draftingRequest)
-            ->with('status', 'masterlist-forwarded');
+        return $this->redirectAfterBoardAdd($draftingRequest, $result, $board);
     }
 
     private function assertAddableToBoard(DraftingRequest $draftingRequest): void
@@ -499,11 +479,71 @@ class JobBoardController extends Controller
             return;
         }
 
-        if ($stage === DraftingRequest::STAGE_APM) {
+        if ($draftingRequest->isOnProjectBoard()) {
             return;
         }
 
         abort(404);
+    }
+
+    private function requestedBoard(Request $request): string
+    {
+        $board = strtolower(trim((string) $request->input('board', '')));
+
+        if ($board === 'design') {
+            return 'design';
+        }
+
+        $referer = (string) $request->headers->get('referer', '');
+        if ($referer !== '' && str_contains($referer, '/design/list')) {
+            return 'design';
+        }
+
+        return 'apm';
+    }
+
+    private function assertCanAddToBoard(Request $request, string $board): void
+    {
+        $permission = $board === 'design' ? 'design.list.view' : 'job.list.view';
+
+        abort_unless($request->user()?->hasPermission($permission), 403);
+    }
+
+    /**
+     * @param  array{action: 'forwarded'|'reopened', revision_code: string|null}  $result
+     */
+    private function redirectAfterBoardAdd(
+        DraftingRequest $draftingRequest,
+        array $result,
+        string $board,
+    ): RedirectResponse {
+        if ($board === 'design') {
+            $redirect = redirect()
+                ->route('design.list')
+                ->with(
+                    'status',
+                    $result['action'] === 'reopened'
+                        ? 'board-reopened'
+                        : 'design-masterlist-forwarded',
+                );
+
+            if ($result['action'] === 'reopened' && $result['revision_code']) {
+                $redirect->with('revision_code', $result['revision_code']);
+            }
+
+            return $redirect;
+        }
+
+        if ($result['action'] === 'reopened') {
+            return redirect()
+                ->route('job.drafting.show', $draftingRequest)
+                ->with('status', 'board-reopened')
+                ->with('revision_code', $result['revision_code']);
+        }
+
+        return redirect()
+            ->route('job.drafting.show', $draftingRequest)
+            ->with('status', 'masterlist-forwarded');
     }
 
     /**

@@ -124,7 +124,7 @@ class DraftingController extends Controller
     ): Response|RedirectResponse {
         if (
             ! $draftingRequest->isArchived()
-            && $draftingRequest->workflow_stage === DraftingRequest::STAGE_APM
+            && $draftingRequest->isOnProjectBoard()
             && ! $draftingRequest->revisions()->exists()
         ) {
             $this->submission->returnToMasterlistIfNoRevisions(
@@ -1486,7 +1486,7 @@ class DraftingController extends Controller
 
             if (! in_array($draftingRequest->workflow_stage, [
                 DraftingRequest::STAGE_MASTERLIST,
-                DraftingRequest::STAGE_APM,
+                ...DraftingRequest::projectBoardStages(),
             ], true)) {
                 abort(404);
             }
@@ -1502,7 +1502,7 @@ class DraftingController extends Controller
             return;
         }
 
-        if ($draftingRequest->workflow_stage !== DraftingRequest::STAGE_APM) {
+        if (! $draftingRequest->isOnProjectBoard()) {
             abort(404);
         }
     }
@@ -1613,8 +1613,9 @@ class DraftingController extends Controller
         User $user,
         DraftingRequest $draftingRequest,
     ): bool {
-        if ($draftingRequest->workflow_stage === DraftingRequest::STAGE_APM
-            && $user->hasPermission('job.drafting.view')) {
+        if ($draftingRequest->isOnProjectBoard()
+            && ($user->hasPermission('job.drafting.view')
+                || $user->hasPermission('design.list.view'))) {
             return true;
         }
 

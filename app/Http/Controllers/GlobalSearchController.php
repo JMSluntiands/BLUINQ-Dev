@@ -147,7 +147,7 @@ class GlobalSearchController extends Controller
         $builder = DraftingRequest::query()
             ->whereIn('workflow_stage', [
                 DraftingRequest::STAGE_MASTERLIST,
-                DraftingRequest::STAGE_APM,
+                ...DraftingRequest::projectBoardStages(),
             ])
             ->reviewAccepted()
             ->active();
@@ -162,7 +162,7 @@ class GlobalSearchController extends Controller
                 'id' => $row->id,
                 'title' => $row->jobNumber(),
                 'subtitle' => $this->jobSubtitle($row),
-                'url' => $row->workflow_stage === DraftingRequest::STAGE_APM
+                'url' => $row->isOnProjectBoard()
                     ? route('job.drafting.show', $row)
                     : route('job.masterlist.show', $row),
             ])

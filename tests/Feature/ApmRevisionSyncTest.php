@@ -529,6 +529,7 @@ class ApmRevisionSyncTest extends TestCase
                 ->component('Job/Board')
                 ->where('pageTitle', 'Design Project Management')
                 ->where('searchRoute', 'design.list')
+                ->where('board', 'design')
                 ->where('showAddFromMasterlist', true)
                 ->where('statusGroupOptions', [
                     ['value' => 'new', 'label' => 'New'],
@@ -549,6 +550,67 @@ class ApmRevisionSyncTest extends TestCase
                             $submitted->id,
                         ])->sort()->values()->all()
                 ));
+
+        $this->actingAs($user)
+            ->get(route('job.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->where('board', 'apm')
+                ->has('jobs.data', 1)
+                ->where('jobs.data.0.id', $nonDesign->id));
+    }
+
+    public function test_design_board_add_stays_on_design_list(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $job = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_NEW,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_MASTERLIST,
+            'requested_at' => now(),
+            'your_name' => 'Chen Property Group',
+            'company_name' => 'Chen Property Group',
+            'email' => 'chen@example.com',
+            'site_address' => '19 Creek Lane, Ipswich',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->from(route('design.list'))
+            ->post(route('job.board.add.quick', $job), [
+                'board' => 'design',
+                'code' => $job->jobNumber().'-01',
+                'log_date' => now()->toDateString(),
+                'category' => $category->code,
+                'status' => DraftingRequest::STATUS_NEW,
+            ]);
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect(route('design.list'));
+        $response->assertSessionHas('status', 'design-masterlist-forwarded');
+
+        $job->refresh();
+        $this->assertSame(DraftingRequest::STAGE_DESIGN, $job->workflow_stage);
+
+        $this->actingAs($user)
+            ->get(route('design.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('jobs.data', 1)
+                ->where('jobs.data.0.id', $job->id));
+
+        $this->actingAs($user)
+            ->get(route('job.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->has('jobs.data', 0));
     }
 
     private function adminUser(): User

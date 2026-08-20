@@ -27,6 +27,7 @@ export default function JobBoard({
     pageTitle = 'Archi Project Management',
     pageDescription = null,
     searchRoute = 'job.list',
+    board = 'apm',
 }) {
     const page = usePage();
     const revisionCode = page.props.flash?.revision_code ?? null;
@@ -44,6 +45,8 @@ export default function JobBoard({
             'drf-already-reviewed': 'This request was already reviewed.',
             'masterlist-forwarded':
                 'Project added to Archi Project Management from the masterlist.',
+            'design-masterlist-forwarded':
+                'Project added to Design Project Management from the masterlist.',
             'drf-revision-added': 'Revision added.',
             'drf-revision-deleted': 'Revision deleted.',
             'drf-revision-deleted-returned-to-masterlist':
@@ -148,6 +151,7 @@ export default function JobBoard({
                 show={showAddModal}
                 onClose={() => setShowAddModal(false)}
                 mode="forward"
+                board={board}
                 projectOptions={projectOptions}
                 statusOptions={statusOptions}
                 categoryOptions={categoryOptions}

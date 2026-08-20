@@ -52,7 +52,7 @@ class MasterlistController extends Controller
             ->withCount(['files', 'comments'])
             ->whereIn('workflow_stage', [
                 DraftingRequest::STAGE_MASTERLIST,
-                DraftingRequest::STAGE_APM,
+                ...DraftingRequest::projectBoardStages(),
             ])
             ->reviewAccepted()
             ->active();
@@ -313,7 +313,7 @@ class MasterlistController extends Controller
 
         $allowedStages = [
             DraftingRequest::STAGE_MASTERLIST,
-            DraftingRequest::STAGE_APM,
+            ...DraftingRequest::projectBoardStages(),
         ];
 
         if (! in_array($draftingRequest->workflow_stage, $allowedStages, true)
