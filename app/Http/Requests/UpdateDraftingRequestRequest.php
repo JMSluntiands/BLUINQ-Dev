@@ -79,7 +79,12 @@ class UpdateDraftingRequestRequest extends FormRequest
                     'nullable',
                     'integer',
                     Rule::exists('client_contacts', 'id')->where(
-                        fn ($q) => $q->whereNull('archived_at'),
+                        function ($q) {
+                            $clientId = $this->input('client_id');
+                            if ($clientId) {
+                                $q->where('client_id', $clientId);
+                            }
+                        },
                     ),
                 ],
                 'manager_user_id' => [
