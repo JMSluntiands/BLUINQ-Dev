@@ -4,7 +4,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 
 export default function Index({
-    mode = 'team',
+    mode = 'personal',
+    canViewAllTimesheets = false,
     leaveCalendar = [],
     teamMembers = [],
     calendarMonth,
@@ -12,8 +13,8 @@ export default function Index({
     weeklyTimesheet = null,
     canApproveTimesheet = false,
 }) {
-    const isTeamMode = mode === 'team';
-    const isWeeklyMode = mode === 'weekly';
+    const isTeamMode = canViewAllTimesheets || mode === 'team';
+    const isWeeklyMode = !isTeamMode && mode === 'weekly';
 
     const headerTitle = isTeamMode ? 'Timesheet' : 'My timesheet';
     const headerDescription = isTeamMode

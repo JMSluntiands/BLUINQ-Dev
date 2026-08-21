@@ -199,7 +199,7 @@ export default function AuthenticatedLayout({ header, children }) {
     const canStatistic = can('job.statistic.view');
     const canAnnouncements = can('announcements.view');
     const canAnnouncementsManage = can('announcements.manage');
-    const canTimesheet = can('timesheet.view');
+    const canTimesheet = can('timesheet.view') || can('timesheet.view-all');
     const canManageLeave = can('leave.manage');
     const canViewLeaveCredits =
         can('leave.credits.view') || can('leave.credits.edit');

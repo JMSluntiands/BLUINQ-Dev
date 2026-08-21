@@ -151,13 +151,12 @@ class User extends Authenticatable
     }
 
     /**
-     * Admin, project managers, and HR (leave managers) see the team leave summary.
+     * Admin and roles with "View all team timesheets" see the team leave calendar.
      */
     public function canViewTeamTimesheet(): bool
     {
         return $this->isAdmin()
-            || $this->isProjectManager()
-            || $this->hasPermission('leave.manage');
+            || $this->hasPermission('timesheet.view-all');
     }
 
     /**
@@ -193,6 +192,8 @@ class User extends Authenticatable
 
     public function hasPermission(string $slug): bool
     {
+        $this->loadMissing('role');
+
         if ($this->role === null) {
             return false;
         }

@@ -20,6 +20,7 @@ class TimesheetController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
+        $user->loadMissing('role');
 
         if ($user->canViewTeamTimesheet()) {
             return $this->teamTimesheet($request);
@@ -54,9 +55,19 @@ class TimesheetController extends Controller
             ->values()
             ->all();
 
+        $leaveCalendar = $this->leave->calendarPayload($calendarStart, $calendarEnd);
+
+        if ($userId !== 'all') {
+            $leaveCalendar = collect($leaveCalendar)
+                ->filter(fn (array $row) => $row['id'] === $userId)
+                ->values()
+                ->all();
+        }
+
         return Inertia::render('Timesheet/Index', [
             'mode' => 'team',
-            'leaveCalendar' => $this->leave->calendarPayload($calendarStart, $calendarEnd),
+            'canViewAllTimesheets' => true,
+            'leaveCalendar' => $leaveCalendar,
             'calendarMonth' => $month->format('Y-m'),
             'teamMembers' => $teamMembers,
             'filters' => [
@@ -90,6 +101,7 @@ class TimesheetController extends Controller
 
         return Inertia::render('Timesheet/Index', [
             'mode' => $connectedToDrafting ? 'weekly' : 'personal',
+            'canViewAllTimesheets' => false,
             'leaveCalendar' => $leaveCalendar,
             'calendarMonth' => $month->format('Y-m'),
             'teamMembers' => [],

@@ -24,7 +24,7 @@ return [
         'announcements.update' => 'announcements.manage',
         'announcements.destroy' => 'announcements.manage',
         'announcements.restore' => 'announcements.manage',
-        'timesheet.index' => 'timesheet.view',
+        'timesheet.index' => ['timesheet.view', 'timesheet.view-all'],
         'leave.store' => 'leave.apply',
         'leave.certificate' => ['leave.apply', 'leave.manage'],
         'leave.approvals' => 'leave.manage',

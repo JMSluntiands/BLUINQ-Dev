@@ -30,7 +30,10 @@ class TimesheetPersonalViewTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('Timesheet/Index')
                 ->where('mode', 'team')
+                ->where('canViewAllTimesheets', true)
                 ->has('leaveCalendar', 3)
+                ->has('teamMembers', 3)
+                ->where('filters.user_id', 'all')
                 ->where('weeklyTimesheet', null));
     }
 
@@ -50,6 +53,7 @@ class TimesheetPersonalViewTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('Timesheet/Index')
                 ->where('mode', 'personal')
+                ->where('canViewAllTimesheets', false)
                 ->has('leaveCalendar', 1)
                 ->where('leaveCalendar.0.name', 'Member User')
                 ->where('weeklyTimesheet', null));
@@ -101,9 +105,59 @@ class TimesheetPersonalViewTest extends TestCase
                 ->has('weeklyTimesheet.standard_tasks'));
     }
 
-    public function test_hr_user_with_leave_manage_sees_team_timesheet_summary(): void
+    public function test_drafting_connected_user_with_view_all_sees_team_timesheet(): void
     {
-        $this->grantPermissionToUserRole('leave.manage');
+        $this->grantPermissionToUserRole('timesheet.view-all');
+
+        $owner = $this->adminUser();
+        $member = User::factory()->create([
+            'name' => 'Drafter User',
+            'employment_status' => 'regular',
+        ]);
+
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $job = DraftingRequest::query()->create([
+            'user_id' => $owner->id,
+            'status' => DraftingRequest::STATUS_NEW,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_APM,
+            'requested_at' => now(),
+            'your_name' => 'Test Client',
+            'company_name' => 'Test Co',
+            'email' => 'test@example.com',
+            'site_address' => '1 Draft St',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        DraftingRequestAssignment::query()->create([
+            'drafting_request_id' => $job->id,
+            'role' => DraftingRequestAssignment::ROLE_DRAFTING,
+            'slot' => 1,
+            'user_id' => $member->id,
+            'hours' => 0,
+        ]);
+
+        $this->actingAs($member)
+            ->get(route('timesheet.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Timesheet/Index')
+                ->where('mode', 'team')
+                ->where('canViewAllTimesheets', true)
+                ->has('leaveCalendar', 2)
+                ->has('teamMembers', 2)
+                ->where('filters.user_id', 'all')
+                ->where('weeklyTimesheet', null));
+    }
+
+    public function test_user_with_view_all_timesheets_permission_sees_team_timesheet_summary(): void
+    {
+        $this->grantPermissionToUserRole('timesheet.view-all');
 
         $hrUser = User::factory()->create([
             'employment_status' => 'regular',
@@ -117,7 +171,31 @@ class TimesheetPersonalViewTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('Timesheet/Index')
                 ->where('mode', 'team')
-                ->has('leaveCalendar', 2));
+                ->where('canViewAllTimesheets', true)
+                ->has('leaveCalendar', 2)
+                ->has('teamMembers', 2)
+                ->where('filters.user_id', 'all'));
+    }
+
+    public function test_leave_manage_alone_does_not_show_team_timesheet(): void
+    {
+        $this->grantPermissionToUserRole('leave.manage');
+
+        $hrUser = User::factory()->create([
+            'name' => 'Leave Manager',
+            'employment_status' => 'regular',
+        ]);
+
+        User::factory()->create(['name' => 'Other User']);
+
+        $this->actingAs($hrUser)
+            ->get(route('timesheet.index', ['calendar_month' => '2026-08']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Timesheet/Index')
+                ->where('mode', 'personal')
+                ->has('leaveCalendar', 1)
+                ->where('leaveCalendar.0.name', 'Leave Manager'));
     }
 
     /**

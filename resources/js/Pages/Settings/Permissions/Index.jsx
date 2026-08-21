@@ -21,6 +21,50 @@ const FLASH_MESSAGES = {
     'permissions-saved': 'Permissions saved.',
 };
 
+function nestPermissionsUnderParents(permissions) {
+    const bySlug = new Map(permissions.map((permission) => [permission.slug, permission]));
+    const childrenByParent = new Map();
+
+    for (const permission of permissions) {
+        const parentSlug = permission.parent_slug;
+        if (!parentSlug || !bySlug.has(parentSlug)) {
+            continue;
+        }
+        if (!childrenByParent.has(parentSlug)) {
+            childrenByParent.set(parentSlug, []);
+        }
+        childrenByParent.get(parentSlug).push(permission);
+    }
+
+    const visited = new Set();
+    const ordered = [];
+
+    const appendWithChildren = (permission) => {
+        if (visited.has(permission.slug)) {
+            return;
+        }
+        visited.add(permission.slug);
+        ordered.push(permission);
+        for (const child of childrenByParent.get(permission.slug) ?? []) {
+            appendWithChildren(child);
+        }
+    };
+
+    for (const permission of permissions) {
+        const parentSlug = permission.parent_slug;
+        if (parentSlug && bySlug.has(parentSlug)) {
+            continue;
+        }
+        appendWithChildren(permission);
+    }
+
+    for (const permission of permissions) {
+        appendWithChildren(permission);
+    }
+
+    return ordered;
+}
+
 function groupPermissions(permissions, permissionGroups) {
     const byGroup = new Map();
 
@@ -39,7 +83,7 @@ function groupPermissions(permissions, permissionGroups) {
     return permissionGroups
         .map((group) => ({
             ...group,
-            permissions: byGroup.get(group.key) ?? [],
+            permissions: nestPermissionsUnderParents(byGroup.get(group.key) ?? []),
         }))
         .filter((group) => group.permissions.length > 0);
 }
@@ -69,8 +113,18 @@ export default function PermissionsIndex({
         const current = new Set(form.data.roles[roleValue] ?? []);
         if (checked) {
             current.add(slug);
+            const parentSlug = permissions.find((item) => item.slug === slug)
+                ?.parent_slug;
+            if (parentSlug) {
+                current.add(parentSlug);
+            }
         } else {
             current.delete(slug);
+            for (const item of permissions) {
+                if (item.parent_slug === slug) {
+                    current.delete(item.slug);
+                }
+            }
         }
         form.setData('roles', {
             ...form.data.roles,
