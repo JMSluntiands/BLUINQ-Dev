@@ -58,7 +58,10 @@ export default function UsersIndex({ users, filters = {} }) {
     const authUser = usePage().props.auth?.user;
     const currentUserId = authUser?.id;
     const rows = users?.data ?? [];
-    const hasSearch = Boolean((filters.search ?? '').trim());
+    const [liveSearch, setLiveSearch] = useState(filters.search ?? '');
+    const hasSearch = Boolean(
+        liveSearch.trim() || (filters.search ?? '').trim(),
+    );
     const [archiveTarget, setArchiveTarget] = useState(null);
     const [lastDay, setLastDay] = useState('');
     const [lastDayError, setLastDayError] = useState('');
@@ -100,7 +103,10 @@ export default function UsersIndex({ users, filters = {} }) {
         setLastDayError('');
     }, []);
 
-    const q = filterQueryString(filters);
+    const q = filterQueryString({
+        ...filters,
+        search: liveSearch.trim() || filters.search,
+    });
 
     const columns = useMemo(
         () => [
@@ -301,9 +307,12 @@ export default function UsersIndex({ users, filters = {} }) {
             <div className="space-y-4">
                 <div className="overflow-hidden rounded-2xl border border-[#e6e9ef] bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)]">
                     <TableSearchToolbar
-                        key={`${filters.search ?? ''}-${filters.per_page}`}
+                        key={`users-search-${filters.per_page ?? 10}`}
                         ziggyRouteName="settings.users.index"
                         filters={filters}
+                        liveSearch
+                        liveSearchOnly={['users', 'filters']}
+                        onLiveSearchChange={setLiveSearch}
                     />
                     <DataTable
                         data={rows}

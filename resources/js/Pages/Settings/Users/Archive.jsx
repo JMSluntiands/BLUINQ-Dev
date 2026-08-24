@@ -70,8 +70,14 @@ const FLASH_MESSAGES = {
 
 export default function UsersArchive({ users, filters = {} }) {
     const rows = users?.data ?? [];
-    const hasSearch = Boolean((filters.search ?? '').trim());
-    const q = filterQueryString(filters);
+    const [liveSearch, setLiveSearch] = useState(filters.search ?? '');
+    const hasSearch = Boolean(
+        liveSearch.trim() || (filters.search ?? '').trim(),
+    );
+    const q = filterQueryString({
+        ...filters,
+        search: liveSearch.trim() || filters.search,
+    });
     const [restoreTarget, setRestoreTarget] = useState(null);
 
     const confirmRestore = useCallback(() => {
@@ -243,9 +249,12 @@ export default function UsersArchive({ users, filters = {} }) {
 
                 <div className="overflow-hidden rounded-2xl border border-[#e6e9ef] bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)]">
                     <TableSearchToolbar
-                        key={`${filters.search ?? ''}-${filters.per_page}`}
+                        key={`users-archive-search-${filters.per_page ?? 10}`}
                         ziggyRouteName="settings.users.archive"
                         filters={filters}
+                        liveSearch
+                        liveSearchOnly={['users', 'filters']}
+                        onLiveSearchChange={setLiveSearch}
                     />
                     <DataTable
                         data={rows}

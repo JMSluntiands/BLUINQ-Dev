@@ -65,7 +65,9 @@ export default function TableSearchToolbar({
 }) {
     const hasSort = sortOptions.length > 0;
     const defaultPerPageValue = String(defaultPerPage);
-    const [liveSearchValue, setLiveSearchValue] = useState('');
+    const [liveSearchValue, setLiveSearchValue] = useState(
+        filters.search ?? '',
+    );
     const form = useForm({
         search: filters.search ?? '',
         per_page: String(filters.per_page ?? defaultPerPage),
@@ -83,6 +85,14 @@ export default function TableSearchToolbar({
             }
         };
     }, []);
+
+    useEffect(() => {
+        if (!liveSearch) {
+            return;
+        }
+
+        setLiveSearchValue(filters.search ?? '');
+    }, [filters.search, liveSearch]);
 
     useEffect(() => {
         if (liveSearch) {
@@ -144,7 +154,10 @@ export default function TableSearchToolbar({
 
     const submit = (e) => {
         e.preventDefault();
-        go({ page: 1 });
+        const formData = new FormData(e.currentTarget);
+        const search = String(formData.get('search') ?? '').trim();
+        form.setData('search', search);
+        go({ search, page: 1 });
     };
 
     const clear = () => {
