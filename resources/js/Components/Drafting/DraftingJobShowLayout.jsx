@@ -123,6 +123,26 @@ function ExternalLink({ href, label }) {
     );
 }
 
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '0.0.0.0']);
+
+function rewriteLocalhostHref(href) {
+    const value = String(href ?? '').trim();
+    if (value === '' || typeof window === 'undefined') {
+        return value || null;
+    }
+
+    try {
+        const parsed = new URL(value, window.location.origin);
+        if (!LOCAL_HOSTS.has(parsed.hostname.toLowerCase())) {
+            return value;
+        }
+
+        return `${window.location.origin}${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+        return value;
+    }
+}
+
 function revisionSharepointHref(sharepointBase, code) {
     const base = String(sharepointBase ?? '').trim();
     const revisionCode = String(code ?? '').trim();
@@ -131,13 +151,13 @@ function revisionSharepointHref(sharepointBase, code) {
         return null;
     }
 
-    return `${base}${revisionCode}`;
+    return rewriteLocalhostHref(`${base}${revisionCode}`);
 }
 
 function revisionLinkHref(row, sharepointBase) {
     const custom = String(row?.link ?? '').trim();
     if (custom !== '') {
-        return custom;
+        return rewriteLocalhostHref(custom);
     }
 
     return revisionSharepointHref(sharepointBase, row?.code);

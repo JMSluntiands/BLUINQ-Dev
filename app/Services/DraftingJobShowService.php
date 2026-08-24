@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\DraftingRequest;
 use App\Models\DraftingRequestAccountEntry;
 use App\Models\DraftingRequestRevision;
+use App\Support\PublicUrl;
 
 class DraftingJobShowService
 {
@@ -24,7 +25,7 @@ class DraftingJobShowService
                 return [
                 'id' => $revision->id,
                 'code' => $revision->code,
-                'link' => $revision->link,
+                'link' => PublicUrl::rewriteLocalhost($revision->link),
                 'log_date' => $revision->log_date?->format('d M Y'),
                 'category' => $revision->category,
                 'drafter_initials' => $revision->resolvedDrafterInitials(),

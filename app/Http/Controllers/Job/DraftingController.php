@@ -764,7 +764,7 @@ class DraftingController extends Controller
                 trim($validated['code']),
             ),
             'link' => isset($validated['link']) && $validated['link'] !== ''
-                ? trim($validated['link'])
+                ? \App\Support\PublicUrl::rewriteLocalhost(trim($validated['link']))
                 : null,
             'log_date' => $validated['log_date'],
             'category' => trim($validated['category']),
@@ -840,7 +840,7 @@ class DraftingController extends Controller
 
         if (array_key_exists('link', $validated)) {
             $updates['link'] = $validated['link'] !== null && $validated['link'] !== ''
-                ? trim((string) $validated['link'])
+                ? \App\Support\PublicUrl::rewriteLocalhost(trim((string) $validated['link']))
                 : null;
         }
 

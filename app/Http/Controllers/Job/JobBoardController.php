@@ -469,7 +469,9 @@ class JobBoardController extends Controller
         $draftingRequest->revisions()->create([
             'user_id'  => $user->id,
             'code'     => $validated['code'],
-            'link'     => filled($validated['link'] ?? null) ? $validated['link'] : null,
+            'link'     => filled($validated['link'] ?? null)
+                ? \App\Support\PublicUrl::rewriteLocalhost($validated['link'])
+                : null,
             'log_date' => $validated['log_date'],
             'category' => $validated['category'],
             'status'   => $validated['status'],
