@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 export default function JobBoard({
     jobs,
+    paginatedStatusGroups = [],
     filters = {},
     canViewAllRequests = false,
     assignableUsers = [],
@@ -83,7 +84,9 @@ export default function JobBoard({
         [masterlistCandidates],
     );
 
-    const reloadBoard = (only = ['jobs']) => {
+    const reloadBoard = (
+        only = groupByStatus ? ['jobs', 'paginatedStatusGroups'] : ['jobs'],
+    ) => {
         const q = liveSearch.trim();
         router.get(
             route(searchRoute),
@@ -163,11 +166,17 @@ export default function JobBoard({
                     ziggyRouteName={searchRoute}
                     filters={filters}
                     liveSearch
-                    liveSearchOnly={['jobs', 'filters', 'masterlistCandidates']}
+                    liveSearchOnly={[
+                        'jobs',
+                        'paginatedStatusGroups',
+                        'filters',
+                        'masterlistCandidates',
+                    ]}
                     onLiveSearchChange={setLiveSearch}
                 />
                 <JobBoardGrid
                     jobs={rows}
+                    paginatedStatusGroups={paginatedStatusGroups}
                     groupByStatus={groupByStatus}
                     hideEmptyStatusGroups={hasSearch}
                     emptyMessage={
@@ -182,12 +191,12 @@ export default function JobBoard({
                     assignableUsers={assignableUsers}
                     statusOptions={statusOptions}
                     statusGroupOptions={statusGroupOptions}
-                    onCommentsUpdated={() => reloadBoard(['jobs'])}
-                    onPriorityUpdated={() => reloadBoard(['jobs'])}
-                    onAssignmentsUpdated={() => reloadBoard(['jobs'])}
+                    onCommentsUpdated={() => reloadBoard()}
+                    onPriorityUpdated={() => reloadBoard()}
+                    onAssignmentsUpdated={() => reloadBoard()}
                     jobListSections={jobListSections}
                 />
-                <Pagination pagination={jobs} />
+                {!groupByStatus && <Pagination pagination={jobs} />}
             </div>
 
             {showPendingRequests && canReviewPublicRequests && (

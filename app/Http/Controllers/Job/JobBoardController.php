@@ -22,6 +22,7 @@ use App\Services\DraftingRequestReviewService;
 use App\Services\DraftingRequestSubmissionService;
 use App\Support\ClientFormOptions;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -86,6 +87,9 @@ class JobBoardController extends Controller
         $showPendingRequests = $options['showPendingRequests'] ?? true;
         $forwardPermission = $options['forwardPermission'] ?? 'job.list.view';
         $board = ($options['board'] ?? 'apm') === 'design' ? 'design' : 'apm';
+        $statusGroupOptions = $this->formatStatusOptionList(
+            $options['statusGroupOptions'] ?? DraftingRequest::jobListStatusOptions(),
+        );
 
         $query = $this->board->baseQuery($request, $board);
         if (is_array($statusFilter) && $statusFilter !== []) {
@@ -99,19 +103,28 @@ class JobBoardController extends Controller
         $canForwardFromMasterlist = $showAddFromMasterlist
             && ($user?->hasPermission($forwardPermission) ?? false);
         $canAddRevision = $user?->hasPermission('job.drafting.revision.add') ?? false;
+        $formatRow = function (DraftingRequest $row) use ($request, $canAddRevision) {
+            $formatted = $this->board->formatBoardRow($row);
+            $formatted['can_assign'] = $this->board->canAssignStaff($request, $row);
+            $formatted['can_add_revision'] = $canAddRevision
+                && $this->board->canAssignStaff($request, $row);
+
+            return $formatted;
+        };
 
         return Inertia::render('Job/Board', [
-            'jobs' => $query
+            'jobs' => (clone $query)
                 ->paginate($filters['per_page'])
-                ->through(function (DraftingRequest $row) use ($request, $canAddRevision) {
-                    $formatted = $this->board->formatBoardRow($row);
-                    $formatted['can_assign'] = $this->board->canAssignStaff($request, $row);
-                    $formatted['can_add_revision'] = $canAddRevision
-                        && $this->board->canAssignStaff($request, $row);
-
-                    return $formatted;
-                })
+                ->through($formatRow)
                 ->withQueryString(),
+            'paginatedStatusGroups' => $groupByStatus
+                ? $this->paginateStatusGroups(
+                    $query,
+                    $filters['per_page'],
+                    $statusGroupOptions,
+                    $formatRow,
+                )
+                : [],
             'filters' => $filters,
             'pageTitle' => $options['pageTitle'] ?? 'Archi Project Management',
             'pageDescription' => $options['pageDescription'] ?? null,
@@ -137,9 +150,7 @@ class JobBoardController extends Controller
             'statusOptions' => $this->formatStatusOptionList(
                 DraftingRequest::jobBoardStatusOptions(),
             ),
-            'statusGroupOptions' => $this->formatStatusOptionList(
-                $options['statusGroupOptions'] ?? DraftingRequest::jobListStatusOptions(),
-            ),
+            'statusGroupOptions' => $statusGroupOptions,
             'categoryOptions' => CrmCategory::query()
                 ->active()
                 ->where('status', 'active')
@@ -155,6 +166,73 @@ class JobBoardController extends Controller
             'groupByStatus' => $groupByStatus,
             'jobListSections' => [],
         ]);
+    }
+
+    /**
+     * @param  Builder<DraftingRequest>  $query
+     * @param  array<int, array{value: string, label: string}>  $statusGroupOptions
+     * @param  callable(DraftingRequest): array<string, mixed>  $formatRow
+     * @return array<int, array{status: string, label: string, pagination: \Illuminate\Pagination\LengthAwarePaginator}>
+     */
+    private function paginateStatusGroups(
+        Builder $query,
+        int $perPage,
+        array $statusGroupOptions,
+        callable $formatRow,
+    ): array {
+        return collect($statusGroupOptions)
+            ->map(function (array $option) use ($query, $perPage, $formatRow): array {
+                $pageName = 'page_'.$option['value'];
+
+                return [
+                    'status' => $option['value'],
+                    'label' => $option['label'],
+                    'pagination' => (clone $query)
+                        ->whereIn('status', $this->statusGroupMembers($option['value']))
+                        ->paginate($perPage, ['*'], $pageName)
+                        ->through($formatRow)
+                        ->withQueryString(),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function statusGroupMembers(string $status): array
+    {
+        return match ($status) {
+            DraftingRequest::STATUS_NEW => [
+                DraftingRequest::STATUS_NEW,
+                DraftingRequest::STATUS_FOR_QUOTE,
+                'for_quotes',
+            ],
+            DraftingRequest::STATUS_DRAFTING_WIP => [
+                DraftingRequest::STATUS_ASSIGNED,
+                DraftingRequest::STATUS_DESIGN_WIP,
+                DraftingRequest::STATUS_DRAFTING_WIP,
+                DraftingRequest::STATUS_WIP,
+                DraftingRequest::STATUS_QUERY,
+                DraftingRequest::STATUS_ON_HOLD,
+            ],
+            DraftingRequest::STATUS_FOR_CHECKING => [
+                DraftingRequest::STATUS_FOR_CHECKING,
+            ],
+            DraftingRequest::STATUS_SUBMITTED => [
+                DraftingRequest::STATUS_SUBMITTED,
+                DraftingRequest::STATUS_QUOTE_SENT,
+                DraftingRequest::STATUS_INVOICED,
+                DraftingRequest::STATUS_PAID,
+                'completed_projects',
+            ],
+            DraftingRequest::STATUS_CANCELLED => [
+                DraftingRequest::STATUS_CANCELLED,
+                'cancelled_jobs',
+            ],
+            default => [$status],
+        };
     }
 
     /**

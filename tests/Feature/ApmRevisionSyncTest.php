@@ -306,6 +306,50 @@ class ApmRevisionSyncTest extends TestCase
                 ->where('jobs.data.0.status', DraftingRequest::STATUS_ASSIGNED));
     }
 
+    public function test_job_list_paginates_each_status_group_independently(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        foreach (range(1, 11) as $index) {
+            $job = $this->createApmJob($user, $storeyLevel, $category);
+            $job->update([
+                'site_address' => 'New Job '.$index,
+                'requested_at' => now()->subMinutes($index),
+            ]);
+            $this->addBoardRevision($job, $user, $category, DraftingRequest::STATUS_NEW);
+        }
+
+        $forChecking = $this->createApmJob($user, $storeyLevel, $category);
+        $forChecking->update([
+            'status' => DraftingRequest::STATUS_FOR_CHECKING,
+            'site_address' => 'Checking Job',
+        ]);
+        $this->addBoardRevision(
+            $forChecking,
+            $user,
+            $category,
+            DraftingRequest::STATUS_FOR_CHECKING,
+        );
+
+        $this->actingAs($user)
+            ->get(route('job.list', ['page_new' => 2]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->has('paginatedStatusGroups', 5)
+                ->where('paginatedStatusGroups.0.status', DraftingRequest::STATUS_NEW)
+                ->where('paginatedStatusGroups.0.pagination.current_page', 2)
+                ->where('paginatedStatusGroups.0.pagination.total', 11)
+                ->has('paginatedStatusGroups.0.pagination.data', 1)
+                ->where('paginatedStatusGroups.1.status', DraftingRequest::STATUS_DRAFTING_WIP)
+                ->where('paginatedStatusGroups.1.pagination.current_page', 1)
+                ->where('paginatedStatusGroups.2.status', DraftingRequest::STATUS_FOR_CHECKING)
+                ->where('paginatedStatusGroups.2.pagination.current_page', 1)
+                ->where('paginatedStatusGroups.2.pagination.total', 1)
+                ->has('paginatedStatusGroups.2.pagination.data', 1));
+    }
+
     public function test_member_sees_all_apm_jobs_on_board_and_can_open_them(): void
     {
         $owner = $this->adminUser();

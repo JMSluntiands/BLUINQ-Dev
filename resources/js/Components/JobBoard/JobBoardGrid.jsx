@@ -11,6 +11,7 @@ import JobBoardCommentsModal, {
 import JobBoardAssignmentModal from '@/Components/JobBoard/JobBoardAssignmentModal';
 import InputLabel from '@/Components/InputLabel';
 import Modal from '@/Components/Modal';
+import Pagination from '@/Components/Pagination';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
@@ -1169,6 +1170,8 @@ function JobBoardStatusSection({
     status,
     label,
     jobs,
+    totalJobs = null,
+    pagination = null,
     collapsed,
     onToggle,
     showFilesInTotal,
@@ -1210,7 +1213,8 @@ function JobBoardStatusSection({
                     <StatusPill status={status} label={label} />
                 )}
                 <span className="text-xs font-medium text-[#676879] dark:text-slate-400">
-                    {jobs.length} {jobs.length === 1 ? 'job' : 'jobs'}
+                    {(totalJobs ?? jobs.length)}{' '}
+                    {(totalJobs ?? jobs.length) === 1 ? 'job' : 'jobs'}
                 </span>
                 <span className="sr-only">
                     {collapsed ? 'Show' : 'Hide'} {label} jobs
@@ -1259,13 +1263,17 @@ function JobBoardStatusSection({
                         </table>
                     </div>
                 ) : (
-                    <div
-                        id={sectionId}
-                        className="border-t border-[#e6e9ef] px-4 py-6 text-center text-sm text-[#676879] dark:border-[#2a2d42] dark:text-slate-400"
-                    >
-                        No jobs in this section.
-                    </div>
+                    <>
+                        <div
+                            id={sectionId}
+                            className="border-t border-[#e6e9ef] px-4 py-6 text-center text-sm text-[#676879] dark:border-[#2a2d42] dark:text-slate-400"
+                        >
+                            No jobs in this section.
+                        </div>
+                        <Pagination pagination={pagination} />
+                    </>
                 ))}
+            {!collapsed && jobs.length > 0 && <Pagination pagination={pagination} />}
         </section>
     );
 }
@@ -1285,6 +1293,7 @@ function JobBoardStatusSection({
  */
 export default function JobBoardGrid({
     jobs = [],
+    paginatedStatusGroups = [],
     emptyMessage = 'No jobs to display.',
     getJobHref,
     showFilesInTotal = false,
@@ -1310,10 +1319,28 @@ export default function JobBoardGrid({
 
     const useListSections =
         groupByStatus && Object.keys(jobListSections).length > 0;
+    const hasServerPaginatedGroups = paginatedStatusGroups.length > 0;
 
     const statusGroups = useMemo(() => {
         if (!groupByStatus) {
             return [];
+        }
+
+        if (hasServerPaginatedGroups) {
+            const groups = paginatedStatusGroups.map((group) => ({
+                status: group.status,
+                label: group.label,
+                jobs: group.pagination?.data ?? [],
+                totalJobs: group.pagination?.total ?? 0,
+                pagination: group.pagination ?? null,
+                listSection: false,
+            }));
+
+            if (!hideEmptyStatusGroups) {
+                return groups;
+            }
+
+            return groups.filter((group) => group.totalJobs > 0);
         }
 
         const groupingOptions =
@@ -1332,7 +1359,9 @@ export default function JobBoardGrid({
         return groups.filter((group) => group.jobs.length > 0);
     }, [
         groupByStatus,
+        hasServerPaginatedGroups,
         hideEmptyStatusGroups,
+        paginatedStatusGroups,
         useListSections,
         jobs,
         jobListSections,
@@ -1379,6 +1408,8 @@ export default function JobBoardGrid({
                             status={group.status}
                             label={group.label}
                             jobs={group.jobs}
+                            totalJobs={group.totalJobs}
+                            pagination={group.pagination}
                             listSection={group.listSection}
                             collapsed={collapsedStatuses.has(group.status)}
                             onToggle={() =>
