@@ -74,7 +74,7 @@ class UpdateDraftingRequestRevisionRequest extends FormRequest
         $categoryCodes = array_values(array_unique($categoryCodes));
 
         return [
-            'code' => ['required', 'string', 'max:64', 'regex:/^\d{5}-\d{2}$/'],
+            'code' => ['required', 'string', 'max:64', 'regex:/^.+-\d{2}$/'],
             'link' => ['nullable', 'string', 'max:2048', 'url'],
             'log_date' => ['required', 'date'],
             'category' => ['required', 'string', 'max:255', Rule::in($categoryCodes)],
@@ -107,7 +107,7 @@ class UpdateDraftingRequestRevisionRequest extends FormRequest
     {
         return [
             'code.required' => 'Enter a revision number.',
-            'code.regex' => 'Use format YY001-01 (e.g. 26001-01).',
+            'code.regex' => 'Use the last number plus -01, -02, etc. (e.g. 1111111-02).',
             'log_date.required' => 'Select a date in.',
             'category.required' => 'Select a category.',
             'category.in' => 'Select a valid category.',

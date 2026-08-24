@@ -6,9 +6,13 @@ import TextInput from '@/Components/TextInput';
 import AppLogo from '@/Components/AppLogo';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PublicFormLayout from '@/Layouts/PublicFormLayout';
-import { ArrowUpTrayIcon } from '@heroicons/react/24/outline';
+import {
+    ArrowUpTrayIcon,
+    DocumentTextIcon,
+    XMarkIcon,
+} from '@heroicons/react/24/outline';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 function ReqMark() {
     return <span className="text-red-600"> *</span>;
@@ -47,7 +51,43 @@ const inputClass =
 const uploadZoneClass =
     'flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center transition hover:border-indigo-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:hover:border-indigo-500 dark:hover:bg-slate-700';
 
+const uploadZoneActiveClass =
+    'border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-500/10';
+
 const mutedTextClass = 'text-sm text-slate-600 dark:text-slate-300';
+
+function formatFileSize(bytes) {
+    const size = Number(bytes) || 0;
+    if (size < 1024) {
+        return `${size} B`;
+    }
+    if (size < 1024 * 1024) {
+        return `${(size / 1024).toFixed(1)} KB`;
+    }
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** Append newly picked files; keep existing ones (do not replace). */
+function appendDocuments(existing, incoming) {
+    const next = [...(existing ?? [])];
+    const seen = new Set(
+        next.map(
+            (file) =>
+                `${String(file.name).toLowerCase()}::${file.size}::${file.lastModified}`,
+        ),
+    );
+
+    for (const file of incoming) {
+        const key = `${String(file.name).toLowerCase()}::${file.size}::${file.lastModified}`;
+        if (seen.has(key)) {
+            continue;
+        }
+        seen.add(key);
+        next.push(file);
+    }
+
+    return next;
+}
 
 const selectClass = inputClass;
 
@@ -183,6 +223,37 @@ export default function DraftingRequestForm({
             applicant.external_wall_construction_id ?? '',
         documents: [],
     });
+
+    const documentsInputRef = useRef(null);
+    const [documentsDragActive, setDocumentsDragActive] = useState(false);
+
+    const applyDocuments = useCallback(
+        (fileList) => {
+            const files = Array.from(fileList ?? []);
+            // Re-upload adds to the list — existing files stay.
+            setData(
+                'documents',
+                appendDocuments(data.documents ?? [], files),
+            );
+            if (documentsInputRef.current) {
+                documentsInputRef.current.value = '';
+            }
+        },
+        [data.documents, setData],
+    );
+
+    const removeDocument = useCallback(
+        (index) => {
+            setData(
+                'documents',
+                (data.documents ?? []).filter((_, i) => i !== index),
+            );
+            if (documentsInputRef.current) {
+                documentsInputRef.current.value = '';
+            }
+        },
+        [data.documents, setData],
+    );
 
     transform((form) => {
         const next = { ...form };
@@ -1012,39 +1083,109 @@ export default function DraftingRequestForm({
                                     errors.documents ?? errors['documents.0']
                                 }
                             >
-                                <label className={uploadZoneClass}>
-                                    <ArrowUpTrayIcon
-                                        className="mb-2 h-10 w-10 text-slate-400"
-                                        aria-hidden
-                                    />
-                                    <span
-                                        className={`${mutedTextClass} text-sm`}
-                                    >
-                                        <span className="font-semibold text-indigo-600 dark:text-indigo-400">
-                                            Choose files to upload
-                                        </span>{' '}
-                                        or drag and drop here (multiple files
-                                        allowed).
-                                    </span>
-                                    <input
-                                        id="documents"
-                                        type="file"
-                                        multiple
-                                        className="sr-only"
-                                        onChange={(e) =>
-                                            setData(
-                                                'documents',
-                                                e.target.files?.length
-                                                    ? Array.from(e.target.files)
-                                                    : [],
+                                <div
+                                    className={`${uploadZoneClass} ${
+                                        documentsDragActive
+                                            ? uploadZoneActiveClass
+                                            : ''
+                                    }`}
+                                    onDragEnter={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setDocumentsDragActive(true);
+                                    }}
+                                    onDragOver={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setDocumentsDragActive(true);
+                                    }}
+                                    onDragLeave={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        if (
+                                            e.currentTarget.contains(
+                                                e.relatedTarget,
                                             )
+                                        ) {
+                                            return;
                                         }
-                                    />
-                                </label>
+                                        setDocumentsDragActive(false);
+                                    }}
+                                    onDrop={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setDocumentsDragActive(false);
+                                        applyDocuments(e.dataTransfer.files);
+                                    }}
+                                >
+                                    <label
+                                        htmlFor="documents"
+                                        className="flex w-full cursor-pointer flex-col items-center justify-center"
+                                    >
+                                        <ArrowUpTrayIcon
+                                            className="mb-2 h-10 w-10 text-slate-400"
+                                            aria-hidden
+                                        />
+                                        <span
+                                            className={`${mutedTextClass} text-sm`}
+                                        >
+                                            <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+                                                Choose files to upload
+                                            </span>{' '}
+                                            or drag and drop here. New files are
+                                            added to the list.
+                                        </span>
+                                        <input
+                                            ref={documentsInputRef}
+                                            id="documents"
+                                            type="file"
+                                            multiple
+                                            className="sr-only"
+                                            onChange={(e) =>
+                                                applyDocuments(e.target.files)
+                                            }
+                                        />
+                                    </label>
+                                </div>
                                 {data.documents?.length > 0 ? (
-                                    <ul className={`mt-2 ${mutedTextClass}`}>
-                                        {data.documents.map((f, i) => (
-                                            <li key={i}>{f.name}</li>
+                                    <ul className="mt-3 space-y-2">
+                                        {data.documents.map((file, index) => (
+                                            <li
+                                                key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
+                                                className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm dark:border-slate-600 dark:bg-slate-800/80"
+                                            >
+                                                <div className="flex min-w-0 items-center gap-3">
+                                                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">
+                                                        <DocumentTextIcon
+                                                            className="h-5 w-5"
+                                                            aria-hidden
+                                                        />
+                                                    </span>
+                                                    <div className="min-w-0">
+                                                        <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+                                                            {file.name}
+                                                        </p>
+                                                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                            {formatFileSize(
+                                                                file.size,
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        removeDocument(index)
+                                                    }
+                                                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-700 dark:hover:text-red-400"
+                                                    aria-label={`Remove ${file.name}`}
+                                                >
+                                                    <XMarkIcon
+                                                        className="h-4 w-4"
+                                                        aria-hidden
+                                                    />
+                                                </button>
+                                            </li>
                                         ))}
                                     </ul>
                                 ) : null}

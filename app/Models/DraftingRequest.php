@@ -445,21 +445,35 @@ class DraftingRequest extends Model
     }
 
     /**
-     * Next revision code for this job (e.g. 26008-02).
-     * Bare legacy codes equal to the job number count as -01.
+     * Next revision code: take the last revision/lead number and append -02, -03, etc.
+     * Bare legacy codes (no suffix) count as -01.
      */
     public function suggestNextRevisionCode(): string
     {
-        $base = $this->jobNumber();
-        $maxSuffix = 0;
-
         $codes = $this->relationLoaded('revisions')
-            ? $this->revisions->pluck('code')
-            : $this->revisions()->pluck('code');
+            ? $this->revisions->sortBy('id')->pluck('code')
+            : $this->revisions()->orderBy('id')->pluck('code');
+
+        $base = $this->jobNumber();
 
         foreach ($codes as $code) {
             $code = trim((string) $code);
-            if (preg_match('/^'.preg_quote($base, '/').'-(\d{2})$/', $code, $match)) {
+            if ($code === '' || $code === '—') {
+                continue;
+            }
+
+            $stripped = preg_replace('/-\d{2}$/', '', $code);
+            if (is_string($stripped) && $stripped !== '') {
+                $base = $stripped;
+            }
+        }
+
+        $maxSuffix = 0;
+        $escaped = preg_quote($base, '/');
+
+        foreach ($codes as $code) {
+            $code = trim((string) $code);
+            if (preg_match('/^'.$escaped.'-(\d{2})$/', $code, $match)) {
                 $maxSuffix = max($maxSuffix, (int) $match[1]);
                 continue;
             }

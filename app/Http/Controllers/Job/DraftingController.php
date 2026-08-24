@@ -1385,7 +1385,7 @@ class DraftingController extends Controller
         $code = trim($code);
         $base = $draftingRequest->jobNumber();
 
-        if ($code === $base || preg_match('/^\d{5}$/', $code) === 1) {
+        if ($code === $base || preg_match('/-\d{2}$/', $code) !== 1) {
             return $draftingRequest->suggestNextRevisionCode();
         }
 

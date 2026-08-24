@@ -23,22 +23,26 @@ function listQueryString(listFilters = {}) {
     return s ? `?${s}` : '';
 }
 
-export function leadNumberBase(jobNumber, revisions = []) {
-    const raw = String(jobNumber ?? '').trim();
-    const stripped = raw.replace(/-\d{2}$/, '');
-    if (stripped !== '') {
-        return stripped;
-    }
+function stripRevisionSuffix(value) {
+    return String(value ?? '')
+        .trim()
+        .replace(/-\d{2}$/, '');
+}
 
-    for (const revision of revisions) {
-        const code = String(revision?.code ?? '').trim();
-        const match = code.match(/^(\d{5})(?:-\d{2})?$/);
-        if (match) {
-            return match[1];
+export function leadNumberBase(jobNumber, revisions = []) {
+    for (let index = revisions.length - 1; index >= 0; index -= 1) {
+        const code = String(revisions[index]?.code ?? '').trim();
+        if (code === '' || code === '—') {
+            continue;
+        }
+
+        const base = stripRevisionSuffix(code);
+        if (base !== '') {
+            return base;
         }
     }
 
-    return '';
+    return stripRevisionSuffix(jobNumber);
 }
 
 export function suggestNextRevisionCode(jobNumber, revisions = []) {
@@ -346,7 +350,7 @@ export default function DraftingRevisionAddModal({
                                         form.setData('code', e.target.value)
                                     }
                                     className="mt-1 block w-full"
-                                    placeholder="e.g. 26003-01"
+                                    placeholder="last number-02"
                                     readOnly={!isEditing && !isForwardMode}
                                     required
                                 />
