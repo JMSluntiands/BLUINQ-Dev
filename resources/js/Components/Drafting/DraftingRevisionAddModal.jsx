@@ -291,15 +291,13 @@ export default function DraftingRevisionAddModal({
                           ? 'Add item'
                           : 'Add revision'}
                 </h2>
-                <p className="mt-1 text-sm text-[#676879] dark:text-slate-400">
-                    {isEditing
-                        ? 'Update revision number, link, category, date in, and status. Drafter, hours, and date out are set on the board.'
-                        : isForwardMode
-                          ? isDesignBoard
-                            ? 'Select a masterlist project or any board draft, then add it to Design Project Management.'
-                            : 'Select a masterlist project or any board draft, then review and add it to Archi Project Management.'
-                          : 'Add a revision. Assign drafter, checker, and hours on the Project Management board.'}
-                </p>
+                {!isForwardMode ? (
+                    <p className="mt-1 text-sm text-[#676879] dark:text-slate-400">
+                        {isEditing
+                            ? 'Update revision number, link, category, date in, and status. Drafter, hours, and date out are set on the board.'
+                            : 'Add a revision. Assign drafter, checker, and hours on the Project Management board.'}
+                    </p>
+                ) : null}
                 {form.errors.board || form.errors.workflow_stage ? (
                     <InputError
                         message={

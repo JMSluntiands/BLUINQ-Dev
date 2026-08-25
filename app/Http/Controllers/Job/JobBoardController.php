@@ -348,16 +348,15 @@ class JobBoardController extends Controller
                 $leadNo = $row->jobNumber();
                 $client = $row->company_name ?: ($row->your_name ?: '—');
                 $job = $row->site_address ?: '—';
-                $label = "{$leadNo} — {$client} — {$job}";
                 $status = $row->status ?? DraftingRequest::STATUS_NEW;
 
                 if ($source === 'apm' || $source === 'design') {
                     $statusLabel = $statusLabels[$status]
                         ?? ucfirst(str_replace('_', ' ', $status));
                     $boardLabel = $source === 'design' ? 'Design' : 'APM';
-                    $label .= " ({$boardLabel} · {$statusLabel})";
+                    $label = "[{$boardLabel}] {$leadNo} — {$client} — {$job} · {$statusLabel}";
                 } else {
-                    $label .= ' (Masterlist)';
+                    $label = "[Masterlist] {$leadNo} — {$client} — {$job}";
                 }
 
                 $revisions = $row->revisions
