@@ -657,13 +657,9 @@ export default function DraftingJobShowLayout({
     onAddQuote,
     onAddInvoice,
     canViewRevision = true,
-    canAddRevision = false,
-    canAddFromMasterlist = false,
     canDeleteRevision = false,
     onEditRevision,
     onDeleteRevision,
-    onAddRevision,
-    onAddFromMasterlist,
     updateUrl = '',
     onEditJobDetails,
     commentsPanel,
@@ -1149,9 +1145,6 @@ export default function DraftingJobShowLayout({
         <JobPanel
             title="Revisions"
             subtitle="Synced from Archi Project Management"
-            canAdd={canAddRevision}
-            onAdd={onAddRevision}
-            addLabel="Add revision"
         >
             <div className="p-4">
                 <DataTable

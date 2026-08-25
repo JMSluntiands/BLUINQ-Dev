@@ -54,21 +54,7 @@ export default function DraftingShow({
     categoryOptions = [],
     formOptions = {},
     drafterUsers = [],
-    projectOptions: rawProjectOptions = [],
 }) {
-    const projectOptions = useMemo(
-        () =>
-            (rawProjectOptions ?? []).map((candidate) => ({
-                id: candidate.id,
-                label: candidate.label,
-                job_no: candidate.lead_no ?? candidate.job_no ?? '',
-                revisions: candidate.revisions ?? [],
-                suggested_code: candidate.suggested_code ?? '',
-                status: candidate.status ?? 'new',
-                source: candidate.source ?? 'masterlist',
-            })),
-        [rawProjectOptions],
-    );
     const revisionCode = usePage().props.flash?.revision_code ?? null;
     const flashMessages = {
         'drf-archived': 'Drafting request moved to archive.',
@@ -97,7 +83,6 @@ export default function DraftingShow({
         archive = false,
         viewRevision = false,
         addRevision = false,
-        addFromMasterlist = false,
         deleteRevision = false,
         viewAccounts = false,
         addAccount = false,
@@ -125,8 +110,6 @@ export default function DraftingShow({
     const [restoreOpen, setRestoreOpen] = useState(false);
     const [editSection, setEditSection] = useState(null);
     const [filesEditPanel, setFilesEditPanel] = useState(null);
-    const [revisionModalOpen, setRevisionModalOpen] = useState(false);
-    const [forwardModalOpen, setForwardModalOpen] = useState(false);
     const [editingRevision, setEditingRevision] = useState(null);
     const [deleteRevisionTarget, setDeleteRevisionTarget] = useState(null);
     const [quoteModalOpen, setQuoteModalOpen] = useState(false);
@@ -256,9 +239,8 @@ export default function DraftingShow({
                 />
 
                 <DraftingRevisionAddModal
-                    show={revisionModalOpen || editingRevision != null}
+                    show={editingRevision != null}
                     onClose={() => {
-                        setRevisionModalOpen(false);
                         setEditingRevision(null);
                     }}
                     draftingRequestId={draftingRequest.id}
@@ -270,15 +252,6 @@ export default function DraftingShow({
                     statusOptions={statusOptions}
                     categoryOptions={categoryOptions}
                     defaultJobStatus={draftingRequest.status ?? 'new'}
-                />
-
-                <DraftingRevisionAddModal
-                    show={forwardModalOpen}
-                    onClose={() => setForwardModalOpen(false)}
-                    mode="forward"
-                    projectOptions={projectOptions}
-                    statusOptions={statusOptions}
-                    categoryOptions={categoryOptions}
                 />
 
                 <DraftingAccountAddModal
@@ -332,11 +305,7 @@ export default function DraftingShow({
                     onEditQuote={(row) => setEditingQuote(row)}
                     onEditInvoice={(row) => setEditingInvoice(row)}
                     canViewRevision={viewRevision}
-                    canAddRevision={addRevision}
-                    canAddFromMasterlist={addFromMasterlist}
                     canDeleteRevision={deleteRevision}
-                    onAddRevision={() => setRevisionModalOpen(true)}
-                    onAddFromMasterlist={() => setForwardModalOpen(true)}
                     onEditRevision={
                         addRevision ? (row) => setEditingRevision(row) : undefined
                     }
