@@ -287,8 +287,8 @@ export default function DraftingRevisionAddModal({
                         ? 'Update revision number, link, category, date in, and status. Drafter, hours, and date out are set on the board.'
                         : isForwardMode
                           ? isDesignBoard
-                            ? 'Select a masterlist project, then add it to Design Project Management.'
-                            : 'Select a masterlist project (or reopenable board job), then review and add it to Archi Project Management.'
+                            ? 'Select a masterlist project or any board draft, then add it to Design Project Management.'
+                            : 'Select a masterlist project or any board draft, then review and add it to Archi Project Management.'
                           : 'Add a revision. Assign drafter, checker, and hours on the Project Management board.'}
                 </p>
                 {form.errors.board || form.errors.workflow_stage ? (

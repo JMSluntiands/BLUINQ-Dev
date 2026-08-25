@@ -390,7 +390,9 @@ class DraftingController extends Controller
                 if ($source === 'apm') {
                     $status      = $row->status ?? DraftingRequest::STATUS_NEW;
                     $statusLabel = $statusLabels[$status] ?? ucfirst(str_replace('_', ' ', $status));
-                    $label      .= " ({$statusLabel})";
+                    $label      .= " (APM · {$statusLabel})";
+                } else {
+                    $label .= ' (Masterlist)';
                 }
 
                 return [
@@ -407,7 +409,7 @@ class DraftingController extends Controller
 
         foreach ($format(
             DraftingRequest::query()->masterlist()->reviewAccepted()->active()
-                ->orderByDesc('requested_at')->orderByDesc('id')->limit(200)->get(),
+                ->orderByDesc('requested_at')->orderByDesc('id')->get(),
             'masterlist',
         ) as $row) {
             $byId[$row['id']] = $row;
@@ -415,12 +417,7 @@ class DraftingController extends Controller
 
         foreach ($format(
             DraftingRequest::query()->apm()->reviewAccepted()->active()
-                ->whereIn('status', [
-                    DraftingRequest::STATUS_SUBMITTED,
-                    DraftingRequest::STATUS_PAID,
-                    DraftingRequest::STATUS_INVOICED,
-                ])
-                ->orderByDesc('updated_at')->orderByDesc('id')->limit(200)->get(),
+                ->orderByDesc('updated_at')->orderByDesc('id')->get(),
             'apm',
         ) as $row) {
             $byId[$row['id']] = $row;

@@ -261,7 +261,7 @@ class JobBoardController extends Controller
     }
 
     /**
-     * Masterlist entries and reopenable board jobs for the Add control.
+     * Masterlist entries and all active board drafts for the Add control.
      *
      * @return list<array{id: int, value: string, label: string, lead_no: string, source: string}>
      */
@@ -272,14 +272,14 @@ class JobBoardController extends Controller
         $byId = [];
 
         foreach ($this->formatAddCandidates(
-            $this->masterlistCandidateQuery($user)->limit(200)->get(),
+            $this->masterlistCandidateQuery($user)->get(),
             'masterlist',
         ) as $row) {
             $byId[$row['id']] = $row;
         }
 
         foreach ($this->formatAddCandidates(
-            $this->reopenableBoardCandidateQuery($user, $board)->limit(200)->get(),
+            $this->boardCandidateQuery($user, $board)->get(),
             $board,
         ) as $row) {
             $byId[$row['id']] = $row;
@@ -287,7 +287,7 @@ class JobBoardController extends Controller
 
         if ($search !== '') {
             foreach ($this->formatAddCandidates(
-                $this->searchBoardCandidateQuery($user, $search, $board)->limit(50)->get(),
+                $this->searchBoardCandidateQuery($user, $search, $board)->get(),
                 $board,
             ) as $row) {
                 $byId[$row['id']] = $row;
@@ -312,11 +312,14 @@ class JobBoardController extends Controller
                 $job = $row->site_address ?: '—';
                 $label = "{$leadNo} — {$client} — {$job}";
 
-                if ($source === 'apm') {
+                if ($source === 'apm' || $source === 'design') {
                     $status = $row->status ?? DraftingRequest::STATUS_NEW;
                     $statusLabel = $statusLabels[$status]
                         ?? ucfirst(str_replace('_', ' ', $status));
-                    $label .= " ({$statusLabel})";
+                    $boardLabel = $source === 'design' ? 'Design' : 'APM';
+                    $label .= " ({$boardLabel} · {$statusLabel})";
+                } else {
+                    $label .= ' (Masterlist)';
                 }
 
                 return [
@@ -345,25 +348,28 @@ class JobBoardController extends Controller
     }
 
     /**
-     * Completed-bucket jobs that are useful to reopen on this board.
+     * All active board drafts on this board (any status), including every APM-stage job.
      *
      * @return \Illuminate\Database\Eloquent\Builder<DraftingRequest>
      */
-    private function reopenableBoardCandidateQuery(?User $user, string $board)
+    private function boardCandidateQuery(?User $user, string $board)
     {
         $query = DraftingRequest::query()
             ->reviewAccepted()
             ->active()
-            ->whereIn('status', [
-                DraftingRequest::STATUS_SUBMITTED,
-                DraftingRequest::STATUS_PAID,
-                DraftingRequest::STATUS_INVOICED,
-            ])
             ->orderByDesc('updated_at')
             ->orderByDesc('requested_at')
             ->orderByDesc('id');
 
-        $this->board->applyBoardStageFilter($query, $board);
+        if ($board === 'design') {
+            $query->where(function ($outer) {
+                $outer->where('workflow_stage', DraftingRequest::STAGE_DESIGN)
+                    ->orWhere('workflow_stage', DraftingRequest::STAGE_APM);
+            });
+        } else {
+            // Show every job already on APM — do not hide design-phase rows here.
+            $query->where('workflow_stage', DraftingRequest::STAGE_APM);
+        }
 
         return $query;
     }
@@ -373,13 +379,7 @@ class JobBoardController extends Controller
      */
     private function searchBoardCandidateQuery(?User $user, string $search, string $board)
     {
-        $query = DraftingRequest::query()
-            ->reviewAccepted()
-            ->active()
-            ->orderByDesc('updated_at')
-            ->orderByDesc('id');
-
-        $this->board->applyBoardStageFilter($query, $board);
+        $query = $this->boardCandidateQuery($user, $board);
 
         $digits = preg_replace('/\D+/', '', $search) ?? '';
 

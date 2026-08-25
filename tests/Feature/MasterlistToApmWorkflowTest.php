@@ -232,6 +232,66 @@ class MasterlistToApmWorkflowTest extends TestCase
                 ->where('masterlistCandidates.0.source', 'apm'));
     }
 
+    public function test_board_candidates_include_all_active_apm_drafts(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $newJob = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_NEW,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_APM,
+            'requested_at' => now()->subMinute(),
+            'your_name' => 'New Client',
+            'company_name' => 'New Co',
+            'email' => 'new@example.com',
+            'site_address' => '1 New St',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        $wipJob = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_DRAFTING_WIP,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_APM,
+            'requested_at' => now(),
+            'your_name' => 'Wip Client',
+            'company_name' => 'Wip Co',
+            'email' => 'wip@example.com',
+            'site_address' => '2 Wip St',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        foreach ([$newJob, $wipJob] as $job) {
+            DraftingRequestRevision::query()->create([
+                'drafting_request_id' => $job->id,
+                'user_id' => $user->id,
+                'code' => $job->jobNumber().'-01',
+                'log_date' => now()->toDateString(),
+                'category' => 'WD',
+                'status' => $job->status,
+            ]);
+        }
+
+        $this->actingAs($user)
+            ->get(route('job.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->has('masterlistCandidates', 2)
+                ->where('masterlistCandidates.0.source', 'apm')
+                ->where('masterlistCandidates.1.source', 'apm'));
+    }
+
     public function test_public_accept_lands_on_masterlist_only(): void
     {
         $admin = $this->adminUser();
