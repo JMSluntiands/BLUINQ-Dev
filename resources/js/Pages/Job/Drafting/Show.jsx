@@ -54,8 +54,21 @@ export default function DraftingShow({
     categoryOptions = [],
     formOptions = {},
     drafterUsers = [],
-    projectOptions = [],
+    projectOptions: rawProjectOptions = [],
 }) {
+    const projectOptions = useMemo(
+        () =>
+            (rawProjectOptions ?? []).map((candidate) => ({
+                id: candidate.id,
+                label: candidate.label,
+                job_no: candidate.lead_no ?? candidate.job_no ?? '',
+                revisions: candidate.revisions ?? [],
+                suggested_code: candidate.suggested_code ?? '',
+                status: candidate.status ?? 'new',
+                source: candidate.source ?? 'masterlist',
+            })),
+        [rawProjectOptions],
+    );
     const revisionCode = usePage().props.flash?.revision_code ?? null;
     const flashMessages = {
         'drf-archived': 'Drafting request moved to archive.',

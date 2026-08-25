@@ -374,33 +374,70 @@ class DraftingController extends Controller
     }
 
     /**
-     * @return list<array{id: int, value: string, label: string, lead_no: string, source: string}>
+     * @return list<array{
+     *     id: int,
+     *     value: string,
+     *     label: string,
+     *     lead_no: string,
+     *     source: string,
+     *     status: string,
+     *     revisions: list<array{code: string}>,
+     *     suggested_code: string
+     * }>
      */
     private function masterlistCandidatesForShow(User $user): array
     {
         $statusLabels = DraftingRequest::statusLabels();
+        $revisionRelations = [
+            'revisions' => fn ($query) => $query
+                ->orderBy('id')
+                ->select('id', 'drafting_request_id', 'code'),
+        ];
 
         $format = function ($rows, string $source) use ($statusLabels): array {
             return $rows->map(function (DraftingRequest $row) use ($source, $statusLabels) {
+                $row->loadMissing([
+                    'revisions' => fn ($query) => $query
+                        ->orderBy('id')
+                        ->select('id', 'drafting_request_id', 'code'),
+                ]);
+
                 $leadNo = $row->jobNumber();
                 $client = $row->company_name ?: ($row->your_name ?: '—');
                 $job    = $row->site_address ?: '—';
                 $label  = "{$leadNo} — {$client} — {$job}";
+                $status = $row->status ?? DraftingRequest::STATUS_NEW;
 
                 if ($source === 'apm') {
-                    $status      = $row->status ?? DraftingRequest::STATUS_NEW;
                     $statusLabel = $statusLabels[$status] ?? ucfirst(str_replace('_', ' ', $status));
                     $label      .= " (APM · {$statusLabel})";
                 } else {
                     $label .= ' (Masterlist)';
                 }
 
+                $revisions = $row->revisions
+                    ->sortBy('id')
+                    ->map(fn ($revision) => [
+                        'code' => trim((string) ($revision->code ?? '')),
+                    ])
+                    ->values()
+                    ->all();
+
+                $latestRevision = $row->latestRevisionCode();
+                if ($latestRevision) {
+                    $label .= " · last {$latestRevision}";
+                }
+
                 return [
-                    'id'      => $row->id,
-                    'value'   => (string) $row->id,
-                    'lead_no' => $leadNo,
-                    'label'   => $label,
-                    'source'  => $source,
+                    'id'             => $row->id,
+                    'value'          => (string) $row->id,
+                    'lead_no'        => $leadNo,
+                    'label'          => $label,
+                    'source'         => $source,
+                    'status'         => $status,
+                    'revisions'      => $revisions,
+                    'suggested_code' => $row->suggestNextRevisionCode(),
+                    'latest_revision'=> $latestRevision,
                 ];
             })->values()->all();
         };
@@ -409,6 +446,7 @@ class DraftingController extends Controller
 
         foreach ($format(
             DraftingRequest::query()->masterlist()->reviewAccepted()->active()
+                ->with($revisionRelations)
                 ->orderByDesc('requested_at')->orderByDesc('id')->get(),
             'masterlist',
         ) as $row) {
@@ -417,13 +455,27 @@ class DraftingController extends Controller
 
         foreach ($format(
             DraftingRequest::query()->apm()->reviewAccepted()->active()
+                ->with($revisionRelations)
                 ->orderByDesc('updated_at')->orderByDesc('id')->get(),
             'apm',
         ) as $row) {
             $byId[$row['id']] = $row;
         }
 
-        return array_values($byId);
+        return collect(array_values($byId))
+            ->sort(function (array $left, array $right) {
+                $byLead = strnatcasecmp(
+                    (string) ($right['lead_no'] ?? ''),
+                    (string) ($left['lead_no'] ?? ''),
+                );
+                if ($byLead !== 0) {
+                    return $byLead;
+                }
+
+                return ((int) ($right['id'] ?? 0)) <=> ((int) ($left['id'] ?? 0));
+            })
+            ->values()
+            ->all();
     }
 
     public function update(

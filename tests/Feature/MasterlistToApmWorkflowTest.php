@@ -292,6 +292,121 @@ class MasterlistToApmWorkflowTest extends TestCase
                 ->where('masterlistCandidates.1.source', 'apm'));
     }
 
+    public function test_board_candidates_include_existing_revision_codes(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $row = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_DESIGN_WIP,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_APM,
+            'requested_at' => now(),
+            'your_name' => 'Ronnel Navarro',
+            'company_name' => 'Ronnel Navarro',
+            'email' => 'ronnel@example.com',
+            'site_address' => '11111',
+            'site_owner_name' => 'Owner',
+            'lead_number' => '1111111',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $row->id,
+            'user_id' => $user->id,
+            'code' => '1111111-01',
+            'log_date' => now()->toDateString(),
+            'category' => 'WD',
+            'drafter_user_id' => $user->id,
+            'drafter_initials' => 'AD',
+            'status' => DraftingRequest::STATUS_DESIGN_WIP,
+        ]);
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $row->id,
+            'user_id' => $user->id,
+            'code' => '1111111-02',
+            'log_date' => now()->toDateString(),
+            'category' => 'WD',
+            'drafter_user_id' => $user->id,
+            'drafter_initials' => 'AD',
+            'status' => DraftingRequest::STATUS_DESIGN_WIP,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('job.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->has('masterlistCandidates', 1)
+                ->where('masterlistCandidates.0.id', $row->id)
+                ->where('masterlistCandidates.0.source', 'apm')
+                ->where('masterlistCandidates.0.lead_no', '1111111')
+                ->where('masterlistCandidates.0.status', DraftingRequest::STATUS_DESIGN_WIP)
+                ->has('masterlistCandidates.0.revisions', 2)
+                ->where('masterlistCandidates.0.revisions.0.code', '1111111-01')
+                ->where('masterlistCandidates.0.revisions.1.code', '1111111-02')
+                ->where('masterlistCandidates.0.latest_revision', '1111111-02')
+                ->where('masterlistCandidates.0.suggested_code', '1111111-03'));
+    }
+
+    public function test_board_candidates_list_newest_lead_numbers_first(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $older = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_NEW,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_MASTERLIST,
+            'requested_at' => now()->subDay(),
+            'your_name' => 'Older',
+            'company_name' => 'Older Co',
+            'email' => 'older@example.com',
+            'site_address' => '1 Old St',
+            'site_owner_name' => 'Owner',
+            'lead_number' => '26126B',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        $newer = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_NEW,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_MASTERLIST,
+            'requested_at' => now()->subDays(2),
+            'your_name' => 'Newer',
+            'company_name' => 'Newer Co',
+            'email' => 'newer@example.com',
+            'site_address' => '2 New St',
+            'site_owner_name' => 'Owner',
+            'lead_number' => '26130C',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('job.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->has('masterlistCandidates', 2)
+                ->where('masterlistCandidates.0.id', $newer->id)
+                ->where('masterlistCandidates.0.lead_no', '26130C')
+                ->where('masterlistCandidates.1.id', $older->id)
+                ->where('masterlistCandidates.1.lead_no', '26126B'));
+    }
+
     public function test_public_accept_lands_on_masterlist_only(): void
     {
         $admin = $this->adminUser();

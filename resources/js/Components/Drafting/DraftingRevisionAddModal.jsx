@@ -117,10 +117,17 @@ export default function DraftingRevisionAddModal({
     const effectiveRequestId = draftingRequestId || selectedProject?.id || null;
     const effectiveJobNumber = draftingRequestId
         ? jobNumber
-        : (selectedProject?.job_no ?? '');
+        : (selectedProject?.job_no ?? selectedProject?.lead_no ?? '');
     const effectiveRevisions = draftingRequestId
         ? revisions
         : (selectedProject?.revisions ?? emptyRevisions);
+    const effectiveSuggestedCode = draftingRequestId
+        ? ''
+        : String(selectedProject?.suggested_code ?? '').trim();
+    const revisionCodesKey = (effectiveRevisions ?? [])
+        .map((revision) => String(revision?.code ?? '').trim())
+        .filter(Boolean)
+        .join('|');
     const effectiveStatus = draftingRequestId
         ? defaultJobStatus || 'new'
         : (selectedProject?.status ?? defaultJobStatus) || 'new';
@@ -208,10 +215,11 @@ export default function DraftingRevisionAddModal({
 
         // Only refresh revision code + status when the selected project changes.
         // Keep category / date / link so a Select2 choice is not wiped.
-        form.setData(
-            'code',
-            suggestNextRevisionCode(effectiveJobNumber, effectiveRevisions),
-        );
+        // Prefer server suggested_code; otherwise derive from known revision codes.
+        const nextCode =
+            effectiveSuggestedCode ||
+            suggestNextRevisionCode(effectiveJobNumber, effectiveRevisions);
+        form.setData('code', nextCode);
         form.setData('status', effectiveStatus || 'new');
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
@@ -219,7 +227,8 @@ export default function DraftingRevisionAddModal({
         entry,
         isForwardMode,
         effectiveJobNumber,
-        effectiveRevisions,
+        effectiveSuggestedCode,
+        revisionCodesKey,
         effectiveStatus,
         selectedProjectId,
     ]);

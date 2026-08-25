@@ -263,7 +263,16 @@ class JobBoardController extends Controller
     /**
      * Masterlist entries and all active board drafts for the Add control.
      *
-     * @return list<array{id: int, value: string, label: string, lead_no: string, source: string}>
+     * @return list<array{
+     *     id: int,
+     *     value: string,
+     *     label: string,
+     *     lead_no: string,
+     *     source: string,
+     *     status: string,
+     *     revisions: list<array{code: string}>,
+     *     suggested_code: string
+     * }>
      */
     private function masterlistCandidatesForBoard(Request $request, string $board = 'apm'): array
     {
@@ -294,12 +303,35 @@ class JobBoardController extends Controller
             }
         }
 
-        return array_values($byId);
+        // Newest job numbers first so the latest drafts are at the top of Add item.
+        return collect(array_values($byId))
+            ->sort(function (array $left, array $right) {
+                $byLead = strnatcasecmp(
+                    (string) ($right['lead_no'] ?? ''),
+                    (string) ($left['lead_no'] ?? ''),
+                );
+                if ($byLead !== 0) {
+                    return $byLead;
+                }
+
+                return ((int) ($right['id'] ?? 0)) <=> ((int) ($left['id'] ?? 0));
+            })
+            ->values()
+            ->all();
     }
 
     /**
      * @param  \Illuminate\Support\Collection<int, DraftingRequest>  $rows
-     * @return list<array{id: int, value: string, label: string, lead_no: string, source: string}>
+     * @return list<array{
+     *     id: int,
+     *     value: string,
+     *     label: string,
+     *     lead_no: string,
+     *     source: string,
+     *     status: string,
+     *     revisions: list<array{code: string}>,
+     *     suggested_code: string
+     * }>
      */
     private function formatAddCandidates($rows, string $source): array
     {
@@ -307,13 +339,19 @@ class JobBoardController extends Controller
 
         return $rows
             ->map(function (DraftingRequest $row) use ($source, $statusLabels) {
+                $row->loadMissing([
+                    'revisions' => fn ($query) => $query
+                        ->orderBy('id')
+                        ->select('id', 'drafting_request_id', 'code'),
+                ]);
+
                 $leadNo = $row->jobNumber();
                 $client = $row->company_name ?: ($row->your_name ?: '—');
                 $job = $row->site_address ?: '—';
                 $label = "{$leadNo} — {$client} — {$job}";
+                $status = $row->status ?? DraftingRequest::STATUS_NEW;
 
                 if ($source === 'apm' || $source === 'design') {
-                    $status = $row->status ?? DraftingRequest::STATUS_NEW;
                     $statusLabel = $statusLabels[$status]
                         ?? ucfirst(str_replace('_', ' ', $status));
                     $boardLabel = $source === 'design' ? 'Design' : 'APM';
@@ -322,12 +360,29 @@ class JobBoardController extends Controller
                     $label .= ' (Masterlist)';
                 }
 
+                $revisions = $row->revisions
+                    ->sortBy('id')
+                    ->map(fn ($revision) => [
+                        'code' => trim((string) ($revision->code ?? '')),
+                    ])
+                    ->values()
+                    ->all();
+
+                $latestRevision = $row->latestRevisionCode();
+                if ($latestRevision) {
+                    $label .= " · last {$latestRevision}";
+                }
+
                 return [
                     'id' => $row->id,
                     'value' => (string) $row->id,
                     'lead_no' => $leadNo,
                     'label' => $label,
                     'source' => $source,
+                    'status' => $status,
+                    'revisions' => $revisions,
+                    'suggested_code' => $row->suggestNextRevisionCode(),
+                    'latest_revision' => $latestRevision,
                 ];
             })
             ->values()
@@ -343,6 +398,7 @@ class JobBoardController extends Controller
             ->masterlist()
             ->reviewAccepted()
             ->active()
+            ->with($this->addCandidateRevisionRelations())
             ->orderByDesc('requested_at')
             ->orderByDesc('id');
     }
@@ -357,6 +413,7 @@ class JobBoardController extends Controller
         $query = DraftingRequest::query()
             ->reviewAccepted()
             ->active()
+            ->with($this->addCandidateRevisionRelations())
             ->orderByDesc('updated_at')
             ->orderByDesc('requested_at')
             ->orderByDesc('id');
@@ -372,6 +429,18 @@ class JobBoardController extends Controller
         }
 
         return $query;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function addCandidateRevisionRelations(): array
+    {
+        return [
+            'revisions' => fn ($query) => $query
+                ->orderBy('id')
+                ->select('id', 'drafting_request_id', 'code'),
+        ];
     }
 
     /**

@@ -71,17 +71,70 @@ export default function JobBoard({
     const canOpenAddFromMasterlist =
         showAddFromMasterlist && canOpenAddModal;
 
+    // Board rows already include revision codes — use them when candidate
+    // payload is missing/stale so Add item still suggests the next suffix.
+    const boardRevisionsById = useMemo(() => {
+        const map = new Map();
+
+        const ingest = (job) => {
+            if (!job?.id) {
+                return;
+            }
+
+            const codes = (job.revisions ?? [])
+                .map((revision) => String(revision?.code ?? '').trim())
+                .filter((code) => code !== '' && code !== '—');
+
+            if (
+                codes.length === 0 &&
+                job.latest_revision &&
+                job.latest_revision !== '—'
+            ) {
+                codes.push(String(job.latest_revision).trim());
+            }
+
+            if (codes.length === 0) {
+                return;
+            }
+
+            const existing = map.get(job.id) ?? [];
+            map.set(
+                job.id,
+                [...existing, ...codes.map((code) => ({ code }))].filter(
+                    (revision, index, all) =>
+                        all.findIndex((item) => item.code === revision.code) ===
+                        index,
+                ),
+            );
+        };
+
+        (jobs?.data ?? []).forEach(ingest);
+        (paginatedStatusGroups ?? []).forEach((group) => {
+            (group?.pagination?.data ?? []).forEach(ingest);
+        });
+
+        return map;
+    }, [jobs, paginatedStatusGroups]);
+
     const projectOptions = useMemo(
         () =>
-            (masterlistCandidates ?? []).map((candidate) => ({
-                id: candidate.id,
-                label: candidate.label,
-                job_no: candidate.lead_no ?? '',
-                revisions: [],
-                status: 'new',
-                source: candidate.source ?? 'masterlist',
-            })),
-        [masterlistCandidates],
+            (masterlistCandidates ?? []).map((candidate) => {
+                const fromCandidate = candidate.revisions ?? [];
+                const fromBoard = boardRevisionsById.get(candidate.id) ?? [];
+                const revisions =
+                    fromCandidate.length > 0 ? fromCandidate : fromBoard;
+
+                return {
+                    id: candidate.id,
+                    label: candidate.label,
+                    job_no: candidate.lead_no ?? '',
+                    revisions,
+                    suggested_code: candidate.suggested_code ?? '',
+                    status: candidate.status ?? 'new',
+                    source: candidate.source ?? 'masterlist',
+                };
+            }),
+        [masterlistCandidates, boardRevisionsById],
     );
 
     const reloadBoard = (
