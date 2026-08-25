@@ -37,26 +37,32 @@ export default function JobBoard({
     const canOpenAddModal = canForwardFromMasterlist || canAddRevision;
 
     const flashMessages = useMemo(
-        () => ({
-            'drf-submitted':
-                'Your drafting request was submitted successfully.',
-            'drf-archived': 'Drafting request moved to archive.',
-            'drf-accepted':
-                'Drafting request accepted and added to the masterlist.',
-            'drf-already-reviewed': 'This request was already reviewed.',
-            'masterlist-forwarded':
-                'Project added to Archi Project Management from the masterlist.',
-            'design-masterlist-forwarded':
-                'Project added to Design Project Management from the masterlist.',
-            'drf-revision-added': 'Revision added.',
-            'drf-revision-deleted': 'Revision deleted.',
-            'drf-revision-deleted-returned-to-masterlist':
-                'Revision deleted. Project removed from APM and is available again in Add from masterlist.',
-            'board-reopened': revisionCode
-                ? `Project reopened on board with revision ${revisionCode}.`
-                : 'Project reopened on board with a new revision.',
-        }),
-        [revisionCode],
+        () => {
+            const messages = {
+                'drf-submitted':
+                    'Your drafting request was submitted successfully.',
+                'drf-archived': 'Drafting request moved to archive.',
+                'drf-accepted':
+                    'Drafting request accepted and added to the masterlist.',
+                'drf-already-reviewed': 'This request was already reviewed.',
+                'masterlist-forwarded':
+                    'Project added to Archi Project Management from the masterlist.',
+                'drf-revision-added': 'Revision added.',
+                'drf-revision-deleted': 'Revision deleted.',
+                'drf-revision-deleted-returned-to-masterlist':
+                    'Revision deleted. Project removed from APM and is available again in Add from masterlist.',
+            };
+
+            // DPM Add item: no success modal after save.
+            if (board !== 'design') {
+                messages['board-reopened'] = revisionCode
+                    ? `Project reopened on board with revision ${revisionCode}.`
+                    : 'Project reopened on board with a new revision.';
+            }
+
+            return messages;
+        },
+        [revisionCode, board],
     );
 
     const rows = jobs?.data ?? [];
