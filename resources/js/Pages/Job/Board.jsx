@@ -53,8 +53,14 @@ export default function JobBoard({
                     'Revision deleted. Project removed from APM and is available again in Add from masterlist.',
             };
 
-            // DPM Add item: no success modal after save.
-            if (board !== 'design') {
+            // DPM Add item shows success modal; APM only for reopen/forward from masterlist.
+            if (board === 'design') {
+                messages['design-masterlist-forwarded'] =
+                    'Project added to Design Project Management from the masterlist.';
+                messages['board-reopened'] = revisionCode
+                    ? `Project reopened on board with revision ${revisionCode}.`
+                    : 'Project reopened on board with a new revision.';
+            } else {
                 messages['board-reopened'] = revisionCode
                     ? `Project reopened on board with revision ${revisionCode}.`
                     : 'Project reopened on board with a new revision.';
