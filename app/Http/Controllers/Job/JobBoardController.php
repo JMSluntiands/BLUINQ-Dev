@@ -689,13 +689,13 @@ class JobBoardController extends Controller
 
         if ($result['action'] === 'reopened') {
             return redirect()
-                ->route('job.drafting.show', $draftingRequest)
+                ->route('job.list')
                 ->with('status', 'board-reopened')
                 ->with('revision_code', $result['revision_code']);
         }
 
         return redirect()
-            ->route('job.drafting.show', $draftingRequest)
+            ->route('job.list')
             ->with('status', 'masterlist-forwarded');
     }
 

@@ -143,7 +143,7 @@ class MasterlistToApmWorkflowTest extends TestCase
 
         $response = $this->actingAs($user)->post(route('job.board.add', $row));
 
-        $response->assertRedirect(route('job.drafting.show', $row));
+        $response->assertRedirect(route('job.list'));
         $response->assertSessionHas('status', 'board-reopened');
         $response->assertSessionHas('revision_code', $row->jobNumber().'-02');
 
@@ -221,6 +221,7 @@ class MasterlistToApmWorkflowTest extends TestCase
             ]);
 
         $response->assertSessionHasNoErrors();
+        $response->assertRedirect(route('job.list'));
         $response->assertSessionHas('status', 'board-reopened');
         $response->assertSessionHas('revision_code', '1111111-03');
 
@@ -259,7 +260,7 @@ class MasterlistToApmWorkflowTest extends TestCase
 
         $response = $this->actingAs($user)->post(route('job.board.add', $row));
 
-        $response->assertRedirect(route('job.drafting.show', $row));
+        $response->assertRedirect(route('job.list'));
         $response->assertSessionHas('status', 'masterlist-forwarded');
 
         $row->refresh();
