@@ -298,12 +298,16 @@ class DraftingRequestSubmissionService
     /**
      * Add a masterlist job to APM or Design, or reopen an existing board job.
      *
+     * When $existingRevision is provided (e.g. Add item modal already saved one),
+     * do not create a second revision row.
+     *
      * @return array{action: 'forwarded'|'reopened', revision_code: string|null}
      */
     public function addOrReopenOnBoard(
         DraftingRequest $draftingRequest,
         User $actor,
         string $board = 'apm',
+        ?DraftingRequestRevision $existingRevision = null,
     ): array {
         $board = $board === 'design' ? 'design' : 'apm';
 
@@ -314,10 +318,11 @@ class DraftingRequestSubmissionService
         if ($draftingRequest->workflow_stage === DraftingRequest::STAGE_MASTERLIST) {
             $this->forwardToBoard($draftingRequest, $actor, $board);
 
-            $code = DraftingRequestRevision::query()
-                ->where('drafting_request_id', $draftingRequest->id)
-                ->orderByDesc('id')
-                ->value('code');
+            $code = $existingRevision?->code
+                ?? DraftingRequestRevision::query()
+                    ->where('drafting_request_id', $draftingRequest->id)
+                    ->orderByDesc('id')
+                    ->value('code');
 
             return [
                 'action' => 'forwarded',
@@ -338,7 +343,11 @@ class DraftingRequestSubmissionService
 
         if ($draftingRequest->fresh()?->workflow_stage === $targetStage
             && $draftingRequest->review_status === DraftingRequest::REVIEW_ACCEPTED) {
-            return $this->reopenOnBoard($draftingRequest->fresh(), $actor);
+            return $this->reopenOnBoard(
+                $draftingRequest->fresh(),
+                $actor,
+                $existingRevision,
+            );
         }
 
         abort(404);
@@ -347,29 +356,44 @@ class DraftingRequestSubmissionService
     /**
      * @return array{action: 'reopened', revision_code: string}
      */
-    private function reopenOnBoard(DraftingRequest $draftingRequest, User $actor): array
-    {
-        return DB::transaction(function () use ($draftingRequest, $actor) {
+    private function reopenOnBoard(
+        DraftingRequest $draftingRequest,
+        User $actor,
+        ?DraftingRequestRevision $existingRevision = null,
+    ): array {
+        return DB::transaction(function () use ($draftingRequest, $actor, $existingRevision) {
             $draftingRequest->loadMissing(['crmCategory', 'serviceEngagings', 'revisions']);
 
-            $code = $draftingRequest->suggestNextRevisionCode();
             $previousStatus = $draftingRequest->status;
-            $category = $this->revisionCategoryFor($draftingRequest);
 
-            $revision = DraftingRequestRevision::query()->create([
-                'drafting_request_id' => $draftingRequest->id,
-                'user_id' => $actor->id,
-                'code' => $code,
-                'log_date' => now(config('app.timezone'))->toDateString(),
-                'category' => $category,
-                'drafter_user_id' => $actor->id,
-                'drafter_initials' => $actor->badgeInitials(),
-                'status' => DraftingRequest::STATUS_NEW,
-            ]);
+            if ($existingRevision !== null) {
+                $revision = $existingRevision;
+                $nextStatus = $revision->status ?: DraftingRequest::STATUS_NEW;
 
-            $draftingRequest->update([
-                'status' => DraftingRequest::STATUS_NEW,
-            ]);
+                if ($draftingRequest->status !== $nextStatus) {
+                    $draftingRequest->update([
+                        'status' => $nextStatus,
+                    ]);
+                }
+            } else {
+                $code = $draftingRequest->suggestNextRevisionCode();
+                $category = $this->revisionCategoryFor($draftingRequest);
+
+                $revision = DraftingRequestRevision::query()->create([
+                    'drafting_request_id' => $draftingRequest->id,
+                    'user_id' => $actor->id,
+                    'code' => $code,
+                    'log_date' => now(config('app.timezone'))->toDateString(),
+                    'category' => $category,
+                    'drafter_user_id' => $actor->id,
+                    'drafter_initials' => $actor->badgeInitials(),
+                    'status' => DraftingRequest::STATUS_NEW,
+                ]);
+
+                $draftingRequest->update([
+                    'status' => DraftingRequest::STATUS_NEW,
+                ]);
+            }
 
             DraftingRequestActivity::record(
                 $draftingRequest,
@@ -381,16 +405,19 @@ class DraftingRequestSubmissionService
                 ),
             );
 
-            if ($previousStatus !== DraftingRequest::STATUS_NEW) {
+            $currentStatus = $draftingRequest->fresh()?->status ?? $draftingRequest->status;
+            if ($previousStatus !== $currentStatus) {
                 $options = DraftingRequest::statusLabels();
                 $fromLabel = $options[$previousStatus]
                     ?? ($previousStatus ? ucfirst(str_replace('_', ' ', $previousStatus)) : 'New');
+                $toLabel = $options[$currentStatus]
+                    ?? ($currentStatus ? ucfirst(str_replace('_', ' ', $currentStatus)) : 'New');
 
                 DraftingRequestActivity::record(
                     $draftingRequest,
                     $actor,
                     DraftingRequestActivity::ACTION_STATUS_CHANGED,
-                    sprintf('Status changed from %s to New.', $fromLabel),
+                    sprintf('Status changed from %s to %s.', $fromLabel, $toLabel),
                 );
             }
 

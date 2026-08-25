@@ -168,6 +168,81 @@ class MasterlistToApmWorkflowTest extends TestCase
                 ->where('jobs.data.0.status', DraftingRequest::STATUS_NEW));
     }
 
+    public function test_quick_add_existing_apm_job_creates_only_one_revision(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $row = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_DESIGN_WIP,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_APM,
+            'requested_at' => now(),
+            'your_name' => 'Ronnel Navarro',
+            'company_name' => 'Ronnel Navarro',
+            'email' => 'ronnel@example.com',
+            'site_address' => '11111',
+            'site_owner_name' => 'Owner',
+            'lead_number' => '1111111',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $row->id,
+            'user_id' => $user->id,
+            'code' => '1111111-01',
+            'log_date' => now()->toDateString(),
+            'category' => 'BASIX',
+            'status' => DraftingRequest::STATUS_DESIGN_WIP,
+        ]);
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $row->id,
+            'user_id' => $user->id,
+            'code' => '1111111-02',
+            'log_date' => now()->toDateString(),
+            'category' => 'BASIX',
+            'status' => DraftingRequest::STATUS_DESIGN_WIP,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->from(route('job.list'))
+            ->post(route('job.board.add.quick', $row), [
+                'board' => 'apm',
+                'code' => '1111111-03',
+                'log_date' => now()->toDateString(),
+                'category' => $category->code,
+                'status' => DraftingRequest::STATUS_DRAFTING_WIP,
+                'link' => 'https://example.com/rev-03',
+            ]);
+
+        $response->assertSessionHasNoErrors();
+        $response->assertSessionHas('status', 'board-reopened');
+        $response->assertSessionHas('revision_code', '1111111-03');
+
+        $row->refresh();
+        $this->assertSame(DraftingRequest::STATUS_DRAFTING_WIP, $row->status);
+        $this->assertSame(3, $row->revisions()->count());
+        $this->assertTrue(
+            DraftingRequestRevision::query()
+                ->where('drafting_request_id', $row->id)
+                ->where('code', '1111111-03')
+                ->where('status', DraftingRequest::STATUS_DRAFTING_WIP)
+                ->where('category', $category->code)
+                ->exists(),
+        );
+        $this->assertFalse(
+            DraftingRequestRevision::query()
+                ->where('drafting_request_id', $row->id)
+                ->where('code', '1111111-04')
+                ->exists(),
+        );
+    }
+
     public function test_board_add_forwards_masterlist_entry(): void
     {
         $user = $this->adminUser();

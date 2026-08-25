@@ -533,8 +533,8 @@ class JobBoardController extends Controller
             'status'   => ['required', 'string', \Illuminate\Validation\Rule::in($allowedStatuses)],
         ]);
 
-        // Store the revision first.
-        $draftingRequest->revisions()->create([
+        // Create the revision once from the modal — do not let reopen create a second row.
+        $revision = $draftingRequest->revisions()->create([
             'user_id'  => $user->id,
             'code'     => $validated['code'],
             'link'     => filled($validated['link'] ?? null)
@@ -549,7 +549,12 @@ class JobBoardController extends Controller
             'status' => $validated['status'],
         ])->save();
 
-        $result = $this->submission->addOrReopenOnBoard($draftingRequest->fresh(), $user, $board);
+        $result = $this->submission->addOrReopenOnBoard(
+            $draftingRequest->fresh(),
+            $user,
+            $board,
+            $revision,
+        );
 
         return $this->redirectAfterBoardAdd($draftingRequest, $result, $board);
     }
