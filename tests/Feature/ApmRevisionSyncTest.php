@@ -239,6 +239,38 @@ class ApmRevisionSyncTest extends TestCase
         $this->assertSame(DraftingRequest::STATUS_DRAFTING_WIP, $revision->status);
     }
 
+    public function test_board_cancelled_status_moves_to_cancelled_group(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+        $job = $this->createApmJob($user, $storeyLevel, $category);
+        $this->addBoardRevision($job, $user, $category, DraftingRequest::STATUS_NEW);
+
+        $this->actingAs($user)
+            ->from(route('job.list'))
+            ->patch(route('job.drafting.board.update', $job), [
+                'status' => DraftingRequest::STATUS_CANCELLED,
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $job->refresh();
+        $this->assertSame(DraftingRequest::STATUS_CANCELLED, $job->status);
+
+        $this->actingAs($user)
+            ->get(route('job.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->where('paginatedStatusGroups', function ($groups) use ($job) {
+                    $cancelled = collect($groups)->firstWhere('status', DraftingRequest::STATUS_CANCELLED);
+
+                    return $cancelled
+                        && (int) data_get($cancelled, 'pagination.total') === 1
+                        && (int) data_get($cancelled, 'pagination.data.0.id') === $job->id;
+                }));
+    }
+
     public function test_board_exposes_add_revision_control_for_eligible_jobs(): void
     {
         $user = $this->adminUser();

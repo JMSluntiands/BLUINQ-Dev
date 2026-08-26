@@ -71,13 +71,7 @@ class DraftingRequest extends Model
      */
     public static function statusOptions(): array
     {
-        $fromDb = WorkflowStatus::optionsForKind(WorkflowStatus::KIND_ARCHI);
-
-        if ($fromDb !== []) {
-            return $fromDb;
-        }
-
-        return [
+        $defaults = [
             self::STATUS_NEW => 'New',
             self::STATUS_ASSIGNED => 'Assigned',
             self::STATUS_DRAFTING_WIP => 'Work In Progress',
@@ -87,6 +81,12 @@ class DraftingRequest extends Model
             self::STATUS_ON_HOLD => 'On Hold',
             self::STATUS_CANCELLED => 'Cancelled',
         ];
+
+        $fromDb = WorkflowStatus::optionsForKind(WorkflowStatus::KIND_ARCHI);
+
+        // DB labels override defaults, but never drop core board statuses
+        // (e.g. Cancelled) when the settings table is only partially seeded.
+        return array_merge($defaults, $fromDb);
     }
 
     /**
@@ -183,10 +183,20 @@ class DraftingRequest extends Model
     {
         return array_values(array_unique([
             ...array_keys(self::statusOptions()),
+            self::STATUS_NEW,
             self::STATUS_ASSIGNED,
-            self::STATUS_ON_HOLD,
+            self::STATUS_DESIGN_WIP,
+            self::STATUS_DRAFTING_WIP,
+            self::STATUS_FOR_CHECKING,
             self::STATUS_QUERY,
+            self::STATUS_SUBMITTED,
+            self::STATUS_ON_HOLD,
+            self::STATUS_CANCELLED,
             self::STATUS_WIP,
+            self::STATUS_FOR_QUOTE,
+            self::STATUS_QUOTE_SENT,
+            self::STATUS_INVOICED,
+            self::STATUS_PAID,
         ]));
     }
 
