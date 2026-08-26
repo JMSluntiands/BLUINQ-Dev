@@ -79,7 +79,7 @@ export function suggestNextRevisionCode(jobNumber, revisions = []) {
 /**
  * Slim revision modal (APM-owned staffing fields live on the board).
  * Fields: optional Project, Revision Number, Revision Link, Category, Date In, Status.
- * mode="forward" — pick a masterlist/APM candidate then review before adding to board.
+ * mode="forward" — pick a masterlist candidate then review before adding to board.
  */
 export default function DraftingRevisionAddModal({
     show = false,

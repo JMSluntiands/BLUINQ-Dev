@@ -267,7 +267,7 @@ class MasterlistToApmWorkflowTest extends TestCase
         $this->assertSame(DraftingRequest::STAGE_APM, $row->workflow_stage);
     }
 
-    public function test_board_candidates_include_submitted_apm_jobs(): void
+    public function test_add_item_excludes_submitted_apm_jobs_already_on_board(): void
     {
         $user = $this->adminUser();
         [$storeyLevel, $category] = $this->seedLookups();
@@ -303,12 +303,10 @@ class MasterlistToApmWorkflowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Job/Board')
-                ->has('masterlistCandidates', 1)
-                ->where('masterlistCandidates.0.id', $submitted->id)
-                ->where('masterlistCandidates.0.source', 'apm'));
+                ->has('masterlistCandidates', 0));
     }
 
-    public function test_board_candidates_include_all_active_apm_drafts(): void
+    public function test_add_item_excludes_jobs_already_on_board_table(): void
     {
         $user = $this->adminUser();
         [$storeyLevel, $category] = $this->seedLookups();
@@ -347,6 +345,23 @@ class MasterlistToApmWorkflowTest extends TestCase
             'ndis_sda' => false,
         ]);
 
+        $masterlist = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_NEW,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_MASTERLIST,
+            'requested_at' => now()->subSeconds(30),
+            'your_name' => 'Master Client',
+            'company_name' => 'Master Co',
+            'email' => 'master@example.com',
+            'site_address' => '3 Master St',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
         foreach ([$newJob, $wipJob] as $job) {
             DraftingRequestRevision::query()->create([
                 'drafting_request_id' => $job->id,
@@ -363,12 +378,12 @@ class MasterlistToApmWorkflowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Job/Board')
-                ->has('masterlistCandidates', 2)
-                ->where('masterlistCandidates.0.source', 'apm')
-                ->where('masterlistCandidates.1.source', 'apm'));
+                ->has('masterlistCandidates', 1)
+                ->where('masterlistCandidates.0.id', $masterlist->id)
+                ->where('masterlistCandidates.0.source', 'masterlist'));
     }
 
-    public function test_board_candidates_include_existing_revision_codes(): void
+    public function test_add_item_excludes_board_jobs_even_with_revisions(): void
     {
         $user = $this->adminUser();
         [$storeyLevel, $category] = $this->seedLookups();
@@ -418,16 +433,7 @@ class MasterlistToApmWorkflowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Job/Board')
-                ->has('masterlistCandidates', 1)
-                ->where('masterlistCandidates.0.id', $row->id)
-                ->where('masterlistCandidates.0.source', 'apm')
-                ->where('masterlistCandidates.0.lead_no', '1111111')
-                ->where('masterlistCandidates.0.status', DraftingRequest::STATUS_DESIGN_WIP)
-                ->has('masterlistCandidates.0.revisions', 2)
-                ->where('masterlistCandidates.0.revisions.0.code', '1111111-01')
-                ->where('masterlistCandidates.0.revisions.1.code', '1111111-02')
-                ->where('masterlistCandidates.0.latest_revision', '1111111-02')
-                ->where('masterlistCandidates.0.suggested_code', '1111111-03'));
+                ->has('masterlistCandidates', 0));
     }
 
     public function test_board_candidates_list_newest_lead_numbers_first(): void
