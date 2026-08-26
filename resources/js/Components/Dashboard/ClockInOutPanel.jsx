@@ -1,6 +1,7 @@
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import Select2 from '@/Components/Select2';
 import UserAvatar from '@/Components/UserAvatar';
 import {
     ArrowRightOnRectangleIcon,
@@ -345,6 +346,14 @@ export default function ClockInOutPanel({
     const workDate = todayKey();
     const activityOptions = activityFormOptions?.activities ?? [];
     const projectOptions = activityFormOptions?.projects ?? [];
+    const projectSelectOptions = useMemo(
+        () =>
+            projectOptions.map((item) => ({
+                value: String(item.value ?? ''),
+                label: String(item.label ?? item.value ?? ''),
+            })),
+        [projectOptions],
+    );
     const canSelectProject = Boolean(
         activityFormOptions?.can_select_project,
     );
@@ -940,24 +949,29 @@ export default function ClockInOutPanel({
                         </select>
 
                         {clockInNeedsProject ? (
-                            <select
-                                value={clockInForm.project}
-                                onChange={(event) =>
-                                    updateClockInField(
-                                        'project',
-                                        event.target.value,
-                                    )
-                                }
-                                required
-                                className="block w-full rounded-lg border-slate-200 bg-white text-sm text-slate-800 focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                            >
-                                <option value="">Select a project</option>
-                                {projectOptions.map((item) => (
-                                    <option key={item.value} value={item.value}>
-                                        {item.label}
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="select2-field">
+                                <Select2
+                                    id="clock-in-project"
+                                    value={clockInForm.project}
+                                    onChange={(value) =>
+                                        updateClockInField(
+                                            'project',
+                                            String(value ?? ''),
+                                        )
+                                    }
+                                    options={projectSelectOptions}
+                                    placeholder={
+                                        projectSelectOptions.length === 0
+                                            ? 'No projects available'
+                                            : 'Select a project'
+                                    }
+                                    enabled={
+                                        clockInOpen &&
+                                        projectSelectOptions.length > 0
+                                    }
+                                    required
+                                />
+                            </div>
                         ) : null}
 
                         <textarea
@@ -1092,24 +1106,29 @@ export default function ClockInOutPanel({
                         {canSelectProject &&
                         (activityForm.activity === 'drafting' ||
                             activityForm.activity === 'checking') ? (
-                            <select
-                                value={activityForm.project}
-                                onChange={(event) =>
-                                    updateActivityField(
-                                        'project',
-                                        event.target.value,
-                                    )
-                                }
-                                required
-                                className="block w-full rounded-lg border-slate-200 bg-white text-sm text-slate-800 focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                            >
-                                <option value="">Select a project</option>
-                                {projectOptions.map((item) => (
-                                    <option key={item.value} value={item.value}>
-                                        {item.label}
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="select2-field">
+                                <Select2
+                                    id="activity-project"
+                                    value={activityForm.project}
+                                    onChange={(value) =>
+                                        updateActivityField(
+                                            'project',
+                                            String(value ?? ''),
+                                        )
+                                    }
+                                    options={projectSelectOptions}
+                                    placeholder={
+                                        projectSelectOptions.length === 0
+                                            ? 'No projects available'
+                                            : 'Select a project'
+                                    }
+                                    enabled={
+                                        activityOpen &&
+                                        projectSelectOptions.length > 0
+                                    }
+                                    required
+                                />
+                            </div>
                         ) : null}
 
                         <textarea
