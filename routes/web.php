@@ -23,6 +23,7 @@ use App\Http\Controllers\ProfileImageController;
 use App\Http\Controllers\WeeklyTimesheetController;
 use App\Http\Controllers\Public\PublicDraftingRequestFormController;
 use App\Http\Controllers\Settings\ActivityLogController;
+use App\Http\Controllers\Settings\UserManualController;
 use App\Http\Controllers\Settings\BuildingClassController;
 use App\Http\Controllers\Settings\BuildingTypeController;
 use App\Http\Controllers\Settings\ClientController;
@@ -541,6 +542,11 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
             Route::post('/{crmCategory}/restore', [CrmCategoryController::class, 'restore'])
                 ->name('restore');
         });
+});
+
+Route::middleware(['auth', 'permission.route'])->group(function () {
+    Route::get('/settings/user-manual', [UserManualController::class, 'index'])
+        ->name('settings.user-manual');
 });
 
 Route::middleware(['auth', 'admin', 'permission.route'])->group(function () {

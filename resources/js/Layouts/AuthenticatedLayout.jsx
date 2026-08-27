@@ -9,6 +9,7 @@ import {
 } from '@/config/workflowSettingsModules';
 import {
     Bars3Icon,
+    BookOpenIcon,
     BriefcaseIcon,
     CalendarDaysIcon,
     ChartBarIcon,
@@ -190,6 +191,7 @@ export default function AuthenticatedLayout({ header, children }) {
     const canPermissionsPage = can('settings.permissions.manage');
     const canActivityLogs =
         user?.role === 'admin' && can('settings.activity-logs.view');
+    const canUserManual = Boolean(user);
     const canRoles =
         user?.role === 'admin' &&
         (can('settings.roles.manage') || can('settings.user-accounts.manage'));
@@ -262,6 +264,7 @@ export default function AuthenticatedLayout({ header, children }) {
     );
     const isPermissions = route().current('settings.permissions.edit');
     const isActivityLogs = route().current('settings.activity-logs.index');
+    const isUserManual = route().current('settings.user-manual');
     const isProfile = route().current('profile.edit');
     const isRolesIndex = route().current('settings.roles.index');
     const isRolesCreate = route().current('settings.roles.create');
@@ -290,6 +293,7 @@ export default function AuthenticatedLayout({ header, children }) {
         canUserAccounts ||
         canPermissionsPage ||
         canActivityLogs ||
+        canUserManual ||
         canRoles ||
         canManageLeave ||
         canViewLeaveCredits ||
@@ -844,6 +848,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             {(canUserAccounts ||
                                 canPermissionsPage ||
                                 canActivityLogs ||
+                                canUserManual ||
                                 canRoles) && (
                                 <>
                                     <p
@@ -955,6 +960,22 @@ export default function AuthenticatedLayout({ header, children }) {
                                             }
                                         >
                                             Activity logs
+                                        </NavItem>
+                                    )}
+                                    {canUserManual && (
+                                        <NavItem
+                                            href={route('settings.user-manual')}
+                                            active={isUserManual}
+                                            onNavigate={closeSidebar}
+                                            collapsed={isMinimized}
+                                            icon={
+                                                <BookOpenIcon
+                                                    className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
+                                                    aria-hidden
+                                                />
+                                            }
+                                        >
+                                            User manual
                                         </NavItem>
                                     )}
                                 </>
