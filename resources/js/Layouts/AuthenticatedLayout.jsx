@@ -190,8 +190,7 @@ export default function AuthenticatedLayout({ header, children }) {
     const canPermissionsPage = can('settings.permissions.manage');
     const canActivityLogs = can('settings.activity-logs.view');
     const canUserManual = Boolean(user);
-    const canRoles =
-        can('settings.roles.manage') || can('settings.user-accounts.manage');
+    const canRoles = can('settings.roles.manage');
     const canDraftingRequest = can('job.drafting-request.view');
     const canReviewDraftingRequests = can('job.drafting-request.review');
     const canJobList = can('job.list.view');
