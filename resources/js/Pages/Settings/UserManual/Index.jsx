@@ -5,50 +5,75 @@ const SECTIONS = [
     {
         id: 'getting-started',
         title: '1. Getting started',
+        image: '/manual/manual-dashboard.jpg',
+        imageAlt: 'BLUINQ dashboard with sidebar, attendance, announcements, and calendar',
+        caption:
+            'Dashboard after login — sidebar modules, CLOCK IN, announcements, attendance, and calendar.',
         body: [
             'Sign in with your BLUINQ account email and password.',
             'After login you land on the Dashboard. Use the left sidebar to open modules. You can minimize or hide the sidebar with the controls at the top.',
             'Open your profile from the bottom of the sidebar (or the account menu) to update your photo, password, and personal details.',
+            'User manual is under Other settings, directly below Activity logs.',
         ],
     },
     {
         id: 'dashboard',
         title: '2. Dashboard — clock in, activities & leave',
+        image: '/manual/manual-clock-in.jpg',
+        imageAlt: 'Confirm Clock In modal over the dashboard calendar',
+        caption:
+            'Confirm Clock In — pick activity (and project when drafting/checking), add a note, then clock in. The button stays disabled until required fields are filled.',
         body: [
-            'Clock in: use Confirm Clock In, pick an activity, and if the activity is drafting or checking, select a project (searchable). Add an optional note, then save.',
+            'On the dashboard attendance banner, click CLOCK IN to open Confirm Clock In.',
+            'Choose an activity. If the activity is drafting or checking, select a project (searchable). Add an optional note, then save.',
             'While clocked in you can start/stop break, log more activities, and clock out when done.',
-            'Save activity: logs work against your weekly timesheet. Drafting/checking activities also require a project.',
-            'Leave: request leave from the dashboard leave controls. Managers approve requests under HR → Approvals (if you have access).',
-            'Calendar: view leave/holidays and add personal calendar events where available.',
+            'Leave: use + Leave request on the calendar. Managers approve under HR → Approvals (if you have access).',
+            'Calendar: view leave/holidays and add personal events with Add event.',
         ],
     },
     {
         id: 'announcements',
         title: '3. Announcements',
         body: [
-            'Open Announcement from the sidebar to read company posts.',
+            'Open Announcement from the sidebar to read company posts. Latest items also appear on the Dashboard announcement card.',
             'You can like posts. Users with manage access can create, edit, archive, or restore announcements.',
         ],
     },
     {
         id: 'masterlist',
         title: '4. Project Masterlist',
+        image: '/manual/manual-masterlist.jpg',
+        imageAlt: 'Project Masterlist page with Encode project button',
+        caption:
+            'Masterlist — encode project info here, then forward into APM/DPM with Add item on the board.',
         body: [
-            'The masterlist holds accepted projects that are not yet on APM/DPM as active work.',
-            'Encode or edit masterlist projects here (permission required).',
+            'Open Project Masterlist from the sidebar.',
+            'Use + Encode project to create a new entry (permission required).',
             'Projects stay on the masterlist until someone adds them to Archi or Design Project Management via Add item.',
+            'Forwarded jobs show a Forwarded badge under Actions.',
         ],
     },
     {
         id: 'apm',
         title: '5. Archi Project Management (APM)',
+        image: '/manual/manual-apm-board.jpg',
+        imageAlt: 'APM board grouped by status with Add item button',
+        caption:
+            'APM board — jobs grouped by New, Work In Progress, For Checking, Submitted, and Cancelled.',
         body: [
             'Open Workflow → Archi menu → Archi Project Management.',
-            'Jobs are grouped by status: New, Work In Progress, For Checking, Submitted, Cancelled.',
-            'Add item: choose a masterlist project, or a job that is already Submitted or Cancelled (to reopen with a new revision). Jobs in New / Assigned / WIP / For Checking do not appear here.',
-            'Fill revision number, date, category, status, and optional link, then save. You return to the APM board table.',
-            'Change status, assignees, priority, and other board fields directly on the table when you have edit permission.',
-            'Open a job row to see full details, revisions, files, comments, and the job activity log.',
+            'Jobs are grouped by status. Expand a group to edit board fields or open a job.',
+            'Use + Add item to bring a masterlist project onto the board, or reopen a Submitted / Cancelled job with a new revision.',
+            'Jobs already in New / Assigned / WIP / For Checking do not appear in Add item.',
+            'Open a job row (revision link) for full details, revisions, files, comments, and the job activity log.',
+        ],
+        extraImages: [
+            {
+                src: '/manual/manual-add-item.jpg',
+                alt: 'Add item modal when no masterlist projects are available',
+                caption:
+                    'Add item — if no masterlist (or reopenable) projects are available, encode one on the Masterlist first.',
+            },
         ],
     },
     {
@@ -57,7 +82,7 @@ const SECTIONS = [
         body: [
             'Open Workflow → Design menu → Design Project Management.',
             'Works like APM: status groups, Add item from masterlist or submitted/cancelled jobs, and board editing.',
-            'Design Memos and Design Catalogue are under the same Design menu for design notes and catalogue items.',
+            'Design Memos and Design Catalogue are under the same Design menu.',
         ],
     },
     {
@@ -72,8 +97,14 @@ const SECTIONS = [
     {
         id: 'timesheet',
         title: '8. Timesheet',
+        image: '/manual/manual-timesheet.jpg',
+        imageAlt: 'Timesheet team leave overview grid',
+        caption:
+            'Timesheet — team leave overview (approved leave). Switch user filter and month with the controls at the top.',
         body: [
-            'Open Timesheet from the sidebar to review weekly hours from clock-in and logged activities.',
+            'Open Timesheet from the sidebar to review leave overview and related attendance context.',
+            'Filter by user (All team or a person) and move between months with the arrows.',
+            'Legend: approved leave, birthdays, and public holidays by user region.',
             'Users with view-all access can review other people’s timesheets. Approvals follow your role permissions.',
         ],
     },
@@ -99,15 +130,15 @@ const SECTIONS = [
         body: [
             'Workflow settings: building types, storey levels, statuses, categories, and other lookup lists used on forms and boards.',
             'Client list: maintain clients used on jobs.',
-            'Other settings: user accounts, password change requests, roles, role permissions, and activity logs of write actions in the system.',
-            'Only users with the matching permissions see each settings page.',
+            'Other settings: user accounts, password change requests, roles, role permissions, activity logs, and this User manual.',
+            'Only users with the matching permissions see each settings page (User manual is available to all signed-in users).',
         ],
     },
     {
         id: 'tips',
         title: '12. Tips',
         body: [
-            'Use the header search to find jobs and related records quickly.',
+            'Use the header search (Ctrl + K) to find jobs and related records quickly.',
             'If a live page looks outdated after a deploy, hard refresh the browser (Ctrl+Shift+R).',
             'VPN: some VPN exit IPs may be blocked by hosting/firewall. Try another server, bypass BLUINQ domains, or disconnect VPN if the site will not load.',
             'Need access you do not have? Ask an administrator to update your role permissions.',
@@ -115,12 +146,51 @@ const SECTIONS = [
     },
 ];
 
-function ManualSection({ id, title, body }) {
+function ManualFigure({ src, alt, caption }) {
+    if (!src) {
+        return null;
+    }
+
+    return (
+        <figure className="mt-4 overflow-hidden rounded-xl border border-[#e6e6e6] bg-[#f7f8fa] dark:border-[#2f3347] dark:bg-[#151622]">
+            <img
+                src={src}
+                alt={alt}
+                loading="lazy"
+                className="block w-full object-cover object-top"
+            />
+            {caption ? (
+                <figcaption className="border-t border-[#e6e6e6] px-4 py-2.5 text-xs leading-relaxed text-[#676879] dark:border-[#2f3347] dark:text-slate-400">
+                    {caption}
+                </figcaption>
+            ) : null}
+        </figure>
+    );
+}
+
+function ManualSection({
+    id,
+    title,
+    body,
+    image,
+    imageAlt,
+    caption,
+    extraImages = [],
+}) {
     return (
         <section id={id} className="scroll-mt-24">
             <h3 className="text-base font-semibold text-[#323338] dark:text-white">
                 {title}
             </h3>
+            <ManualFigure src={image} alt={imageAlt} caption={caption} />
+            {extraImages.map((figure) => (
+                <ManualFigure
+                    key={figure.src}
+                    src={figure.src}
+                    alt={figure.alt}
+                    caption={figure.caption}
+                />
+            ))}
             <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-[#676879] dark:text-slate-300">
                 {body.map((item) => (
                     <li key={item}>{item}</li>
@@ -146,8 +216,8 @@ export default function UserManualIndex() {
                     <p className="text-sm leading-relaxed text-[#676879] dark:text-slate-300">
                         How to use BLUINQ day to day — dashboard attendance,
                         masterlist, APM/DPM boards, timesheets, leave, and
-                        settings. What you can open depends on your role
-                        permissions.
+                        settings. Screenshots below are from the live app. What
+                        you can open depends on your role permissions.
                     </p>
 
                     <nav
@@ -166,7 +236,7 @@ export default function UserManualIndex() {
                     </nav>
                 </div>
 
-                <div className="space-y-8 rounded-xl border border-[#e6e6e6] bg-white p-6 shadow-sm dark:border-[#2f3347] dark:bg-[#1a222e] sm:p-8">
+                <div className="space-y-10 rounded-xl border border-[#e6e6e6] bg-white p-6 shadow-sm dark:border-[#2f3347] dark:bg-[#1a222e] sm:p-8">
                     {SECTIONS.map((section) => (
                         <ManualSection key={section.id} {...section} />
                     ))}
