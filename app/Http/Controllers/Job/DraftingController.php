@@ -443,12 +443,21 @@ class DraftingController extends Controller
 
         $byId = [];
 
-        // Add item should only list masterlist rows — not jobs already on the board.
         foreach ($format(
             DraftingRequest::query()->masterlist()->reviewAccepted()->active()
                 ->with($revisionRelations)
                 ->orderByDesc('requested_at')->orderByDesc('id')->get(),
             'masterlist',
+        ) as $row) {
+            $byId[$row['id']] = $row;
+        }
+
+        foreach ($format(
+            DraftingRequest::query()->apm()->reviewAccepted()->active()
+                ->eligibleForAddItemReopen()
+                ->with($revisionRelations)
+                ->orderByDesc('updated_at')->orderByDesc('id')->get(),
+            'apm',
         ) as $row) {
             $byId[$row['id']] = $row;
         }

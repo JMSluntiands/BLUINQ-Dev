@@ -261,7 +261,7 @@ class JobBoardController extends Controller
     }
 
     /**
-     * Masterlist-only candidates for Add item (exclude jobs already on the board table).
+     * Masterlist rows plus submitted/cancelled board jobs eligible for Add item reopen.
      *
      * @return list<array{
      *     id: int,
@@ -277,12 +277,24 @@ class JobBoardController extends Controller
     private function masterlistCandidatesForBoard(Request $request, string $board = 'apm'): array
     {
         $user = $request->user();
+        $byId = [];
 
-        // Newest job numbers first so the latest drafts are at the top of Add item.
-        return collect($this->formatAddCandidates(
+        foreach ($this->formatAddCandidates(
             $this->masterlistCandidateQuery($user)->get(),
             'masterlist',
-        ))
+        ) as $row) {
+            $byId[$row['id']] = $row;
+        }
+
+        foreach ($this->formatAddCandidates(
+            $this->boardReopenCandidateQuery($user, $board)->get(),
+            $board,
+        ) as $row) {
+            $byId[$row['id']] = $row;
+        }
+
+        // Newest job numbers first so the latest drafts are at the top of Add item.
+        return collect(array_values($byId))
             ->sort(function (array $left, array $right) {
                 $byLead = strnatcasecmp(
                     (string) ($right['lead_no'] ?? ''),
@@ -378,6 +390,34 @@ class JobBoardController extends Controller
             ->with($this->addCandidateRevisionRelations())
             ->orderByDesc('requested_at')
             ->orderByDesc('id');
+    }
+
+    /**
+     * Submitted/cancelled jobs already on this board that may be reopened via Add item.
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<DraftingRequest>
+     */
+    private function boardReopenCandidateQuery(?User $user, string $board)
+    {
+        $query = DraftingRequest::query()
+            ->reviewAccepted()
+            ->active()
+            ->eligibleForAddItemReopen()
+            ->with($this->addCandidateRevisionRelations())
+            ->orderByDesc('updated_at')
+            ->orderByDesc('requested_at')
+            ->orderByDesc('id');
+
+        if ($board === 'design') {
+            $query->where(function ($outer) {
+                $outer->where('workflow_stage', DraftingRequest::STAGE_DESIGN)
+                    ->orWhere('workflow_stage', DraftingRequest::STAGE_APM);
+            });
+        } else {
+            $query->where('workflow_stage', DraftingRequest::STAGE_APM);
+        }
+
+        return $query;
     }
 
     /**

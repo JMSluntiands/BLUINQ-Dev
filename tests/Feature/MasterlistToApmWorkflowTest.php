@@ -267,7 +267,7 @@ class MasterlistToApmWorkflowTest extends TestCase
         $this->assertSame(DraftingRequest::STAGE_APM, $row->workflow_stage);
     }
 
-    public function test_add_item_excludes_submitted_apm_jobs_already_on_board(): void
+    public function test_add_item_includes_submitted_apm_jobs_for_reopen(): void
     {
         $user = $this->adminUser();
         [$storeyLevel, $category] = $this->seedLookups();
@@ -303,7 +303,52 @@ class MasterlistToApmWorkflowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Job/Board')
-                ->has('masterlistCandidates', 0));
+                ->has('masterlistCandidates', 1)
+                ->where('masterlistCandidates.0.id', $submitted->id)
+                ->where('masterlistCandidates.0.source', 'apm')
+                ->where('masterlistCandidates.0.status', DraftingRequest::STATUS_SUBMITTED));
+    }
+
+    public function test_add_item_includes_cancelled_apm_jobs_for_reopen(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $cancelled = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_CANCELLED,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_APM,
+            'requested_at' => now(),
+            'your_name' => 'Cancelled Client',
+            'company_name' => 'Cancelled Co',
+            'email' => 'cancelled@example.com',
+            'site_address' => '10 Cancel St',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $cancelled->id,
+            'user_id' => $user->id,
+            'code' => $cancelled->jobNumber().'-01',
+            'log_date' => now()->toDateString(),
+            'category' => 'WD',
+            'status' => DraftingRequest::STATUS_CANCELLED,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('job.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->has('masterlistCandidates', 1)
+                ->where('masterlistCandidates.0.id', $cancelled->id)
+                ->where('masterlistCandidates.0.source', 'apm')
+                ->where('masterlistCandidates.0.status', DraftingRequest::STATUS_CANCELLED));
     }
 
     public function test_add_item_excludes_jobs_already_on_board_table(): void

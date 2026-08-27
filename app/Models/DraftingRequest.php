@@ -339,6 +339,31 @@ class DraftingRequest extends Model
     }
 
     /**
+     * Board jobs in these statuses may reappear in Add item (reopen with a new revision).
+     *
+     * @return list<string>
+     */
+    public static function addItemReopenStatuses(): array
+    {
+        return [
+            self::STATUS_SUBMITTED,
+            self::STATUS_QUOTE_SENT,
+            self::STATUS_INVOICED,
+            self::STATUS_PAID,
+            self::STATUS_CANCELLED,
+        ];
+    }
+
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeEligibleForAddItemReopen(Builder $query): Builder
+    {
+        return $query->whereIn('status', self::addItemReopenStatuses());
+    }
+
+    /**
      * @param  Builder<static>  $query
      * @return Builder<static>
      */
