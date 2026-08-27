@@ -5,6 +5,9 @@ const SECTIONS = [
     {
         id: 'getting-started',
         title: '1. Getting started',
+        image: '/manual/manual-sidebar.jpg',
+        imageAlt: 'BLUINQ sidebar navigation with main menu modules',
+        caption: 'Use the left sidebar to open Dashboard, Announcements, Masterlist, APM/DPM, and more.',
         body: [
             'Sign in with your BLUINQ account email and password.',
             'After login you land on the Dashboard. Use the left sidebar to open modules. You can minimize or hide the sidebar with the controls at the top.',
@@ -14,6 +17,9 @@ const SECTIONS = [
     {
         id: 'dashboard',
         title: '2. Dashboard — clock in, activities & leave',
+        image: '/manual/manual-clock-in.jpg',
+        imageAlt: 'Confirm Clock In modal with activity, project, and note fields',
+        caption: 'Clock In modal — pick activity, search a project when needed, then save.',
         body: [
             'Clock in: use Confirm Clock In, pick an activity, and if the activity is drafting or checking, select a project (searchable). Add an optional note, then save.',
             'While clocked in you can start/stop break, log more activities, and clock out when done.',
@@ -33,6 +39,9 @@ const SECTIONS = [
     {
         id: 'masterlist',
         title: '4. Project Masterlist',
+        image: '/manual/manual-masterlist.jpg',
+        imageAlt: 'Project Masterlist table with lead numbers and clients',
+        caption: 'Masterlist holds projects before they are added to APM or DPM.',
         body: [
             'The masterlist holds accepted projects that are not yet on APM/DPM as active work.',
             'Encode or edit masterlist projects here (permission required).',
@@ -42,6 +51,9 @@ const SECTIONS = [
     {
         id: 'apm',
         title: '5. Archi Project Management (APM)',
+        image: '/manual/manual-apm-board.jpg',
+        imageAlt: 'APM board grouped by status with Add item button',
+        caption: 'APM board — jobs grouped by status. Use Add item to bring projects onto the board.',
         body: [
             'Open Workflow → Archi menu → Archi Project Management.',
             'Jobs are grouped by status: New, Work In Progress, For Checking, Submitted, Cancelled.',
@@ -49,6 +61,13 @@ const SECTIONS = [
             'Fill revision number, date, category, status, and optional link, then save. You return to the APM board table.',
             'Change status, assignees, priority, and other board fields directly on the table when you have edit permission.',
             'Open a job row to see full details, revisions, files, comments, and the job activity log.',
+        ],
+        extraImages: [
+            {
+                src: '/manual/manual-add-item.jpg',
+                alt: 'Add item modal with project and revision fields',
+                caption: 'Add item modal — select project, set revision details, then Add Item.',
+            },
         ],
     },
     {
@@ -72,6 +91,9 @@ const SECTIONS = [
     {
         id: 'timesheet',
         title: '8. Timesheet',
+        image: '/manual/manual-timesheet.jpg',
+        imageAlt: 'Weekly timesheet with clock times and activity rows',
+        caption: 'Timesheet shows weekly hours from clock-in and logged activities.',
         body: [
             'Open Timesheet from the sidebar to review weekly hours from clock-in and logged activities.',
             'Users with view-all access can review other people’s timesheets. Approvals follow your role permissions.',
@@ -115,12 +137,51 @@ const SECTIONS = [
     },
 ];
 
-function ManualSection({ id, title, body }) {
+function ManualFigure({ src, alt, caption }) {
+    if (!src) {
+        return null;
+    }
+
+    return (
+        <figure className="mt-4 overflow-hidden rounded-xl border border-[#e6e6e6] bg-[#f7f8fa] dark:border-[#2f3347] dark:bg-[#151622]">
+            <img
+                src={src}
+                alt={alt}
+                loading="lazy"
+                className="block w-full object-cover object-top"
+            />
+            {caption ? (
+                <figcaption className="border-t border-[#e6e6e6] px-4 py-2.5 text-xs leading-relaxed text-[#676879] dark:border-[#2f3347] dark:text-slate-400">
+                    {caption}
+                </figcaption>
+            ) : null}
+        </figure>
+    );
+}
+
+function ManualSection({
+    id,
+    title,
+    body,
+    image,
+    imageAlt,
+    caption,
+    extraImages = [],
+}) {
     return (
         <section id={id} className="scroll-mt-24">
             <h3 className="text-base font-semibold text-[#323338] dark:text-white">
                 {title}
             </h3>
+            <ManualFigure src={image} alt={imageAlt} caption={caption} />
+            {extraImages.map((figure) => (
+                <ManualFigure
+                    key={figure.src}
+                    src={figure.src}
+                    alt={figure.alt}
+                    caption={figure.caption}
+                />
+            ))}
             <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-[#676879] dark:text-slate-300">
                 {body.map((item) => (
                     <li key={item}>{item}</li>
@@ -166,7 +227,7 @@ export default function UserManualIndex() {
                     </nav>
                 </div>
 
-                <div className="space-y-8 rounded-xl border border-[#e6e6e6] bg-white p-6 shadow-sm dark:border-[#2f3347] dark:bg-[#1a222e] sm:p-8">
+                <div className="space-y-10 rounded-xl border border-[#e6e6e6] bg-white p-6 shadow-sm dark:border-[#2f3347] dark:bg-[#1a222e] sm:p-8">
                     {SECTIONS.map((section) => (
                         <ManualSection key={section.id} {...section} />
                     ))}
