@@ -547,9 +547,7 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
 Route::middleware(['auth', 'permission.route'])->group(function () {
     Route::get('/settings/user-manual', [UserManualController::class, 'index'])
         ->name('settings.user-manual');
-});
 
-Route::middleware(['auth', 'admin', 'permission.route'])->group(function () {
     Route::get('/settings/activity-logs', [ActivityLogController::class, 'index'])
         ->name('settings.activity-logs.index');
 

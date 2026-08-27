@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Role;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -115,6 +116,7 @@ class RoleController extends Controller
                 ->with('status', 'role-has-users');
         }
 
+        DB::table('permission_role')->where('role', $role->slug)->delete();
         $role->delete();
 
         return redirect()

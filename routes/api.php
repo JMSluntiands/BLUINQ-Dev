@@ -134,7 +134,7 @@ Route::prefix('v1')->group(function (): void {
                 Route::post('/{crmCategory}/restore', [CrmCategoryController::class, 'restore']);
             });
 
-        Route::middleware(['admin', 'api.permission:settings.user-accounts.manage'])
+        Route::middleware(['api.permission:settings.user-accounts.manage'])
             ->prefix('settings/users')
             ->group(function (): void {
                 Route::get('/role-options', [UserAccountController::class, 'roleOptions']);
@@ -147,7 +147,7 @@ Route::prefix('v1')->group(function (): void {
                 Route::post('/{user}/restore', [UserAccountController::class, 'restore']);
             });
 
-        Route::middleware(['admin', 'api.permission:settings.permissions.manage'])
+        Route::middleware(['api.permission:settings.permissions.manage'])
             ->group(function (): void {
                 Route::get('/settings/permissions', [RolePermissionController::class, 'show']);
                 Route::match(['put', 'patch'], '/settings/permissions', [RolePermissionController::class, 'update']);

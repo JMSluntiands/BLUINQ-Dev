@@ -186,15 +186,12 @@ export default function AuthenticatedLayout({ header, children }) {
     const canLevelOfDifficulty = can('settings.level-of-difficulty.view');
     const canArrivalInputFiles = can('settings.crm.arrival-input-files.view');
     const canCrmCategories = can('settings.crm.categories.view');
-    const canUserAccounts =
-        user?.role === 'admin' && can('settings.user-accounts.manage');
+    const canUserAccounts = can('settings.user-accounts.manage');
     const canPermissionsPage = can('settings.permissions.manage');
-    const canActivityLogs =
-        user?.role === 'admin' && can('settings.activity-logs.view');
+    const canActivityLogs = can('settings.activity-logs.view');
     const canUserManual = Boolean(user);
     const canRoles =
-        user?.role === 'admin' &&
-        (can('settings.roles.manage') || can('settings.user-accounts.manage'));
+        can('settings.roles.manage') || can('settings.user-accounts.manage');
     const canDraftingRequest = can('job.drafting-request.view');
     const canReviewDraftingRequests = can('job.drafting-request.review');
     const canJobList = can('job.list.view');
