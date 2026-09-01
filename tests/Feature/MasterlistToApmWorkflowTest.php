@@ -8,6 +8,7 @@ use App\Models\CrmCategory;
 use App\Models\DraftingRequest;
 use App\Models\DraftingRequestRevision;
 use App\Models\Role;
+use App\Models\ServiceEngaging;
 use App\Models\StoreyLevel;
 use App\Models\User;
 use App\Services\DraftingRequestBoardService;
@@ -349,6 +350,102 @@ class MasterlistToApmWorkflowTest extends TestCase
                 ->where('masterlistCandidates.0.id', $cancelled->id)
                 ->where('masterlistCandidates.0.source', 'apm')
                 ->where('masterlistCandidates.0.status', DraftingRequest::STATUS_CANCELLED));
+    }
+
+    public function test_add_item_shows_submitted_apm_jobs_on_design_board(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $draftingService = ServiceEngaging::query()->create([
+            'name' => 'Construction Drafting',
+            'status' => 'active',
+        ]);
+
+        $submittedApm = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_APM,
+            'requested_at' => now(),
+            'your_name' => 'APM Client',
+            'company_name' => 'APM Co',
+            'email' => 'apm@example.com',
+            'site_address' => '11 APM St',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+        $submittedApm->serviceEngagings()->sync([$draftingService->id]);
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $submittedApm->id,
+            'user_id' => $user->id,
+            'code' => $submittedApm->jobNumber().'-01',
+            'log_date' => now()->toDateString(),
+            'category' => 'WD',
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('design.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->has('masterlistCandidates', 1)
+                ->where('masterlistCandidates.0.id', $submittedApm->id)
+                ->where('masterlistCandidates.0.source', 'apm')
+                ->where('masterlistCandidates.0.status', DraftingRequest::STATUS_SUBMITTED));
+    }
+
+    public function test_add_item_shows_submitted_design_jobs_on_apm_board(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $designService = ServiceEngaging::query()->create([
+            'name' => 'Schematic Design',
+            'status' => 'active',
+        ]);
+
+        $submittedDesign = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_APM,
+            'requested_at' => now(),
+            'your_name' => 'Design Client',
+            'company_name' => 'Design Co',
+            'email' => 'design@example.com',
+            'site_address' => '12 Design St',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+        $submittedDesign->serviceEngagings()->sync([$designService->id]);
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $submittedDesign->id,
+            'user_id' => $user->id,
+            'code' => $submittedDesign->jobNumber().'-01',
+            'log_date' => now()->toDateString(),
+            'category' => 'WD',
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('job.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->has('masterlistCandidates', 1)
+                ->where('masterlistCandidates.0.id', $submittedDesign->id)
+                ->where('masterlistCandidates.0.source', 'design')
+                ->where('masterlistCandidates.0.status', DraftingRequest::STATUS_SUBMITTED));
     }
 
     public function test_add_item_excludes_jobs_already_on_board_table(): void

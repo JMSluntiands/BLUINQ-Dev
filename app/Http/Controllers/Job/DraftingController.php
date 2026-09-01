@@ -407,9 +407,10 @@ class DraftingController extends Controller
                 $job    = $row->site_address ?: '—';
                 $status = $row->status ?? DraftingRequest::STATUS_NEW;
 
-                if ($source === 'apm') {
+                if ($source === 'apm' || $source === 'design') {
                     $statusLabel = $statusLabels[$status] ?? ucfirst(str_replace('_', ' ', $status));
-                    $label = "[APM] {$leadNo} — {$client} — {$job} · {$statusLabel}";
+                    $boardLabel = $source === 'design' ? 'Design' : 'APM';
+                    $label = "[{$boardLabel}] {$leadNo} — {$client} — {$job} · {$statusLabel}";
                 } else {
                     $label = "[Masterlist] {$leadNo} — {$client} — {$job}";
                 }
@@ -452,14 +453,20 @@ class DraftingController extends Controller
             $byId[$row['id']] = $row;
         }
 
-        foreach ($format(
-            DraftingRequest::query()->apm()->reviewAccepted()->active()
-                ->eligibleForAddItemReopen()
-                ->with($revisionRelations)
-                ->orderByDesc('updated_at')->orderByDesc('id')->get(),
-            'apm',
-        ) as $row) {
-            $byId[$row['id']] = $row;
+        $reopenQuery = DraftingRequest::query()
+            ->reviewAccepted()
+            ->active()
+            ->eligibleForAddItemReopen()
+            ->with($revisionRelations)
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id');
+
+        $this->board->applyEitherProjectBoardFilter($reopenQuery);
+
+        foreach ($reopenQuery->get() as $row) {
+            foreach ($format(collect([$row]), $this->board->addItemSourceFor($row)) as $formatted) {
+                $byId[$formatted['id']] = $formatted;
+            }
         }
 
         return collect(array_values($byId))

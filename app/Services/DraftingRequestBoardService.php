@@ -71,6 +71,43 @@ class DraftingRequestBoardService
     }
 
     /**
+     * Jobs that belong to either the APM or Design board.
+     *
+     * @param  Builder<DraftingRequest>  $query
+     */
+    public function applyEitherProjectBoardFilter(Builder $query): void
+    {
+        $query->where(function (Builder $outer) {
+            $outer->where(function (Builder $apm) {
+                $apm->where('workflow_stage', DraftingRequest::STAGE_APM);
+                $this->applyExcludeDesignPhaseFilter($apm);
+            })->orWhere(function (Builder $design) {
+                $design->where('workflow_stage', DraftingRequest::STAGE_DESIGN)
+                    ->orWhere(function (Builder $legacy) {
+                        $legacy->where('workflow_stage', DraftingRequest::STAGE_APM);
+                        $this->applyDesignPhaseFilter($legacy);
+                    });
+            });
+        });
+    }
+
+    /**
+     * Add item label source: apm vs design board the job belongs to.
+     */
+    public function addItemSourceFor(DraftingRequest $row): string
+    {
+        if ($row->workflow_stage === DraftingRequest::STAGE_DESIGN) {
+            return 'design';
+        }
+
+        if ($row->workflow_stage === DraftingRequest::STAGE_APM && $this->isDesignPhaseRequest($row)) {
+            return 'design';
+        }
+
+        return 'apm';
+    }
+
+    /**
      * @param  Builder<DraftingRequest>  $query
      */
     public function applySearch(Builder $query, string $search): void

@@ -286,11 +286,13 @@ class JobBoardController extends Controller
             $byId[$row['id']] = $row;
         }
 
-        foreach ($this->formatAddCandidates(
-            $this->boardReopenCandidateQuery($user, $board)->get(),
-            $board,
-        ) as $row) {
-            $byId[$row['id']] = $row;
+        foreach ($this->boardReopenCandidateQuery($user)->get() as $row) {
+            foreach ($this->formatAddCandidates(
+                collect([$row]),
+                $this->board->addItemSourceFor($row),
+            ) as $formatted) {
+                $byId[$formatted['id']] = $formatted;
+            }
         }
 
         // Newest job numbers first so the latest drafts are at the top of Add item.
@@ -393,11 +395,11 @@ class JobBoardController extends Controller
     }
 
     /**
-     * Submitted/cancelled jobs already on this board that may be reopened via Add item.
+     * Submitted/cancelled jobs on APM or Design boards that may be reopened via Add item.
      *
      * @return \Illuminate\Database\Eloquent\Builder<DraftingRequest>
      */
-    private function boardReopenCandidateQuery(?User $user, string $board)
+    private function boardReopenCandidateQuery(?User $user)
     {
         $query = DraftingRequest::query()
             ->reviewAccepted()
@@ -408,14 +410,7 @@ class JobBoardController extends Controller
             ->orderByDesc('requested_at')
             ->orderByDesc('id');
 
-        if ($board === 'design') {
-            $query->where(function ($outer) {
-                $outer->where('workflow_stage', DraftingRequest::STAGE_DESIGN)
-                    ->orWhere('workflow_stage', DraftingRequest::STAGE_APM);
-            });
-        } else {
-            $query->where('workflow_stage', DraftingRequest::STAGE_APM);
-        }
+        $this->board->applyEitherProjectBoardFilter($query);
 
         return $query;
     }
