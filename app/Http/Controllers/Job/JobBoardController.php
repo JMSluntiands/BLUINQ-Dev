@@ -96,6 +96,7 @@ class JobBoardController extends Controller
             $query->whereIn('status', $statusFilter);
         }
         $this->board->applySearch($query, $filters['search']);
+        $this->board->applyBoardSort($query, $filters['sort'], $filters['direction']);
 
         $user = $request->user();
         $canReviewPublicRequests = $showPendingRequests
@@ -374,6 +375,10 @@ class JobBoardController extends Controller
                     'revisions' => $revisions,
                     'suggested_code' => $row->suggestNextRevisionCode(),
                     'latest_revision' => $latestRevision,
+                    'date_out' => $row->date_out?->format('Y-m-d'),
+                    'max_building_area_sqm' => $row->max_building_area_sqm !== null
+                        ? rtrim(rtrim((string) $row->max_building_area_sqm, '0'), '.')
+                        : null,
                 ];
             })
             ->values()
@@ -463,6 +468,13 @@ class JobBoardController extends Controller
 
         $this->assertAddableToBoard($draftingRequest);
 
+        $request->merge([
+            'date_out' => filled($request->input('date_out')) ? $request->input('date_out') : null,
+            'max_building_area_sqm' => filled($request->input('max_building_area_sqm'))
+                ? $request->input('max_building_area_sqm')
+                : null,
+        ]);
+
         $categoryCodes = \App\Models\CrmCategory::query()
             ->active()
             ->orderBy('code')
@@ -483,6 +495,8 @@ class JobBoardController extends Controller
             'log_date' => ['required', 'date'],
             'category' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::in($categoryCodes)],
             'status'   => ['required', 'string', \Illuminate\Validation\Rule::in($allowedStatuses)],
+            'date_out' => ['nullable', 'date'],
+            'max_building_area_sqm' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
         ]);
 
         // Create the revision once from the modal — do not let reopen create a second row.
@@ -499,6 +513,8 @@ class JobBoardController extends Controller
 
         $draftingRequest->forceFill([
             'status' => $validated['status'],
+            'date_out' => $validated['date_out'] ?? null,
+            'max_building_area_sqm' => $validated['max_building_area_sqm'] ?? null,
         ])->save();
 
         $result = $this->submission->addOrReopenOnBoard(

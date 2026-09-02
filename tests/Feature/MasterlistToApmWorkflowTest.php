@@ -268,6 +268,47 @@ class MasterlistToApmWorkflowTest extends TestCase
         $this->assertSame(DraftingRequest::STAGE_APM, $row->workflow_stage);
     }
 
+    public function test_quick_add_item_saves_date_out_and_areas(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $row = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_NEW,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_MASTERLIST,
+            'requested_at' => now(),
+            'your_name' => 'Master Client',
+            'company_name' => 'Master Co',
+            'email' => 'master@example.com',
+            'site_address' => '1 Master St',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('job.board.add.quick', $row), [
+                'board' => 'apm',
+                'code' => $row->jobNumber().'-01',
+                'log_date' => now()->toDateString(),
+                'category' => $category->code,
+                'status' => DraftingRequest::STATUS_NEW,
+                'date_out' => '2026-09-15',
+                'max_building_area_sqm' => '245.5',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('job.list'));
+
+        $row->refresh();
+        $this->assertSame(DraftingRequest::STAGE_APM, $row->workflow_stage);
+        $this->assertSame('2026-09-15', $row->date_out?->toDateString());
+        $this->assertSame('245.50', (string) $row->max_building_area_sqm);
+    }
+
     public function test_add_item_includes_submitted_apm_jobs_for_reopen(): void
     {
         $user = $this->adminUser();
@@ -629,6 +670,60 @@ class MasterlistToApmWorkflowTest extends TestCase
                 ->where('masterlistCandidates.0.lead_no', '26130C')
                 ->where('masterlistCandidates.1.id', $older->id)
                 ->where('masterlistCandidates.1.lead_no', '26126B'));
+    }
+
+    public function test_apm_board_sorts_by_site_address_within_status_group(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        foreach (['Zebra St', 'Alpha St'] as $address) {
+            $job = DraftingRequest::query()->create([
+                'user_id' => $user->id,
+                'status' => DraftingRequest::STATUS_NEW,
+                'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+                'workflow_stage' => DraftingRequest::STAGE_APM,
+                'requested_at' => now(),
+                'your_name' => 'Client',
+                'company_name' => 'Co',
+                'email' => strtolower(str_replace(' ', '', $address)).'@example.com',
+                'site_address' => $address,
+                'site_owner_name' => 'Owner',
+                'storey_level_id' => $storeyLevel->id,
+                'crm_category_id' => $category->id,
+                'ceiling_heights' => '2700',
+                'ndis_sda' => false,
+            ]);
+
+            DraftingRequestRevision::query()->create([
+                'drafting_request_id' => $job->id,
+                'user_id' => $user->id,
+                'code' => $job->jobNumber().'-01',
+                'log_date' => now()->toDateString(),
+                'category' => 'WD',
+                'status' => DraftingRequest::STATUS_NEW,
+            ]);
+        }
+
+        $this->actingAs($user)
+            ->get(route('job.list', [
+                'sort' => 'site_address',
+                'direction' => 'asc',
+            ]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->where('filters.sort', 'site_address')
+                ->where('filters.direction', 'asc')
+                ->where('paginatedStatusGroups', function ($groups) {
+                    $newGroup = collect($groups)->firstWhere('status', 'new');
+                    $addresses = collect($newGroup['pagination']['data'] ?? [])
+                        ->pluck('job')
+                        ->values()
+                        ->all();
+
+                    return $addresses === ['Alpha St', 'Zebra St'];
+                }));
     }
 
     public function test_public_accept_lands_on_masterlist_only(): void

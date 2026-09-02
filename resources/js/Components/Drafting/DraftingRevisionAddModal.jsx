@@ -189,6 +189,8 @@ export default function DraftingRevisionAddModal({
         category: '',
         status: defaultJobStatus || 'new',
         board,
+        date_out: '',
+        max_building_area_sqm: '',
     });
 
     useEffect(() => {
@@ -208,6 +210,8 @@ export default function DraftingRevisionAddModal({
                 category: entry.category ?? '',
                 status: entry.status ?? '',
                 board,
+                date_out: '',
+                max_building_area_sqm: '',
             });
 
             return;
@@ -221,6 +225,19 @@ export default function DraftingRevisionAddModal({
             suggestNextRevisionCode(effectiveJobNumber, effectiveRevisions);
         form.setData('code', nextCode);
         form.setData('status', effectiveStatus || 'new');
+        if (isForwardMode) {
+            form.setData(
+                'date_out',
+                selectedProject?.date_out ? String(selectedProject.date_out) : '',
+            );
+            form.setData(
+                'max_building_area_sqm',
+                selectedProject?.max_building_area_sqm != null &&
+                    selectedProject.max_building_area_sqm !== ''
+                    ? String(selectedProject.max_building_area_sqm)
+                    : '',
+            );
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
         show,
@@ -458,6 +475,61 @@ export default function DraftingRevisionAddModal({
                                     className="mt-1"
                                 />
                             </div>
+
+                            {isForwardMode ? (
+                                <>
+                                    <div>
+                                        <InputLabel
+                                            htmlFor="revision-date-out"
+                                            value="Date Out"
+                                        />
+                                        <TextInput
+                                            id="revision-date-out"
+                                            type="date"
+                                            value={form.data.date_out}
+                                            onChange={(e) =>
+                                                form.setData(
+                                                    'date_out',
+                                                    e.target.value,
+                                                )
+                                            }
+                                            className="mt-1 block w-full"
+                                        />
+                                        <InputError
+                                            message={form.errors.date_out}
+                                            className="mt-1"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <InputLabel
+                                            htmlFor="revision-areas"
+                                            value="Areas (m²)"
+                                        />
+                                        <TextInput
+                                            id="revision-areas"
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={form.data.max_building_area_sqm}
+                                            onChange={(e) =>
+                                                form.setData(
+                                                    'max_building_area_sqm',
+                                                    e.target.value,
+                                                )
+                                            }
+                                            className="mt-1 block w-full"
+                                            placeholder="e.g. 220"
+                                        />
+                                        <InputError
+                                            message={
+                                                form.errors.max_building_area_sqm
+                                            }
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                </>
+                            ) : null}
                         </>
                     ) : null}
                 </div>

@@ -144,6 +144,9 @@ export default function JobBoard({
                     suggested_code: candidate.suggested_code ?? '',
                     status: candidate.status ?? 'new',
                     source: candidate.source ?? 'masterlist',
+                    date_out: candidate.date_out ?? null,
+                    max_building_area_sqm:
+                        candidate.max_building_area_sqm ?? null,
                 };
             }),
         [masterlistCandidates, boardRevisionsById],
@@ -157,10 +160,38 @@ export default function JobBoard({
             route(searchRoute),
             {
                 ...(q ? { search: q } : {}),
-                per_page: filters.per_page ?? 10,
+                per_page: filters.per_page ?? 50,
+                ...(filters.sort
+                    ? { sort: filters.sort, direction: filters.direction }
+                    : {}),
             },
             {
                 only,
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            },
+        );
+    };
+
+    const handleSortColumn = (column) => {
+        const currentSort = filters.sort ?? '';
+        const currentDirection = filters.direction ?? 'asc';
+        const nextDirection =
+            currentSort === column && currentDirection === 'asc'
+                ? 'desc'
+                : 'asc';
+        const q = liveSearch.trim();
+
+        router.get(
+            route(searchRoute),
+            {
+                ...(q ? { search: q } : {}),
+                per_page: filters.per_page ?? 50,
+                sort: column,
+                direction: nextDirection,
+            },
+            {
                 preserveState: true,
                 preserveScroll: true,
                 replace: true,
@@ -227,9 +258,10 @@ export default function JobBoard({
 
             <div className="overflow-hidden rounded-xl border border-[#e6e9ef] bg-white shadow-sm dark:border-[#2f3347] dark:bg-[#1a1b2e] dark:shadow-none">
                 <TableSearchToolbar
-                    key={String(filters.per_page ?? 10)}
+                    key={String(filters.per_page ?? 50)}
                     ziggyRouteName={searchRoute}
                     filters={filters}
+                    defaultPerPage={50}
                     liveSearch
                     liveSearchOnly={[
                         'jobs',
@@ -244,6 +276,9 @@ export default function JobBoard({
                     paginatedStatusGroups={paginatedStatusGroups}
                     groupByStatus={groupByStatus}
                     hideEmptyStatusGroups={hasSearch}
+                    sortColumn={filters.sort ?? ''}
+                    sortDirection={filters.direction ?? 'asc'}
+                    onSortColumn={handleSortColumn}
                     emptyMessage={
                         hasSearch
                             ? 'No drafting requests match your search.'

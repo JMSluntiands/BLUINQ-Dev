@@ -43,10 +43,60 @@ class DraftingRequestBoardService
 
         $this->applyBoardStageFilter($query, $board);
 
-        return $query
-            ->orderByDesc('is_priority')
-            ->orderByDesc('requested_at')
-            ->orderByDesc('id');
+        return $query;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function boardSortColumns(): array
+    {
+        return [
+            'site_address',
+            'revision_code',
+            'company_name',
+            'requested_at',
+            'is_priority',
+        ];
+    }
+
+    /**
+     * @param  Builder<DraftingRequest>  $query
+     */
+    public function applyBoardSort(Builder $query, string $sort, string $direction): void
+    {
+        $direction = $direction === 'asc' ? 'asc' : 'desc';
+
+        if ($sort === '' || ! in_array($sort, self::boardSortColumns(), true)) {
+            $query->orderByDesc('is_priority')
+                ->orderByDesc('requested_at')
+                ->orderByDesc('id');
+
+            return;
+        }
+
+        if ($sort === 'revision_code') {
+            $query->orderBy(
+                DraftingRequestRevision::query()
+                    ->select('code')
+                    ->whereColumn('drafting_request_id', 'drafting_requests.id')
+                    ->orderByDesc('id')
+                    ->limit(1),
+                $direction,
+            )->orderBy('id', $direction);
+
+            return;
+        }
+
+        if ($sort === 'company_name') {
+            $query->orderByRaw(
+                "COALESCE(NULLIF(TRIM(company_name), ''), NULLIF(TRIM(your_name), ''), '') {$direction}",
+            )->orderBy('id', $direction);
+
+            return;
+        }
+
+        $query->orderBy($sort, $direction)->orderBy('id', $direction);
     }
 
     /**
@@ -231,19 +281,31 @@ class DraftingRequestBoardService
     }
 
     /**
-     * @return array{search: string, per_page: int}
+     * @return array{search: string, per_page: int, sort: string, direction: string}
      */
     public function resolveListFilters(Request $request): array
     {
         $search = Str::limit(trim((string) $request->input('search', '')), 255);
-        $perPage = (int) $request->input('per_page', 10);
+        $perPage = (int) $request->input('per_page', 50);
         if ($perPage < 5 || $perPage > 50) {
-            $perPage = 10;
+            $perPage = 50;
+        }
+
+        $sort = (string) $request->input('sort', '');
+        if ($sort !== '' && ! in_array($sort, self::boardSortColumns(), true)) {
+            $sort = '';
+        }
+
+        $direction = strtolower((string) $request->input('direction', 'asc'));
+        if (! in_array($direction, ['asc', 'desc'], true)) {
+            $direction = 'asc';
         }
 
         return [
             'search' => $search,
             'per_page' => $perPage,
+            'sort' => $sort,
+            'direction' => $direction,
         ];
     }
 

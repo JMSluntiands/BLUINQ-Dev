@@ -19,6 +19,7 @@ import {
     CalendarDaysIcon,
     ChevronDownIcon,
     ChevronRightIcon,
+    ChevronUpIcon,
     FlagIcon,
 } from '@heroicons/react/24/outline';
 import { FlagIcon as FlagIconSolid } from '@heroicons/react/24/solid';
@@ -651,6 +652,59 @@ function PriorityFlag({ job, onToggled }) {
 const thClass =
     'whitespace-nowrap border-r border-[#e6e9ef] px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-[#676879] last:border-r-0 dark:border-[#2f3347] dark:text-slate-400';
 
+const sortButtonClass =
+    'inline-flex items-center gap-0.5 text-left transition hover:text-[#323338] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0073ea] focus-visible:ring-offset-1 dark:hover:text-white dark:focus-visible:ring-offset-[#151622]';
+
+/**
+ * @param {{
+ *   column: string;
+ *   label: string;
+ *   sortColumn?: string;
+ *   sortDirection?: 'asc' | 'desc';
+ *   onSortColumn?: (column: string) => void;
+ *   className?: string;
+ * }} props
+ */
+function SortableTh({
+    column,
+    label,
+    sortColumn = '',
+    sortDirection = 'asc',
+    onSortColumn,
+    className = thClass,
+}) {
+    const active = sortColumn === column;
+
+    return (
+        <th className={className}>
+            <button
+                type="button"
+                onClick={() => onSortColumn?.(column)}
+                className={
+                    sortButtonClass +
+                    (active
+                        ? ' text-[#0073ea] dark:text-sky-400'
+                        : '')
+                }
+                aria-label={`Sort by ${label}${
+                    active
+                        ? `, ${sortDirection === 'asc' ? 'ascending' : 'descending'}`
+                        : ''
+                }`}
+            >
+                <span>{label}</span>
+                {active ? (
+                    sortDirection === 'asc' ? (
+                        <ChevronUpIcon className="h-3 w-3 shrink-0" aria-hidden />
+                    ) : (
+                        <ChevronDownIcon className="h-3 w-3 shrink-0" aria-hidden />
+                    )
+                ) : null}
+            </button>
+        </th>
+    );
+}
+
 const tdClass =
     'border-r border-[#e6e9ef] px-2 py-1.5 align-middle text-xs text-[#323338] last:border-r-0 dark:border-[#2a2d42] dark:text-slate-200';
 
@@ -712,7 +766,12 @@ function JobBoardTableHead({
     hideStatus,
     showActions = false,
     variant = 'board',
+    sortColumn = '',
+    sortDirection = 'asc',
+    onSortColumn = null,
 }) {
+    const sortable = variant === 'board' && typeof onSortColumn === 'function';
+
     if (variant === 'masterlist') {
         return (
             <thead className="bg-[#fafbfc] dark:bg-[#151622]">
@@ -747,13 +806,53 @@ function JobBoardTableHead({
     return (
         <thead className="bg-[#fafbfc] dark:bg-[#151622]">
             <tr>
-                <th className={thClass}>Site Address</th>
+                {sortable ? (
+                    <SortableTh
+                        column="site_address"
+                        label="Site Address"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSortColumn={onSortColumn}
+                    />
+                ) : (
+                    <th className={thClass}>Site Address</th>
+                )}
                 <th className={thClass + ' w-10'} />
-                <th className={thClass}>Revision No.</th>
-                <th className={thClass}>Client Name</th>
+                {sortable ? (
+                    <SortableTh
+                        column="revision_code"
+                        label="Revision No."
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSortColumn={onSortColumn}
+                    />
+                ) : (
+                    <th className={thClass}>Revision No.</th>
+                )}
+                {sortable ? (
+                    <SortableTh
+                        column="company_name"
+                        label="Client Name"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSortColumn={onSortColumn}
+                    />
+                ) : (
+                    <th className={thClass}>Client Name</th>
+                )}
                 <th className={thClass}>Category</th>
                 <th className={thClass}>Storey / Levels</th>
-                <th className={thClass}>Date In</th>
+                {sortable ? (
+                    <SortableTh
+                        column="requested_at"
+                        label="Date In"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSortColumn={onSortColumn}
+                    />
+                ) : (
+                    <th className={thClass}>Date In</th>
+                )}
                 <th className={thClass}>ETA</th>
                 <th className={thClass}>Start Date</th>
                 {draftingHeaders}
@@ -762,7 +861,18 @@ function JobBoardTableHead({
                 <th className={thClass}>Areas</th>
                 <th className={thClass}>Date Out</th>
                 {!hideStatus && <th className={thClass}>Status</th>}
-                <th className={thClass + ' w-10'}>Priority</th>
+                {sortable ? (
+                    <SortableTh
+                        column="is_priority"
+                        label="Priority"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSortColumn={onSortColumn}
+                        className={thClass + ' w-10'}
+                    />
+                ) : (
+                    <th className={thClass + ' w-10'}>Priority</th>
+                )}
                 <th className={thClass}>VO</th>
                 {showActions && <th className={thClass}>Actions</th>}
             </tr>
@@ -1186,6 +1296,9 @@ function JobBoardStatusSection({
     assignableUsers = [],
     statusOptions = [],
     onOpenAssignment = null,
+    sortColumn = '',
+    sortDirection = 'asc',
+    onSortColumn = null,
 }) {
     const sectionId = `job-board-status-${status}`;
 
@@ -1245,6 +1358,9 @@ function JobBoardStatusSection({
                                 hideStatus={hideStatus}
                                 showActions={Boolean(renderActions)}
                                 variant={variant}
+                                sortColumn={sortColumn}
+                                sortDirection={sortDirection}
+                                onSortColumn={onSortColumn}
                             />
                             <JobBoardTableBody
                                 jobs={jobs}
@@ -1310,6 +1426,9 @@ export default function JobBoardGrid({
     assignableUsers = [],
     statusOptions = [],
     statusGroupOptions = [],
+    sortColumn = '',
+    sortDirection = 'asc',
+    onSortColumn = null,
 }) {
     const [commentJob, setCommentJob] = useState(null);
     const [assignmentTarget, setAssignmentTarget] = useState(null);
@@ -1426,6 +1545,9 @@ export default function JobBoardGrid({
                             assignableUsers={assignableUsers}
                             statusOptions={statusOptions}
                             onOpenAssignment={setAssignmentTarget}
+                            sortColumn={sortColumn}
+                            sortDirection={sortDirection}
+                            onSortColumn={onSortColumn}
                         />
                     ))
                 ) : (
@@ -1445,6 +1567,9 @@ export default function JobBoardGrid({
                                 hideStatus={hideStatus}
                                 showActions={Boolean(renderActions)}
                                 variant={variant}
+                                sortColumn={sortColumn}
+                                sortDirection={sortDirection}
+                                onSortColumn={onSortColumn}
                             />
                             <JobBoardTableBody
                                 jobs={jobs}
