@@ -278,7 +278,7 @@ class MasterlistToApmWorkflowTest extends TestCase
             'status' => DraftingRequest::STATUS_NEW,
             'review_status' => DraftingRequest::REVIEW_ACCEPTED,
             'workflow_stage' => DraftingRequest::STAGE_MASTERLIST,
-            'requested_at' => now(),
+            'requested_at' => now()->subDays(10),
             'your_name' => 'Master Client',
             'company_name' => 'Master Co',
             'email' => 'master@example.com',
@@ -294,7 +294,7 @@ class MasterlistToApmWorkflowTest extends TestCase
             ->post(route('job.board.add.quick', $row), [
                 'board' => 'apm',
                 'code' => $row->jobNumber().'-01',
-                'log_date' => now()->toDateString(),
+                'log_date' => '2026-09-01',
                 'category' => $category->code,
                 'status' => DraftingRequest::STATUS_NEW,
                 'date_out' => '2026-09-15',
@@ -305,8 +305,37 @@ class MasterlistToApmWorkflowTest extends TestCase
 
         $row->refresh();
         $this->assertSame(DraftingRequest::STAGE_APM, $row->workflow_stage);
+        $this->assertSame('2026-09-01', $row->requested_at?->timezone(config('app.timezone'))->toDateString());
         $this->assertSame('2026-09-15', $row->date_out?->toDateString());
         $this->assertSame('245.50', (string) $row->max_building_area_sqm);
+
+        $formatted = app(\App\Services\DraftingRequestBoardService::class)
+            ->formatBoardRow($row->fresh()->load(['revisions', 'assignments', 'crmCategory', 'crmCategories', 'serviceEngagings', 'storeyLevel']));
+        $this->assertSame('2026-09-01', $formatted['date_in']);
+        $this->assertSame('2026-09-15', $formatted['date_out']);
+        $this->assertSame('Sep 15', $formatted['date_out_label']);
+
+        $revision = DraftingRequestRevision::query()
+            ->where('drafting_request_id', $row->id)
+            ->where('code', $row->jobNumber().'-01')
+            ->first();
+        $this->assertNotNull($revision);
+        $this->assertSame('2026-09-15', $revision->submitted_date?->toDateString());
+
+        $older = DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $row->id,
+            'user_id' => $user->id,
+            'code' => $row->jobNumber().'-00',
+            'log_date' => '2026-08-01',
+            'category' => $category->code,
+            'status' => DraftingRequest::STATUS_NEW,
+            'submitted_date' => null,
+        ]);
+
+        $revisionRows = app(\App\Services\DraftingJobShowService::class)->revisionsFor($row->fresh());
+        $byId = collect($revisionRows)->keyBy('id');
+        $this->assertSame('15 Sep 2026', $byId[$revision->id]['submitted_date']);
+        $this->assertNull($byId[$older->id]['submitted_date']);
     }
 
     public function test_add_item_includes_submitted_apm_jobs_for_reopen(): void

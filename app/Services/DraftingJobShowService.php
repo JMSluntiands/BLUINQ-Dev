@@ -17,10 +17,12 @@ class DraftingJobShowService
         return $draftingRequest->revisions()
             ->with(['drafter:id,name,initials', 'checker:id,name,initials'])
             ->get()
-            ->map(function (DraftingRequestRevision $revision) use ($draftingRequest) {
+            ->map(function (DraftingRequestRevision $revision) {
                 $status = $revision->status;
                 $statusOptions = DraftingRequest::statusLabels();
-                $dateOut = $revision->submitted_date ?? $draftingRequest->date_out;
+                // Per-revision Date Out only — never fall back to the job date_out,
+                // or every revision row would change when Add item updates the job.
+                $dateOut = $revision->submitted_date;
 
                 return [
                 'id' => $revision->id,

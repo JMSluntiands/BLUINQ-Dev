@@ -375,7 +375,7 @@ class JobBoardController extends Controller
                     'revisions' => $revisions,
                     'suggested_code' => $row->suggestNextRevisionCode(),
                     'latest_revision' => $latestRevision,
-                    'date_out' => $row->date_out?->format('Y-m-d'),
+                    'date_out' => $row->date_out?->toDateString(),
                     'max_building_area_sqm' => $row->max_building_area_sqm !== null
                         ? rtrim(rtrim((string) $row->max_building_area_sqm, '0'), '.')
                         : null,
@@ -509,11 +509,28 @@ class JobBoardController extends Controller
             'log_date' => $validated['log_date'],
             'category' => $validated['category'],
             'status'   => $validated['status'],
+            'submitted_date' => filled($validated['date_out'] ?? null)
+                ? Carbon::parse($validated['date_out'], config('app.timezone'))->toDateString()
+                : null,
         ]);
+
+        // Board Date In / Date Out columns come from the job row, not the revision.
+        $tz = config('app.timezone');
+        $existingRequestedAt = $draftingRequest->requested_at?->timezone($tz);
+        $requestedAt = Carbon::parse($validated['log_date'], $tz)->setTime(
+            $existingRequestedAt?->hour ?? 0,
+            $existingRequestedAt?->minute ?? 0,
+            $existingRequestedAt?->second ?? 0,
+        );
+
+        $dateOut = filled($validated['date_out'] ?? null)
+            ? Carbon::parse($validated['date_out'], $tz)->toDateString()
+            : null;
 
         $draftingRequest->forceFill([
             'status' => $validated['status'],
-            'date_out' => $validated['date_out'] ?? null,
+            'requested_at' => $requestedAt,
+            'date_out' => $dateOut,
             'max_building_area_sqm' => $validated['max_building_area_sqm'] ?? null,
         ])->save();
 
@@ -953,8 +970,11 @@ class JobBoardController extends Controller
         }
 
         if (array_key_exists('date_out', $validated)) {
+            $tz = config('app.timezone');
             $draftingRequest->update([
-                'date_out' => $validated['date_out'],
+                'date_out' => filled($validated['date_out'])
+                    ? Carbon::parse($validated['date_out'], $tz)->toDateString()
+                    : null,
             ]);
         }
 

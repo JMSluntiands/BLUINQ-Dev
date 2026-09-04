@@ -477,8 +477,10 @@ class DraftingRequestBoardService
             'area_sqm' => $row->max_building_area_sqm !== null
                 ? rtrim(rtrim((string) $row->max_building_area_sqm, '0'), '.')
                 : null,
-            'date_out' => $row->date_out?->format('Y-m-d'),
-            'date_out_label' => $row->date_out?->format('M j') ?? '—',
+            'date_out' => $row->date_out?->toDateString(),
+            'date_out_label' => $row->date_out
+                ? Carbon::parse($row->date_out->toDateString(), $tz)->format('M j')
+                : '—',
             'status' => $actualStatus,
             'status_label' => $row->statusLabel(),
             'list_group' => $this->mapJobListGroup($row),

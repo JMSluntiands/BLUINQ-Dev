@@ -6,7 +6,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import Select2 from '@/Components/Select2';
 import TextInput from '@/Components/TextInput';
 import { router, useForm, usePage } from '@inertiajs/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 function listQueryString(listFilters = {}) {
     const p = new URLSearchParams();
@@ -104,6 +104,7 @@ export default function DraftingRevisionAddModal({
     const needsProjectPick = !entry && !draftingRequestId;
     const [selectedProjectId, setSelectedProjectId] = useState('');
     const [forwarding, setForwarding] = useState(false);
+    const lastPrefillProjectId = useRef('');
 
     const emptyRevisions = useMemo(() => [], []);
     const selectedProject = useMemo(
@@ -199,6 +200,7 @@ export default function DraftingRevisionAddModal({
             form.clearErrors();
             setSelectedProjectId('');
             setForwarding(false);
+            lastPrefillProjectId.current = '';
             return;
         }
 
@@ -225,10 +227,21 @@ export default function DraftingRevisionAddModal({
             suggestNextRevisionCode(effectiveJobNumber, effectiveRevisions);
         form.setData('code', nextCode);
         form.setData('status', effectiveStatus || 'new');
-        if (isForwardMode) {
+
+        // Prefill Date Out / Areas only when the project selection changes,
+        // so user edits are not overwritten by later effect runs.
+        const projectKey = String(selectedProjectId || '');
+        if (
+            isForwardMode &&
+            projectKey !== '' &&
+            projectKey !== lastPrefillProjectId.current
+        ) {
+            lastPrefillProjectId.current = projectKey;
             form.setData(
                 'date_out',
-                selectedProject?.date_out ? String(selectedProject.date_out) : '',
+                selectedProject?.date_out
+                    ? String(selectedProject.date_out).slice(0, 10)
+                    : '',
             );
             form.setData(
                 'max_building_area_sqm',
@@ -258,16 +271,60 @@ export default function DraftingRevisionAddModal({
         }
 
         if (isForwardMode) {
+            form.clearErrors();
+
+            if (!String(form.data.category ?? '').trim()) {
+                form.setError('category', 'Select a category.');
+                return;
+            }
+
+            if (!String(form.data.log_date ?? '').trim()) {
+                form.setError('log_date', 'Select a date in.');
+                return;
+            }
+
+            if (!String(form.data.code ?? '').trim()) {
+                form.setError('code', 'Enter a revision number.');
+                return;
+            }
+
+            if (!String(form.data.status ?? '').trim()) {
+                form.setError('status', 'Select a status.');
+                return;
+            }
+
             setForwarding(true);
-            form.setData('board', board);
-            form.post(route('job.board.add.quick', effectiveRequestId), {
-                onSuccess: () => {
-                    form.reset();
-                    onClose();
+
+            router.post(
+                route('job.board.add.quick', effectiveRequestId),
+                {
+                    code: form.data.code,
+                    link: form.data.link || null,
+                    log_date: form.data.log_date,
+                    category: form.data.category,
+                    status: form.data.status,
+                    board,
+                    date_out: form.data.date_out
+                        ? String(form.data.date_out).slice(0, 10)
+                        : null,
+                    max_building_area_sqm: form.data.max_building_area_sqm
+                        ? String(form.data.max_building_area_sqm)
+                        : null,
                 },
-                onFinish: () => setForwarding(false),
-                onError: () => setForwarding(false),
-            });
+                {
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        form.reset();
+                        onClose();
+                    },
+                    onError: (errors) => {
+                        Object.entries(errors).forEach(([key, message]) => {
+                            form.setError(key, String(message));
+                        });
+                    },
+                    onFinish: () => setForwarding(false),
+                },
+            );
             return;
         }
 
@@ -444,6 +501,7 @@ export default function DraftingRevisionAddModal({
                                         options={categorySelectOptions}
                                         placeholder="Select category…"
                                         enabled={show}
+                                        required
                                     />
                                 </div>
                                 <InputError
@@ -537,14 +595,21 @@ export default function DraftingRevisionAddModal({
                 <div className="mt-6 flex flex-wrap justify-end gap-2">
                     <SecondaryButton
                         type="button"
-                        onClick={onClose}
+                        onClick={() => {
+                            setForwarding(false);
+                            onClose();
+                        }}
                         className="rounded-lg normal-case tracking-normal"
                     >
                         Cancel
                     </SecondaryButton>
                     <PrimaryButton
                         loading={isForwardMode ? forwarding : form.processing}
-                        disabled={!effectiveRequestId && !isEditing}
+                        disabled={
+                            forwarding ||
+                            form.processing ||
+                            (!effectiveRequestId && !isEditing)
+                        }
                         className="rounded-lg normal-case tracking-normal"
                     >
                         {isEditing
