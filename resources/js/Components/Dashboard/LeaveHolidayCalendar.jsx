@@ -30,6 +30,57 @@ function dateKey(date) {
     return `${year}-${month}-${day}`;
 }
 
+function isLeaveMark(mark) {
+    if (mark === 'leave' || mark === 'leave_pending') {
+        return true;
+    }
+
+    return Boolean(mark && typeof mark === 'object' && mark.kind === 'leave');
+}
+
+function leaveMarkMeta(mark) {
+    if (!isLeaveMark(mark)) {
+        return null;
+    }
+
+    if (typeof mark === 'object') {
+        return {
+            type: mark.type || 'al',
+            code: mark.code || 'LEAVE',
+            label: mark.label || 'On leave',
+        };
+    }
+
+    return {
+        type: 'al',
+        code: 'LEAVE',
+        label: 'On leave',
+    };
+}
+
+/** Tailwind classes for leave type chips on the calendar. */
+function leaveTypeChipClass(type) {
+    switch (type) {
+        case 'sl':
+            return 'bg-amber-100 text-amber-900 dark:bg-amber-500/25 dark:text-amber-200';
+        case 'hl':
+            return 'bg-rose-100 text-rose-900 dark:bg-rose-500/25 dark:text-rose-200';
+        case 'ml':
+            return 'bg-pink-100 text-pink-900 dark:bg-pink-500/25 dark:text-pink-200';
+        case 'pl':
+            return 'bg-indigo-100 text-indigo-900 dark:bg-indigo-500/25 dark:text-indigo-200';
+        case 'cl':
+            return 'bg-violet-100 text-violet-900 dark:bg-violet-500/25 dark:text-violet-200';
+        case 'npl':
+            return 'bg-slate-300 text-slate-800 dark:bg-slate-500/40 dark:text-slate-100';
+        case 'tol':
+            return 'bg-teal-100 text-teal-900 dark:bg-teal-500/25 dark:text-teal-200';
+        case 'al':
+        default:
+            return 'bg-sky-100 text-sky-900 dark:bg-sky-500/25 dark:text-sky-200';
+    }
+}
+
 function parseMonth(value) {
     const [year, month] = (value || '').split('-').map(Number);
     if (!year || !month) {
@@ -308,11 +359,14 @@ function DayCell({
                 {visibleLeave.map((person) => (
                     <div
                         key={person.id}
-                        className="truncate rounded-md bg-slate-200/90 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 dark:bg-slate-600/50 dark:text-slate-200"
-                        title={`On leave: ${person.name}`}
+                        className={
+                            'truncate rounded-md px-1.5 py-0.5 text-[10px] font-medium ' +
+                            leaveTypeChipClass(person.leaveType)
+                        }
+                        title={`${person.leaveLabel}: ${person.name}`}
                     >
                         <span className="font-bold tabular-nums">
-                            {person.initials}
+                            {person.leaveCode}
                         </span>
                         <span className="opacity-80"> · </span>
                         {person.name}
@@ -392,7 +446,8 @@ export default function LeaveHolidayCalendar({
 
         users.forEach((user) => {
             Object.entries(user.marks ?? {}).forEach(([key, mark]) => {
-                if (mark !== 'leave' && mark !== 'leave_pending') {
+                const leave = leaveMarkMeta(mark);
+                if (!leave) {
                     return;
                 }
 
@@ -406,6 +461,9 @@ export default function LeaveHolidayCalendar({
                     initials:
                         user.initials ||
                         badgeInitialsFromName(user.name),
+                    leaveType: leave.type,
+                    leaveCode: leave.code,
+                    leaveLabel: leave.label,
                 });
             });
         });
@@ -548,8 +606,52 @@ export default function LeaveHolidayCalendar({
                             Team event
                         </span>
                         <span className="inline-flex items-center gap-1.5">
-                            <span className="h-2 w-2 rounded-full bg-slate-400" />
-                            On leave
+                            <span className="rounded px-1 text-[10px] font-bold text-sky-800 dark:text-sky-300">
+                                AL
+                            </span>
+                            Annual leave
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                            <span className="rounded px-1 text-[10px] font-bold text-amber-800 dark:text-amber-300">
+                                SL
+                            </span>
+                            Sick leave
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                            <span className="rounded px-1 text-[10px] font-bold text-rose-800 dark:text-rose-300">
+                                HL
+                            </span>
+                            Hospitalization
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                            <span className="rounded px-1 text-[10px] font-bold text-pink-800 dark:text-pink-300">
+                                ML
+                            </span>
+                            Maternity
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                            <span className="rounded px-1 text-[10px] font-bold text-indigo-800 dark:text-indigo-300">
+                                PL
+                            </span>
+                            Paternity
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                            <span className="rounded px-1 text-[10px] font-bold text-violet-800 dark:text-violet-300">
+                                CL
+                            </span>
+                            Compassionate
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                            <span className="rounded px-1 text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                                NPL
+                            </span>
+                            No pay leave
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                            <span className="rounded px-1 text-[10px] font-bold text-teal-800 dark:text-teal-300">
+                                TOL
+                            </span>
+                            Time off in lieu
                         </span>
                     </div>
                 </div>

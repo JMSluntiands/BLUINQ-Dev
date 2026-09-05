@@ -431,7 +431,7 @@ class LeaveService
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, string|array{kind: string, type: string, code: string, label: string}>
      */
     private function buildMarksForUser(
         User $user,
@@ -452,7 +452,12 @@ class LeaveService
 
             foreach ($requests as $request) {
                 if ($day->between($request->start_date, $request->end_date)) {
-                    $marks[$day->toDateString()] = 'leave';
+                    $marks[$day->toDateString()] = [
+                        'kind' => 'leave',
+                        'type' => LeaveRequest::normalizeType((string) $request->type),
+                        'code' => $request->typeCode(),
+                        'label' => $request->typeLabel(),
+                    ];
                     break;
                 }
             }

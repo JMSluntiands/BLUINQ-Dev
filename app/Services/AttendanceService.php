@@ -94,6 +94,11 @@ class AttendanceService
                             $clock->clock_in_at,
                             $timezone,
                         ),
+                        'clock_out_time' => $this->formatClockTime(
+                            $clock->clock_out_at,
+                            $timezone,
+                        ),
+                        'still_in' => $clock->clock_out_at === null,
                     ],
                 );
             })

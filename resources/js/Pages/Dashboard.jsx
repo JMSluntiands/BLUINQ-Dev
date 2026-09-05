@@ -181,17 +181,28 @@ function AttendanceEmployeeRow({ employee, status, detail }) {
         !isLeave && employee.email ? employee.email : null,
     ].filter(Boolean);
     const subtitle = detailParts.join(' · ');
+    const clockedOut = isPresent && Boolean(employee.clock_out_time);
     const rowBg = isLeave
         ? 'bg-amber-50/90 dark:bg-amber-500/10'
         : isPresent
-          ? 'bg-emerald-50/90 dark:bg-emerald-500/10'
+          ? clockedOut
+            ? 'bg-slate-50/90 dark:bg-slate-800/60'
+            : 'bg-emerald-50/90 dark:bg-emerald-500/10'
           : 'bg-rose-50/90 dark:bg-rose-500/10';
     const badgeClass = isLeave
         ? 'bg-amber-200 text-amber-900 dark:bg-amber-500/30 dark:text-amber-100'
         : isPresent
-          ? 'bg-emerald-200 text-emerald-900 dark:bg-emerald-500/30 dark:text-emerald-100'
+          ? clockedOut
+            ? 'bg-slate-200 text-slate-800 dark:bg-slate-600/50 dark:text-slate-100'
+            : 'bg-sky-200 text-sky-900 dark:bg-sky-500/30 dark:text-sky-100'
           : 'bg-rose-200 text-rose-900 dark:bg-rose-500/35 dark:text-rose-100';
-    const badgeLabel = isLeave ? 'Leave' : isPresent ? 'Present' : 'Absent';
+    const badgeLabel = isLeave
+        ? 'Leave'
+        : isPresent
+          ? clockedOut
+            ? 'Clocked out'
+            : 'No clock out'
+          : 'No clock in';
 
     return (
         <li
@@ -304,6 +315,7 @@ export default function Dashboard() {
         drafterLeaderboard = null,
         activityFormOptions = null,
     } = usePage().props;
+    const presentEmployees = attendance.present ?? [];
     const absentEmployees = attendance.absent ?? [];
     const absentAfterNine = Boolean(attendance.absent_after_nine);
     const announcementPanelRef = useRef(null);
@@ -492,6 +504,42 @@ export default function Dashboard() {
                 >
                     <div className="space-y-5">
                         <div>
+                            <SectionLabel color="emerald">
+                                Timed in
+                                {presentEmployees.length > 0
+                                    ? ` (${presentEmployees.length})`
+                                    : ''}
+                            </SectionLabel>
+                            <ul className="space-y-2">
+                                {presentEmployees.length === 0 ? (
+                                    <li className="rounded-xl bg-slate-50/90 px-3 py-2.5 text-sm text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+                                        No one has clocked in yet.
+                                    </li>
+                                ) : (
+                                    presentEmployees.map((employee) => {
+                                        const timeParts = [
+                                            employee.clock_in_time
+                                                ? `In ${employee.clock_in_time}`
+                                                : 'Clocked in',
+                                            employee.clock_out_time
+                                                ? `Out ${employee.clock_out_time}`
+                                                : 'No clock out yet',
+                                        ].filter(Boolean);
+
+                                        return (
+                                            <AttendanceEmployeeRow
+                                                key={employee.id}
+                                                employee={employee}
+                                                status="present"
+                                                detail={timeParts.join(' · ')}
+                                            />
+                                        );
+                                    })
+                                )}
+                            </ul>
+                        </div>
+
+                        <div>
                             <SectionLabel color="amber">On leave</SectionLabel>
                             <ul className="space-y-2">
                                 {onLeaveToday.length === 0 ? (
@@ -512,11 +560,11 @@ export default function Dashboard() {
                         </div>
 
                         <div>
-                            <SectionLabel color="rose">Absent</SectionLabel>
+                            <SectionLabel color="rose">No clock in</SectionLabel>
                             {!absentAfterNine && (
                                 <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
-                                    Absent list updates at 8:00 AM for staff
-                                    who have not clocked in.
+                                    List updates at 8:00 AM for staff who have
+                                    not clocked in.
                                 </p>
                             )}
                             <ul className="space-y-2">
@@ -524,7 +572,7 @@ export default function Dashboard() {
                                     <li className="rounded-xl bg-slate-50/90 px-3 py-2.5 text-sm text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
                                         {absentAfterNine
                                             ? 'Everyone has clocked in.'
-                                            : 'No absences listed yet.'}
+                                            : 'No one listed yet.'}
                                     </li>
                                 ) : (
                                     absentEmployees.map((employee) => (
@@ -532,7 +580,7 @@ export default function Dashboard() {
                                             key={employee.id}
                                             employee={employee}
                                             status="absent"
-                                            detail="Not clocked in"
+                                            detail="No clock in today"
                                         />
                                     ))
                                 )}

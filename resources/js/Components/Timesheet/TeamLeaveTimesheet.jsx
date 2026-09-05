@@ -1,7 +1,6 @@
 import SearchableSelect from '@/Components/SearchableSelect';
 import UserAvatar from '@/Components/UserAvatar';
 import {
-    CalendarDaysIcon,
     ChevronLeftIcon,
     ChevronRightIcon,
     GiftIcon,
@@ -96,6 +95,59 @@ function holidayBadge(country) {
     return 'SG';
 }
 
+function resolveDayMark(user, dayKey) {
+    const mark = user.marks?.[dayKey];
+
+    if (mark === 'birthday') {
+        return { type: 'birthday', title: 'Birthday' };
+    }
+
+    if (mark && typeof mark === 'object' && mark.kind === 'leave') {
+        return {
+            type: 'leave',
+            leaveType: mark.type || 'al',
+            code: mark.code || 'LEAVE',
+            title: mark.label || 'Approved leave',
+        };
+    }
+
+    if (mark === 'leave' || mark === 'leave_pending') {
+        return { type: 'leave', leaveType: 'al', code: 'LEAVE', title: 'Approved leave' };
+    }
+
+    if (user.holiday_marks?.[dayKey]) {
+        return {
+            type: 'holiday',
+            title: `${user.holiday_marks[dayKey].country_label}: ${user.holiday_marks[dayKey].name}`,
+            country: user.holiday_marks[dayKey].country,
+        };
+    }
+
+    return null;
+}
+
+function leaveTypeBadgeClass(type) {
+    switch (type) {
+        case 'sl':
+            return 'bg-amber-500 text-white dark:bg-amber-500/80';
+        case 'hl':
+            return 'bg-rose-500 text-white dark:bg-rose-500/80';
+        case 'ml':
+            return 'bg-pink-500 text-white dark:bg-pink-500/80';
+        case 'pl':
+            return 'bg-indigo-500 text-white dark:bg-indigo-500/80';
+        case 'cl':
+            return 'bg-violet-500 text-white dark:bg-violet-500/80';
+        case 'npl':
+            return 'bg-slate-500 text-white dark:bg-slate-500/80';
+        case 'tol':
+            return 'bg-teal-500 text-white dark:bg-teal-500/80';
+        case 'al':
+        default:
+            return 'bg-sky-500 text-white dark:bg-sky-500/80';
+    }
+}
+
 function MarkBadge({ mark }) {
     if (mark?.type === 'holiday') {
         return (
@@ -109,8 +161,13 @@ function MarkBadge({ mark }) {
 
     if (type === 'leave') {
         return (
-            <span className="inline-flex h-7 w-8 items-center justify-center rounded-md bg-slate-400 text-white dark:bg-slate-500">
-                <CalendarDaysIcon className="h-3.5 w-3.5" aria-hidden />
+            <span
+                className={
+                    'inline-flex h-7 min-w-8 items-center justify-center rounded-md px-1 text-[10px] font-bold ' +
+                    leaveTypeBadgeClass(mark.leaveType)
+                }
+            >
+                {mark.code || 'LEAVE'}
             </span>
         );
     }
@@ -371,27 +428,7 @@ export default function TeamLeaveTimesheet({
                                     <CalendarCell
                                         key={`${user.id}-${day.key}`}
                                         day={day}
-                                        mark={
-                                            user.marks?.[day.key]
-                                                ? {
-                                                      type: user.marks[day.key],
-                                                      title:
-                                                          user.marks[day.key] ===
-                                                          'birthday'
-                                                              ? 'Birthday'
-                                                              : 'Approved leave',
-                                                  }
-                                                : user.holiday_marks?.[day.key]
-                                                  ? {
-                                                        type: 'holiday',
-                                                        title: `${user.holiday_marks[day.key].country_label}: ${user.holiday_marks[day.key].name}`,
-                                                        country:
-                                                            user.holiday_marks[
-                                                                day.key
-                                                            ].country,
-                                                    }
-                                                  : null
-                                        }
+                                        mark={resolveDayMark(user, day.key)}
                                         highlight={day.key === todayKey}
                                     />
                                 ))}
@@ -404,18 +441,62 @@ export default function TeamLeaveTimesheet({
             <div className="border-t border-slate-100 px-4 py-3 dark:border-slate-800 sm:px-5">
                 <div className="flex flex-wrap gap-4 text-[11px] text-slate-500 dark:text-slate-400">
                     <span className="inline-flex items-center gap-1.5">
-                        <CalendarDaysIcon className="h-3.5 w-3.5 text-slate-400" />
-                        Approved leave
+                        <span className="rounded bg-sky-500 px-1 text-[10px] font-bold text-white">
+                            AL
+                        </span>
+                        Annual
                     </span>
                     <span className="inline-flex items-center gap-1.5">
-                        <GiftIcon className="h-3.5 w-3.5 text-pink-500" />
+                        <span className="rounded bg-amber-500 px-1 text-[10px] font-bold text-white">
+                            SL
+                        </span>
+                        Sick
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                        <span className="rounded bg-rose-500 px-1 text-[10px] font-bold text-white">
+                            HL
+                        </span>
+                        Hospitalization
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                        <span className="rounded bg-pink-500 px-1 text-[10px] font-bold text-white">
+                            ML
+                        </span>
+                        Maternity
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                        <span className="rounded bg-indigo-500 px-1 text-[10px] font-bold text-white">
+                            PL
+                        </span>
+                        Paternity
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                        <span className="rounded bg-violet-500 px-1 text-[10px] font-bold text-white">
+                            CL
+                        </span>
+                        Compassionate
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                        <span className="rounded bg-slate-500 px-1 text-[10px] font-bold text-white">
+                            NPL
+                        </span>
+                        No pay
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                        <span className="rounded bg-teal-500 px-1 text-[10px] font-bold text-white">
+                            TOL
+                        </span>
+                        Time off in lieu
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                        <GiftIcon className="h-3.5 w-3.5 text-emerald-500" />
                         Birthday
                     </span>
                     <span className="inline-flex items-center gap-1.5">
-                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-500/20 dark:text-amber-200">
-                            PH/WA/SG
+                        <span className="rounded bg-amber-100 px-1 text-[10px] font-bold text-amber-800 dark:bg-amber-500/20 dark:text-amber-200">
+                            PH/SG/WA
                         </span>
-                        Public holiday by user region
+                        Public holiday
                     </span>
                 </div>
             </div>
