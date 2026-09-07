@@ -201,6 +201,7 @@ export default function AuthenticatedLayout({ header, children }) {
     const canManageLeave = can('leave.manage');
     const canViewLeaveCredits =
         can('leave.credits.view') || can('leave.credits.edit');
+    const canViewAttendanceHistory = can('attendance.history.view');
     const canManageUserMilestones = can('profile.milestones.manage');
     const canDraftingMemos = can('drafting-memos.view');
     const canDraftingArchive = can('job.drafting.archive');
@@ -230,6 +231,7 @@ export default function AuthenticatedLayout({ header, children }) {
     const isTimesheet = route().current('timesheet.index');
     const isLeaveApprovals = route().current('leave.approvals');
     const isLeaveCredits = route().current('leave.credits.index');
+    const isAttendanceHistory = route().current('attendance.history');
     const isUserMilestones =
         route().current('settings.user-milestones.index') ||
         route().current('settings.user-milestones.show');
@@ -293,6 +295,7 @@ export default function AuthenticatedLayout({ header, children }) {
         canRoles ||
         canManageLeave ||
         canViewLeaveCredits ||
+        canViewAttendanceHistory ||
         canManageUserMilestones;
     const showWorkflowSettings = canAccessVisibleWorkflowSettings(can);
 
@@ -768,6 +771,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             )}
                             {(canManageLeave ||
                                 canViewLeaveCredits ||
+                                canViewAttendanceHistory ||
                                 canManageUserMilestones) && (
                                 <>
                                     <p
@@ -803,6 +807,23 @@ export default function AuthenticatedLayout({ header, children }) {
                                                     </span>
                                                 )}
                                             </span>
+                                        </NavItem>
+                                    )}
+                                    {canViewAttendanceHistory && (
+                                        <NavItem
+                                            href={route('attendance.history')}
+                                            active={isAttendanceHistory}
+                                            onNavigate={closeSidebar}
+                                            collapsed={isMinimized}
+                                            label="Attendance"
+                                            icon={
+                                                <ClockIcon
+                                                    className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
+                                                    aria-hidden
+                                                />
+                                            }
+                                        >
+                                            Attendance
                                         </NavItem>
                                     )}
                                     {canViewLeaveCredits && (
@@ -853,6 +874,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                             (showWorkflowSettings ||
                                             canManageLeave ||
                                             canViewLeaveCredits ||
+                                            canViewAttendanceHistory ||
                                             canManageUserMilestones
                                                 ? 'pt-3'
                                                 : 'pt-1') +

@@ -33,6 +33,7 @@ return [
         'leave.credits.index' => ['leave.credits.view', 'leave.credits.edit'],
         'leave.credits.store' => 'leave.credits.edit',
         'leave.credits.update' => 'leave.credits.edit',
+        'attendance.history' => 'attendance.history.view',
         'settings.user-milestones.index' => 'profile.milestones.manage',
         'settings.user-milestones.show' => 'profile.milestones.manage',
         'settings.user-milestones.store' => 'profile.milestones.manage',

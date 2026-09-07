@@ -107,6 +107,109 @@ class AttendanceService
     }
 
     /**
+     * Paginated clock-in / clock-out history for HR.
+     *
+     * @param  array{search?: string, from?: string, to?: string, per_page?: int}  $filters
+     * @return array{records: mixed, filters: array<string, mixed>, timezone: string}
+     */
+    public function historyPayload(array $filters = []): array
+    {
+        $timezone = $this->attendanceTimezone();
+        $today = $this->nowInAttendanceTimezone()->toDateString();
+        $search = trim((string) ($filters['search'] ?? ''));
+        $from = trim((string) ($filters['from'] ?? ''));
+        $to = trim((string) ($filters['to'] ?? ''));
+        $perPage = (int) ($filters['per_page'] ?? 25);
+        $perPage = max(10, min($perPage, 100));
+
+        if ($from === '') {
+            $from = $this->nowInAttendanceTimezone()->copy()->subDays(30)->toDateString();
+        }
+
+        if ($to === '') {
+            $to = $today;
+        }
+
+        if ($from > $to) {
+            [$from, $to] = [$to, $from];
+        }
+
+        $query = AttendanceClock::query()
+            ->with('user')
+            ->whereDate('work_date', '>=', $from)
+            ->whereDate('work_date', '<=', $to)
+            ->where(function ($q) {
+                $q->whereNotNull('clock_in_at')
+                    ->orWhereNotNull('clock_out_at');
+            })
+            ->orderByDesc('work_date')
+            ->orderByDesc('clock_in_at');
+
+        if ($search !== '') {
+            $query->whereHas('user', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $records = $query
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(function (AttendanceClock $clock) use ($timezone) {
+                $user = $clock->user;
+                $status = 'no_clock_in';
+                if ($clock->clock_in_at !== null && $clock->clock_out_at === null) {
+                    $status = 'no_clock_out';
+                } elseif ($clock->clock_in_at !== null && $clock->clock_out_at !== null) {
+                    $status = 'clocked_out';
+                }
+
+                $durationLabel = null;
+                if ($clock->clock_in_at !== null && $clock->clock_out_at !== null) {
+                    $minutes = max(
+                        0,
+                        $clock->clock_in_at->diffInMinutes($clock->clock_out_at),
+                    );
+                    $hours = intdiv($minutes, 60);
+                    $mins = $minutes % 60;
+                    $durationLabel = sprintf('%dh %02dm', $hours, $mins);
+                }
+
+                return [
+                    'id' => $clock->id,
+                    'work_date' => $clock->work_date?->toDateString(),
+                    'work_date_display' => $clock->work_date
+                        ? $clock->work_date->format('D, M j, Y')
+                        : null,
+                    'clock_in_time' => $this->formatClockTime($clock->clock_in_at, $timezone),
+                    'clock_out_time' => $this->formatClockTime($clock->clock_out_at, $timezone),
+                    'duration_label' => $durationLabel,
+                    'status' => $status,
+                    'user' => $user
+                        ? $this->formatUserForDashboard($user)
+                        : [
+                            'id' => $clock->user_id,
+                            'name' => 'Unknown user',
+                            'email' => null,
+                            'department' => null,
+                            'profile_image_url' => null,
+                        ],
+                ];
+            });
+
+        return [
+            'records' => $records,
+            'filters' => [
+                'search' => $search,
+                'from' => $from,
+                'to' => $to,
+                'per_page' => $perPage,
+            ],
+            'timezone' => $timezone,
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function formatUserForDashboard(User $user): array

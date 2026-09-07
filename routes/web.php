@@ -4,6 +4,7 @@ use App\Http\Controllers\CalendarEventController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AnnouncementImageController;
 use App\Http\Controllers\AnnouncementInlineImageController;
+use App\Http\Controllers\AttendanceHistoryController;
 use App\Http\Controllers\BrandLogoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GlobalSearchController;
@@ -152,6 +153,8 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('leave.credits.store');
     Route::patch('/leave/credits/{user}', [LeaveCreditsController::class, 'update'])
         ->name('leave.credits.update');
+    Route::get('/attendance/history', [AttendanceHistoryController::class, 'index'])
+        ->name('attendance.history');
 
     Route::get('/settings/user-milestones', [UserMilestoneController::class, 'index'])
         ->name('settings.user-milestones.index');
