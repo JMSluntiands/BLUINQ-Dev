@@ -160,6 +160,31 @@ class MasterlistToApmWorkflowTest extends TestCase
                 ->exists(),
         );
 
+        $newRevision = DraftingRequestRevision::query()
+            ->where('drafting_request_id', $row->id)
+            ->where('code', $row->jobNumber().'-02')
+            ->first();
+        $this->assertNotNull($newRevision);
+        $this->assertNull($newRevision->drafter_user_id);
+        $this->assertNull($newRevision->checker_user_id);
+        $this->assertNull($newRevision->drafting_hours);
+        $this->assertNull($newRevision->checking_hours);
+        $this->assertSame(0, $row->assignments()->count());
+
+        $formatted = app(\App\Services\DraftingRequestBoardService::class)
+            ->formatBoardRow($row->fresh()->load([
+                'revisions.drafter:id,name,initials',
+                'revisions.checker:id,name,initials',
+                'assignments.user:id,name,initials',
+                'crmCategory',
+                'crmCategories',
+                'serviceEngagings',
+                'storeyLevel',
+            ]));
+        $this->assertTrue(collect($formatted['drafting'])->every(fn ($slot) => $slot === null));
+        $this->assertTrue(collect($formatted['checking'])->every(fn ($slot) => $slot === null));
+        $this->assertNull($formatted['total_hours']);
+
         $this->actingAs($user)
             ->get(route('job.list'))
             ->assertOk()
@@ -422,7 +447,7 @@ class MasterlistToApmWorkflowTest extends TestCase
                 ->where('masterlistCandidates.0.status', DraftingRequest::STATUS_CANCELLED));
     }
 
-    public function test_add_item_shows_submitted_apm_jobs_on_design_board(): void
+    public function test_add_item_does_not_show_submitted_apm_jobs_on_design_board(): void
     {
         $user = $this->adminUser();
         [$storeyLevel, $category] = $this->seedLookups();
@@ -464,13 +489,10 @@ class MasterlistToApmWorkflowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Job/Board')
-                ->has('masterlistCandidates', 1)
-                ->where('masterlistCandidates.0.id', $submittedApm->id)
-                ->where('masterlistCandidates.0.source', 'apm')
-                ->where('masterlistCandidates.0.status', DraftingRequest::STATUS_SUBMITTED));
+                ->has('masterlistCandidates', 0));
     }
 
-    public function test_add_item_shows_submitted_design_jobs_on_apm_board(): void
+    public function test_add_item_does_not_show_submitted_design_jobs_on_apm_board(): void
     {
         $user = $this->adminUser();
         [$storeyLevel, $category] = $this->seedLookups();
@@ -484,7 +506,7 @@ class MasterlistToApmWorkflowTest extends TestCase
             'user_id' => $user->id,
             'status' => DraftingRequest::STATUS_SUBMITTED,
             'review_status' => DraftingRequest::REVIEW_ACCEPTED,
-            'workflow_stage' => DraftingRequest::STAGE_APM,
+            'workflow_stage' => DraftingRequest::STAGE_DESIGN,
             'requested_at' => now(),
             'your_name' => 'Design Client',
             'company_name' => 'Design Co',
@@ -512,13 +534,106 @@ class MasterlistToApmWorkflowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Job/Board')
-                ->has('masterlistCandidates', 1)
-                ->where('masterlistCandidates.0.id', $submittedDesign->id)
-                ->where('masterlistCandidates.0.source', 'design')
-                ->where('masterlistCandidates.0.status', DraftingRequest::STATUS_SUBMITTED));
+                ->has('masterlistCandidates', 0));
     }
 
-    public function test_add_item_excludes_jobs_already_on_board_table(): void
+    public function test_apm_quick_add_keeps_job_on_apm_not_design(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $row = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_APM,
+            'requested_at' => now(),
+            'your_name' => 'Stay APM',
+            'company_name' => 'Stay APM Co',
+            'email' => 'stay-apm@example.com',
+            'site_address' => '9 APM Lane',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $row->id,
+            'user_id' => $user->id,
+            'code' => $row->jobNumber().'-01',
+            'log_date' => now()->toDateString(),
+            'category' => $category->code,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('job.list'))
+            ->post(route('job.board.add.quick', $row), [
+                'board' => 'apm',
+                'code' => $row->jobNumber().'-02',
+                'log_date' => now()->toDateString(),
+                'category' => $category->code,
+                'status' => DraftingRequest::STATUS_NEW,
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('job.list'));
+
+        $row->refresh();
+        $this->assertSame(DraftingRequest::STAGE_APM, $row->workflow_stage);
+        $this->assertSame(DraftingRequest::STATUS_NEW, $row->status);
+    }
+
+    public function test_design_quick_add_keeps_job_on_design_not_apm(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $row = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_DESIGN,
+            'requested_at' => now(),
+            'your_name' => 'Stay Design',
+            'company_name' => 'Stay Design Co',
+            'email' => 'stay-design@example.com',
+            'site_address' => '9 Design Lane',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $row->id,
+            'user_id' => $user->id,
+            'code' => $row->jobNumber().'-01',
+            'log_date' => now()->toDateString(),
+            'category' => $category->code,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('design.list'))
+            ->post(route('job.board.add.quick', $row), [
+                'board' => 'design',
+                'code' => $row->jobNumber().'-02',
+                'log_date' => now()->toDateString(),
+                'category' => $category->code,
+                'status' => DraftingRequest::STATUS_NEW,
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('design.list'));
+
+        $row->refresh();
+        $this->assertSame(DraftingRequest::STAGE_DESIGN, $row->workflow_stage);
+        $this->assertSame(DraftingRequest::STATUS_NEW, $row->status);
+    }
+
+    public function test_add_item_includes_active_board_jobs_for_new_revision(): void
     {
         $user = $this->adminUser();
         [$storeyLevel, $category] = $this->seedLookups();
@@ -590,12 +705,18 @@ class MasterlistToApmWorkflowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Job/Board')
-                ->has('masterlistCandidates', 1)
-                ->where('masterlistCandidates.0.id', $masterlist->id)
-                ->where('masterlistCandidates.0.source', 'masterlist'));
+                ->has('masterlistCandidates', 3)
+                ->where('masterlistCandidates', fn ($candidates) => collect($candidates)
+                    ->pluck('id')
+                    ->sort()
+                    ->values()
+                    ->all() === collect([$newJob->id, $wipJob->id, $masterlist->id])
+                    ->sort()
+                    ->values()
+                    ->all()));
     }
 
-    public function test_add_item_excludes_board_jobs_even_with_revisions(): void
+    public function test_add_item_includes_board_jobs_with_revisions_for_next_revision(): void
     {
         $user = $this->adminUser();
         [$storeyLevel, $category] = $this->seedLookups();
@@ -645,7 +766,10 @@ class MasterlistToApmWorkflowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Job/Board')
-                ->has('masterlistCandidates', 0));
+                ->has('masterlistCandidates', 1)
+                ->where('masterlistCandidates.0.id', $row->id)
+                ->where('masterlistCandidates.0.suggested_code', '1111111-03')
+                ->where('masterlistCandidates.0.source', 'apm'));
     }
 
     public function test_board_candidates_list_newest_lead_numbers_first(): void

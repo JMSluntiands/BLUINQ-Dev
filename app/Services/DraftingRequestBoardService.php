@@ -386,6 +386,12 @@ class DraftingRequestBoardService
         $boardStatus = $this->mapBoardStatus($actualStatus);
         $draftingSlots = $this->draftingSlotCount();
         $checkingSlots = $this->checkingSlotCount();
+        // Board Drafting / Checking / Total Hrs reflect the latest revision only,
+        // so a newly added revision starts blank instead of carrying old hours.
+        $latestRevisionForHours = $row->revisions
+            ->sortByDesc('id')
+            ->take(1)
+            ->values();
         $drafting = $this->mergeStaffBoardSlots(
             $this->boardAssignmentsForRole(
                 $row->assignments,
@@ -393,7 +399,7 @@ class DraftingRequestBoardService
                 $draftingSlots,
             ),
             $this->staffSlotsFromRevisionHours(
-                $row->revisions,
+                $latestRevisionForHours,
                 'drafting_hours',
                 $draftingSlots,
             ),
@@ -405,12 +411,12 @@ class DraftingRequestBoardService
                 $checkingSlots,
             ),
             $this->staffSlotsFromRevisionHours(
-                $row->revisions,
+                $latestRevisionForHours,
                 'checking_hours',
                 $checkingSlots,
             ),
         );
-        $totalHours = $this->sumRevisionHours($row->revisions)
+        $totalHours = $this->sumRevisionHours($latestRevisionForHours)
             ?? $this->sumAssignmentHours($row->assignments);
 
         $statusOptions = DraftingRequest::statusLabels();

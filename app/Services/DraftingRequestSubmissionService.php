@@ -216,8 +216,6 @@ class DraftingRequestSubmissionService
                     'code' => $draftingRequest->jobNumber().'-01',
                     'log_date' => now(config('app.timezone'))->toDateString(),
                     'category' => $category,
-                    'drafter_user_id' => $actor->id,
-                    'drafter_initials' => $actor->badgeInitials(),
                     'status' => DraftingRequest::STATUS_NEW,
                 ]);
             }
@@ -330,21 +328,12 @@ class DraftingRequestSubmissionService
             ];
         }
 
-        $targetStage = $board === 'design'
-            ? DraftingRequest::STAGE_DESIGN
-            : DraftingRequest::STAGE_APM;
-
-        if ($draftingRequest->workflow_stage !== $targetStage
-            && $draftingRequest->isOnProjectBoard()) {
-            $draftingRequest->update([
-                'workflow_stage' => $targetStage,
-            ]);
-        }
-
-        if ($draftingRequest->fresh()?->workflow_stage === $targetStage
+        // Already on APM or Design: add/reopen revision on the same board.
+        // Do not move jobs between APM and Design when adding a revision.
+        if ($draftingRequest->isOnProjectBoard()
             && $draftingRequest->review_status === DraftingRequest::REVIEW_ACCEPTED) {
             return $this->reopenOnBoard(
-                $draftingRequest->fresh(),
+                $draftingRequest,
                 $actor,
                 $existingRevision,
             );
@@ -364,10 +353,22 @@ class DraftingRequestSubmissionService
         return DB::transaction(function () use ($draftingRequest, $actor, $existingRevision) {
             $draftingRequest->loadMissing(['crmCategory', 'serviceEngagings', 'revisions']);
 
+            // New revision cycle: clear board Drafting / Checking slots and hours.
+            $draftingRequest->assignments()->delete();
+
             $previousStatus = $draftingRequest->status;
 
             if ($existingRevision !== null) {
                 $revision = $existingRevision;
+                $revision->forceFill([
+                    'drafter_user_id' => null,
+                    'drafter_initials' => null,
+                    'checker_user_id' => null,
+                    'checker_initials' => null,
+                    'drafting_hours' => null,
+                    'checking_hours' => null,
+                ])->save();
+
                 $nextStatus = $revision->status ?: DraftingRequest::STATUS_NEW;
 
                 if ($draftingRequest->status !== $nextStatus) {
@@ -385,8 +386,6 @@ class DraftingRequestSubmissionService
                     'code' => $code,
                     'log_date' => now(config('app.timezone'))->toDateString(),
                     'category' => $category,
-                    'drafter_user_id' => $actor->id,
-                    'drafter_initials' => $actor->badgeInitials(),
                     'status' => DraftingRequest::STATUS_NEW,
                 ]);
 

@@ -91,8 +91,8 @@ function StatusPill({ status, label }) {
 
 function StaffSlot({ assignment, editable = false, onClick }) {
     const content = !assignment ? (
-        <span className="text-[11px] text-[#676879] dark:text-slate-500">
-            {editable ? 'Assign…' : '—'}
+        <span className="inline-block min-h-[1.25rem] min-w-[2.5rem] text-[11px] text-[#676879] dark:text-slate-500">
+            {editable ? '\u00a0' : ''}
         </span>
     ) : (
         <div className="flex items-center gap-1">
@@ -928,6 +928,12 @@ function JobBoardTableBody({
     };
 
     const masterlistColSpan = renderActions ? 10 : 9;
+    const boardColSpan =
+        14 +
+        DRAFTING_SLOTS +
+        CHECKING_SLOTS +
+        (hideStatus ? 0 : 1) +
+        (renderActions ? 1 : 0);
 
     return (
         <tbody>
@@ -965,7 +971,7 @@ function JobBoardTableBody({
                                             : 'min-w-[14rem]')
                                     }
                                 >
-                                    {isMasterlist ? (
+                                    {(isMasterlist || revisions.length > 0) ? (
                                         <button
                                             type="button"
                                             onClick={() =>
@@ -1163,7 +1169,7 @@ function JobBoardTableBody({
                                     >
                                         {job.total_hours != null
                                             ? `${job.total_hours} h`
-                                            : '—'}
+                                            : ''}
                                     </td>
                                     <td className={tdClass}>
                                         <EditableArea
@@ -1209,51 +1215,89 @@ function JobBoardTableBody({
                             ) : null}
                         </tr>
 
-                        {isMasterlist &&
-                            isExpanded &&
+                        {isExpanded &&
                             (revisions.length > 0 ? (
                                 revisions.map((revision) => (
                                     <tr
                                         key={`${job.id}-rev-${revision.id}`}
                                         className="border-b border-[#e6e9ef] bg-[#f6f7fb] dark:border-[#2a2d42] dark:bg-[#151622]"
                                     >
-                                        <td className={tdClass} colSpan={2}>
-                                            <div className="flex items-center gap-1.5 ps-6">
-                                                <span className="text-[10px] text-[#c5c7d0] dark:text-slate-600">
-                                                    └
-                                                </span>
-                                                <span className="font-semibold tabular-nums text-[#0073ea] dark:text-[#1890ff]">
-                                                    {revision.code}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className={tdClass}>—</td>
-                                        <td className={tdClass}>—</td>
-                                        <td className={tdClass}>—</td>
-                                        <td
-                                            className={
-                                                tdClass + ' whitespace-nowrap'
-                                            }
-                                        >
-                                            {revision.code}
-                                        </td>
-                                        <td className={tdClass}>
-                                            {revision.status ? (
-                                                <StatusPill
-                                                    status={revision.status}
-                                                    label={
-                                                        revision.status_label
+                                        {isMasterlist ? (
+                                            <>
+                                                <td
+                                                    className={tdClass}
+                                                    colSpan={2}
+                                                >
+                                                    <div className="flex items-center gap-1.5 ps-6">
+                                                        <span className="text-[10px] text-[#c5c7d0] dark:text-slate-600">
+                                                            └
+                                                        </span>
+                                                        <span className="font-semibold tabular-nums text-[#0073ea] dark:text-[#1890ff]">
+                                                            {revision.code}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className={tdClass}>—</td>
+                                                <td className={tdClass}>—</td>
+                                                <td className={tdClass}>—</td>
+                                                <td
+                                                    className={
+                                                        tdClass +
+                                                        ' whitespace-nowrap'
                                                     }
-                                                />
-                                            ) : (
-                                                '—'
-                                            )}
-                                        </td>
-                                        <td className={tdClass}>—</td>
-                                        <td className={tdClass}>—</td>
-                                        {renderActions ? (
-                                            <td className={tdClass}>—</td>
-                                        ) : null}
+                                                >
+                                                    {revision.code}
+                                                </td>
+                                                <td className={tdClass}>
+                                                    {revision.status ? (
+                                                        <StatusPill
+                                                            status={
+                                                                revision.status
+                                                            }
+                                                            label={
+                                                                revision.status_label
+                                                            }
+                                                        />
+                                                    ) : (
+                                                        '—'
+                                                    )}
+                                                </td>
+                                                <td className={tdClass}>—</td>
+                                                <td className={tdClass}>—</td>
+                                                {renderActions ? (
+                                                    <td className={tdClass}>
+                                                        —
+                                                    </td>
+                                                ) : null}
+                                            </>
+                                        ) : (
+                                            <td
+                                                className={
+                                                    tdClass +
+                                                    ' ps-8 text-sm text-[#323338] dark:text-slate-200'
+                                                }
+                                                colSpan={boardColSpan}
+                                            >
+                                                <div className="flex flex-wrap items-center gap-3">
+                                                    <span className="text-[10px] text-[#c5c7d0] dark:text-slate-600">
+                                                        └
+                                                    </span>
+                                                    <span className="font-semibold tabular-nums text-[#0073ea] dark:text-[#1890ff]">
+                                                        {revision.code}
+                                                    </span>
+                                                    {revision.status ? (
+                                                        <StatusPill
+                                                            status={
+                                                                revision.status
+                                                            }
+                                                            label={
+                                                                revision.status_label
+                                                            }
+                                                        />
+                                                    ) : null}
+                                                </div>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))
                             ) : (
@@ -1263,7 +1307,11 @@ function JobBoardTableBody({
                                             tdClass +
                                             ' ps-8 text-[#676879] dark:text-slate-400'
                                         }
-                                        colSpan={masterlistColSpan}
+                                        colSpan={
+                                            isMasterlist
+                                                ? masterlistColSpan
+                                                : boardColSpan
+                                        }
                                     >
                                         No revisions yet.
                                     </td>

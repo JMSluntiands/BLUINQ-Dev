@@ -262,7 +262,7 @@ class JobBoardController extends Controller
     }
 
     /**
-     * Masterlist rows plus submitted/cancelled board jobs eligible for Add item reopen.
+     * Masterlist rows plus active board jobs eligible for Add item / next revision.
      *
      * @return list<array{
      *     id: int,
@@ -287,7 +287,7 @@ class JobBoardController extends Controller
             $byId[$row['id']] = $row;
         }
 
-        foreach ($this->boardReopenCandidateQuery($user)->get() as $row) {
+        foreach ($this->boardReopenCandidateQuery($user, $board)->get() as $row) {
             foreach ($this->formatAddCandidates(
                 collect([$row]),
                 $this->board->addItemSourceFor($row),
@@ -347,7 +347,10 @@ class JobBoardController extends Controller
                     $statusLabel = $statusLabels[$status]
                         ?? ucfirst(str_replace('_', ' ', $status));
                     $boardLabel = $source === 'design' ? 'Design' : 'APM';
-                    $label = "[{$boardLabel}] {$leadNo} — {$client} — {$job} · {$statusLabel}";
+                    $actionLabel = in_array($status, DraftingRequest::addItemReopenStatuses(), true)
+                        ? 'Reopen'
+                        : 'Add revision';
+                    $label = "[{$boardLabel} · {$actionLabel}] {$leadNo} — {$client} — {$job} · {$statusLabel}";
                 } else {
                     $label = "[Masterlist] {$leadNo} — {$client} — {$job}";
                 }
@@ -400,22 +403,21 @@ class JobBoardController extends Controller
     }
 
     /**
-     * Submitted/cancelled jobs on APM or Design boards that may be reopened via Add item.
+     * Active jobs already on this board that may receive another revision via Add item.
      *
      * @return \Illuminate\Database\Eloquent\Builder<DraftingRequest>
      */
-    private function boardReopenCandidateQuery(?User $user)
+    private function boardReopenCandidateQuery(?User $user, string $board = 'apm')
     {
         $query = DraftingRequest::query()
             ->reviewAccepted()
             ->active()
-            ->eligibleForAddItemReopen()
             ->with($this->addCandidateRevisionRelations())
             ->orderByDesc('updated_at')
             ->orderByDesc('requested_at')
             ->orderByDesc('id');
 
-        $this->board->applyEitherProjectBoardFilter($query);
+        $this->board->applyBoardStageFilter($query, $board === 'design' ? 'design' : 'apm');
 
         return $query;
     }
