@@ -504,6 +504,26 @@ export default function Dashboard() {
                 >
                     <div className="space-y-5">
                         <div>
+                            <SectionLabel color="amber">On leave</SectionLabel>
+                            <ul className="space-y-2">
+                                {onLeaveToday.length === 0 ? (
+                                    <li className="rounded-xl bg-slate-50/90 px-3 py-2.5 text-sm text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+                                        No one on leave today.
+                                    </li>
+                                ) : (
+                                    onLeaveToday.map((employee) => (
+                                        <AttendanceEmployeeRow
+                                            key={employee.id}
+                                            employee={employee}
+                                            status="leave"
+                                            detail={`Until ${employee.until}`}
+                                        />
+                                    ))
+                                )}
+                            </ul>
+                        </div>
+
+                        <div>
                             <SectionLabel color="emerald">
                                 Timed in
                                 {presentEmployees.length > 0
@@ -535,26 +555,6 @@ export default function Dashboard() {
                                             />
                                         );
                                     })
-                                )}
-                            </ul>
-                        </div>
-
-                        <div>
-                            <SectionLabel color="amber">On leave</SectionLabel>
-                            <ul className="space-y-2">
-                                {onLeaveToday.length === 0 ? (
-                                    <li className="rounded-xl bg-slate-50/90 px-3 py-2.5 text-sm text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
-                                        No one on leave today.
-                                    </li>
-                                ) : (
-                                    onLeaveToday.map((employee) => (
-                                        <AttendanceEmployeeRow
-                                            key={employee.id}
-                                            employee={employee}
-                                            status="leave"
-                                            detail={`Until ${employee.until}`}
-                                        />
-                                    ))
                                 )}
                             </ul>
                         </div>

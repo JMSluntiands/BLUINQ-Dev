@@ -343,6 +343,54 @@ class DraftingRequestSubmissionService
     }
 
     /**
+     * Copy job-level Date Out / Area Size onto the latest prior revision when those
+     * fields are blank. Call before Add item overwrites the job row so historical
+     * revision rows keep the values that used to show via job fallback.
+     */
+    public function snapshotClosingFieldsOntoPreviousRevision(
+        DraftingRequest $draftingRequest,
+        ?DraftingRequestRevision $excludeRevision = null,
+    ): void {
+        $query = $draftingRequest->revisions()->orderByDesc('id');
+
+        if ($excludeRevision !== null) {
+            $query->whereKeyNot($excludeRevision->getKey());
+        }
+
+        $previous = $query->first();
+
+        if ($previous === null) {
+            return;
+        }
+
+        $updates = [];
+
+        if ($previous->submitted_date === null && $draftingRequest->date_out !== null) {
+            $updates['submitted_date'] = $draftingRequest->date_out->toDateString();
+        }
+
+        $areaBlank = $previous->area_size === null || trim((string) $previous->area_size) === '';
+        if ($areaBlank && $draftingRequest->max_building_area_sqm !== null) {
+            $updates['area_size'] = $this->formatAreaSize($draftingRequest->max_building_area_sqm);
+        }
+
+        if ($updates !== []) {
+            $previous->forceFill($updates)->save();
+        }
+    }
+
+    private function formatAreaSize(mixed $sqm): ?string
+    {
+        if ($sqm === null || $sqm === '') {
+            return null;
+        }
+
+        $formatted = number_format((float) $sqm, 2, '.', '');
+
+        return rtrim(rtrim($formatted, '0'), '.') ?: '0';
+    }
+
+    /**
      * @return array{action: 'reopened', revision_code: string}
      */
     private function reopenOnBoard(
@@ -352,6 +400,12 @@ class DraftingRequestSubmissionService
     ): array {
         return DB::transaction(function () use ($draftingRequest, $actor, $existingRevision) {
             $draftingRequest->loadMissing(['crmCategory', 'serviceEngagings', 'revisions']);
+
+            // Preserve prior revision Date Out / Area Size before the new cycle.
+            $this->snapshotClosingFieldsOntoPreviousRevision(
+                $draftingRequest,
+                $existingRevision,
+            );
 
             // New revision cycle: clear board Drafting / Checking slots and hours.
             $draftingRequest->assignments()->delete();

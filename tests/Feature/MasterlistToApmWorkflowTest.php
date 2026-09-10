@@ -346,6 +346,7 @@ class MasterlistToApmWorkflowTest extends TestCase
             ->first();
         $this->assertNotNull($revision);
         $this->assertSame('2026-09-15', $revision->submitted_date?->toDateString());
+        $this->assertSame('245.5', $revision->area_size);
 
         $older = DraftingRequestRevision::query()->create([
             'drafting_request_id' => $row->id,
@@ -361,6 +362,79 @@ class MasterlistToApmWorkflowTest extends TestCase
         $byId = collect($revisionRows)->keyBy('id');
         $this->assertSame('15 Sep 2026', $byId[$revision->id]['submitted_date']);
         $this->assertNull($byId[$older->id]['submitted_date']);
+    }
+
+    public function test_quick_add_second_revision_keeps_previous_date_out_and_area_size(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $row = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_NEW,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_APM,
+            'requested_at' => now()->subDays(10),
+            'date_out' => '2026-09-15',
+            'max_building_area_sqm' => 245.5,
+            'your_name' => 'Master Client',
+            'company_name' => 'Master Co',
+            'email' => 'master@example.com',
+            'site_address' => '1 Master St',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        $first = DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $row->id,
+            'user_id' => $user->id,
+            'code' => $row->jobNumber().'-01',
+            'log_date' => '2026-09-01',
+            'category' => $category->code,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+            // Historically only stored on the job row — blank on the revision.
+            'submitted_date' => null,
+            'area_size' => null,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('job.board.add.quick', $row), [
+                'board' => 'apm',
+                'code' => $row->jobNumber().'-02',
+                'log_date' => '2026-10-01',
+                'category' => $category->code,
+                'status' => DraftingRequest::STATUS_NEW,
+                'date_out' => '2026-11-19',
+                'max_building_area_sqm' => '300',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('job.list'));
+
+        $first->refresh();
+        $this->assertSame('2026-09-15', $first->submitted_date?->toDateString());
+        $this->assertSame('245.5', $first->area_size);
+
+        $second = DraftingRequestRevision::query()
+            ->where('drafting_request_id', $row->id)
+            ->where('code', $row->jobNumber().'-02')
+            ->first();
+        $this->assertNotNull($second);
+        $this->assertSame('2026-11-19', $second->submitted_date?->toDateString());
+        $this->assertSame('300', $second->area_size);
+
+        $row->refresh();
+        $this->assertSame('2026-11-19', $row->date_out?->toDateString());
+        $this->assertSame('300.00', (string) $row->max_building_area_sqm);
+
+        $revisionRows = app(\App\Services\DraftingJobShowService::class)->revisionsFor($row->fresh());
+        $byId = collect($revisionRows)->keyBy('id');
+        $this->assertSame('15 Sep 2026', $byId[$first->id]['submitted_date']);
+        $this->assertSame('245.5', $byId[$first->id]['area_size']);
+        $this->assertSame('19 Nov 2026', $byId[$second->id]['submitted_date']);
+        $this->assertSame('300', $byId[$second->id]['area_size']);
     }
 
     public function test_add_item_includes_submitted_apm_jobs_for_reopen(): void

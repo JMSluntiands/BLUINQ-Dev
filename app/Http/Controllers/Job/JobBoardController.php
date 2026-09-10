@@ -501,6 +501,15 @@ class JobBoardController extends Controller
             'max_building_area_sqm' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
         ]);
 
+        // Before creating a new revision / overwriting job Date Out & Area, keep those
+        // values on the previous latest revision so Show → Revisions stays filled.
+        $this->submission->snapshotClosingFieldsOntoPreviousRevision($draftingRequest);
+
+        $areaSize = array_key_exists('max_building_area_sqm', $validated)
+            && $validated['max_building_area_sqm'] !== null
+            ? $this->formatRevisionAreaSize($validated['max_building_area_sqm'])
+            : null;
+
         // Create the revision once from the modal — do not let reopen create a second row.
         $revision = $draftingRequest->revisions()->create([
             'user_id'  => $user->id,
@@ -514,6 +523,7 @@ class JobBoardController extends Controller
             'submitted_date' => filled($validated['date_out'] ?? null)
                 ? Carbon::parse($validated['date_out'], config('app.timezone'))->toDateString()
                 : null,
+            'area_size' => $areaSize,
         ]);
 
         // Board Date In / Date Out columns come from the job row, not the revision.
@@ -595,6 +605,9 @@ class JobBoardController extends Controller
         }
 
         $this->assertAddableToBoard($draftingRequest);
+
+        // Keep prior revision Date Out / Area Size before the form overwrites the job.
+        $this->submission->snapshotClosingFieldsOntoPreviousRevision($draftingRequest);
 
         $this->submission->update($request, $draftingRequest, $user, allowApmStage: true);
 
@@ -1014,5 +1027,16 @@ class JobBoardController extends Controller
         }
 
         return back();
+    }
+
+    private function formatRevisionAreaSize(mixed $sqm): ?string
+    {
+        if ($sqm === null || $sqm === '') {
+            return null;
+        }
+
+        $formatted = number_format((float) $sqm, 2, '.', '');
+
+        return rtrim(rtrim($formatted, '0'), '.') ?: '0';
     }
 }
