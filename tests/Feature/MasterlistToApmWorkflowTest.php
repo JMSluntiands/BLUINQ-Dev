@@ -521,7 +521,7 @@ class MasterlistToApmWorkflowTest extends TestCase
                 ->where('masterlistCandidates.0.status', DraftingRequest::STATUS_CANCELLED));
     }
 
-    public function test_add_item_does_not_show_submitted_apm_jobs_on_design_board(): void
+    public function test_add_item_shows_submitted_apm_jobs_on_design_board(): void
     {
         $user = $this->adminUser();
         [$storeyLevel, $category] = $this->seedLookups();
@@ -563,10 +563,12 @@ class MasterlistToApmWorkflowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Job/Board')
-                ->has('masterlistCandidates', 0));
+                ->has('masterlistCandidates', 1)
+                ->where('masterlistCandidates.0.id', $submittedApm->id)
+                ->where('masterlistCandidates.0.source', 'apm'));
     }
 
-    public function test_add_item_does_not_show_submitted_design_jobs_on_apm_board(): void
+    public function test_add_item_shows_submitted_design_jobs_on_apm_board(): void
     {
         $user = $this->adminUser();
         [$storeyLevel, $category] = $this->seedLookups();
@@ -608,7 +610,9 @@ class MasterlistToApmWorkflowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Job/Board')
-                ->has('masterlistCandidates', 0));
+                ->has('masterlistCandidates', 1)
+                ->where('masterlistCandidates.0.id', $submittedDesign->id)
+                ->where('masterlistCandidates.0.source', 'design'));
     }
 
     public function test_apm_quick_add_keeps_job_on_apm_not_design(): void
@@ -674,6 +678,102 @@ class MasterlistToApmWorkflowTest extends TestCase
             'company_name' => 'Stay Design Co',
             'email' => 'stay-design@example.com',
             'site_address' => '9 Design Lane',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $row->id,
+            'user_id' => $user->id,
+            'code' => $row->jobNumber().'-01',
+            'log_date' => now()->toDateString(),
+            'category' => $category->code,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('design.list'))
+            ->post(route('job.board.add.quick', $row), [
+                'board' => 'design',
+                'code' => $row->jobNumber().'-02',
+                'log_date' => now()->toDateString(),
+                'category' => $category->code,
+                'status' => DraftingRequest::STATUS_NEW,
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('design.list'));
+
+        $row->refresh();
+        $this->assertSame(DraftingRequest::STAGE_DESIGN, $row->workflow_stage);
+        $this->assertSame(DraftingRequest::STATUS_NEW, $row->status);
+    }
+
+    public function test_apm_quick_add_moves_design_job_to_apm(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $row = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_DESIGN,
+            'requested_at' => now(),
+            'your_name' => 'Move To APM',
+            'company_name' => 'Move To APM Co',
+            'email' => 'move-apm@example.com',
+            'site_address' => '1 Cross Board St',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $row->id,
+            'user_id' => $user->id,
+            'code' => $row->jobNumber().'-01',
+            'log_date' => now()->toDateString(),
+            'category' => $category->code,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('job.list'))
+            ->post(route('job.board.add.quick', $row), [
+                'board' => 'apm',
+                'code' => $row->jobNumber().'-02',
+                'log_date' => now()->toDateString(),
+                'category' => $category->code,
+                'status' => DraftingRequest::STATUS_NEW,
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('job.list'));
+
+        $row->refresh();
+        $this->assertSame(DraftingRequest::STAGE_APM, $row->workflow_stage);
+        $this->assertSame(DraftingRequest::STATUS_NEW, $row->status);
+    }
+
+    public function test_design_quick_add_moves_apm_job_to_design(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $row = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_APM,
+            'requested_at' => now(),
+            'your_name' => 'Move To Design',
+            'company_name' => 'Move To Design Co',
+            'email' => 'move-design@example.com',
+            'site_address' => '2 Cross Board St',
             'site_owner_name' => 'Owner',
             'storey_level_id' => $storeyLevel->id,
             'crm_category_id' => $category->id,

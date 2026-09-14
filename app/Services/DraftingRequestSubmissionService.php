@@ -328,12 +328,40 @@ class DraftingRequestSubmissionService
             ];
         }
 
-        // Already on APM or Design: add/reopen revision on the same board.
-        // Do not move jobs between APM and Design when adding a revision.
+        // Already on APM or Design: reopen (and move onto the board Add item was used from).
         if ($draftingRequest->isOnProjectBoard()
             && $draftingRequest->review_status === DraftingRequest::REVIEW_ACCEPTED) {
+            $targetStage = $board === 'design'
+                ? DraftingRequest::STAGE_DESIGN
+                : DraftingRequest::STAGE_APM;
+
+            if ($draftingRequest->workflow_stage !== $targetStage) {
+                $fromLabel = $draftingRequest->workflow_stage === DraftingRequest::STAGE_DESIGN
+                    ? 'Design Project Management'
+                    : 'Archi Project Management';
+                $toLabel = $board === 'design'
+                    ? 'Design Project Management'
+                    : 'Archi Project Management';
+
+                $draftingRequest->update([
+                    'workflow_stage' => $targetStage,
+                ]);
+
+                DraftingRequestActivity::record(
+                    $draftingRequest,
+                    $actor,
+                    DraftingRequestActivity::ACTION_FORWARDED_TO_APM,
+                    sprintf(
+                        'Drafting request %s was moved from %s to %s via Add item.',
+                        $draftingRequest->jobNumber(),
+                        $fromLabel,
+                        $toLabel,
+                    ),
+                );
+            }
+
             return $this->reopenOnBoard(
-                $draftingRequest,
+                $draftingRequest->fresh() ?? $draftingRequest,
                 $actor,
                 $existingRevision,
             );

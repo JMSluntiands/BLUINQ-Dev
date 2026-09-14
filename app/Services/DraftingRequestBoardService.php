@@ -105,19 +105,12 @@ class DraftingRequestBoardService
     public function applyBoardStageFilter(Builder $query, string $board): void
     {
         if ($board === 'design') {
-            $query->where(function (Builder $outer) {
-                $outer->where('workflow_stage', DraftingRequest::STAGE_DESIGN)
-                    ->orWhere(function (Builder $legacy) {
-                        $legacy->where('workflow_stage', DraftingRequest::STAGE_APM);
-                        $this->applyDesignPhaseFilter($legacy);
-                    });
-            });
+            $query->where('workflow_stage', DraftingRequest::STAGE_DESIGN);
 
             return;
         }
 
         $query->where('workflow_stage', DraftingRequest::STAGE_APM);
-        $this->applyExcludeDesignPhaseFilter($query);
     }
 
     /**
@@ -127,18 +120,10 @@ class DraftingRequestBoardService
      */
     public function applyEitherProjectBoardFilter(Builder $query): void
     {
-        $query->where(function (Builder $outer) {
-            $outer->where(function (Builder $apm) {
-                $apm->where('workflow_stage', DraftingRequest::STAGE_APM);
-                $this->applyExcludeDesignPhaseFilter($apm);
-            })->orWhere(function (Builder $design) {
-                $design->where('workflow_stage', DraftingRequest::STAGE_DESIGN)
-                    ->orWhere(function (Builder $legacy) {
-                        $legacy->where('workflow_stage', DraftingRequest::STAGE_APM);
-                        $this->applyDesignPhaseFilter($legacy);
-                    });
-            });
-        });
+        $query->whereIn('workflow_stage', [
+            DraftingRequest::STAGE_APM,
+            DraftingRequest::STAGE_DESIGN,
+        ]);
     }
 
     /**
@@ -147,10 +132,6 @@ class DraftingRequestBoardService
     public function addItemSourceFor(DraftingRequest $row): string
     {
         if ($row->workflow_stage === DraftingRequest::STAGE_DESIGN) {
-            return 'design';
-        }
-
-        if ($row->workflow_stage === DraftingRequest::STAGE_APM && $this->isDesignPhaseRequest($row)) {
             return 'design';
         }
 

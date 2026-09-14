@@ -548,7 +548,7 @@ class ApmRevisionSyncTest extends TestCase
         $this->assertSame(['27000-01', '27000-02'], $codes);
     }
 
-    public function test_design_project_management_shows_only_design_wip_jobs(): void
+    public function test_design_project_management_shows_only_design_stage_jobs(): void
     {
         $user = $this->adminUser();
         [$storeyLevel, $category] = $this->seedLookups();
@@ -564,11 +564,13 @@ class ApmRevisionSyncTest extends TestCase
 
         $newJob = $this->createApmJob($user, $storeyLevel, $category);
         $newJob->serviceEngagings()->sync([$designService->id]);
+        $newJob->update(['workflow_stage' => DraftingRequest::STAGE_DESIGN]);
         $this->addBoardRevision($newJob, $user, $category, DraftingRequest::STATUS_NEW);
 
         $assigned = $this->createApmJob($user, $storeyLevel, $category);
         $assigned->serviceEngagings()->sync([$designService->id]);
         $assigned->update([
+            'workflow_stage' => DraftingRequest::STAGE_DESIGN,
             'status' => DraftingRequest::STATUS_ASSIGNED,
             'site_address' => '2 Sync St',
         ]);
@@ -577,6 +579,7 @@ class ApmRevisionSyncTest extends TestCase
         $forChecking = $this->createApmJob($user, $storeyLevel, $category);
         $forChecking->serviceEngagings()->sync([$designService->id]);
         $forChecking->update([
+            'workflow_stage' => DraftingRequest::STAGE_DESIGN,
             'status' => DraftingRequest::STATUS_FOR_CHECKING,
             'site_address' => '3 Sync St',
         ]);
@@ -585,6 +588,7 @@ class ApmRevisionSyncTest extends TestCase
         $submitted = $this->createApmJob($user, $storeyLevel, $category);
         $submitted->serviceEngagings()->sync([$designService->id]);
         $submitted->update([
+            'workflow_stage' => DraftingRequest::STAGE_DESIGN,
             'status' => DraftingRequest::STATUS_SUBMITTED,
             'site_address' => '4 Sync St',
         ]);

@@ -403,7 +403,8 @@ class JobBoardController extends Controller
     }
 
     /**
-     * Active jobs already on this board that may receive another revision via Add item.
+     * Active jobs already on APM or Design that may receive another revision via Add item.
+     * Shown on both boards; destination board is chosen when the item is added.
      *
      * @return \Illuminate\Database\Eloquent\Builder<DraftingRequest>
      */
@@ -417,7 +418,7 @@ class JobBoardController extends Controller
             ->orderByDesc('requested_at')
             ->orderByDesc('id');
 
-        $this->board->applyBoardStageFilter($query, $board === 'design' ? 'design' : 'apm');
+        $this->board->applyEitherProjectBoardFilter($query);
 
         return $query;
     }
