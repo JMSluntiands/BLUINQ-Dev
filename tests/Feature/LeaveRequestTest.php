@@ -242,6 +242,53 @@ class LeaveRequestTest extends TestCase
         $this->assertSame($startingAl - 0.5, (float) $user->al_credits);
     }
 
+    public function test_leave_credits_can_be_set_and_added_with_two_decimal_places(): void
+    {
+        $admin = $this->adminUser();
+        $employee = $this->regularUser();
+
+        $this->actingAs($admin)
+            ->patch(route('leave.credits.update', $employee), [
+                'al_credits' => '3.25',
+                'sl_credits' => '10.75',
+                'notes' => 'Pro-rated adjustment',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $employee->refresh();
+        $this->assertSame(3.25, (float) $employee->al_credits);
+        $this->assertSame(10.75, (float) $employee->sl_credits);
+
+        $this->actingAs($admin)
+            ->post(route('leave.credits.store'), [
+                'user_id' => $employee->id,
+                'amount' => '0.25',
+                'bucket' => 'al',
+                'notes' => 'Pro-rated monthly credit',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $employee->refresh();
+        $this->assertSame(3.5, (float) $employee->al_credits);
+    }
+
+    public function test_leave_credits_reject_more_than_two_decimal_places(): void
+    {
+        $admin = $this->adminUser();
+        $employee = $this->regularUser();
+
+        $this->actingAs($admin)
+            ->from(route('leave.credits.index'))
+            ->patch(route('leave.credits.update', $employee), [
+                'al_credits' => '3.255',
+                'sl_credits' => '10',
+            ])
+            ->assertRedirect(route('leave.credits.index'))
+            ->assertSessionHasErrors('al_credits');
+    }
+
     public function test_owner_and_admin_can_download_the_medical_certificate(): void
     {
         Storage::fake('local');

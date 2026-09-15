@@ -553,12 +553,9 @@ class LeaveService
 
     private function formatDays(float $days): string
     {
-        $rounded = round($days, 1);
+        $rounded = round($days, 2);
+        $formatted = number_format($rounded, 2, '.', '');
 
-        if ((float) (int) $rounded === $rounded) {
-            return (string) (int) $rounded;
-        }
-
-        return number_format($rounded, 1, '.', '');
+        return rtrim(rtrim($formatted, '0'), '.') ?: '0';
     }
 }

@@ -17,8 +17,8 @@ class UpdateLeaveCreditsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'al_credits' => ['required', 'numeric', 'min:0', 'max:365', 'multiple_of:0.5'],
-            'sl_credits' => ['required', 'numeric', 'min:0', 'max:365', 'multiple_of:0.5'],
+            'al_credits' => ['required', 'numeric', 'min:0', 'max:365', 'decimal:0,2'],
+            'sl_credits' => ['required', 'numeric', 'min:0', 'max:365', 'decimal:0,2'],
             'notes' => ['nullable', 'string', 'max:500'],
         ];
     }
@@ -33,8 +33,8 @@ class UpdateLeaveCreditsRequest extends FormRequest
             'sl_credits.required' => 'Enter the SL balance.',
             'al_credits.min' => 'AL cannot be negative.',
             'sl_credits.min' => 'SL cannot be negative.',
-            'al_credits.multiple_of' => 'AL must be in 0.5 increments.',
-            'sl_credits.multiple_of' => 'SL must be in 0.5 increments.',
+            'al_credits.decimal' => 'AL must use up to two decimal places (e.g. 0.25).',
+            'sl_credits.decimal' => 'SL must use up to two decimal places (e.g. 0.25).',
         ];
     }
 }

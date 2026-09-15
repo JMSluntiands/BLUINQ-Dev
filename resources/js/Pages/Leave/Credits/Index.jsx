@@ -79,9 +79,9 @@ function AddCreditsModal({ employee, onClose }) {
                         <TextInput
                             id="amount"
                             type="number"
-                            min="0.5"
+                            min="0.01"
                             max="365"
-                            step="0.5"
+                            step="0.01"
                             value={data.amount}
                             onChange={(event) =>
                                 setData('amount', event.target.value)
@@ -171,7 +171,7 @@ function EditCreditsModal({ employee, onClose }) {
                             type="number"
                             min="0"
                             max="365"
-                            step="0.5"
+                            step="0.01"
                             value={data.al_credits}
                             onChange={(event) =>
                                 setData('al_credits', event.target.value)
@@ -191,7 +191,7 @@ function EditCreditsModal({ employee, onClose }) {
                             type="number"
                             min="0"
                             max="365"
-                            step="0.5"
+                            step="0.01"
                             value={data.sl_credits}
                             onChange={(event) =>
                                 setData('sl_credits', event.target.value)

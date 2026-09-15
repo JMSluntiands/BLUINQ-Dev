@@ -84,7 +84,13 @@ function formatDays(days) {
         return '0';
     }
 
-    return Number.isInteger(days) ? String(days) : days.toFixed(1);
+    const rounded = Math.round(Number(days) * 100) / 100;
+
+    if (Number.isInteger(rounded)) {
+        return String(rounded);
+    }
+
+    return String(rounded);
 }
 
 export default function LeaveRequestModal({
