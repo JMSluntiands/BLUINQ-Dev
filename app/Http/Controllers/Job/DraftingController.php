@@ -1646,7 +1646,7 @@ class DraftingController extends Controller
                 $user->hasPermission('job.drafting.revision.view') || $masterlistAccess
             ),
             'addRevision' => $canView && $active && $user->hasPermission('job.drafting.revision.add'),
-            'addFromMasterlist' => $canView && $active && $user->hasPermission('job.list.view'),
+            'addFromMasterlist' => $canView && $active && $user->canAddBoardItem(),
             'deleteRevision' => $canView && $active && $user->isAdmin(),
             'viewAccounts' => $canView && (
                 $user->hasPermission('job.drafting.accounts.view') || $masterlistAccess

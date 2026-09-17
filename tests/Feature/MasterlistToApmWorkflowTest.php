@@ -437,6 +437,110 @@ class MasterlistToApmWorkflowTest extends TestCase
         $this->assertSame('300', $byId[$second->id]['area_size']);
     }
 
+    public function test_member_cannot_use_add_item_on_apm_or_design_board(): void
+    {
+        $admin = $this->adminUser();
+        $member = $this->memberUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $row = DraftingRequest::query()->create([
+            'user_id' => $admin->id,
+            'status' => DraftingRequest::STATUS_NEW,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_MASTERLIST,
+            'requested_at' => now(),
+            'your_name' => 'Member Blocked',
+            'company_name' => 'Member Co',
+            'email' => 'member-blocked@example.com',
+            'site_address' => '1 Member St',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        $this->actingAs($member)
+            ->get(route('job.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->where('canForwardFromMasterlist', false)
+                ->has('masterlistCandidates', 0));
+
+        $this->actingAs($member)
+            ->get(route('design.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->where('canForwardFromMasterlist', false)
+                ->has('masterlistCandidates', 0));
+
+        $this->actingAs($member)
+            ->post(route('job.board.add.quick', $row), [
+                'board' => 'apm',
+                'code' => $row->jobNumber().'-01',
+                'log_date' => now()->toDateString(),
+                'category' => $category->code,
+                'status' => DraftingRequest::STATUS_NEW,
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($member)
+            ->post(route('job.board.add.quick', $row), [
+                'board' => 'design',
+                'code' => $row->jobNumber().'-01',
+                'log_date' => now()->toDateString(),
+                'category' => $category->code,
+                'status' => DraftingRequest::STATUS_NEW,
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_project_manager_can_use_add_item_on_apm_board(): void
+    {
+        $manager = $this->managerUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $row = DraftingRequest::query()->create([
+            'user_id' => $manager->id,
+            'status' => DraftingRequest::STATUS_NEW,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_MASTERLIST,
+            'requested_at' => now(),
+            'your_name' => 'Manager Client',
+            'company_name' => 'Manager Co',
+            'email' => 'manager-add@example.com',
+            'site_address' => '2 Manager St',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        $this->actingAs($manager)
+            ->get(route('job.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->where('canForwardFromMasterlist', true));
+
+        $this->actingAs($manager)
+            ->post(route('job.board.add.quick', $row), [
+                'board' => 'apm',
+                'code' => $row->jobNumber().'-01',
+                'log_date' => now()->toDateString(),
+                'category' => $category->code,
+                'status' => DraftingRequest::STATUS_NEW,
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('job.list'));
+
+        $row->refresh();
+        $this->assertSame(DraftingRequest::STAGE_APM, $row->workflow_stage);
+    }
+
     public function test_add_item_includes_submitted_apm_jobs_for_reopen(): void
     {
         $user = $this->adminUser();
@@ -1400,6 +1504,41 @@ class MasterlistToApmWorkflowTest extends TestCase
 
         return User::factory()->create([
             'role_id' => $adminRoleId,
+        ]);
+    }
+
+    private function memberUser(): User
+    {
+        $memberRoleId = Role::query()->where('slug', 'user')->value('id');
+
+        \App\Models\Permission::syncSlugsForRole('user', [
+            'job.list.view',
+            'design.list.view',
+        ]);
+
+        return User::factory()->create([
+            'role_id' => $memberRoleId,
+        ]);
+    }
+
+    private function managerUser(): User
+    {
+        $manager = Role::query()->firstOrCreate(
+            ['slug' => 'project-manager'],
+            [
+                'name' => 'Project Manager',
+                'is_system' => true,
+                'sort_order' => 2,
+            ],
+        );
+
+        \App\Models\Permission::syncSlugsForRole('project-manager', [
+            'job.list.view',
+            'design.list.view',
+        ]);
+
+        return User::factory()->create([
+            'role_id' => $manager->id,
         ]);
     }
 

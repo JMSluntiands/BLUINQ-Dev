@@ -85,7 +85,6 @@ class JobBoardController extends Controller
         $statusFilter = $options['statusFilter'] ?? null;
         $showAddFromMasterlist = $options['showAddFromMasterlist'] ?? true;
         $showPendingRequests = $options['showPendingRequests'] ?? true;
-        $forwardPermission = $options['forwardPermission'] ?? 'job.list.view';
         $board = ($options['board'] ?? 'apm') === 'design' ? 'design' : 'apm';
         $statusGroupOptions = $this->formatStatusOptionList(
             $options['statusGroupOptions'] ?? DraftingRequest::jobListStatusOptions(),
@@ -102,7 +101,7 @@ class JobBoardController extends Controller
         $canReviewPublicRequests = $showPendingRequests
             && ($user?->hasPermission('job.drafting-request.review') ?? false);
         $canForwardFromMasterlist = $showAddFromMasterlist
-            && ($user?->hasPermission($forwardPermission) ?? false);
+            && ($user?->canAddBoardItem() ?? false);
         $canAddRevision = $user?->hasPermission('job.drafting.revision.add') ?? false;
         $formatRow = function (DraftingRequest $row) use ($request, $canAddRevision) {
             $formatted = $this->board->formatBoardRow($row);
@@ -658,9 +657,15 @@ class JobBoardController extends Controller
 
     private function assertCanAddToBoard(Request $request, string $board): void
     {
+        $user = $request->user();
         $permission = $board === 'design' ? 'design.list.view' : 'job.list.view';
 
-        abort_unless($request->user()?->hasPermission($permission), 403);
+        abort_unless(
+            $user !== null
+                && $user->canAddBoardItem()
+                && $user->hasPermission($permission),
+            403,
+        );
     }
 
     /**

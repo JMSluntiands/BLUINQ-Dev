@@ -151,6 +151,14 @@ class User extends Authenticatable
     }
 
     /**
+     * APM / DPM board Add item (forward or reopen) — Admin and Manager only.
+     */
+    public function canAddBoardItem(): bool
+    {
+        return $this->isAdmin() || $this->isProjectManager();
+    }
+
+    /**
      * Admin and roles with "View all team timesheets" see the team leave calendar.
      */
     public function canViewTeamTimesheet(): bool

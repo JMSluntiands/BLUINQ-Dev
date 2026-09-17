@@ -32,9 +32,8 @@ export default function JobBoard({
 }) {
     const page = usePage();
     const revisionCode = page.props.flash?.revision_code ?? null;
-    const permissions = page.props.auth?.user?.permissions ?? [];
-    const canAddRevision = permissions.includes('job.drafting.revision.add');
-    const canOpenAddModal = canForwardFromMasterlist || canAddRevision;
+    const canOpenAddFromMasterlist =
+        showAddFromMasterlist && canForwardFromMasterlist;
 
     const flashMessages = useMemo(
         () => {
@@ -80,8 +79,6 @@ export default function JobBoard({
         (canViewAllRequests
             ? 'All jobs on the project board, grouped by status.'
             : 'Your jobs on the project board, grouped by status.');
-    const canOpenAddFromMasterlist =
-        showAddFromMasterlist && canOpenAddModal;
 
     // Board rows already include revision codes — use them when candidate
     // payload is missing/stale so Add item still suggests the next suffix.
