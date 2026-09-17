@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\CrmCategory;
 use App\Models\DraftingRequest;
 use App\Models\DraftingRequestAccountEntry;
 use Illuminate\Foundation\Http\FormRequest;
@@ -51,9 +52,18 @@ class UpdateDraftingRequestAccountEntryRequest extends FormRequest
      */
     public function rules(): array
     {
+        $allowed = $this->allowedCategoryValues();
+
+        /** @var DraftingRequestAccountEntry|null $accountEntry */
+        $accountEntry = $this->route('accountEntry');
+        $existing = trim((string) ($accountEntry?->category ?? ''));
+        if ($existing !== '' && ! in_array($existing, $allowed, true)) {
+            $allowed[] = $existing;
+        }
+
         return [
             'number' => ['required', 'string', 'max:64'],
-            'category' => ['required', 'string', 'max:64'],
+            'category' => ['required', 'string', 'max:64', Rule::in($allowed)],
             'rate' => ['nullable', 'string', 'max:64'],
             'status' => [
                 'required',
@@ -70,7 +80,8 @@ class UpdateDraftingRequestAccountEntryRequest extends FormRequest
     {
         return [
             'number.required' => 'Enter a number.',
-            'category.required' => 'Enter a category.',
+            'category.required' => 'Select a category.',
+            'category.in' => 'Select a valid category.',
             'status.required' => 'Select a status.',
             'status.in' => 'Select a valid status.',
         ];
@@ -83,5 +94,20 @@ class UpdateDraftingRequestAccountEntryRequest extends FormRequest
                 'status' => DraftingRequestAccountEntry::normalizeStatus($this->input('status')),
             ]);
         }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function allowedCategoryValues(): array
+    {
+        return CrmCategory::query()
+            ->active()
+            ->orderBy('code')
+            ->get(['code', 'name'])
+            ->flatMap(fn (CrmCategory $row) => array_filter([$row->code, $row->name]))
+            ->unique()
+            ->values()
+            ->all();
     }
 }

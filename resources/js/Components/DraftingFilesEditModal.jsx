@@ -140,6 +140,8 @@ function FacadeSection({ files, form, onRequestDelete, deleting }) {
 }
 
 function DocumentsSection({ files, form, onRequestDelete, deleting }) {
+    const selectedCount = form.data.documents?.length ?? 0;
+
     return (
         <>
             {files.length > 0 ? (
@@ -154,7 +156,10 @@ function DocumentsSection({ files, form, onRequestDelete, deleting }) {
                     ))}
                 </ul>
             ) : (
-                <p className="text-sm text-[#676879]">No documents yet.</p>
+                <p className="text-sm text-[#676879]">
+                    No documents yet. Links pasted in comments are not listed
+                    here — upload the file below to manage it as a document.
+                </p>
             )}
             <div className={files.length > 0 ? 'mt-4' : 'mt-2'}>
                 <UploadField
@@ -171,6 +176,12 @@ function DocumentsSection({ files, form, onRequestDelete, deleting }) {
                         form.errors.documents ?? form.errors['documents.0']
                     }
                 />
+                {selectedCount > 0 ? (
+                    <p className="mt-1 text-xs text-[#676879]">
+                        {selectedCount} file{selectedCount === 1 ? '' : 's'}{' '}
+                        selected
+                    </p>
+                ) : null}
             </div>
         </>
     );
@@ -240,13 +251,34 @@ export default function DraftingFilesEditModal({
 
     const submit = (e) => {
         e.preventDefault();
+
+        const hasDocuments = (form.data.documents?.length ?? 0) > 0;
+        const hasFacade = form.data.facade != null;
+        const hasTeam = (form.data.team_files?.length ?? 0) > 0;
+
+        if (panel === 'documents' && !hasDocuments) {
+            form.setError('documents', 'Choose at least one file to upload.');
+            return;
+        }
+
+        if (panel === 'facade' && !hasFacade) {
+            form.setError('facade', 'Choose a facade file to upload.');
+            return;
+        }
+
+        if (panel === 'team' && !hasTeam) {
+            form.setError('team_files', 'Choose at least one file to upload.');
+            return;
+        }
+
         form.post(route('job.drafting.files.store', draftingRequestId) + listUrl, {
             forceFormData: true,
             preserveScroll: true,
+            preserveState: false,
             onSuccess: () => {
                 form.reset();
+                form.clearErrors();
                 onClose();
-                router.reload({ only: ['draftingRequest'], preserveScroll: true });
             },
         });
     };
@@ -264,12 +296,9 @@ export default function DraftingFilesEditModal({
             ]) + listUrl,
             {
                 preserveScroll: true,
+                preserveState: false,
                 onSuccess: () => {
                     setDeleteTarget(null);
-                    router.reload({
-                        only: ['draftingRequest'],
-                        preserveScroll: true,
-                    });
                 },
                 onFinish: () => setDeleting(false),
             },
@@ -342,8 +371,16 @@ export default function DraftingFilesEditModal({
                         Cancel
                     </SecondaryButton>
                     <PrimaryButton
+                        type="submit"
                         loading={form.processing}
-                        disabled={isBusy}
+                        disabled={
+                            isBusy ||
+                            (panel === 'documents' &&
+                                (form.data.documents?.length ?? 0) === 0) ||
+                            (panel === 'facade' && form.data.facade == null) ||
+                            (panel === 'team' &&
+                                (form.data.team_files?.length ?? 0) === 0)
+                        }
                         className="rounded-lg normal-case tracking-normal !bg-[#0073ea] hover:!bg-[#0060c4]"
                     >
                         Upload selected

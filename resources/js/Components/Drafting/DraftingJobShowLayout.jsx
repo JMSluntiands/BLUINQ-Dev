@@ -665,6 +665,7 @@ export default function DraftingJobShowLayout({
     commentsPanel,
     filesPanel,
     activityPanel,
+    accountActivityPanel,
     backHref,
     backLabel,
     archiveActions,
@@ -1266,6 +1267,7 @@ export default function DraftingJobShowLayout({
                                 <div className="space-y-4">
                                     {revisionsPanel}
                                     {accountsPanel}
+                                    {accountActivityPanel}
                                 </div>
                             </section>
                         )}
@@ -1322,6 +1324,7 @@ export default function DraftingJobShowLayout({
                             <div className="space-y-4">
                                 {revisionsPanel}
                                 {accountsPanel}
+                                {accountActivityPanel}
                             </div>
                         </section>
                     ) : null}

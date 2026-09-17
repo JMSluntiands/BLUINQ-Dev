@@ -3,6 +3,7 @@ import InputLabel from '@/Components/InputLabel';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import Select2 from '@/Components/Select2';
 import TextInput from '@/Components/TextInput';
 import { useForm, usePage } from '@inertiajs/react';
 import { useEffect, useMemo } from 'react';
@@ -74,11 +75,18 @@ export default function DraftingAccountAddModal({
     accountKind = 'quote',
     entry = null,
     statusOptions = null,
+    categoryOptions = [],
 }) {
     const config = KIND_CONFIG[accountKind] ?? KIND_CONFIG.quote;
     const listQs = listQueryString(listFilters);
     const isEditing = entry != null;
-    const { accountStatusOptions: pageStatusOptions = {} } = usePage().props;
+    const {
+        accountStatusOptions: pageStatusOptions = {},
+        categoryOptions: pageCategoryOptions = [],
+    } = usePage().props;
+
+    const categories =
+        categoryOptions.length > 0 ? categoryOptions : pageCategoryOptions;
 
     const statuses = useMemo(() => {
         const fromProp =
@@ -94,6 +102,36 @@ export default function DraftingAccountAddModal({
 
         return list;
     }, [statusOptions, pageStatusOptions, config.kind, entry?.status]);
+
+    const categorySelectOptions = useMemo(() => {
+        const items = categories
+            .map((option) => {
+                const code = String(option.code || '').trim();
+                const name = String(option.name || '').trim();
+                const value = code || name;
+
+                return {
+                    value,
+                    label:
+                        code && name && code !== name
+                            ? `${code} — ${name}`
+                            : name || code,
+                };
+            })
+            .filter((option) => option.value !== '');
+
+        if (
+            entry?.category &&
+            !items.some((option) => option.value === entry.category)
+        ) {
+            items.unshift({
+                value: entry.category,
+                label: entry.category,
+            });
+        }
+
+        return items;
+    }, [categories, entry?.category]);
 
     const form = useForm({
         kind: config.kind,
@@ -201,16 +239,19 @@ export default function DraftingAccountAddModal({
                             htmlFor="account-category"
                             value="Category"
                         />
-                        <TextInput
-                            id="account-category"
-                            value={form.data.category}
-                            onChange={(e) =>
-                                form.setData('category', e.target.value)
-                            }
-                            className="mt-1 block w-full"
-                            placeholder="e.g. DRAFTING"
-                            required
-                        />
+                        <div className="mt-1 select2-field">
+                            <Select2
+                                id="account-category"
+                                value={form.data.category}
+                                onChange={(value) =>
+                                    form.setData('category', value)
+                                }
+                                options={categorySelectOptions}
+                                placeholder="Select category…"
+                                enabled={show}
+                                required
+                            />
+                        </div>
                         <InputError
                             message={form.errors.category}
                             className="mt-1"

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\CrmCategory;
 use App\Models\DraftingRequestAccountEntry;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -20,8 +21,6 @@ class StoreDraftingRequestAccountEntryRequest extends FormRequest
      */
     public function rules(): array
     {
-        $kind = (string) $this->input('kind', DraftingRequestAccountEntry::KIND_QUOTE);
-
         return [
             'kind' => [
                 'required',
@@ -32,7 +31,7 @@ class StoreDraftingRequestAccountEntryRequest extends FormRequest
                 ]),
             ],
             'number' => ['required', 'string', 'max:64'],
-            'category' => ['required', 'string', 'max:64'],
+            'category' => ['required', 'string', 'max:64', Rule::in($this->allowedCategoryValues())],
             'rate' => ['nullable', 'string', 'max:64'],
             'status' => [
                 'required',
@@ -49,7 +48,8 @@ class StoreDraftingRequestAccountEntryRequest extends FormRequest
     {
         return [
             'number.required' => 'Enter a number.',
-            'category.required' => 'Enter a category.',
+            'category.required' => 'Select a category.',
+            'category.in' => 'Select a valid category.',
             'status.required' => 'Select a status.',
             'status.in' => 'Select a valid status.',
         ];
@@ -62,5 +62,20 @@ class StoreDraftingRequestAccountEntryRequest extends FormRequest
                 'status' => DraftingRequestAccountEntry::normalizeStatus($this->input('status')),
             ]);
         }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function allowedCategoryValues(): array
+    {
+        return CrmCategory::query()
+            ->active()
+            ->orderBy('code')
+            ->get(['code', 'name'])
+            ->flatMap(fn (CrmCategory $row) => array_filter([$row->code, $row->name]))
+            ->unique()
+            ->values()
+            ->all();
     }
 }

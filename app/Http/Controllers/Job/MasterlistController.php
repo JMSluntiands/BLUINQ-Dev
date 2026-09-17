@@ -7,6 +7,7 @@ use App\Http\Requests\StoreDraftingRequestFormRequest;
 use App\Models\BuildingClass;
 use App\Models\CrmCategory;
 use App\Models\DraftingRequest;
+use App\Models\DraftingRequestFile;
 use App\Models\ExternalWallConstruction;
 use App\Models\RoofType;
 use App\Models\SdaType;
@@ -249,6 +250,22 @@ class MasterlistController extends Controller
             'ceiling_heights' => $draftingRequest->ceiling_heights,
             'first_floor_slab' => $draftingRequest->first_floor_slab,
             'additional_inclusions' => $draftingRequest->additional_inclusions,
+            'existing_documents' => $draftingRequest->files()
+                ->orderBy('kind')
+                ->orderBy('id')
+                ->get(['id', 'kind', 'original_name', 'size'])
+                ->map(fn (DraftingRequestFile $file) => [
+                    'id' => $file->id,
+                    'kind' => $file->kind,
+                    'original_name' => $file->original_name,
+                    'size_label' => $file->size >= 1048576
+                        ? round($file->size / 1048576, 1).' MB'
+                        : ($file->size >= 1024
+                            ? round($file->size / 1024, 1).' KB'
+                            : $file->size.' B'),
+                ])
+                ->values()
+                ->all(),
         ];
     }
 

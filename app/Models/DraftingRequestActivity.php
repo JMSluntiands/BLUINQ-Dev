@@ -49,6 +49,19 @@ class DraftingRequestActivity extends Model
 
     public const ACTION_ASSIGNMENT_CHANGED = 'assignment_changed';
 
+    /**
+     * @return list<string>
+     */
+    public static function accountActions(): array
+    {
+        return [
+            self::ACTION_QUOTE_ADDED,
+            self::ACTION_QUOTE_UPDATED,
+            self::ACTION_INVOICE_ADDED,
+            self::ACTION_INVOICE_UPDATED,
+        ];
+    }
+
     protected $fillable = [
         'drafting_request_id',
         'user_id',

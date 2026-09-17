@@ -224,6 +224,8 @@ export default function DraftingRequestForm({
         documents: [],
     });
 
+    const existingDocuments = applicant.existing_documents ?? [];
+
     const documentsInputRef = useRef(null);
     const [documentsDragActive, setDocumentsDragActive] = useState(false);
 
@@ -1083,6 +1085,36 @@ export default function DraftingRequestForm({
                                     errors.documents ?? errors['documents.0']
                                 }
                             >
+                                {existingDocuments.length > 0 ? (
+                                    <ul className="mb-3 space-y-2">
+                                        {existingDocuments.map((file) => (
+                                            <li
+                                                key={file.id}
+                                                className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-600 dark:bg-slate-800/60"
+                                            >
+                                                <div className="flex min-w-0 items-center gap-3">
+                                                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300">
+                                                        <DocumentTextIcon
+                                                            className="h-5 w-5"
+                                                            aria-hidden
+                                                        />
+                                                    </span>
+                                                    <div className="min-w-0">
+                                                        <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+                                                            {file.original_name}
+                                                        </p>
+                                                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                            Already uploaded
+                                                            {file.size_label
+                                                                ? ` · ${file.size_label}`
+                                                                : ''}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : null}
                                 <div
                                     className={`${uploadZoneClass} ${
                                         documentsDragActive

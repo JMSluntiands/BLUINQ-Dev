@@ -146,11 +146,11 @@ export default function DraftingShow({
         setDeleteRevisionTarget(null);
     }, [deleteRevisionTarget, draftingRequest.id, listQs]);
 
-    const facadeFiles = draftingRequest.files.filter((f) => f.kind === 'facade');
-    const documentFiles = draftingRequest.files.filter(
-        (f) => f.kind === 'document',
-    );
-    const teamFiles = draftingRequest.files.filter((f) => f.kind === 'team');
+    const allFiles = draftingRequest.files ?? [];
+    const facadeFiles = allFiles.filter((f) => f.kind === 'facade');
+    const teamFiles = allFiles.filter((f) => f.kind === 'team');
+    // Facade/Team panels were removed — keep those uploads visible under Documents.
+    const managedFiles = allFiles;
 
     const archiveActions = archive ? (
         <>
@@ -264,6 +264,7 @@ export default function DraftingShow({
                     listFilters={listFilters}
                     accountKind="quote"
                     entry={editingQuote}
+                    categoryOptions={categoryOptions}
                 />
 
                 <DraftingAccountAddModal
@@ -276,6 +277,7 @@ export default function DraftingShow({
                     listFilters={listFilters}
                     accountKind="invoice"
                     entry={editingInvoice}
+                    categoryOptions={categoryOptions}
                 />
 
                 <DraftingFilesEditModal
@@ -283,7 +285,7 @@ export default function DraftingShow({
                     onClose={() => setFilesEditPanel(null)}
                     draftingRequestId={draftingRequest.id}
                     facadeFiles={facadeFiles}
-                    documentFiles={documentFiles}
+                    documentFiles={managedFiles}
                     teamFiles={teamFiles}
                     listUrl={listQs}
                 />
@@ -323,7 +325,7 @@ export default function DraftingShow({
                         viewFiles ? (
                             <FilePanel
                                 title="Documents"
-                                files={documentFiles}
+                                files={managedFiles}
                                 emptyLabel="No documents uploaded."
                                 canEdit={editFiles}
                                 onEdit={() => setFilesEditPanel('documents')}
@@ -350,7 +352,25 @@ export default function DraftingShow({
                     }
                     activityPanel={
                         viewActivity ? (
-                            <ActivityLogsSection embedded />
+                            <ActivityLogsSection
+                                embedded
+                                activities={draftingRequest.activities ?? []}
+                                title="Recent activity"
+                                subtitle="Status changes, comments, and other updates"
+                            />
+                        ) : null
+                    }
+                    accountActivityPanel={
+                        viewAccounts && viewActivity ? (
+                            <ActivityLogsSection
+                                embedded
+                                activities={
+                                    draftingRequest.account_activities ?? []
+                                }
+                                title="Quote & invoice activity"
+                                subtitle="Added and updated quotes and invoices"
+                                emptyLabel="No quote or invoice activity yet."
+                            />
                         ) : null
                     }
                 />
@@ -754,9 +774,18 @@ function DiscussionPanel({
     );
 }
 
-function ActivityLogsSection({ embedded = false }) {
+function ActivityLogsSection({
+    embedded = false,
+    activities = null,
+    title = null,
+    subtitle = null,
+    emptyLabel = 'No activity recorded yet.',
+}) {
     const { draftingRequest } = usePage().props;
-    const activities = draftingRequest?.activities ?? [];
+    const rows = activities ?? draftingRequest?.activities ?? [];
+    const heading = title ?? (embedded ? 'Recent activity' : 'Activity log');
+    const description =
+        subtitle ?? 'Status changes, comments, and other updates';
 
     return (
         <div className={cardClass}>
@@ -768,26 +797,26 @@ function ActivityLogsSection({ embedded = false }) {
                             : 'text-base font-semibold text-[#323338] dark:text-white'
                     }
                 >
-                    {embedded ? 'Recent activity' : 'Activity log'}
+                    {heading}
                 </h2>
                 <p className="mt-0.5 text-xs text-[#676879] dark:text-slate-400">
-                    Status changes, comments, and other updates
+                    {description}
                 </p>
             </div>
 
-            {activities.length === 0 ? (
+            {rows.length === 0 ? (
                 <p className="flex items-center gap-2 px-4 py-6 text-sm text-[#676879] dark:text-slate-400 sm:px-5">
                     <ClockIcon className="h-5 w-5 shrink-0" aria-hidden />
-                    No activity recorded yet.
+                    {emptyLabel}
                 </p>
             ) : (
                 <ul className="max-h-56 space-y-0 overflow-y-auto overscroll-contain px-4 py-3 sm:max-h-64 sm:px-5">
-                    {activities.map((activity, index) => (
+                    {rows.map((activity, index) => (
                         <li
                             key={activity.id}
                             className="relative flex gap-3 pb-4 last:pb-1"
                         >
-                            {index < activities.length - 1 ? (
+                            {index < rows.length - 1 ? (
                                 <span
                                     className="absolute left-[11px] top-6 h-[calc(100%-0.35rem)] w-px bg-[#e6e9ef] dark:bg-[#3b82f6]/30"
                                     aria-hidden

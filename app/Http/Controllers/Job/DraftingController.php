@@ -35,6 +35,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -295,7 +296,8 @@ class DraftingController extends Controller
                         $tz,
                     )
                     : [],
-                'activities' => $this->formatActivities($draftingRequest, $tz),
+                'activities' => $this->formatActivities($draftingRequest, $tz, accountOnly: false),
+                'account_activities' => $this->formatActivities($draftingRequest, $tz, accountOnly: true),
                 'zoning' => $draftingRequest->zoning,
                 'building_area_label' => $this->jobShow->formattedBuildingArea($draftingRequest),
                 'services_label' => $this->jobShow->formattedServices($draftingRequest),
@@ -1287,8 +1289,9 @@ class DraftingController extends Controller
         }
 
         if ($uploaded === 0) {
-            return redirect()
-                ->route($this->jobShowRouteName($request), $this->jobShowRouteParams($draftingRequest, $request));
+            throw ValidationException::withMessages([
+                'documents' => 'Choose at least one file to upload.',
+            ]);
         }
 
         DraftingRequestActivity::record(
@@ -1762,13 +1765,26 @@ class DraftingController extends Controller
     /**
      * @return list<array<string, mixed>>
      */
-    private function formatActivities(DraftingRequest $draftingRequest, string $tz): array
-    {
-        return DraftingRequestActivity::query()
+    private function formatActivities(
+        DraftingRequest $draftingRequest,
+        string $tz,
+        bool $accountOnly = false,
+    ): array {
+        $query = DraftingRequestActivity::query()
             ->where('drafting_request_id', $draftingRequest->id)
             ->with('user:id,name,initials,profile_image')
             ->orderByDesc('created_at')
-            ->orderByDesc('id')
+            ->orderByDesc('id');
+
+        $accountActions = DraftingRequestActivity::accountActions();
+
+        if ($accountOnly) {
+            $query->whereIn('action', $accountActions);
+        } else {
+            $query->whereNotIn('action', $accountActions);
+        }
+
+        return $query
             ->limit(100)
             ->get()
             ->map(fn (DraftingRequestActivity $activity) => $this->formatActivity($activity, $tz))

@@ -264,7 +264,7 @@ export default function DraftingEditModals({
     const submit = (form) => {
         form.patch(updateUrl, {
             preserveScroll: true,
-            preserveState: true,
+            preserveState: false,
             onSuccess: () => onClose(),
         });
     };
