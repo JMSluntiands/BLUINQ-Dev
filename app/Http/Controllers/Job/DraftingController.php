@@ -1128,6 +1128,12 @@ class DraftingController extends Controller
         DraftingRequest $draftingRequest,
         DraftingRequestAccountEntry $accountEntry,
     ): RedirectResponse {
+        $this->authorizeView($request, $draftingRequest);
+
+        if ($draftingRequest->isArchived()) {
+            abort(404);
+        }
+
         $validated = $request->validated();
 
         $accountEntry->update([

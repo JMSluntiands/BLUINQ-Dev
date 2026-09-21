@@ -32,19 +32,8 @@ class UpdateDraftingRequestAccountEntryRequest extends FormRequest
             return false;
         }
 
-        if ($accountEntry->drafting_request_id !== $draftingRequest->id) {
-            return false;
-        }
-
-        if (! $user->hasPermission('job.drafting.view')) {
-            return false;
-        }
-
-        if (! $user->isAdmin() && $draftingRequest->user_id !== $user->id) {
-            return false;
-        }
-
-        return true;
+        // Same capability as Add quote/invoice — not limited to Admin or job owner.
+        return $accountEntry->drafting_request_id === $draftingRequest->id;
     }
 
     /**
