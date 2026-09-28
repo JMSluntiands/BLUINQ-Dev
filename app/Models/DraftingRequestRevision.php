@@ -22,6 +22,7 @@ class DraftingRequestRevision extends Model
         'checking_hours',
         'status',
         'area_size',
+        'vo_hours',
         'submitted_date',
     ];
 
@@ -35,6 +36,7 @@ class DraftingRequestRevision extends Model
             'submitted_date' => 'date',
             'drafting_hours' => 'decimal:2',
             'checking_hours' => 'decimal:2',
+            'vo_hours' => 'decimal:2',
         ];
     }
 

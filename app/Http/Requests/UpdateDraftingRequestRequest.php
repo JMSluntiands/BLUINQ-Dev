@@ -103,13 +103,13 @@ class UpdateDraftingRequestRequest extends FormRequest
                     ),
                 ],
                 'storey_level_id' => [
-                    'required',
+                    'nullable',
                     'integer',
                     Rule::exists('storey_levels', 'id')->where(
                         fn ($q) => $q->whereNull('archived_at'),
                     ),
                 ],
-                'crm_category_ids' => ['required', 'array', 'min:1'],
+                'crm_category_ids' => ['nullable', 'array'],
                 'crm_category_ids.*' => [
                     'integer',
                     Rule::exists('crm_categories', 'id')->where(

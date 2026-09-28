@@ -264,7 +264,8 @@ export default function DraftingEditModals({
     const submit = (form) => {
         form.patch(updateUrl, {
             preserveScroll: true,
-            preserveState: false,
+            // Keep modal open on validation errors; only close after success.
+            preserveState: true,
             onSuccess: () => onClose(),
         });
     };

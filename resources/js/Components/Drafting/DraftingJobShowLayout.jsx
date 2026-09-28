@@ -223,16 +223,7 @@ function RevisionAreaSizeCell({
 }) {
     const [editing, setEditing] = useState(false);
     const form = useForm({
-        code: row.code ?? '',
-        log_date: row.log_date_value ?? '',
-        category: row.category ?? '',
-        status: row.status ?? 'new',
         area_size: row.area_size ?? '',
-        drafter_user_id: row.drafter_user_id ?? '',
-        checker_user_id: row.checker_user_id ?? '',
-        drafting_hours: row.drafting_hours ?? '',
-        checking_hours: row.checking_hours ?? '',
-        submitted_date: row.submitted_date_value ?? '',
     });
 
     useEffect(() => {
@@ -241,19 +232,10 @@ function RevisionAreaSizeCell({
         }
 
         form.setData({
-            code: row.code ?? '',
-            log_date: row.log_date_value ?? '',
-            category: row.category ?? '',
-            status: row.status ?? 'new',
             area_size: row.area_size ?? '',
-            drafter_user_id: row.drafter_user_id ?? '',
-            checker_user_id: row.checker_user_id ?? '',
-            drafting_hours: row.drafting_hours ?? '',
-            checking_hours: row.checking_hours ?? '',
-            submitted_date: row.submitted_date_value ?? '',
         });
         form.clearErrors();
-    }, [row.id, row.area_size, row.code, row.log_date_value, row.category, row.status, editing]);
+    }, [row.id, row.area_size, editing]);
 
     if (!canEdit) {
         return row.area_size ?? '—';
@@ -276,16 +258,26 @@ function RevisionAreaSizeCell({
 
     const submit = (e) => {
         e.preventDefault();
-        form.patch(
-            route('job.drafting.revisions.update', [
-                draftingRequestId,
-                row.id,
-            ]),
-            {
-                preserveScroll: true,
-                onSuccess: () => setEditing(false),
-            },
-        );
+        // Only patch area_size (+ required identity fields). Sending blank
+        // submitted_date / staff fields was clearing Add item Date Out sync.
+        form
+            .transform((data) => ({
+                code: row.code ?? '',
+                log_date: row.log_date_value ?? '',
+                category: row.category ?? '',
+                status: row.status ?? 'new',
+                area_size: data.area_size,
+            }))
+            .patch(
+                route('job.drafting.revisions.update', [
+                    draftingRequestId,
+                    row.id,
+                ]),
+                {
+                    preserveScroll: true,
+                    onSuccess: () => setEditing(false),
+                },
+            );
     };
 
     return (
@@ -791,6 +783,16 @@ export default function DraftingJobShowLayout({
                     canEdit={Boolean(onEditRevision)}
                 />
             ),
+        },
+        {
+            key: 'vo_hours',
+            label: 'VO',
+            render: (row) =>
+                row.vo_hours != null && row.vo_hours !== '' ? (
+                    <span className="tabular-nums">{row.vo_hours} h</span>
+                ) : (
+                    '—'
+                ),
         },
         {
             key: 'submitted_date',

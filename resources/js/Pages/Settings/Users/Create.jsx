@@ -1,3 +1,4 @@
+import FileDropzone from '@/Components/FileDropzone';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -70,16 +71,13 @@ export default function UsersCreate({
                 <form onSubmit={submit} className="space-y-6">
                     <div>
                         <InputLabel htmlFor="profile_image" value="Profile photo" />
-                        <input
+                        <FileDropzone
                             id="profile_image"
-                            type="file"
                             accept="image/*"
-                            className="mt-2 block w-full text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-sky-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-sky-700 hover:file:bg-sky-100"
-                            onChange={(e) =>
-                                form.setData(
-                                    'profile_image',
-                                    e.target.files?.[0] ?? null,
-                                )
+                            className="mt-2"
+                            value={form.data.profile_image}
+                            onChange={(file) =>
+                                form.setData('profile_image', file)
                             }
                         />
                         <p className="mt-1 text-xs text-slate-500">

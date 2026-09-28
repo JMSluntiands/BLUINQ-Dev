@@ -147,6 +147,8 @@ class JobBoardController extends Controller
                     ->all()
                 : [],
             'assignableUsers' => $this->board->assignableUsers(),
+            'draftingSlotCount' => $this->board->draftingSlotCount(),
+            'checkingSlotCount' => $this->board->checkingSlotCount(),
             'statusOptions' => $this->formatStatusOptionList(
                 DraftingRequest::jobBoardStatusOptions(),
             ),
@@ -381,6 +383,9 @@ class JobBoardController extends Controller
                     'max_building_area_sqm' => $row->max_building_area_sqm !== null
                         ? rtrim(rtrim((string) $row->max_building_area_sqm, '0'), '.')
                         : null,
+                    'vo_hours' => $row->vo_hours !== null
+                        ? rtrim(rtrim((string) $row->vo_hours, '0'), '.')
+                        : null,
                 ];
             })
             ->values()
@@ -524,6 +529,8 @@ class JobBoardController extends Controller
                 ? Carbon::parse($validated['date_out'], config('app.timezone'))->toDateString()
                 : null,
             'area_size' => $areaSize,
+            // New cycle starts at 0h so Revisions VO matches the board after Add item.
+            'vo_hours' => 0,
         ]);
 
         // Board Date In / Date Out columns come from the job row, not the revision.
@@ -544,6 +551,8 @@ class JobBoardController extends Controller
             'requested_at' => $requestedAt,
             'date_out' => $dateOut,
             'max_building_area_sqm' => $validated['max_building_area_sqm'] ?? null,
+            // New Add item revision: start VO at 0h (not carry prior cycle).
+            'vo_hours' => 0,
         ])->save();
 
         $result = $this->submission->addOrReopenOnBoard(
@@ -1008,11 +1017,17 @@ class JobBoardController extends Controller
 
         if (array_key_exists('date_out', $validated)) {
             $tz = config('app.timezone');
+            $dateOut = filled($validated['date_out'])
+                ? Carbon::parse($validated['date_out'], $tz)->toDateString()
+                : null;
             $draftingRequest->update([
-                'date_out' => filled($validated['date_out'])
-                    ? Carbon::parse($validated['date_out'], $tz)->toDateString()
-                    : null,
+                'date_out' => $dateOut,
             ]);
+            // Keep latest revision Date Out in sync with the board (Add item / cell edit).
+            $latestRevision = $draftingRequest->revisions()->orderByDesc('id')->first();
+            if ($latestRevision !== null) {
+                $latestRevision->forceFill(['submitted_date' => $dateOut])->save();
+            }
         }
 
         if (array_key_exists('eta', $validated)) {
@@ -1046,6 +1061,13 @@ class JobBoardController extends Controller
             $draftingRequest->update([
                 'max_building_area_sqm' => $validated['max_building_area_sqm'],
             ]);
+            // Keep latest revision Area Size in sync with board Areas edits.
+            $latestRevision = $draftingRequest->revisions()->orderByDesc('id')->first();
+            if ($latestRevision !== null) {
+                $latestRevision->forceFill([
+                    'area_size' => $this->formatRevisionAreaSize($validated['max_building_area_sqm']),
+                ])->save();
+            }
         }
 
         return back();

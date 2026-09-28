@@ -142,6 +142,8 @@ class MasterlistToApmWorkflowTest extends TestCase
             'status' => DraftingRequest::STATUS_SUBMITTED,
         ]);
 
+        $row->forceFill(['vo_hours' => 12.5])->save();
+
         $response = $this->actingAs($user)->post(route('job.board.add', $row));
 
         $response->assertRedirect(route('job.list'));
@@ -151,6 +153,14 @@ class MasterlistToApmWorkflowTest extends TestCase
         $row->refresh();
         $this->assertSame(DraftingRequest::STATUS_NEW, $row->status);
         $this->assertSame(DraftingRequest::STAGE_APM, $row->workflow_stage);
+        $this->assertSame('0.00', (string) $row->vo_hours);
+
+        $previousRevision = DraftingRequestRevision::query()
+            ->where('drafting_request_id', $row->id)
+            ->where('code', $row->jobNumber().'-01')
+            ->first();
+        $this->assertNotNull($previousRevision);
+        $this->assertSame('12.50', (string) $previousRevision->vo_hours);
 
         $this->assertTrue(
             DraftingRequestRevision::query()
@@ -235,6 +245,8 @@ class MasterlistToApmWorkflowTest extends TestCase
             'status' => DraftingRequest::STATUS_DESIGN_WIP,
         ]);
 
+        $row->forceFill(['vo_hours' => 8])->save();
+
         $response = $this->actingAs($user)
             ->from(route('job.list'))
             ->post(route('job.board.add.quick', $row), [
@@ -253,6 +265,7 @@ class MasterlistToApmWorkflowTest extends TestCase
 
         $row->refresh();
         $this->assertSame(DraftingRequest::STATUS_DRAFTING_WIP, $row->status);
+        $this->assertSame('0.00', (string) $row->vo_hours);
         $this->assertSame(3, $row->revisions()->count());
         $this->assertTrue(
             DraftingRequestRevision::query()
@@ -377,6 +390,7 @@ class MasterlistToApmWorkflowTest extends TestCase
             'requested_at' => now()->subDays(10),
             'date_out' => '2026-09-15',
             'max_building_area_sqm' => 245.5,
+            'vo_hours' => 4.5,
             'your_name' => 'Master Client',
             'company_name' => 'Master Co',
             'email' => 'master@example.com',
@@ -398,6 +412,7 @@ class MasterlistToApmWorkflowTest extends TestCase
             // Historically only stored on the job row — blank on the revision.
             'submitted_date' => null,
             'area_size' => null,
+            'vo_hours' => null,
         ]);
 
         $this->actingAs($user)
@@ -416,6 +431,7 @@ class MasterlistToApmWorkflowTest extends TestCase
         $first->refresh();
         $this->assertSame('2026-09-15', $first->submitted_date?->toDateString());
         $this->assertSame('245.5', $first->area_size);
+        $this->assertSame('4.50', (string) $first->vo_hours);
 
         $second = DraftingRequestRevision::query()
             ->where('drafting_request_id', $row->id)
@@ -428,13 +444,16 @@ class MasterlistToApmWorkflowTest extends TestCase
         $row->refresh();
         $this->assertSame('2026-11-19', $row->date_out?->toDateString());
         $this->assertSame('300.00', (string) $row->max_building_area_sqm);
+        $this->assertSame('0.00', (string) $row->vo_hours);
 
         $revisionRows = app(\App\Services\DraftingJobShowService::class)->revisionsFor($row->fresh());
         $byId = collect($revisionRows)->keyBy('id');
         $this->assertSame('15 Sep 2026', $byId[$first->id]['submitted_date']);
         $this->assertSame('245.5', $byId[$first->id]['area_size']);
+        $this->assertSame('4.5', $byId[$first->id]['vo_hours']);
         $this->assertSame('19 Nov 2026', $byId[$second->id]['submitted_date']);
         $this->assertSame('300', $byId[$second->id]['area_size']);
+        $this->assertSame('0', $byId[$second->id]['vo_hours']);
     }
 
     public function test_member_cannot_use_add_item_on_apm_or_design_board(): void

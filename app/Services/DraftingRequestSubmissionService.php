@@ -371,7 +371,7 @@ class DraftingRequestSubmissionService
     }
 
     /**
-     * Copy job-level Date Out / Area Size onto the latest prior revision when those
+     * Copy job-level Date Out / Area Size / VO onto the latest prior revision when those
      * fields are blank. Call before Add item overwrites the job row so historical
      * revision rows keep the values that used to show via job fallback.
      */
@@ -400,6 +400,10 @@ class DraftingRequestSubmissionService
         $areaBlank = $previous->area_size === null || trim((string) $previous->area_size) === '';
         if ($areaBlank && $draftingRequest->max_building_area_sqm !== null) {
             $updates['area_size'] = $this->formatAreaSize($draftingRequest->max_building_area_sqm);
+        }
+
+        if ($previous->vo_hours === null && $draftingRequest->vo_hours !== null) {
+            $updates['vo_hours'] = $draftingRequest->vo_hours;
         }
 
         if ($updates !== []) {
@@ -435,8 +439,10 @@ class DraftingRequestSubmissionService
                 $existingRevision,
             );
 
-            // New revision cycle: clear board Drafting / Checking slots and hours.
+            // New revision cycle: clear board Drafting / Checking slots and hours,
+            // and reset VO (job-level) so the new entry starts at 0h.
             $draftingRequest->assignments()->delete();
+            $draftingRequest->forceFill(['vo_hours' => 0])->save();
 
             $previousStatus = $draftingRequest->status;
 

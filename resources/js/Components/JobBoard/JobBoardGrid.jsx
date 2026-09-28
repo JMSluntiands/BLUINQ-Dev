@@ -26,8 +26,14 @@ import { FlagIcon as FlagIconSolid } from '@heroicons/react/24/solid';
 import { Link, router } from '@inertiajs/react';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 
-const DRAFTING_SLOTS = 1;
-const CHECKING_SLOTS = 1;
+/**
+ * @param {number} count
+ * @param {string} label
+ * @returns {string}
+ */
+function staffColumnLabel(count, label) {
+    return count > 0 ? `${label} ${count + 1}` : label;
+}
 
 /**
  * @typedef {{ id?: number; user_id?: number; initials: string; name?: string; hours?: string | null }} StaffAssignment
@@ -769,6 +775,8 @@ function JobBoardTableHead({
     sortColumn = '',
     sortDirection = 'asc',
     onSortColumn = null,
+    draftingSlotCount = 2,
+    checkingSlotCount = 2,
 }) {
     const sortable = variant === 'board' && typeof onSortColumn === 'function';
 
@@ -791,15 +799,15 @@ function JobBoardTableHead({
         );
     }
 
-    const draftingHeaders = Array.from({ length: DRAFTING_SLOTS }, (_, index) => (
+    const draftingHeaders = Array.from({ length: draftingSlotCount }, (_, index) => (
         <th key={`drafting-${index}`} className={thClass}>
-            Drafting
+            {staffColumnLabel(index, 'Drafting')}
         </th>
     ));
 
-    const checkingHeaders = Array.from({ length: CHECKING_SLOTS }, (_, index) => (
+    const checkingHeaders = Array.from({ length: checkingSlotCount }, (_, index) => (
         <th key={`checking-${index}`} className={thClass}>
-            Checking
+            {staffColumnLabel(index, 'Checking')}
         </th>
     ));
 
@@ -911,6 +919,8 @@ function JobBoardTableBody({
     assignableUsers = [],
     statusOptions = [],
     onOpenAssignment = null,
+    draftingSlotCount = 2,
+    checkingSlotCount = 2,
 }) {
     const isMasterlist = variant === 'masterlist';
     const [expandedIds, setExpandedIds] = useState(() => new Set());
@@ -930,8 +940,8 @@ function JobBoardTableBody({
     const masterlistColSpan = renderActions ? 10 : 9;
     const boardColSpan =
         14 +
-        DRAFTING_SLOTS +
-        CHECKING_SLOTS +
+        draftingSlotCount +
+        checkingSlotCount +
         (hideStatus ? 0 : 1) +
         (renderActions ? 1 : 0);
 
@@ -1102,7 +1112,7 @@ function JobBoardTableBody({
                                         />
                                     </td>
                                     {Array.from(
-                                        { length: DRAFTING_SLOTS },
+                                        { length: draftingSlotCount },
                                         (_, index) => (
                                             <td
                                                 key={`${job.id}-draft-${index}`}
@@ -1132,7 +1142,7 @@ function JobBoardTableBody({
                                         ),
                                     )}
                                     {Array.from(
-                                        { length: CHECKING_SLOTS },
+                                        { length: checkingSlotCount },
                                         (_, index) => (
                                             <td
                                                 key={`${job.id}-check-${index}`}
@@ -1347,6 +1357,8 @@ function JobBoardStatusSection({
     sortColumn = '',
     sortDirection = 'asc',
     onSortColumn = null,
+    draftingSlotCount = 2,
+    checkingSlotCount = 2,
 }) {
     const sectionId = `job-board-status-${status}`;
 
@@ -1409,6 +1421,8 @@ function JobBoardStatusSection({
                                 sortColumn={sortColumn}
                                 sortDirection={sortDirection}
                                 onSortColumn={onSortColumn}
+                                draftingSlotCount={draftingSlotCount}
+                                checkingSlotCount={checkingSlotCount}
                             />
                             <JobBoardTableBody
                                 jobs={jobs}
@@ -1423,6 +1437,8 @@ function JobBoardStatusSection({
                                 assignableUsers={assignableUsers}
                                 statusOptions={statusOptions}
                                 onOpenAssignment={onOpenAssignment}
+                                draftingSlotCount={draftingSlotCount}
+                                checkingSlotCount={checkingSlotCount}
                             />
                         </table>
                     </div>
@@ -1477,6 +1493,8 @@ export default function JobBoardGrid({
     sortColumn = '',
     sortDirection = 'asc',
     onSortColumn = null,
+    draftingSlotCount = 2,
+    checkingSlotCount = 2,
 }) {
     const [commentJob, setCommentJob] = useState(null);
     const [assignmentTarget, setAssignmentTarget] = useState(null);
@@ -1596,6 +1614,8 @@ export default function JobBoardGrid({
                             sortColumn={sortColumn}
                             sortDirection={sortDirection}
                             onSortColumn={onSortColumn}
+                            draftingSlotCount={draftingSlotCount}
+                            checkingSlotCount={checkingSlotCount}
                         />
                     ))
                 ) : (
@@ -1618,6 +1638,8 @@ export default function JobBoardGrid({
                                 sortColumn={sortColumn}
                                 sortDirection={sortDirection}
                                 onSortColumn={onSortColumn}
+                                draftingSlotCount={draftingSlotCount}
+                                checkingSlotCount={checkingSlotCount}
                             />
                             <JobBoardTableBody
                                 jobs={jobs}
@@ -1632,6 +1654,8 @@ export default function JobBoardGrid({
                                 assignableUsers={assignableUsers}
                                 statusOptions={statusOptions}
                                 onOpenAssignment={setAssignmentTarget}
+                                draftingSlotCount={draftingSlotCount}
+                                checkingSlotCount={checkingSlotCount}
                             />
                         </table>
                     </div>

@@ -82,7 +82,12 @@ return [
         'design.catalogue.destroy' => 'design.catalogue.manage',
         'design.catalogue.pdf' => 'design.catalogue.view',
         'design.catalogue.tags.store' => 'design.catalogue.manage',
-        'job.drafting.update' => 'job.drafting.view',
+        // Match who can open job show (APM / DPM / masterlist); FormRequest still enforces edit caps.
+        'job.drafting.update' => [
+            'job.drafting.view',
+            'job.drafting-request.view',
+            'design.list.view',
+        ],
         'job.drafting.revisions.store' => 'job.drafting.revision.add',
         'job.drafting.revisions.update' => 'job.drafting.revision.add',
         'job.drafting.revisions.destroy' => 'job.drafting.revision.add',
