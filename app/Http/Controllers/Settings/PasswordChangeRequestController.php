@@ -7,11 +7,41 @@ use App\Models\PasswordChangeRequest;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class PasswordChangeRequestController extends Controller
 {
+    public function store(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+
+        $validated = $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'password' => ['required', 'string', 'min:8', 'confirmed', 'different:current_password'],
+        ]);
+
+        PasswordChangeRequest::query()
+            ->where('user_id', $user->id)
+            ->pending()
+            ->update([
+                'status' => PasswordChangeRequest::STATUS_CANCELLED,
+                'reviewed_at' => now(),
+            ]);
+
+        PasswordChangeRequest::query()->create([
+            'user_id' => $user->id,
+            'password' => Hash::make($validated['password']),
+            'status' => PasswordChangeRequest::STATUS_PENDING,
+        ]);
+
+        return redirect()
+            ->route('profile.edit')
+            ->with('status', 'password-change-requested');
+    }
+
     public function index(Request $request): Response
     {
         abort_unless($request->user()?->hasPermission('settings.user-accounts.manage'), 403);

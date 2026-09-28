@@ -315,6 +315,8 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('crm.quotes.restore');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::post('/profile/password-request', [PasswordChangeRequestController::class, 'store'])
+        ->name('profile.password-request.store');
     Route::post('/profile/weekly-timesheet/entries', [WeeklyTimesheetController::class, 'storeEntry'])
         ->name('profile.weekly-timesheet.entries.store');
     Route::patch('/profile/weekly-timesheet/entries/{timesheetEntry}/hours', [WeeklyTimesheetController::class, 'updateHour'])
