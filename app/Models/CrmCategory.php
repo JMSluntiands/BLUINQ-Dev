@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasSelectableStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class CrmCategory extends Model
 {
+    use HasSelectableStatus;
     protected $table = 'crm_categories';
 
     protected $fillable = [

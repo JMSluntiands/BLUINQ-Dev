@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasSelectableStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class BuildingClass extends Model
 {
+    use HasSelectableStatus;
     protected $fillable = [
         'code',
         'name',
@@ -37,10 +39,10 @@ class BuildingClass extends Model
      *
      * @return list<array{id: int, name: string, code: string|null}>
      */
-    public static function activeForSelect(): array
+    public static function activeForSelect(mixed $keepIds = null): array
     {
         $rows = static::query()
-            ->active()
+            ->selectable($keepIds)
             ->get(['id', 'name', 'code'])
             ->all();
 

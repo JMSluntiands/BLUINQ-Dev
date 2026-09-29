@@ -2,6 +2,15 @@
 
 namespace App\Http\Requests;
 
+use App\Models\BuildingClass;
+use App\Models\BuildingType;
+use App\Models\CrmCategory;
+use App\Models\DraftingRequest;
+use App\Models\ExternalWallConstruction;
+use App\Models\RoofType;
+use App\Models\SdaType;
+use App\Models\ServiceEngaging;
+use App\Models\StoreyLevel;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -17,6 +26,13 @@ class StoreDraftingRequestFormRequest extends FormRequest
      */
     public function rules(): array
     {
+        $current = $this->route('draftingRequest');
+        $current = $current instanceof DraftingRequest ? $current : null;
+        $categoryIds = $current?->crmCategories()->pluck('crm_categories.id')->all() ?? [];
+        if ($current?->crm_category_id) {
+            $categoryIds[] = $current->crm_category_id;
+        }
+
         return [
             'requested_at' => ['nullable', 'date'],
             'lead_number' => [
@@ -62,23 +78,19 @@ class StoreDraftingRequestFormRequest extends FormRequest
             'service_engaging_ids' => ['nullable', 'array'],
             'service_engaging_ids.*' => [
                 'integer',
-                Rule::exists('service_engagings', 'id')->where(
-                    fn ($q) => $q->whereNull('archived_at'),
+                ServiceEngaging::selectableExistsRule(
+                    $current?->serviceEngagings()->pluck('service_engagings.id')->all(),
                 ),
             ],
             'crm_category_ids' => ['required', 'array', 'min:1'],
             'crm_category_ids.*' => [
                 'integer',
-                Rule::exists('crm_categories', 'id')->where(
-                    fn ($q) => $q->whereNull('archived_at'),
-                ),
+                CrmCategory::selectableExistsRule($categoryIds),
             ],
             'crm_category_id' => [
                 'nullable',
                 'integer',
-                Rule::exists('crm_categories', 'id')->where(
-                    fn ($q) => $q->whereNull('archived_at'),
-                ),
+                CrmCategory::selectableExistsRule($categoryIds),
             ],
             'site_address' => ['required', 'string', 'max:2000'],
             'council_shire' => ['nullable', 'string', 'max:255'],
@@ -87,46 +99,36 @@ class StoreDraftingRequestFormRequest extends FormRequest
             'building_type_id' => [
                 'nullable',
                 'integer',
-                Rule::exists('building_types', 'id')->where(
-                    fn ($q) => $q->whereNull('archived_at'),
-                ),
+                BuildingType::selectableExistsRule($current?->building_type_id),
             ],
             'storey_level_id' => [
                 'required',
                 'integer',
-                Rule::exists('storey_levels', 'id')->where(
-                    fn ($q) => $q->whereNull('archived_at'),
-                ),
+                StoreyLevel::selectableExistsRule($current?->storey_level_id),
             ],
             'building_class_id' => [
                 'required',
                 'integer',
-                Rule::exists('building_classes', 'id')->where(
-                    fn ($q) => $q->whereNull('archived_at'),
-                ),
+                BuildingClass::selectableExistsRule($current?->building_class_id),
             ],
             'zoning' => ['nullable', 'string', 'max:255'],
             'sda_type_ids' => ['nullable', 'array'],
             'sda_type_ids.*' => [
                 'integer',
-                Rule::exists('sda_types', 'id')->where(
-                    fn ($q) => $q->whereNull('archived_at'),
+                SdaType::selectableExistsRule(
+                    $current?->sdaTypes()->pluck('sda_types.id')->all(),
                 ),
             ],
             'ndis_sda' => ['sometimes', 'boolean'],
             'external_wall_construction_id' => [
                 'nullable',
                 'integer',
-                Rule::exists('external_wall_constructions', 'id')->where(
-                    fn ($q) => $q->whereNull('archived_at'),
-                ),
+                ExternalWallConstruction::selectableExistsRule($current?->external_wall_construction_id),
             ],
             'roof_type_id' => [
                 'nullable',
                 'integer',
-                Rule::exists('roof_types', 'id')->where(
-                    fn ($q) => $q->whereNull('archived_at'),
-                ),
+                RoofType::selectableExistsRule($current?->roof_type_id),
             ],
             'ceiling_heights' => ['nullable', 'string', 'max:2000'],
             'first_floor_slab' => ['nullable', 'string', 'max:2000'],

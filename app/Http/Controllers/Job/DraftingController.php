@@ -318,10 +318,10 @@ class DraftingController extends Controller
             'canUseRunComments' => $user->isAdmin(),
             'formOptions' => $capabilities['editJobDetails'] ? [
                 'clients' => \App\Support\ClientFormOptions::forForms($draftingRequest->client_id),
-                'categories' => CrmCategory::query()->active()->orderBy('code')->orderBy('name')->get(['id', 'name', 'code']),
-                'storeyLevels' => StoreyLevel::query()->active()->orderBy('code')->orderBy('name')->get(['id', 'name', 'code']),
-                'externalWallConstructions' => ExternalWallConstruction::query()->active()->orderBy('name')->get(['id', 'name']),
-                'roofTypes' => RoofType::query()->active()->orderBy('name')->get(['id', 'name']),
+                'categories' => CrmCategory::query()->selectable($draftingRequest->crmCategories()->pluck('crm_categories.id')->push($draftingRequest->crm_category_id))->orderBy('code')->orderBy('name')->get(['id', 'name', 'code']),
+                'storeyLevels' => StoreyLevel::query()->selectable($draftingRequest->storey_level_id)->orderBy('code')->orderBy('name')->get(['id', 'name', 'code']),
+                'externalWallConstructions' => ExternalWallConstruction::query()->selectable($draftingRequest->external_wall_construction_id)->orderBy('name')->get(['id', 'name']),
+                'roofTypes' => RoofType::query()->selectable($draftingRequest->roof_type_id)->orderBy('name')->get(['id', 'name']),
                 'managerUsers' => User::query()
                     ->active()
                     ->whereHas('role', fn ($query) => $query->whereIn('slug', ['admin', 'project-manager']))
@@ -358,8 +358,7 @@ class DraftingController extends Controller
                 'invoice' => DraftingRequestAccountEntry::invoiceStatusOptions(),
             ],
             'categoryOptions' => CrmCategory::query()
-                ->active()
-                ->where('status', 'active')
+                ->selectable()
                 ->orderBy('code')
                 ->get(['id', 'code', 'name'])
                 ->map(fn (CrmCategory $row) => [
@@ -1470,8 +1469,7 @@ class DraftingController extends Controller
         }
 
         $category = CrmCategory::query()
-            ->active()
-            ->where('status', 'active')
+            ->selectable()
             ->where(function ($query) use ($categoryValue) {
                 $query->where('code', $categoryValue)
                     ->orWhere('name', $categoryValue);

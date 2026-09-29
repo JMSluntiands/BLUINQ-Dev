@@ -38,26 +38,26 @@ class PublicDraftingRequestFormController extends Controller
             ],
             'clients' => \App\Support\ClientFormOptions::forForms(),
             'categories' => CrmCategory::query()
-                ->active()
+                ->selectable()
                 ->orderBy('code')
                 ->orderBy('name')
                 ->get(['id', 'name', 'code']),
             'sdaTypes' => SdaType::query()
-                ->active()
+                ->selectable()
                 ->orderBy('name')
                 ->get(['id', 'name', 'code']),
             'storeyLevels' => StoreyLevel::query()
-                ->active()
+                ->selectable()
                 ->orderBy('code')
                 ->orderBy('name')
                 ->get(['id', 'name', 'code']),
             'buildingClasses' => BuildingClass::activeForSelect(),
             'externalWallConstructions' => ExternalWallConstruction::query()
-                ->active()
+                ->selectable()
                 ->orderBy('name')
                 ->get(['id', 'name']),
             'roofTypes' => RoofType::query()
-                ->active()
+                ->selectable()
                 ->orderBy('name')
                 ->get(['id', 'name']),
         ]);

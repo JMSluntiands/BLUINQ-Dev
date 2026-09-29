@@ -154,8 +154,7 @@ class JobBoardController extends Controller
             ),
             'statusGroupOptions' => $statusGroupOptions,
             'categoryOptions' => CrmCategory::query()
-                ->active()
-                ->where('status', 'active')
+                ->selectable()
                 ->orderBy('code')
                 ->get(['id', 'code', 'name'])
                 ->map(fn (CrmCategory $row) => [
@@ -483,7 +482,7 @@ class JobBoardController extends Controller
         ]);
 
         $categoryCodes = \App\Models\CrmCategory::query()
-            ->active()
+            ->selectable()
             ->orderBy('code')
             ->get(['code', 'name'])
             ->flatMap(fn ($row) => array_filter([$row->code, $row->name]))
@@ -593,7 +592,7 @@ class JobBoardController extends Controller
             'formTitle' => 'Review before adding to board',
             'submitLabel' => 'Save & add to board',
             'applicant' => $this->applicantFormData($draftingRequest),
-            ...$this->formOptions($draftingRequest->client_id),
+            ...$this->formOptions($draftingRequest->client_id, $draftingRequest),
         ]);
     }
 
@@ -782,31 +781,36 @@ class JobBoardController extends Controller
      *     roofTypes: \Illuminate\Support\Collection
      * }
      */
-    private function formOptions(?int $includeClientId = null): array
+    private function formOptions(?int $includeClientId = null, ?DraftingRequest $current = null): array
     {
+        $categoryIds = $current?->crmCategories()->pluck('crm_categories.id')->all() ?? [];
+        if ($current?->crm_category_id) {
+            $categoryIds[] = $current->crm_category_id;
+        }
+
         return [
             'clients' => ClientFormOptions::forForms($includeClientId),
             'categories' => CrmCategory::query()
-                ->active()
+                ->selectable($categoryIds)
                 ->orderBy('code')
                 ->orderBy('name')
                 ->get(['id', 'name', 'code']),
             'sdaTypes' => SdaType::query()
-                ->active()
+                ->selectable($current?->sdaTypes()->pluck('sda_types.id'))
                 ->orderBy('name')
                 ->get(['id', 'name', 'code']),
             'storeyLevels' => StoreyLevel::query()
-                ->active()
+                ->selectable($current?->storey_level_id)
                 ->orderBy('code')
                 ->orderBy('name')
                 ->get(['id', 'name', 'code']),
-            'buildingClasses' => BuildingClass::activeForSelect(),
+            'buildingClasses' => BuildingClass::activeForSelect($current?->building_class_id),
             'externalWallConstructions' => ExternalWallConstruction::query()
-                ->active()
+                ->selectable($current?->external_wall_construction_id)
                 ->orderBy('name')
                 ->get(['id', 'name']),
             'roofTypes' => RoofType::query()
-                ->active()
+                ->selectable($current?->roof_type_id)
                 ->orderBy('name')
                 ->get(['id', 'name']),
         ];
