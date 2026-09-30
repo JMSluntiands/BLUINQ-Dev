@@ -19,6 +19,8 @@ class DraftingRequestActivity extends Model
 
     public const ACTION_RUN_COMMENT_POSTED = 'run_comment_posted';
 
+    public const ACTION_ACCOUNT_COMMENT_POSTED = 'account_comment_posted';
+
     public const ACTION_ARCHIVED = 'archived';
 
     public const ACTION_RESTORED = 'restored';
@@ -59,6 +61,7 @@ class DraftingRequestActivity extends Model
             self::ACTION_QUOTE_UPDATED,
             self::ACTION_INVOICE_ADDED,
             self::ACTION_INVOICE_UPDATED,
+            self::ACTION_ACCOUNT_COMMENT_POSTED,
         ];
     }
 

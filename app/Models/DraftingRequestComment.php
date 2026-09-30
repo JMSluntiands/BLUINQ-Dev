@@ -11,6 +11,8 @@ class DraftingRequestComment extends Model
 
     public const KIND_RUN = 'run';
 
+    public const KIND_ACCOUNT = 'account';
+
     protected $fillable = [
         'drafting_request_id',
         'drafting_request_revision_id',

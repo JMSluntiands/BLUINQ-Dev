@@ -658,6 +658,7 @@ export default function DraftingJobShowLayout({
     filesPanel,
     activityPanel,
     accountActivityPanel,
+    accountCommentsPanel,
     backHref,
     backLabel,
     archiveActions,
@@ -1246,6 +1247,44 @@ export default function DraftingJobShowLayout({
         </JobPanel>
     ) : null;
 
+    const commentsSection = commentsBlock ? (
+        <section aria-label="Comments">
+            <p className={sectionLabelClass}>
+                {isMasterlist ? 'Comments' : '4. Comments'}
+            </p>
+            {commentsBlock}
+        </section>
+    ) : null;
+
+    const accountCommentsSection = accountCommentsPanel ? (
+        <section aria-label="Quote and invoice comments">
+            <p className={sectionLabelClass}>Quotes & invoices</p>
+            <JobPanel
+                title="Comments"
+                className="flex min-h-[18rem] flex-col"
+            >
+                <div className="flex min-h-[16rem] flex-1 flex-col">
+                    {accountCommentsPanel}
+                </div>
+            </JobPanel>
+        </section>
+    ) : null;
+
+    const bottomComments = commentsSection || accountCommentsSection ? (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+            {commentsSection ? (
+                <div className={accountCommentsSection ? 'lg:col-span-4' : 'lg:col-span-12'}>
+                    {commentsSection}
+                </div>
+            ) : null}
+            {accountCommentsSection ? (
+                <div className={commentsSection ? 'lg:col-span-8' : 'lg:col-span-12'}>
+                    {accountCommentsSection}
+                </div>
+            ) : null}
+        </div>
+    ) : null;
+
     if (isMasterlist) {
         return (
             <div className="space-y-4">
@@ -1285,14 +1324,9 @@ export default function DraftingJobShowLayout({
                             <p className={sectionLabelClass}>Drawing status</p>
                             {drawingPanel}
                         </section>
-                        {commentsBlock ? (
-                            <section aria-label="Comments">
-                                <p className={sectionLabelClass}>Comments</p>
-                                {commentsBlock}
-                            </section>
-                        ) : null}
                     </div>
                 </div>
+                {bottomComments}
             </div>
         );
     }
@@ -1342,14 +1376,9 @@ export default function DraftingJobShowLayout({
                         <p className={sectionLabelClass}>3. Drawing status</p>
                         {drawingPanel}
                     </section>
-                    {commentsBlock ? (
-                        <section aria-label="Comments">
-                            <p className={sectionLabelClass}>4. Comments</p>
-                            {commentsBlock}
-                        </section>
-                    ) : null}
                 </div>
             </div>
+            {bottomComments}
         </div>
     );
 }

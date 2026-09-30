@@ -70,6 +70,7 @@ export default function DraftingShow({
         'drf-invoice-added': 'Invoice added.',
         'drf-quote-updated': 'Quote updated.',
         'drf-invoice-updated': 'Invoice updated.',
+        'account-comment-added': 'Quote / invoice comment added.',
         'masterlist-forwarded':
             'Project added to Archi Project Management from the masterlist.',
         'board-reopened': revisionCode
@@ -360,6 +361,27 @@ export default function DraftingShow({
                             />
                         ) : null
                     }
+                    accountCommentsPanel={
+                        viewAccounts ? (
+                            <DiscussionPanel
+                                comments={
+                                    draftingRequest.account_comments ?? []
+                                }
+                                commentKind="account"
+                                hideRevision
+                                draftingRequestId={draftingRequest.id}
+                                listFilters={listFilters}
+                                readOnly={
+                                    draftingRequest.is_archived ||
+                                    !postComments
+                                }
+                                emptyLabel="No quote or invoice comments yet."
+                                successFlash="account-comment-added"
+                                successMessage="Comment added."
+                                embedded
+                            />
+                        ) : null
+                    }
                     accountActivityPanel={
                         viewAccounts && viewActivity ? (
                             <ActivityLogsSection
@@ -520,6 +542,7 @@ function DiscussionPanel({
     successMessage,
     hint = null,
     embedded = false,
+    hideRevision = false,
 }) {
     const { flash } = usePage().props;
     const listQs = listQueryString(listFilters);
@@ -613,7 +636,7 @@ function DiscussionPanel({
                 </p>
             ) : null}
 
-            {revisionOptions.length > 0 ? (
+            {!hideRevision && revisionOptions.length > 0 ? (
                 <div className="flex flex-wrap items-center gap-2 border-b border-[#e6e9ef] px-4 py-2.5 dark:border-[#2f3347] sm:px-5">
                     <label
                         htmlFor={`${editorId}-filter`}
@@ -705,7 +728,7 @@ function DiscussionPanel({
             ) : (
                 <form onSubmit={submit} className="space-y-3 p-4 sm:p-5">
                     <input type="hidden" name="kind" value={commentKind} />
-                    {revisionOptions.length > 0 ? (
+                    {!hideRevision && revisionOptions.length > 0 ? (
                         <div>
                             <label
                                 htmlFor={`${editorId}-revision`}

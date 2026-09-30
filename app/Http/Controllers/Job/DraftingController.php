@@ -291,6 +291,13 @@ class DraftingController extends Controller
                     DraftingRequestComment::KIND_COMMENT,
                     $tz,
                 ),
+                'account_comments' => $capabilities['viewAccounts']
+                    ? $this->formatCommentsByKind(
+                        $draftingRequest->comments,
+                        DraftingRequestComment::KIND_ACCOUNT,
+                        $tz,
+                    )
+                    : [],
                 'run_comments' => $user->isAdmin()
                     ? $this->formatCommentsByKind(
                         $draftingRequest->comments,
@@ -1192,15 +1199,21 @@ class DraftingController extends Controller
         }
 
         $kind = $request->validated('kind');
+        $isAccount = $kind === DraftingRequestComment::KIND_ACCOUNT;
+        $capabilities = $this->jobCapabilities($request->user(), $draftingRequest);
 
         if ($kind === DraftingRequestComment::KIND_RUN) {
             $this->authorizeRunComments($request, $draftingRequest);
+        } elseif ($isAccount) {
+            if (! $capabilities['viewAccounts'] || ! $capabilities['postComments']) {
+                abort(403);
+            }
         } elseif (! $request->user()->hasPermission('job.drafting.comments.post')) {
             abort(403);
         }
 
         $body = $request->sanitizedBody();
-        $revisionId = $request->revisionId();
+        $revisionId = $isAccount ? null : $request->revisionId();
 
         DraftingRequestComment::query()->create([
             'drafting_request_id' => $draftingRequest->id,
@@ -1221,13 +1234,21 @@ class DraftingController extends Controller
         DraftingRequestActivity::record(
             $draftingRequest,
             $request->user(),
-            $isRun
-                ? DraftingRequestActivity::ACTION_RUN_COMMENT_POSTED
-                : DraftingRequestActivity::ACTION_COMMENT_POSTED,
-            $this->commentActivityDescription($body, $isRun, $revisionCode),
+            match (true) {
+                $isRun => DraftingRequestActivity::ACTION_RUN_COMMENT_POSTED,
+                $isAccount => DraftingRequestActivity::ACTION_ACCOUNT_COMMENT_POSTED,
+                default => DraftingRequestActivity::ACTION_COMMENT_POSTED,
+            },
+            $isAccount
+                ? 'Quote / invoice: '.$this->commentActivityDescription($body)
+                : $this->commentActivityDescription($body, $isRun, $revisionCode),
         );
 
-        return back()->with('status', $isRun ? 'run-comment-added' : 'comment-added');
+        return back()->with('status', match (true) {
+            $isRun => 'run-comment-added',
+            $isAccount => 'account-comment-added',
+            default => 'comment-added',
+        });
     }
 
     public function boardComments(
@@ -1821,6 +1842,7 @@ class DraftingController extends Controller
                 DraftingRequestActivity::ACTION_RETURNED_TO_MASTERLIST => 'Returned to masterlist',
                 DraftingRequestActivity::ACTION_COMMENT_POSTED => 'Posted a comment',
                 DraftingRequestActivity::ACTION_RUN_COMMENT_POSTED => 'Posted a run comment',
+                DraftingRequestActivity::ACTION_ACCOUNT_COMMENT_POSTED => 'Posted a quote / invoice comment',
                 DraftingRequestActivity::ACTION_ARCHIVED => 'Archived drafting request',
                 DraftingRequestActivity::ACTION_RESTORED => 'Restored drafting request',
                 DraftingRequestActivity::ACTION_STATUS_CHANGED => 'Changed status',
