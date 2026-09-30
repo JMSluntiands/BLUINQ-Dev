@@ -1053,6 +1053,14 @@ export default function DraftingJobShowLayout({
                     }
                 />
                 <JobDetailField
+                    label="Typical"
+                    value={
+                        draftingRequest.is_typical
+                            ? draftingRequest.typical_details || 'YES'
+                            : 'NO'
+                    }
+                />
+                <JobDetailField
                     label="Construction"
                     value={
                         draftingRequest.construction ??

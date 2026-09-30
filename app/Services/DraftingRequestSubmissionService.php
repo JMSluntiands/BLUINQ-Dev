@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Http\Requests\StoreDraftingRequestFormRequest;
+use App\Models\Client;
+use App\Models\ClientContact;
 use App\Models\DraftingRequest;
 use App\Models\DraftingRequestActivity;
 use App\Models\DraftingRequestFile;
@@ -22,7 +24,9 @@ class DraftingRequestSubmissionService
         string $reviewStatus,
         string $workflowStage = DraftingRequest::STAGE_MASTERLIST,
     ): DraftingRequest {
-        $validated = $request->safe()->except(['documents', 'service_engaging_ids', 'sda_type_ids', 'crm_category_ids']);
+        $validated = $this->applySelectedClientSnapshot(
+            $request->safe()->except(['documents', 'service_engaging_ids', 'sda_type_ids', 'crm_category_ids']),
+        );
 
         return DB::transaction(function () use ($request, $user, $validated, $reviewStatus, $workflowStage) {
             $draftingRequest = DraftingRequest::query()->create([
@@ -93,7 +97,9 @@ class DraftingRequestSubmissionService
             abort(404);
         }
 
-        $validated = $request->safe()->except(['documents', 'service_engaging_ids', 'sda_type_ids', 'crm_category_ids']);
+        $validated = $this->applySelectedClientSnapshot(
+            $request->safe()->except(['documents', 'service_engaging_ids', 'sda_type_ids', 'crm_category_ids']),
+        );
 
         return DB::transaction(function () use ($request, $draftingRequest, $actor, $validated, $isMasterlist) {
             $previousLead = array_key_exists('lead_number', $validated)
@@ -409,6 +415,43 @@ class DraftingRequestSubmissionService
         if ($updates !== []) {
             $previous->forceFill($updates)->save();
         }
+    }
+
+    /**
+     * Client name and contact email/phone follow the selected client records.
+     * A stale company name posted by the edit form must not win over the dropdown.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function applySelectedClientSnapshot(array $validated): array
+    {
+        $clientId = isset($validated['client_id']) ? (int) $validated['client_id'] : 0;
+        $contactId = isset($validated['client_contact_id']) ? (int) $validated['client_contact_id'] : 0;
+
+        if ($contactId > 0) {
+            $contact = ClientContact::query()
+                ->whereKey($contactId)
+                ->when($clientId > 0, fn ($query) => $query->where('client_id', $clientId))
+                ->first();
+
+            if ($contact !== null) {
+                $validated['client_id'] = $contact->client_id;
+                $validated['client_contact_id'] = $contact->id;
+                $validated['email'] = $contact->email;
+                $validated['phone'] = $contact->mobile;
+            }
+        }
+
+        $resolvedClientId = isset($validated['client_id']) ? (int) $validated['client_id'] : 0;
+        if ($resolvedClientId > 0) {
+            $clientName = Client::query()->whereKey($resolvedClientId)->value('name');
+            if (is_string($clientName) && $clientName !== '') {
+                $validated['company_name'] = $clientName;
+            }
+        }
+
+        return $validated;
     }
 
     private function formatAreaSize(mixed $sqm): ?string

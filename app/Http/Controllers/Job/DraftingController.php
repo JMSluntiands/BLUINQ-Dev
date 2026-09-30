@@ -235,6 +235,8 @@ class DraftingController extends Controller
                         : $draftingRequest->buildingClass->name)
                     : null,
                 'ndis_sda' => $draftingRequest->ndis_sda,
+                'is_typical' => (bool) $draftingRequest->is_typical,
+                'typical_details' => $draftingRequest->typical_details,
                 'sda_types' => $draftingRequest->sdaTypes
                     ->map(fn ($row) => $row->code ? "{$row->code} — {$row->name}" : $row->name)
                     ->values()
@@ -652,6 +654,15 @@ class DraftingController extends Controller
         }
 
         $draftingRequest->update($validated);
+
+        if ($section === 'client' && $draftingRequest->client_contact_id) {
+            ClientContact::query()
+                ->whereKey($draftingRequest->client_contact_id)
+                ->update([
+                    'name' => $validated['your_name'] ?? '',
+                    'email' => $validated['email'] ?? null,
+                ]);
+        }
 
         if ($previousLead !== null) {
             $newLead = trim((string) $validated['lead_number']);

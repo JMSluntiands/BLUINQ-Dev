@@ -39,6 +39,51 @@ class DraftingProjectInfoEditTest extends TestCase
         $this->assertSame('Updated Site Address', $job->site_address);
     }
 
+    public function test_admin_can_save_typical_details_on_project_info(): void
+    {
+        $admin = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+        $job = $this->createApmJob($admin, $storeyLevel, $category);
+
+        $this->actingAs($admin)
+            ->patch(route('job.drafting.update', $job), [
+                'section' => 'job',
+                'lead_number' => $job->lead_number ?: $job->jobNumber(),
+                'status' => DraftingRequest::STATUS_NEW,
+                'storey_level_id' => $storeyLevel->id,
+                'crm_category_ids' => [$category->id],
+                'site_address' => $job->site_address,
+                'ceiling_heights' => '2700',
+                'is_typical' => true,
+                'typical_details' => 'Typical 4 bed',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $job->refresh();
+        $this->assertTrue($job->is_typical);
+        $this->assertSame('Typical 4 bed', $job->typical_details);
+
+        $this->actingAs($admin)
+            ->patch(route('job.drafting.update', $job), [
+                'section' => 'job',
+                'lead_number' => $job->lead_number ?: $job->jobNumber(),
+                'status' => DraftingRequest::STATUS_NEW,
+                'storey_level_id' => $storeyLevel->id,
+                'crm_category_ids' => [$category->id],
+                'site_address' => $job->site_address,
+                'ceiling_heights' => '2700',
+                'is_typical' => false,
+                'typical_details' => 'Typical 4 bed',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $job->refresh();
+        $this->assertFalse($job->is_typical);
+        $this->assertNull($job->typical_details);
+    }
+
     public function test_manager_with_job_details_edit_can_update_project_info(): void
     {
         $owner = $this->adminUser();

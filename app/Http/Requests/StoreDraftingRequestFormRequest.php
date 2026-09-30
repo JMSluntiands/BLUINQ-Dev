@@ -196,8 +196,11 @@ class StoreDraftingRequestFormRequest extends FormRequest
             $normalized['phone'] = null;
         }
 
-        if ($this->input('email') === '') {
+        $email = $this->input('email');
+        if ($email === '' || $email === null) {
             $normalized['email'] = null;
+        } elseif (is_string($email)) {
+            $normalized['email'] = mb_strtolower(trim($email));
         }
 
         if ($this->input('council_shire') === '') {

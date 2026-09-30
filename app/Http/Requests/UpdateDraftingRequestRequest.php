@@ -138,6 +138,8 @@ class UpdateDraftingRequestRequest extends FormRequest
                     ),
                 ],
                 'ndis_sda' => ['sometimes', 'boolean'],
+                'is_typical' => ['sometimes', 'boolean'],
+                'typical_details' => ['nullable', 'string', 'max:255'],
                 'unit_development_count' => ['nullable', 'integer', 'min:0', 'max:50'],
                 'units' => ['nullable', 'array', 'max:50'],
                 'units.*.unit_number' => ['required_with:units', 'integer', 'min:1', 'max:50'],
@@ -153,7 +155,7 @@ class UpdateDraftingRequestRequest extends FormRequest
                     'integer',
                     RoofType::selectableExistsRule($current?->roof_type_id),
                 ],
-                'ceiling_heights' => ['required', 'string', 'max:2000'],
+                'ceiling_heights' => ['nullable', 'string', 'max:2000'],
                 'first_floor_slab' => ['nullable', 'string', 'max:2000'],
                 'design_requirements' => ['nullable', 'string', 'max:2000'],
                 'additional_inclusions' => ['nullable', 'string', 'max:2000'],
@@ -182,7 +184,7 @@ class UpdateDraftingRequestRequest extends FormRequest
                     'integer',
                     RoofType::selectableExistsRule($current?->roof_type_id),
                 ],
-                'ceiling_heights' => ['required', 'string', 'max:2000'],
+                'ceiling_heights' => ['nullable', 'string', 'max:2000'],
                 'first_floor_slab' => ['nullable', 'string', 'max:2000'],
             ],
             'notes' => [
@@ -238,6 +240,14 @@ class UpdateDraftingRequestRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $email = $this->input('email');
+        if (is_string($email)) {
+            $trimmed = trim($email);
+            $this->merge([
+                'email' => $trimmed === '' ? null : mb_strtolower($trimmed),
+            ]);
+        }
+
         $section = $this->input('section');
 
         if ($section === 'job') {
@@ -248,8 +258,13 @@ class UpdateDraftingRequestRequest extends FormRequest
                 ]);
             }
 
+            $isTypical = filter_var($this->input('is_typical'), FILTER_VALIDATE_BOOLEAN);
+            $typicalDetails = trim((string) $this->input('typical_details', ''));
+
             $this->merge([
                 'ndis_sda' => filter_var($this->input('ndis_sda'), FILTER_VALIDATE_BOOLEAN),
+                'is_typical' => $isTypical,
+                'typical_details' => $isTypical && $typicalDetails !== '' ? $typicalDetails : null,
             ]);
 
             if ($this->has('unit_development_count')) {
@@ -258,6 +273,17 @@ class UpdateDraftingRequestRequest extends FormRequest
                     'unit_development_count' => $count === '' || $count === null
                         ? 0
                         : (int) $count,
+                ]);
+            }
+
+            foreach (['ceiling_heights', 'first_floor_slab', 'design_requirements', 'additional_inclusions'] as $key) {
+                if (! $this->has($key)) {
+                    continue;
+                }
+
+                $value = $this->input($key);
+                $this->merge([
+                    $key => is_string($value) ? (trim($value) === '' ? null : $value) : $value,
                 ]);
             }
 
@@ -303,6 +329,17 @@ class UpdateDraftingRequestRequest extends FormRequest
         }
 
         if ($section === 'building') {
+            foreach (['ceiling_heights', 'first_floor_slab'] as $key) {
+                if (! $this->has($key)) {
+                    continue;
+                }
+
+                $value = $this->input($key);
+                $this->merge([
+                    $key => is_string($value) ? (trim($value) === '' ? null : $value) : $value,
+                ]);
+            }
+
             foreach (['external_wall_construction_id', 'roof_type_id'] as $key) {
                 if (! $this->has($key)) {
                     continue;
