@@ -658,7 +658,8 @@ export default function DraftingJobShowLayout({
     filesPanel,
     activityPanel,
     accountActivityPanel,
-    accountCommentsPanel,
+    quoteCommentsPanel,
+    invoiceCommentsPanel,
     backHref,
     backLabel,
     archiveActions,
@@ -1169,61 +1170,64 @@ export default function DraftingJobShowLayout({
         </JobPanel>
     ) : null;
 
-    const accountsPanel = canViewAccounts ? (
-        <JobPanel title="Quotes & invoices" subtitle="Admin only">
-            <div className="space-y-4 p-4">
-                <div>
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400">
-                            Quote #
-                        </h3>
-                        {canAddAccount && onAddQuote ? (
-                            <button
-                                type="button"
-                                onClick={onAddQuote}
-                                className="inline-flex items-center gap-1 rounded-md border border-[#c5c7d0] bg-white px-2 py-0.5 text-[10px] font-semibold text-[#0073ea] shadow-sm transition hover:bg-[#e6f4ff] dark:border-[#3b82f6]/50 dark:bg-[#1a1b2e] dark:text-[#60a5fa] dark:hover:bg-[#243044]"
-                            >
-                                <PlusIcon className="h-3 w-3" aria-hidden />
-                                Add quote
-                            </button>
-                        ) : null}
-                    </div>
-                    <DataTable
-                        columns={accountColumns(
-                            integrationUrls.xero_quote,
-                            'Quote #',
-                            onEditQuote,
-                        )}
-                        rows={quotes}
-                        emptyMessage="No quotes linked yet."
-                    />
+    const quotesPanel = canViewAccounts ? (
+        <JobPanel title="Quotes" subtitle="Admin only">
+            <div className="p-4">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400">
+                        Quote #
+                    </h3>
+                    {canAddAccount && onAddQuote ? (
+                        <button
+                            type="button"
+                            onClick={onAddQuote}
+                            className="inline-flex items-center gap-1 rounded-md border border-[#c5c7d0] bg-white px-2 py-0.5 text-[10px] font-semibold text-[#0073ea] shadow-sm transition hover:bg-[#e6f4ff] dark:border-[#3b82f6]/50 dark:bg-[#1a1b2e] dark:text-[#60a5fa] dark:hover:bg-[#243044]"
+                        >
+                            <PlusIcon className="h-3 w-3" aria-hidden />
+                            Add quote
+                        </button>
+                    ) : null}
                 </div>
-                <div>
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400">
-                            Invoice #
-                        </h3>
-                        {canAddAccount && onAddInvoice ? (
-                            <button
-                                type="button"
-                                onClick={onAddInvoice}
-                                className="inline-flex items-center gap-1 rounded-md border border-[#c5c7d0] bg-white px-2 py-0.5 text-[10px] font-semibold text-[#0073ea] shadow-sm transition hover:bg-[#e6f4ff] dark:border-[#3b82f6]/50 dark:bg-[#1a1b2e] dark:text-[#60a5fa] dark:hover:bg-[#243044]"
-                            >
-                                <PlusIcon className="h-3 w-3" aria-hidden />
-                                Add invoice
-                            </button>
-                        ) : null}
-                    </div>
-                    <DataTable
-                        columns={accountColumns(
-                            integrationUrls.xero_invoice,
-                            'Invoice #',
-                            onEditInvoice,
-                        )}
-                        rows={invoices}
-                        emptyMessage="No invoices linked yet."
-                    />
+                <DataTable
+                    columns={accountColumns(
+                        integrationUrls.xero_quote,
+                        'Quote #',
+                        onEditQuote,
+                    )}
+                    rows={quotes}
+                    emptyMessage="No quotes linked yet."
+                />
+            </div>
+        </JobPanel>
+    ) : null;
+
+    const invoicesPanel = canViewAccounts ? (
+        <JobPanel title="Invoices" subtitle="Admin only">
+            <div className="p-4">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400">
+                        Invoice #
+                    </h3>
+                    {canAddAccount && onAddInvoice ? (
+                        <button
+                            type="button"
+                            onClick={onAddInvoice}
+                            className="inline-flex items-center gap-1 rounded-md border border-[#c5c7d0] bg-white px-2 py-0.5 text-[10px] font-semibold text-[#0073ea] shadow-sm transition hover:bg-[#e6f4ff] dark:border-[#3b82f6]/50 dark:bg-[#1a1b2e] dark:text-[#60a5fa] dark:hover:bg-[#243044]"
+                        >
+                            <PlusIcon className="h-3 w-3" aria-hidden />
+                            Add invoice
+                        </button>
+                    ) : null}
                 </div>
+                <DataTable
+                    columns={accountColumns(
+                        integrationUrls.xero_invoice,
+                        'Invoice #',
+                        onEditInvoice,
+                    )}
+                    rows={invoices}
+                    emptyMessage="No invoices linked yet."
+                />
             </div>
         </JobPanel>
     ) : null;
@@ -1239,7 +1243,7 @@ export default function DraftingJobShowLayout({
     const commentsBlock = commentsPanel ? (
         <JobPanel
             title="Comments"
-            className="flex min-h-[18rem] flex-col"
+            className="flex min-h-[18rem] flex-1 flex-col"
         >
             <div className="flex min-h-[16rem] flex-1 flex-col">
                 {commentsPanel}
@@ -1248,38 +1252,62 @@ export default function DraftingJobShowLayout({
     ) : null;
 
     const commentsSection = commentsBlock ? (
-        <section aria-label="Comments">
+        <section aria-label="Comments" className="flex h-full flex-col">
             <p className={sectionLabelClass}>
                 {isMasterlist ? 'Comments' : '4. Comments'}
             </p>
-            {commentsBlock}
+            <div className="flex flex-1 flex-col">{commentsBlock}</div>
         </section>
     ) : null;
 
-    const accountCommentsSection = accountCommentsPanel ? (
-        <section aria-label="Quote and invoice comments">
-            <p className={sectionLabelClass}>Quotes & invoices</p>
+    const quoteCommentsSection = quoteCommentsPanel ? (
+        <section aria-label="Quote comments" className="flex h-full flex-col">
+            <p className={sectionLabelClass}>Quotes</p>
             <JobPanel
                 title="Comments"
-                className="flex min-h-[18rem] flex-col"
+                className="flex min-h-[18rem] flex-1 flex-col"
             >
                 <div className="flex min-h-[16rem] flex-1 flex-col">
-                    {accountCommentsPanel}
+                    {quoteCommentsPanel}
                 </div>
             </JobPanel>
         </section>
     ) : null;
 
-    const bottomComments = commentsSection || accountCommentsSection ? (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+    const invoiceCommentsSection = invoiceCommentsPanel ? (
+        <section aria-label="Invoice comments" className="flex h-full flex-col">
+            <p className={sectionLabelClass}>Invoices</p>
+            <JobPanel
+                title="Comments"
+                className="flex min-h-[18rem] flex-1 flex-col"
+            >
+                <div className="flex min-h-[16rem] flex-1 flex-col">
+                    {invoiceCommentsPanel}
+                </div>
+            </JobPanel>
+        </section>
+    ) : null;
+
+    const accountCommentCount = (quoteCommentsSection ? 1 : 0) + (invoiceCommentsSection ? 1 : 0);
+    const accountCommentSpan = commentsSection
+        ? (accountCommentCount === 2 ? 'lg:col-span-4' : 'lg:col-span-8')
+        : (accountCommentCount === 2 ? 'lg:col-span-6' : 'lg:col-span-12');
+
+    const bottomComments = commentsSection || quoteCommentsSection || invoiceCommentsSection ? (
+        <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-12">
             {commentsSection ? (
-                <div className={accountCommentsSection ? 'lg:col-span-4' : 'lg:col-span-12'}>
+                <div className={accountCommentCount ? 'lg:col-span-4' : 'lg:col-span-12'}>
                     {commentsSection}
                 </div>
             ) : null}
-            {accountCommentsSection ? (
-                <div className={commentsSection ? 'lg:col-span-8' : 'lg:col-span-12'}>
-                    {accountCommentsSection}
+            {quoteCommentsSection ? (
+                <div className={accountCommentSpan}>
+                    {quoteCommentsSection}
+                </div>
+            ) : null}
+            {invoiceCommentsSection ? (
+                <div className={accountCommentSpan}>
+                    {invoiceCommentsSection}
                 </div>
             ) : null}
         </div>
@@ -1315,7 +1343,8 @@ export default function DraftingJobShowLayout({
                                 </p>
                                 <div className="space-y-4">
                                     {revisionsPanel}
-                                    {accountsPanel}
+                                    {quotesPanel}
+                                    {invoicesPanel}
                                     {accountActivityPanel}
                                 </div>
                             </section>
@@ -1367,7 +1396,8 @@ export default function DraftingJobShowLayout({
                             </p>
                             <div className="space-y-4">
                                 {revisionsPanel}
-                                {accountsPanel}
+                                {quotesPanel}
+                                {invoicesPanel}
                                 {accountActivityPanel}
                             </div>
                         </section>

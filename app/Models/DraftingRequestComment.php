@@ -13,6 +13,10 @@ class DraftingRequestComment extends Model
 
     public const KIND_ACCOUNT = 'account';
 
+    public const KIND_QUOTE = 'quote';
+
+    public const KIND_INVOICE = 'invoice';
+
     protected $fillable = [
         'drafting_request_id',
         'drafting_request_revision_id',

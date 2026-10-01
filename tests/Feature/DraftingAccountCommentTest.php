@@ -17,41 +17,45 @@ class DraftingAccountCommentTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_account_comment_stays_with_quotes_and_invoices(): void
+    public function test_quote_and_invoice_comments_stay_separate(): void
     {
         $admin = $this->adminUser();
         $job = $this->createApmJob($admin);
 
         $this->actingAs($admin)
             ->post(route('job.drafting.comments.store', $job), [
-                'kind' => DraftingRequestComment::KIND_ACCOUNT,
+                'kind' => DraftingRequestComment::KIND_QUOTE,
                 'body' => '<p>Follow up the quote.</p>',
             ])
             ->assertSessionHasNoErrors()
             ->assertRedirect();
 
-        $comment = DraftingRequestComment::query()
+        $this->actingAs($admin)
+            ->post(route('job.drafting.comments.store', $job), [
+                'kind' => DraftingRequestComment::KIND_INVOICE,
+                'body' => '<p>Invoice sent.</p>',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $this->assertSame(2, DraftingRequestComment::query()
             ->where('drafting_request_id', $job->id)
-            ->first();
+            ->whereNull('drafting_request_revision_id')
+            ->count());
 
-        $this->assertNotNull($comment);
-        $this->assertSame(DraftingRequestComment::KIND_ACCOUNT, $comment->kind);
-        $this->assertNull($comment->drafting_request_revision_id);
-
-        $this->assertTrue(
-            DraftingRequestActivity::query()
-                ->where('drafting_request_id', $job->id)
-                ->where('action', DraftingRequestActivity::ACTION_ACCOUNT_COMMENT_POSTED)
-                ->exists(),
-        );
+        $this->assertSame(2, DraftingRequestActivity::query()
+            ->where('drafting_request_id', $job->id)
+            ->where('action', DraftingRequestActivity::ACTION_ACCOUNT_COMMENT_POSTED)
+            ->count());
 
         $this->actingAs($admin)
             ->get(route('job.drafting.show', $job))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->has('draftingRequest.account_comments', 1)
+                ->has('draftingRequest.quote_comments', 1)
+                ->has('draftingRequest.invoice_comments', 1)
                 ->has('draftingRequest.comments', 0)
-                ->has('draftingRequest.account_activities', 1)
+                ->has('draftingRequest.account_activities', 2)
                 ->where('draftingRequest.activities', fn ($activities) => collect($activities)
                     ->where('action', DraftingRequestActivity::ACTION_ACCOUNT_COMMENT_POSTED)
                     ->isEmpty()));

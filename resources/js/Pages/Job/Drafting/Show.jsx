@@ -361,13 +361,13 @@ export default function DraftingShow({
                             />
                         ) : null
                     }
-                    accountCommentsPanel={
+                    quoteCommentsPanel={
                         viewAccounts ? (
                             <DiscussionPanel
                                 comments={
-                                    draftingRequest.account_comments ?? []
+                                    draftingRequest.quote_comments ?? []
                                 }
-                                commentKind="account"
+                                commentKind="quote"
                                 hideRevision
                                 draftingRequestId={draftingRequest.id}
                                 listFilters={listFilters}
@@ -375,8 +375,29 @@ export default function DraftingShow({
                                     draftingRequest.is_archived ||
                                     !postComments
                                 }
-                                emptyLabel="No quote or invoice comments yet."
-                                successFlash="account-comment-added"
+                                emptyLabel="No quote comments yet."
+                                successFlash="quote-comment-added"
+                                successMessage="Comment added."
+                                embedded
+                            />
+                        ) : null
+                    }
+                    invoiceCommentsPanel={
+                        viewAccounts ? (
+                            <DiscussionPanel
+                                comments={
+                                    draftingRequest.invoice_comments ?? []
+                                }
+                                commentKind="invoice"
+                                hideRevision
+                                draftingRequestId={draftingRequest.id}
+                                listFilters={listFilters}
+                                readOnly={
+                                    draftingRequest.is_archived ||
+                                    !postComments
+                                }
+                                emptyLabel="No invoice comments yet."
+                                successFlash="invoice-comment-added"
                                 successMessage="Comment added."
                                 embedded
                             />

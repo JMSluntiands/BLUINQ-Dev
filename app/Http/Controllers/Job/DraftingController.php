@@ -291,10 +291,20 @@ class DraftingController extends Controller
                     DraftingRequestComment::KIND_COMMENT,
                     $tz,
                 ),
-                'account_comments' => $capabilities['viewAccounts']
+                'quote_comments' => $capabilities['viewAccounts']
+                    ? $this->formatCommentsByKinds(
+                        $draftingRequest->comments,
+                        [
+                            DraftingRequestComment::KIND_QUOTE,
+                            DraftingRequestComment::KIND_ACCOUNT,
+                        ],
+                        $tz,
+                    )
+                    : [],
+                'invoice_comments' => $capabilities['viewAccounts']
                     ? $this->formatCommentsByKind(
                         $draftingRequest->comments,
-                        DraftingRequestComment::KIND_ACCOUNT,
+                        DraftingRequestComment::KIND_INVOICE,
                         $tz,
                     )
                     : [],
@@ -1199,7 +1209,10 @@ class DraftingController extends Controller
         }
 
         $kind = $request->validated('kind');
-        $isAccount = $kind === DraftingRequestComment::KIND_ACCOUNT;
+        $isQuote = $kind === DraftingRequestComment::KIND_QUOTE
+            || $kind === DraftingRequestComment::KIND_ACCOUNT;
+        $isInvoice = $kind === DraftingRequestComment::KIND_INVOICE;
+        $isAccount = $isQuote || $isInvoice;
         $capabilities = $this->jobCapabilities($request->user(), $draftingRequest);
 
         if ($kind === DraftingRequestComment::KIND_RUN) {
@@ -1239,14 +1252,17 @@ class DraftingController extends Controller
                 $isAccount => DraftingRequestActivity::ACTION_ACCOUNT_COMMENT_POSTED,
                 default => DraftingRequestActivity::ACTION_COMMENT_POSTED,
             },
-            $isAccount
-                ? 'Quote / invoice: '.$this->commentActivityDescription($body)
-                : $this->commentActivityDescription($body, $isRun, $revisionCode),
+            $isQuote
+                ? 'Quote: '.$this->commentActivityDescription($body)
+                : ($isInvoice
+                    ? 'Invoice: '.$this->commentActivityDescription($body)
+                    : $this->commentActivityDescription($body, $isRun, $revisionCode)),
         );
 
         return back()->with('status', match (true) {
             $isRun => 'run-comment-added',
-            $isAccount => 'account-comment-added',
+            $isQuote => 'quote-comment-added',
+            $isInvoice => 'invoice-comment-added',
             default => 'comment-added',
         });
     }
@@ -1842,7 +1858,7 @@ class DraftingController extends Controller
                 DraftingRequestActivity::ACTION_RETURNED_TO_MASTERLIST => 'Returned to masterlist',
                 DraftingRequestActivity::ACTION_COMMENT_POSTED => 'Posted a comment',
                 DraftingRequestActivity::ACTION_RUN_COMMENT_POSTED => 'Posted a run comment',
-                DraftingRequestActivity::ACTION_ACCOUNT_COMMENT_POSTED => 'Posted a quote / invoice comment',
+                DraftingRequestActivity::ACTION_ACCOUNT_COMMENT_POSTED => 'Posted a quote or invoice comment',
                 DraftingRequestActivity::ACTION_ARCHIVED => 'Archived drafting request',
                 DraftingRequestActivity::ACTION_RESTORED => 'Restored drafting request',
                 DraftingRequestActivity::ACTION_STATUS_CHANGED => 'Changed status',
@@ -1875,8 +1891,18 @@ class DraftingController extends Controller
      */
     private function formatCommentsByKind($comments, string $kind, string $tz): array
     {
+        return $this->formatCommentsByKinds($comments, [$kind], $tz);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, DraftingRequestComment>  $comments
+     * @param  list<string>  $kinds
+     * @return list<array<string, mixed>>
+     */
+    private function formatCommentsByKinds($comments, array $kinds, string $tz): array
+    {
         return $comments
-            ->where('kind', $kind)
+            ->whereIn('kind', $kinds)
             ->map(fn (DraftingRequestComment $comment) => $this->formatComment($comment, $tz))
             ->values()
             ->all();
