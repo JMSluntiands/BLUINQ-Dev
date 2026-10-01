@@ -1803,6 +1803,7 @@ class DraftingController extends Controller
     {
         return [
             'id' => $comment->id,
+            'kind' => $comment->kind,
             'body' => $comment->body,
             'author_name' => $comment->user?->name ?? 'Unknown',
             'author_initials' => $comment->user?->badgeInitials(),

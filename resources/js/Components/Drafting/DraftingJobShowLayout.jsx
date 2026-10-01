@@ -658,8 +658,7 @@ export default function DraftingJobShowLayout({
     filesPanel,
     activityPanel,
     accountActivityPanel,
-    quoteCommentsPanel,
-    invoiceCommentsPanel,
+    accountCommentsPanel,
     backHref,
     backLabel,
     archiveActions,
@@ -1260,56 +1259,40 @@ export default function DraftingJobShowLayout({
         </section>
     ) : null;
 
-    const quoteCommentsSection = quoteCommentsPanel ? (
-        <section aria-label="Quote comments" className="flex h-full flex-col">
-            <p className={sectionLabelClass}>Quotes</p>
-            <JobPanel
-                title="Comments"
-                className="flex min-h-[18rem] flex-1 flex-col"
-            >
-                <div className="flex min-h-[16rem] flex-1 flex-col">
-                    {quoteCommentsPanel}
-                </div>
-            </JobPanel>
-        </section>
+    const accountCommentsBlock = accountCommentsPanel ? (
+        <JobPanel title="Comments" className="flex min-h-[18rem] flex-col">
+            <div className="flex min-h-[16rem] flex-1 flex-col">
+                {accountCommentsPanel}
+            </div>
+        </JobPanel>
     ) : null;
 
-    const invoiceCommentsSection = invoiceCommentsPanel ? (
-        <section aria-label="Invoice comments" className="flex h-full flex-col">
-            <p className={sectionLabelClass}>Invoices</p>
-            <JobPanel
-                title="Comments"
-                className="flex min-h-[18rem] flex-1 flex-col"
-            >
-                <div className="flex min-h-[16rem] flex-1 flex-col">
-                    {invoiceCommentsPanel}
+    const accountsBlock = quotesPanel || invoicesPanel || accountActivityPanel || accountCommentsBlock ? (
+        <div className="space-y-4">
+            {quotesPanel}
+            {invoicesPanel}
+            {accountActivityPanel || accountCommentsBlock ? (
+                <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
+                    {accountActivityPanel ? (
+                        <div className={accountCommentsBlock ? 'lg:col-span-6' : 'lg:col-span-12'}>
+                            {accountActivityPanel}
+                        </div>
+                    ) : null}
+                    {accountCommentsBlock ? (
+                        <div className={accountActivityPanel ? 'lg:col-span-6' : 'lg:col-span-12'}>
+                            {accountCommentsBlock}
+                        </div>
+                    ) : null}
                 </div>
-            </JobPanel>
-        </section>
+            ) : null}
+        </div>
     ) : null;
 
-    const accountCommentCount = (quoteCommentsSection ? 1 : 0) + (invoiceCommentsSection ? 1 : 0);
-    const accountCommentSpan = commentsSection
-        ? (accountCommentCount === 2 ? 'lg:col-span-4' : 'lg:col-span-8')
-        : (accountCommentCount === 2 ? 'lg:col-span-6' : 'lg:col-span-12');
-
-    const bottomComments = commentsSection || quoteCommentsSection || invoiceCommentsSection ? (
-        <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-12">
-            {commentsSection ? (
-                <div className={accountCommentCount ? 'lg:col-span-4' : 'lg:col-span-12'}>
-                    {commentsSection}
-                </div>
-            ) : null}
-            {quoteCommentsSection ? (
-                <div className={accountCommentSpan}>
-                    {quoteCommentsSection}
-                </div>
-            ) : null}
-            {invoiceCommentsSection ? (
-                <div className={accountCommentSpan}>
-                    {invoiceCommentsSection}
-                </div>
-            ) : null}
+    const bottomComments = commentsSection ? (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+            <div className="lg:col-span-8 lg:col-start-5">
+                {commentsSection}
+            </div>
         </div>
     ) : null;
 
@@ -1343,9 +1326,7 @@ export default function DraftingJobShowLayout({
                                 </p>
                                 <div className="space-y-4">
                                     {revisionsPanel}
-                                    {quotesPanel}
-                                    {invoicesPanel}
-                                    {accountActivityPanel}
+                                    {accountsBlock}
                                 </div>
                             </section>
                         )}
@@ -1396,9 +1377,7 @@ export default function DraftingJobShowLayout({
                             </p>
                             <div className="space-y-4">
                                 {revisionsPanel}
-                                {quotesPanel}
-                                {invoicesPanel}
-                                {accountActivityPanel}
+                                {accountsBlock}
                             </div>
                         </section>
                     ) : null}
