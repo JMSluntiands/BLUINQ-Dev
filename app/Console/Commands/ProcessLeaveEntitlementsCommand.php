@@ -10,7 +10,7 @@ class ProcessLeaveEntitlementsCommand extends Command
 {
     protected $signature = 'leave:process-entitlements {--date= : Process as of YYYY-MM-DD}';
 
-    protected $description = 'Accrue monthly AL, refresh yearly SL, expire AL carry-over after June';
+    protected $description = 'Accrue monthly AL (+1 per regular employee, logged), refresh yearly SL, expire AL carry-over after June';
 
     public function handle(LeaveEntitlementService $entitlements): int
     {
@@ -24,7 +24,7 @@ class ProcessLeaveEntitlementsCommand extends Command
         $stats = $entitlements->processAllUsers($asOf);
 
         $this->info("Year initialized: {$stats['initialized']}");
-        $this->info("Monthly AL accrued: {$stats['accrued']}");
+        $this->info("Monthly AL accrued and logged: {$stats['accrued']}");
         $this->info("Carry-over expired: {$stats['expired_carry']}");
 
         return self::SUCCESS;

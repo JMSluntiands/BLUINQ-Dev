@@ -246,14 +246,62 @@ class LeaveEntitlementService
             return false;
         }
 
-        $user->forceFill([
-            'al_credits' => $current + $add,
-            'al_last_accrual_month' => $monthKey,
-        ])->save();
+        DB::transaction(function () use ($user, $current, $add, $monthKey, $asOf, $monthly): void {
+            $user->forceFill([
+                'al_credits' => $current + $add,
+                'al_last_accrual_month' => $monthKey,
+            ])->save();
 
-        $this->syncLegacyLeaveCredits($user);
+            $this->syncLegacyLeaveCredits($user);
+            $this->recordMonthlyAccrualLog($user->fresh(), $add, $monthly, $asOf);
+        });
 
         return true;
+    }
+
+    private function recordMonthlyAccrualLog(User $user, float $added, int $monthly, Carbon $asOf): void
+    {
+        $balances = $this->balancesSnapshot($user);
+        $longevity = max(0, $added - $monthly);
+        $note = $longevity > 0
+            ? ' Includes '.$this->formatCreditAmount($longevity).' longevity day(s).'
+            : '';
+
+        DB::table('activity_logs')->insert([
+            'user_id' => $user->id,
+            'method' => 'LEAVE',
+            'route_name' => 'monthly_accrual',
+            'path' => sprintf(
+                'Monthly accrual: added %s leave credit(s) to %s for %s.%s AL: %s, SL: %s.',
+                $this->formatCreditAmount($added),
+                $user->name,
+                $asOf->format('F Y'),
+                $note,
+                $this->formatCreditAmount($balances['al']),
+                $this->formatCreditAmount($balances['sl']),
+            ),
+            'status_code' => 200,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    /**
+     * @return array{al: float, sl: float}
+     */
+    private function balancesSnapshot(User $user): array
+    {
+        return [
+            'al' => (float) $user->al_credits + $this->usableCarriedOver($user),
+            'sl' => (float) $user->sl_credits,
+        ];
+    }
+
+    private function formatCreditAmount(float $amount): string
+    {
+        $formatted = number_format(round($amount, 2), 2, '.', '');
+
+        return rtrim(rtrim($formatted, '0'), '.') ?: '0';
     }
 
     /**
