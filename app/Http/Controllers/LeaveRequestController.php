@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreLeaveRequestRequest;
+use App\Http\Requests\UpdateLeaveRequestRequest;
 use App\Models\LeaveRequest;
 use App\Services\LeaveService;
 use Illuminate\Http\RedirectResponse;
@@ -147,12 +148,91 @@ class LeaveRequestController extends Controller
         return back()->with('status', 'leave-rejected');
     }
 
+    public function update(UpdateLeaveRequestRequest $request, LeaveRequest $leaveRequest): RedirectResponse
+    {
+        if ($leaveRequest->status !== LeaveRequest::STATUS_APPROVED) {
+            return back()->with('status', 'leave-not-editable');
+        }
+
+        try {
+            DB::transaction(function () use ($request, $leaveRequest): void {
+                $leaveRequest->loadMissing('user');
+
+                $this->leave->restoreCreditsForApprovedLeave(
+                    $leaveRequest,
+                    $request->user(),
+                );
+
+                $leaveRequest->update([
+                    'start_date' => $request->validated('start_date'),
+                    'end_date' => $request->validated('end_date'),
+                    'start_portion' => $request->validated('start_portion'),
+                    'end_portion' => $request->validated('end_portion'),
+                    'type' => LeaveRequest::normalizeType($request->validated('type')),
+                    'reason' => $request->validated('reason'),
+                ]);
+
+                $this->storeMedicalCertificate($request, $leaveRequest);
+                $leaveRequest->refresh();
+
+                if ($this->leave->overlapsCurrentBalanceYear($leaveRequest)) {
+                    $this->leave->deductCreditsForApprovedLeave(
+                        $leaveRequest,
+                        $request->user(),
+                        false,
+                    );
+                }
+            });
+        } catch (RuntimeException $exception) {
+            return back()->with('status', 'leave-insufficient-credits');
+        }
+
+        return back()->with('status', 'leave-updated');
+    }
+
+    public function destroy(Request $request, LeaveRequest $leaveRequest): RedirectResponse
+    {
+        abort_unless($request->user()?->hasPermission('leave.manage'), 403);
+
+        if ($leaveRequest->status !== LeaveRequest::STATUS_APPROVED) {
+            return back()->with('status', 'leave-not-editable');
+        }
+
+        DB::transaction(function () use ($request, $leaveRequest): void {
+            $leaveRequest->loadMissing('user');
+            $this->leave->restoreCreditsForApprovedLeave(
+                $leaveRequest,
+                $request->user(),
+            );
+            $this->deleteAttachment($leaveRequest);
+            $leaveRequest->delete();
+        });
+
+        return back()->with('status', 'leave-deleted');
+    }
+
+    private function deleteAttachment(LeaveRequest $leaveRequest): void
+    {
+        if (! $leaveRequest->hasAttachment()) {
+            return;
+        }
+
+        Storage::disk($leaveRequest->attachment_disk ?? self::ATTACHMENT_DISK)
+            ->delete($leaveRequest->attachment_path);
+    }
+
     private function storeMedicalCertificate(Request $request, LeaveRequest $leaveRequest): void
     {
         $file = $request->file('attachment') ?? $request->file('medical_certificate');
         if ($file === null) {
             return;
         }
+
+        if ($leaveRequest->hasAttachment()) {
+            Storage::disk($leaveRequest->attachment_disk ?? self::ATTACHMENT_DISK)
+                ->delete($leaveRequest->attachment_path);
+        }
+
         $path = $file->store('leave-requests/'.$leaveRequest->id, self::ATTACHMENT_DISK);
 
         $leaveRequest->update([

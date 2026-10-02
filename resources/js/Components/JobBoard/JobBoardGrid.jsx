@@ -867,7 +867,17 @@ function JobBoardTableHead({
                 {checkingHeaders}
                 <th className={thClass}>Total hrs</th>
                 <th className={thClass}>Areas</th>
-                <th className={thClass}>Date Out</th>
+                {sortable ? (
+                    <SortableTh
+                        column="date_out"
+                        label="Date Out"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSortColumn={onSortColumn}
+                    />
+                ) : (
+                    <th className={thClass}>Date Out</th>
+                )}
                 {!hideStatus && <th className={thClass}>Status</th>}
                 {sortable ? (
                     <SortableTh

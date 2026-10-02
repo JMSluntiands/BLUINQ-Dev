@@ -30,6 +30,8 @@ return [
         'leave.approvals' => 'leave.manage',
         'leave.approve' => 'leave.manage',
         'leave.reject' => 'leave.manage',
+        'leave.update' => 'leave.manage',
+        'leave.destroy' => 'leave.manage',
         'leave.credits.index' => ['leave.credits.view', 'leave.credits.edit'],
         'leave.credits.store' => 'leave.credits.edit',
         'leave.credits.update' => 'leave.credits.edit',

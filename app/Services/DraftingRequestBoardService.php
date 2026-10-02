@@ -63,6 +63,7 @@ class DraftingRequestBoardService
             'revision_code',
             'company_name',
             'requested_at',
+            'date_out',
             'is_priority',
         ];
     }

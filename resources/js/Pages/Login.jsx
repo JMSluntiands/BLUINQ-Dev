@@ -89,7 +89,7 @@ export default function Login({ status }) {
                 )}
 
                 <main className="relative z-10 w-full max-w-[420px]">
-                    <div className="login-v6-card rounded-[30px] border border-white/10 bg-white/8 p-8 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.8)] backdrop-blur-2xl sm:p-10">
+                    <div className="login-v6-card rounded-[30px] border border-white/10 bg-slate-900/80 p-8 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.8)] sm:p-10">
                         <div className="flex flex-col items-center text-center">
                             <div className="flex h-[4.25rem] items-center justify-center rounded-2xl bg-white px-5 py-3 shadow-sm">
                                 <BrandMark logoUrl={logoUrl} />

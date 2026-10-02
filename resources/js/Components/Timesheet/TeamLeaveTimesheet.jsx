@@ -103,11 +103,17 @@ function resolveDayMark(user, dayKey) {
     }
 
     if (mark && typeof mark === 'object' && mark.kind === 'leave') {
+        const extraCodes = Array.isArray(mark.also)
+            ? mark.also.map((entry) => entry.code).filter(Boolean)
+            : [];
+
         return {
             type: 'leave',
             leaveType: mark.type || 'al',
-            code: mark.code || 'LEAVE',
-            title: mark.label || 'Approved leave',
+            code: [mark.code || 'LEAVE', ...extraCodes].join('/'),
+            title: [mark.label || 'Approved leave', mark.birthday ? 'Birthday' : null]
+                .filter(Boolean)
+                .join(' · '),
         };
     }
 

@@ -147,6 +147,10 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('leave.approve');
     Route::post('/leave/{leaveRequest}/reject', [LeaveRequestController::class, 'reject'])
         ->name('leave.reject');
+    Route::patch('/leave/{leaveRequest}', [LeaveRequestController::class, 'update'])
+        ->name('leave.update');
+    Route::delete('/leave/{leaveRequest}', [LeaveRequestController::class, 'destroy'])
+        ->name('leave.destroy');
     Route::get('/leave/credits', [LeaveCreditsController::class, 'index'])
         ->name('leave.credits.index');
     Route::post('/leave/credits', [LeaveCreditsController::class, 'store'])

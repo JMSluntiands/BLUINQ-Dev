@@ -1,4 +1,7 @@
+import FileDropzone from '@/Components/FileDropzone';
 import FlashNoticeModal from '@/Components/FlashNoticeModal';
+import InputError from '@/Components/InputError';
+import InputLabel from '@/Components/InputLabel';
 import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -8,9 +11,11 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {
     ArrowDownTrayIcon,
     CheckCircleIcon,
+    PencilSquareIcon,
+    TrashIcon,
     XCircleIcon,
 } from '@heroicons/react/24/outline';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 const STATUS_TABS = [
@@ -23,9 +28,12 @@ const STATUS_TABS = [
 const FLASH_MESSAGES = {
     'leave-approved': 'Leave request approved.',
     'leave-rejected': 'Leave request rejected.',
+    'leave-updated': 'Approved leave updated.',
+    'leave-deleted': 'Approved leave deleted. Current-year credits were returned.',
+    'leave-not-editable': 'Only approved leave can be edited or deleted.',
     'leave-already-reviewed': 'This request was already reviewed.',
     'leave-insufficient-credits':
-        'Cannot approve — employee does not have enough leave credits.',
+        'Not enough leave credits for this change.',
 };
 
 function formatDayLabel(value) {
@@ -140,6 +148,302 @@ function ReviewModal({ request, action, onClose }) {
     );
 }
 
+function holidayDatesForRegion(leaveHolidayConfig, region) {
+    if (!region) {
+        return [];
+    }
+
+    return Object.values(leaveHolidayConfig?.[region] ?? {}).flatMap((yearHolidays) =>
+        Object.keys(yearHolidays ?? {}),
+    );
+}
+
+function businessDayCount(startDate, endDate, holidayDates = []) {
+    if (!startDate || !endDate) {
+        return 0;
+    }
+
+    const start = new Date(`${startDate}T00:00:00`);
+    const end = new Date(`${endDate}T00:00:00`);
+
+    if (
+        Number.isNaN(start.getTime()) ||
+        Number.isNaN(end.getTime()) ||
+        end < start
+    ) {
+        return 0;
+    }
+
+    const holidaySet = new Set(holidayDates);
+    let total = 0;
+
+    for (
+        const cursor = new Date(start);
+        cursor <= end;
+        cursor.setDate(cursor.getDate() + 1)
+    ) {
+        const day = cursor.getDay();
+        const dateKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+        if (day === 0 || day === 6 || holidaySet.has(dateKey)) {
+            continue;
+        }
+        total += 1;
+    }
+
+    return total;
+}
+
+function requestedDayCount(startDate, endDate, startPortion, endPortion, holidayDates) {
+    const baseDays = businessDayCount(startDate, endDate, holidayDates);
+    if (!baseDays) {
+        return 0;
+    }
+
+    let total = baseDays;
+    const holidaySet = new Set(holidayDates);
+    const start = startDate ? new Date(`${startDate}T00:00:00`) : null;
+    const end = endDate ? new Date(`${endDate}T00:00:00`) : null;
+    const startIsWorkingDay =
+        start &&
+        start.getDay() !== 0 &&
+        start.getDay() !== 6 &&
+        !holidaySet.has(startDate);
+    const endIsWorkingDay =
+        end &&
+        end.getDay() !== 0 &&
+        end.getDay() !== 6 &&
+        !holidaySet.has(endDate);
+
+    if (startPortion === 'afternoon' && startIsWorkingDay) {
+        total -= 0.5;
+    }
+
+    if (endPortion === 'morning' && endIsWorkingDay) {
+        total -= 0.5;
+    }
+
+    return Math.max(0.5, total);
+}
+
+function EditApprovedLeaveModal({ request, onClose }) {
+    const { leaveTypes = [], leaveHolidayConfig = {} } = usePage().props;
+    const types =
+        leaveTypes.length > 0
+            ? leaveTypes
+            : [{ value: 'al', label: 'Annual Leave', code: 'AL' }];
+    const { data, setData, patch, processing, errors } = useForm({
+        start_date: request.start_date,
+        end_date: request.end_date,
+        start_portion: request.start_portion || 'morning',
+        end_portion: request.end_portion || 'afternoon',
+        type: request.type || 'al',
+        reason: request.reason || '',
+        medical_certificate: null,
+    });
+    const holidayDates = holidayDatesForRegion(
+        leaveHolidayConfig,
+        request.user?.holiday_region,
+    );
+    const dayCount = requestedDayCount(
+        data.start_date,
+        data.end_date,
+        data.start_portion,
+        data.end_portion,
+        holidayDates,
+    );
+    const certificateAfterDays =
+        types.find((type) => type.value === 'sl')
+            ?.medical_certificate_after_days ?? 2;
+    const needsCertificate =
+        data.type === 'sl' &&
+        dayCount > certificateAfterDays &&
+        !request.has_attachment;
+
+    const submit = (event) => {
+        event.preventDefault();
+        patch(route('leave.update', request.id), {
+            preserveScroll: true,
+            forceFormData: true,
+            transform: (form) => {
+                if (form.medical_certificate) {
+                    return form;
+                }
+
+                const { medical_certificate, ...rest } = form;
+                return rest;
+            },
+            onSuccess: () => onClose(),
+        });
+    };
+
+    return (
+        <Modal show onClose={onClose} maxWidth="lg">
+            <form onSubmit={submit} className="p-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Edit approved leave
+                </h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    {request.user.name}. Saving updates the calendar. Credits
+                    for the current leave year are adjusted to match.
+                </p>
+
+                <div className="mt-4 space-y-4">
+                    <div>
+                        <InputLabel htmlFor="edit_leave_type" value="Type" />
+                        <select
+                            id="edit_leave_type"
+                            value={data.type}
+                            onChange={(event) =>
+                                setData('type', event.target.value)
+                            }
+                            className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                        >
+                            {types.map((type) => (
+                                <option key={type.value} value={type.value}>
+                                    {type.code} — {type.label}
+                                </option>
+                            ))}
+                        </select>
+                        <InputError message={errors.type} className="mt-1" />
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <InputLabel htmlFor="edit_start_date" value="Start date" />
+                            <input
+                                id="edit_start_date"
+                                type="date"
+                                value={data.start_date}
+                                onChange={(event) =>
+                                    setData('start_date', event.target.value)
+                                }
+                                required
+                                className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                            />
+                            <InputError message={errors.start_date} className="mt-1" />
+                        </div>
+                        <div>
+                            <InputLabel htmlFor="edit_end_date" value="End date" />
+                            <input
+                                id="edit_end_date"
+                                type="date"
+                                value={data.end_date}
+                                onChange={(event) =>
+                                    setData('end_date', event.target.value)
+                                }
+                                required
+                                className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                            />
+                            <InputError message={errors.end_date} className="mt-1" />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <InputLabel htmlFor="edit_start_portion" value="Starts" />
+                            <select
+                                id="edit_start_portion"
+                                value={data.start_portion}
+                                onChange={(event) =>
+                                    setData('start_portion', event.target.value)
+                                }
+                                className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                            >
+                                <option value="morning">Morning</option>
+                                <option value="afternoon">Afternoon</option>
+                            </select>
+                            <InputError message={errors.start_portion} className="mt-1" />
+                        </div>
+                        <div>
+                            <InputLabel htmlFor="edit_end_portion" value="Ends" />
+                            <select
+                                id="edit_end_portion"
+                                value={data.end_portion}
+                                onChange={(event) =>
+                                    setData('end_portion', event.target.value)
+                                }
+                                className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                            >
+                                <option value="morning">Morning</option>
+                                <option value="afternoon">End of day</option>
+                            </select>
+                            <InputError message={errors.end_portion} className="mt-1" />
+                        </div>
+                    </div>
+
+                    {dayCount > 0 && (
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                            This leave uses{' '}
+                            <span className="font-semibold text-slate-900 dark:text-white">
+                                {dayCount}
+                            </span>{' '}
+                            working day{dayCount === 1 ? '' : 's'}.
+                        </p>
+                    )}
+
+                    <div>
+                        <InputLabel
+                            htmlFor="edit_attachment"
+                            value={
+                                needsCertificate
+                                    ? 'Medical certificate'
+                                    : 'Replace attachment'
+                            }
+                        />
+                        {request.has_attachment && (
+                            <a
+                                href={request.attachment_url}
+                                className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-sky-700 hover:text-sky-600 dark:text-sky-300"
+                            >
+                                <ArrowDownTrayIcon className="h-4 w-4" />
+                                {request.attachment_name || 'Current file'}
+                            </a>
+                        )}
+                        <FileDropzone
+                            id="edit_attachment"
+                            accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                            className="mt-1"
+                            required={needsCertificate}
+                            value={data.medical_certificate}
+                            onChange={(file) =>
+                                setData('medical_certificate', file)
+                            }
+                        />
+                        <InputError
+                            message={errors.attachment ?? errors.medical_certificate}
+                            className="mt-1"
+                        />
+                    </div>
+
+                    <div>
+                        <InputLabel htmlFor="edit_reason" value="Reason" />
+                        <textarea
+                            id="edit_reason"
+                            value={data.reason}
+                            onChange={(event) =>
+                                setData('reason', event.target.value)
+                            }
+                            rows={3}
+                            required
+                            className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                        />
+                        <InputError message={errors.reason} className="mt-1" />
+                    </div>
+                </div>
+
+                <div className="mt-6 flex justify-end gap-3">
+                    <SecondaryButton type="button" onClick={onClose}>
+                        Cancel
+                    </SecondaryButton>
+                    <PrimaryButton type="submit" disabled={processing}>
+                        Save changes
+                    </PrimaryButton>
+                </div>
+            </form>
+        </Modal>
+    );
+}
+
 export default function Approvals({
     requests,
     filters = {},
@@ -147,6 +451,20 @@ export default function Approvals({
 }) {
     const rows = requests?.data ?? [];
     const [reviewTarget, setReviewTarget] = useState(null);
+    const [editTarget, setEditTarget] = useState(null);
+
+    const deleteApprovedLeave = (request) => {
+        const confirmed = window.confirm(
+            `Delete the approved ${request.type_label} for ${request.user.name} (${request.start_display} – ${request.end_display})? Credits deducted for the current leave year will be returned.`,
+        );
+        if (!confirmed) {
+            return;
+        }
+
+        router.delete(route('leave.destroy', request.id), {
+            preserveScroll: true,
+        });
+    };
 
     const setStatusFilter = (status) => {
         router.get(
@@ -343,6 +661,26 @@ export default function Approvals({
                                         </button>
                                     </div>
                                 )}
+                                {request.status === 'approved' && (
+                                    <div className="flex shrink-0 gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setEditTarget(request)}
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                                        >
+                                            <PencilSquareIcon className="h-4 w-4" />
+                                            Edit
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => deleteApprovedLeave(request)}
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-sm font-medium text-rose-600 transition hover:bg-rose-50 dark:border-rose-500/40 dark:text-rose-400 dark:hover:bg-rose-500/10"
+                                        >
+                                            <TrashIcon className="h-4 w-4" />
+                                            Delete
+                                        </button>
+                                    </div>
+                                )}
                             </li>
                         ))}
                     </ul>
@@ -360,6 +698,14 @@ export default function Approvals({
                     request={reviewTarget.request}
                     action={reviewTarget.action}
                     onClose={() => setReviewTarget(null)}
+                />
+            )}
+
+            {editTarget && (
+                <EditApprovedLeaveModal
+                    key={editTarget.id}
+                    request={editTarget}
+                    onClose={() => setEditTarget(null)}
                 />
             )}
         </AuthenticatedLayout>

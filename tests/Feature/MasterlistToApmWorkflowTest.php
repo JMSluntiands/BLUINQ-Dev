@@ -1176,6 +1176,85 @@ class MasterlistToApmWorkflowTest extends TestCase
                 }));
     }
 
+    public function test_apm_and_dpm_boards_sort_by_date_out(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $createJob = function (string $address, string $stage, ?string $dateOut) use ($user, $storeyLevel, $category) {
+            $job = DraftingRequest::query()->create([
+                'user_id' => $user->id,
+                'status' => DraftingRequest::STATUS_NEW,
+                'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+                'workflow_stage' => $stage,
+                'requested_at' => now(),
+                'date_out' => $dateOut,
+                'your_name' => 'Client',
+                'company_name' => 'Co',
+                'email' => strtolower(str_replace(' ', '', $address)).'@example.com',
+                'site_address' => $address,
+                'site_owner_name' => 'Owner',
+                'storey_level_id' => $storeyLevel->id,
+                'crm_category_id' => $category->id,
+                'ceiling_heights' => '2700',
+                'ndis_sda' => false,
+            ]);
+
+            DraftingRequestRevision::query()->create([
+                'drafting_request_id' => $job->id,
+                'user_id' => $user->id,
+                'code' => $job->jobNumber().'-01',
+                'log_date' => now()->toDateString(),
+                'category' => 'WD',
+                'status' => DraftingRequest::STATUS_NEW,
+            ]);
+
+            return $job;
+        };
+
+        $createJob('Later Out', DraftingRequest::STAGE_APM, '2026-10-20');
+        $createJob('Earlier Out', DraftingRequest::STAGE_APM, '2026-09-01');
+        $createJob('Design Later', DraftingRequest::STAGE_DESIGN, '2026-11-02');
+        $createJob('Design Earlier', DraftingRequest::STAGE_DESIGN, '2026-08-15');
+
+        $addressesInNewGroup = function ($groups) {
+            $newGroup = collect($groups)->firstWhere('status', 'new');
+
+            return collect($newGroup['pagination']['data'] ?? [])
+                ->pluck('job')
+                ->values()
+                ->all();
+        };
+
+        $this->actingAs($user)
+            ->get(route('job.list', [
+                'sort' => 'date_out',
+                'direction' => 'asc',
+            ]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('filters.sort', 'date_out')
+                ->where('filters.direction', 'asc')
+                ->where('paginatedStatusGroups', fn ($groups) => $addressesInNewGroup($groups) === [
+                    'Earlier Out',
+                    'Later Out',
+                ]));
+
+        $this->actingAs($user)
+            ->get(route('design.list', [
+                'sort' => 'date_out',
+                'direction' => 'desc',
+            ]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('filters.sort', 'date_out')
+                ->where('filters.direction', 'desc')
+                ->where('paginatedStatusGroups', fn ($groups) => $addressesInNewGroup($groups) === [
+                    'Design Later',
+                    'Design Earlier',
+                ]));
+    }
+
     public function test_public_accept_lands_on_masterlist_only(): void
     {
         $admin = $this->adminUser();
