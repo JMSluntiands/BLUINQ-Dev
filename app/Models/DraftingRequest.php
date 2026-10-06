@@ -739,7 +739,33 @@ class DraftingRequest extends Model
             return self::statusOptions()[self::STATUS_NEW] ?? 'New';
         }
 
-        return self::statusLabels()[$this->status]
-            ?? ucfirst(str_replace('_', ' ', $this->status));
+        $status = self::canonicalStatus($this->status);
+
+        return self::statusLabels()[$status]
+            ?? ucfirst(str_replace('_', ' ', $status));
+    }
+
+    /**
+     * Stored values such as "For Checking" are the same status as for_checking.
+     */
+    public static function canonicalStatus(?string $status): string
+    {
+        $raw = trim((string) $status);
+        if ($raw === '') {
+            return self::STATUS_NEW;
+        }
+
+        $slug = strtolower(str_replace([' ', '-'], '_', $raw));
+
+        if ($slug === self::STATUS_FOR_CHECKING) {
+            return self::STATUS_FOR_CHECKING;
+        }
+
+        return $raw;
+    }
+
+    public static function isForCheckingStatus(?string $status): bool
+    {
+        return self::canonicalStatus($status) === self::STATUS_FOR_CHECKING;
     }
 }

@@ -382,6 +382,49 @@ class ApmRevisionSyncTest extends TestCase
                 ->has('paginatedStatusGroups.2.pagination.data', 1));
     }
 
+    public function test_apm_for_checking_section_includes_every_spelling_and_ignores_page_size(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $labelled = $this->createApmJob($user, $storeyLevel, $category);
+        $labelled->update([
+            'status' => 'For Checking',
+            'site_address' => 'Labelled Checking Job',
+        ]);
+        $this->addBoardRevision($labelled, $user, $category, 'For Checking');
+
+        foreach (range(1, 6) as $index) {
+            $job = $this->createApmJob($user, $storeyLevel, $category);
+            $job->update([
+                'status' => DraftingRequest::STATUS_FOR_CHECKING,
+                'site_address' => 'Checking Job '.$index,
+            ]);
+            $this->addBoardRevision(
+                $job,
+                $user,
+                $category,
+                DraftingRequest::STATUS_FOR_CHECKING,
+            );
+        }
+
+        $this->actingAs($user)
+            ->get(route('job.list', ['per_page' => 5]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->where('paginatedStatusGroups.2.status', DraftingRequest::STATUS_FOR_CHECKING)
+                ->where('paginatedStatusGroups.2.pagination.total', 7)
+                ->has('paginatedStatusGroups.2.pagination.data', 7)
+                ->where(
+                    'paginatedStatusGroups.2.pagination.data',
+                    fn ($rows) => collect($rows)->contains(
+                        fn ($row) => $row['id'] === $labelled->id
+                            && $row['status'] === DraftingRequest::STATUS_FOR_CHECKING,
+                    ),
+                ));
+    }
+
     public function test_member_sees_all_apm_jobs_on_board_and_can_open_them(): void
     {
         $owner = $this->adminUser();

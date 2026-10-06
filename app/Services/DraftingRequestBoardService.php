@@ -371,7 +371,9 @@ class DraftingRequestBoardService
             $area = $areaValue.' m²';
         }
 
-        $actualStatus = $row->status ?? DraftingRequest::STATUS_NEW;
+        $actualStatus = DraftingRequest::canonicalStatus(
+            $row->status ?? DraftingRequest::STATUS_NEW,
+        );
         $boardStatus = $this->mapBoardStatus($actualStatus);
         $draftingSlots = $this->draftingSlotCount();
         $checkingSlots = $this->checkingSlotCount();
@@ -1306,10 +1308,9 @@ class DraftingRequestBoardService
             return 'drafting_wip';
         }
 
-        if (in_array($status, [
+        if (DraftingRequest::isForCheckingStatus($status) || in_array($status, [
             DraftingRequest::STATUS_DRAFTING_WIP,
             DraftingRequest::STATUS_WIP,
-            DraftingRequest::STATUS_FOR_CHECKING,
         ], true)) {
             return 'drafting_wip';
         }

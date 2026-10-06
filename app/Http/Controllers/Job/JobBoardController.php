@@ -123,6 +123,7 @@ class JobBoardController extends Controller
                     $filters['per_page'],
                     $statusGroupOptions,
                     $formatRow,
+                    $board,
                 )
                 : [],
             'filters' => $filters,
@@ -180,23 +181,53 @@ class JobBoardController extends Controller
         int $perPage,
         array $statusGroupOptions,
         callable $formatRow,
+        string $board = 'apm',
     ): array {
         return collect($statusGroupOptions)
-            ->map(function (array $option) use ($query, $perPage, $formatRow): array {
+            ->map(function (array $option) use ($query, $perPage, $formatRow, $board): array {
                 $pageName = 'page_'.$option['value'];
+                $groupQuery = (clone $query)->tap(
+                    fn (Builder $groupQuery) => $this->applyStatusGroupFilter($groupQuery, $option['value']),
+                );
+                $showEveryRow = $board === 'apm'
+                    && $option['value'] === DraftingRequest::STATUS_FOR_CHECKING;
+
+                $pagination = $showEveryRow
+                    ? $groupQuery->paginate(
+                        max($perPage, (clone $groupQuery)->count(), 1),
+                        ['*'],
+                        $pageName,
+                        1,
+                    )
+                    : $groupQuery->paginate($perPage, ['*'], $pageName);
 
                 return [
                     'status' => $option['value'],
                     'label' => $option['label'],
-                    'pagination' => (clone $query)
-                        ->whereIn('status', $this->statusGroupMembers($option['value']))
-                        ->paginate($perPage, ['*'], $pageName)
+                    'pagination' => $pagination
                         ->through($formatRow)
                         ->withQueryString(),
                 ];
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  Builder<DraftingRequest>  $query
+     */
+    private function applyStatusGroupFilter(Builder $query, string $status): void
+    {
+        if ($status === DraftingRequest::STATUS_FOR_CHECKING) {
+            $query->whereRaw(
+                "LOWER(REPLACE(REPLACE(TRIM(status), ' ', '_'), '-', '_')) = ?",
+                [DraftingRequest::STATUS_FOR_CHECKING],
+            );
+
+            return;
+        }
+
+        $query->whereIn('status', $this->statusGroupMembers($status));
     }
 
     /**
