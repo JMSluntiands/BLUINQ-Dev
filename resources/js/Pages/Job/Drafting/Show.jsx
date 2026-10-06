@@ -1,4 +1,5 @@
 import DangerButton from '@/Components/DangerButton';
+import DraftingFileViewModal from '@/Components/Drafting/DraftingFileViewModal';
 import DraftingJobShowLayout from '@/Components/Drafting/DraftingJobShowLayout';
 import DraftingAccountAddModal from '@/Components/Drafting/DraftingAccountAddModal';
 import DraftingRevisionAddModal from '@/Components/Drafting/DraftingRevisionAddModal';
@@ -484,6 +485,8 @@ function ArchiveModals({
 }
 
 function FilePanel({ title, files, emptyLabel, canEdit = false, onEdit }) {
+    const [viewingFile, setViewingFile] = useState(null);
+
     return (
         <div className={cardClass}>
             <div className="flex items-center justify-between border-b border-[#e6e9ef] bg-[#fafbfc] px-4 py-3 sm:px-5 dark:border-[#2f3347] dark:bg-[#151622]">
@@ -512,27 +515,36 @@ function FilePanel({ title, files, emptyLabel, canEdit = false, onEdit }) {
                 ) : (
                     <ul className="space-y-2">
                         {files.map((file) => (
-                            <li
-                                key={file.id}
-                                className="flex items-center gap-2 rounded-lg border border-[#e6e9ef] bg-[#fafbfc] px-3 py-2 dark:border-[#3b82f6]/30 dark:bg-[#151622]"
-                            >
-                                <DocumentTextIcon
-                                    className="h-5 w-5 shrink-0 text-[#676879] dark:text-slate-400"
-                                    aria-hidden
-                                />
-                                <div className="min-w-0">
-                                    <p className="truncate text-sm font-medium text-[#323338] dark:text-slate-200">
-                                        {file.original_name}
-                                    </p>
-                                    <p className="text-xs text-[#676879] dark:text-slate-400">
-                                        {file.size_label}
-                                    </p>
-                                </div>
+                            <li key={file.id}>
+                                <button
+                                    type="button"
+                                    onClick={() => setViewingFile(file)}
+                                    className="flex w-full items-center gap-2 rounded-lg border border-[#e6e9ef] bg-[#fafbfc] px-3 py-2 text-left transition hover:border-[#0073ea] hover:bg-[#f5f8ff] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0073ea] dark:border-[#3b82f6]/30 dark:bg-[#151622] dark:hover:bg-[#243044]"
+                                    aria-label={`View ${file.original_name}`}
+                                >
+                                    <DocumentTextIcon
+                                        className="h-5 w-5 shrink-0 text-[#676879] dark:text-slate-400"
+                                        aria-hidden
+                                    />
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-medium text-[#323338] dark:text-slate-200">
+                                            {file.original_name}
+                                        </p>
+                                        <p className="text-xs text-[#676879] dark:text-slate-400">
+                                            {file.size_label}
+                                        </p>
+                                    </div>
+                                </button>
                             </li>
                         ))}
                     </ul>
                 )}
             </div>
+            <DraftingFileViewModal
+                file={viewingFile}
+                show={viewingFile !== null}
+                onClose={() => setViewingFile(null)}
+            />
         </div>
     );
 }
