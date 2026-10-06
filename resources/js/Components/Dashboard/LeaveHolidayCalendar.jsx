@@ -209,6 +209,21 @@ function holidayBadge(country) {
     return 'SG';
 }
 
+function overflowMenuPosition(rect, itemCount) {
+    const width = 240;
+    const menuHeight = Math.min(itemCount * 44 + 40, 240);
+    const below = rect.bottom + 4;
+    const top =
+        below + menuHeight > window.innerHeight - 8
+            ? Math.max(8, rect.top - menuHeight - 4)
+            : below;
+
+    return {
+        top,
+        left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
+    };
+}
+
 function DayCell({
     day,
     todayKey,
@@ -224,8 +239,13 @@ function DayCell({
     const isToday = day.key === todayKey;
     const isSelectedMonth = day.isCurrentMonth;
     const [leaveMenu, setLeaveMenu] = useState(null);
+    const [eventMenu, setEventMenu] = useState(null);
     const visibleEvents = events.slice(0, 2);
-    const hiddenEventCount = Math.max(events.length - visibleEvents.length, 0);
+    const hiddenEvents = events.slice(2);
+    const hiddenEventLabel =
+        hiddenEvents.length === 1
+            ? `+1 more: ${hiddenEvents[0].title}`
+            : `+${hiddenEvents.length} more events`;
     const visibleLeave = leavePeople.slice(0, 2);
     const hiddenLeave = leavePeople.slice(2);
     const hiddenLeaveLabel =
@@ -234,11 +254,14 @@ function DayCell({
             : `+${hiddenLeave.length} more on leave`;
 
     useEffect(() => {
-        if (!leaveMenu) {
+        if (!leaveMenu && !eventMenu) {
             return undefined;
         }
 
-        const close = () => setLeaveMenu(null);
+        const close = () => {
+            setLeaveMenu(null);
+            setEventMenu(null);
+        };
         window.addEventListener('resize', close);
         window.addEventListener('scroll', close, true);
 
@@ -246,7 +269,7 @@ function DayCell({
             window.removeEventListener('resize', close);
             window.removeEventListener('scroll', close, true);
         };
-    }, [leaveMenu]);
+    }, [leaveMenu, eventMenu]);
 
     const handleDeleteEvent = (event) => {
         if (!canDeleteEvent?.(event)) {
@@ -388,11 +411,78 @@ function DayCell({
                         </div>
                     );
                 })}
-                {hiddenEventCount > 0 && (
-                    <p className="px-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                        +{hiddenEventCount} more events
-                    </p>
+                {hiddenEvents.length > 0 && (
+                    <button
+                        type="button"
+                        onClick={(clickEvent) => {
+                            clickEvent.stopPropagation();
+                            if (eventMenu) {
+                                setEventMenu(null);
+                                return;
+                            }
+
+                            setLeaveMenu(null);
+                            setEventMenu(
+                                overflowMenuPosition(
+                                    clickEvent.currentTarget.getBoundingClientRect(),
+                                    hiddenEvents.length,
+                                ),
+                            );
+                        }}
+                        className="block w-full truncate px-1 text-left text-[10px] font-semibold text-orange-800 underline decoration-orange-400/80 underline-offset-2 hover:text-orange-700 dark:text-orange-200 dark:hover:text-orange-100"
+                        title={hiddenEvents
+                            .map((event) => event.title)
+                            .join(', ')}
+                        aria-expanded={eventMenu ? 'true' : 'false'}
+                    >
+                        {hiddenEventLabel}
+                    </button>
                 )}
+                {eventMenu &&
+                    createPortal(
+                        <>
+                            <button
+                                type="button"
+                                className="fixed inset-0 z-40 cursor-default"
+                                aria-label="Close event list"
+                                onClick={() => setEventMenu(null)}
+                            />
+                            <div
+                                className="fixed z-50 max-h-60 w-60 space-y-1 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-600 dark:bg-slate-900"
+                                style={{
+                                    top: eventMenu.top,
+                                    left: eventMenu.left,
+                                }}
+                                onClick={(clickEvent) =>
+                                    clickEvent.stopPropagation()
+                                }
+                            >
+                                <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                    More events
+                                </p>
+                                {hiddenEvents.map((event) => (
+                                    <div
+                                        key={event.id}
+                                        className="rounded-md bg-orange-100 px-1.5 py-1 text-[11px] font-medium leading-snug text-orange-950 dark:bg-orange-500/20 dark:text-orange-100"
+                                    >
+                                        <p>{event.title}</p>
+                                        {(event.category_label ||
+                                            event.description) && (
+                                            <p className="mt-0.5 text-[10px] font-normal opacity-80">
+                                                {[
+                                                    event.category_label,
+                                                    event.description,
+                                                ]
+                                                    .filter(Boolean)
+                                                    .join(' · ')}
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </>,
+                        document.body,
+                    )}
 
                 {visibleLeave.map((person) => (
                     <div
@@ -420,28 +510,13 @@ function DayCell({
                                 return;
                             }
 
-                            const rect =
-                                clickEvent.currentTarget.getBoundingClientRect();
-                            const width = 240;
-                            const menuHeight = Math.min(
-                                hiddenLeave.length * 36 + 40,
-                                240,
-                            );
-                            const below = rect.bottom + 4;
-                            const top =
-                                below + menuHeight > window.innerHeight - 8
-                                    ? Math.max(8, rect.top - menuHeight - 4)
-                                    : below;
-                            setLeaveMenu({
-                                top,
-                                left: Math.max(
-                                    8,
-                                    Math.min(
-                                        rect.left,
-                                        window.innerWidth - width - 8,
-                                    ),
+                            setEventMenu(null);
+                            setLeaveMenu(
+                                overflowMenuPosition(
+                                    clickEvent.currentTarget.getBoundingClientRect(),
+                                    hiddenLeave.length,
                                 ),
-                            });
+                            );
                         }}
                         className="block w-full truncate px-1 text-left text-[10px] font-semibold text-sky-700 underline decoration-sky-400/80 underline-offset-2 hover:text-sky-600 dark:text-sky-300 dark:hover:text-sky-200"
                         title={hiddenLeave
