@@ -14,6 +14,8 @@ export default function JobBoard({
     filters = {},
     canViewAllRequests = false,
     assignableUsers = [],
+    draftingSlotCount = 2,
+    checkingSlotCount = 2,
     statusOptions = [],
     statusGroupOptions = [],
     categoryOptions = [],
@@ -144,6 +146,7 @@ export default function JobBoard({
                     date_out: candidate.date_out ?? null,
                     max_building_area_sqm:
                         candidate.max_building_area_sqm ?? null,
+                    vo_hours: candidate.vo_hours ?? null,
                 };
             }),
         [masterlistCandidates, boardRevisionsById],
@@ -286,6 +289,8 @@ export default function JobBoard({
                     }
                     showFilesInTotal
                     assignableUsers={assignableUsers}
+                    draftingSlotCount={draftingSlotCount}
+                    checkingSlotCount={checkingSlotCount}
                     statusOptions={statusOptions}
                     statusGroupOptions={statusGroupOptions}
                     onCommentsUpdated={() => reloadBoard()}

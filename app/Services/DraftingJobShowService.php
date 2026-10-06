@@ -14,15 +14,38 @@ class DraftingJobShowService
      */
     public function revisionsFor(DraftingRequest $draftingRequest): array
     {
+        $latestRevisionId = $draftingRequest->revisions()->max('id');
+
         return $draftingRequest->revisions()
             ->with(['drafter:id,name,initials', 'checker:id,name,initials'])
             ->get()
-            ->map(function (DraftingRequestRevision $revision) {
+            ->map(function (DraftingRequestRevision $revision) use ($draftingRequest, $latestRevisionId) {
                 $status = $revision->status;
                 $statusOptions = DraftingRequest::statusLabels();
+                $isLatest = (int) $revision->id === (int) $latestRevisionId;
+
                 // Per-revision Date Out only — never fall back to the job date_out,
                 // or every revision row would change when Add item updates the job.
                 $dateOut = $revision->submitted_date;
+
+                // Snapshotted VO on closed revisions; current cycle falls back to job VO.
+                $voHours = $revision->vo_hours;
+                if ($voHours === null
+                    && $isLatest
+                    && $draftingRequest->vo_hours !== null) {
+                    $voHours = $draftingRequest->vo_hours;
+                }
+
+                // Area Size: prefer revision; latest falls back to job max_building_area_sqm
+                // so Add item Areas stay visible on Revisions even if only the job was written.
+                $areaSize = $revision->area_size;
+                $areaBlank = $areaSize === null || trim((string) $areaSize) === '';
+                if ($areaBlank
+                    && $isLatest
+                    && $draftingRequest->max_building_area_sqm !== null) {
+                    $formatted = number_format((float) $draftingRequest->max_building_area_sqm, 2, '.', '');
+                    $areaSize = rtrim(rtrim($formatted, '0'), '.') ?: '0';
+                }
 
                 return [
                 'id' => $revision->id,
@@ -47,7 +70,10 @@ class DraftingJobShowService
                 'status_label' => $status !== null && $status !== ''
                     ? ($statusOptions[$status] ?? ucfirst(str_replace('_', ' ', $status)))
                     : null,
-                'area_size' => $revision->area_size,
+                'area_size' => $areaSize,
+                'vo_hours' => $voHours !== null
+                    ? rtrim(rtrim((string) $voHours, '0'), '.')
+                    : null,
                 'submitted_date' => $dateOut?->format('d M Y'),
                 'submitted_date_value' => $dateOut?->format('Y-m-d'),
             ];

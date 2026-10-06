@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\LeaveRequest;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\LeaveService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -322,6 +324,192 @@ class LeaveRequestTest extends TestCase
         $this->actingAs($other)
             ->get(route('leave.certificate', $leaveRequest))
             ->assertForbidden();
+    }
+
+    public function test_calendar_keeps_leave_that_falls_on_a_birthday_and_every_overlapping_request(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Nikola Enriquez',
+            'birthday' => '1995-09-07',
+            'employment_status' => 'regular',
+            'leave_balance_year' => 2026,
+            'al_credits' => 5,
+            'leave_credits' => 5,
+            'sl_credits' => 15,
+        ]);
+
+        LeaveRequest::query()->create([
+            'user_id' => $user->id,
+            'start_date' => '2026-09-07',
+            'end_date' => '2026-09-07',
+            'type' => LeaveRequest::TYPE_AL,
+            'reason' => 'Birthday leave',
+            'status' => LeaveRequest::STATUS_APPROVED,
+        ]);
+
+        LeaveRequest::query()->create([
+            'user_id' => $user->id,
+            'start_date' => '2026-09-07',
+            'end_date' => '2026-09-07',
+            'type' => LeaveRequest::TYPE_SL,
+            'reason' => 'Sick on the same day',
+            'status' => LeaveRequest::STATUS_APPROVED,
+        ]);
+
+        $archived = User::factory()->create([
+            'name' => 'Former Employee',
+            'archived_at' => now(),
+            'employment_status' => 'regular',
+            'leave_balance_year' => 2026,
+            'al_credits' => 5,
+            'leave_credits' => 5,
+            'sl_credits' => 15,
+        ]);
+
+        LeaveRequest::query()->create([
+            'user_id' => $archived->id,
+            'start_date' => '2026-09-11',
+            'end_date' => '2026-09-11',
+            'type' => LeaveRequest::TYPE_AL,
+            'reason' => 'Approved before archive',
+            'status' => LeaveRequest::STATUS_APPROVED,
+        ]);
+
+        $payload = app(LeaveService::class)->calendarPayload(
+            Carbon::parse('2026-09-01'),
+            Carbon::parse('2026-09-30'),
+        );
+
+        $birthdayLeave = collect($payload)->firstWhere('id', $user->id);
+        $mark = $birthdayLeave['marks']['2026-09-07'] ?? null;
+
+        $this->assertIsArray($mark);
+        $this->assertSame('leave', $mark['kind']);
+        $this->assertTrue($mark['birthday']);
+        $this->assertSame('al', $mark['type']);
+        $this->assertSame('sl', $mark['also'][0]['type'] ?? null);
+
+        $archivedRow = collect($payload)->firstWhere('id', $archived->id);
+        $this->assertSame('leave', $archivedRow['marks']['2026-09-11']['kind'] ?? null);
+    }
+
+    public function test_admin_can_edit_an_approved_leave_and_credits_follow_the_new_length(): void
+    {
+        $user = $this->regularUser();
+        $admin = $this->adminUser();
+        $start = '2026-10-05';
+
+        $leaveRequest = LeaveRequest::query()->create([
+            'user_id' => $user->id,
+            'start_date' => $start,
+            'end_date' => $start,
+            'start_portion' => LeaveRequest::PORTION_MORNING,
+            'end_portion' => LeaveRequest::PORTION_AFTERNOON,
+            'type' => LeaveRequest::TYPE_AL,
+            'reason' => 'Original',
+            'status' => LeaveRequest::STATUS_PENDING,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('leave.approve', $leaveRequest))
+            ->assertRedirect();
+
+        $this->actingAs($admin)
+            ->from(route('leave.approvals'))
+            ->patch(route('leave.update', $leaveRequest), [
+                'start_date' => $start,
+                'end_date' => '2026-10-06',
+                'start_portion' => LeaveRequest::PORTION_MORNING,
+                'end_portion' => LeaveRequest::PORTION_AFTERNOON,
+                'type' => LeaveRequest::TYPE_AL,
+                'reason' => 'Extended',
+            ])
+            ->assertRedirect(route('leave.approvals'))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status', 'leave-updated');
+
+        $leaveRequest->refresh();
+        $user->refresh();
+
+        $this->assertSame('2026-10-06', $leaveRequest->end_date->toDateString());
+        $this->assertSame('Extended', $leaveRequest->reason);
+        $this->assertSame(LeaveRequest::STATUS_APPROVED, $leaveRequest->status);
+        $this->assertSame(3.0, (float) $user->al_credits);
+    }
+
+    public function test_admin_can_delete_an_approved_leave_and_credits_are_returned(): void
+    {
+        $user = $this->regularUser();
+        $admin = $this->adminUser();
+        $date = '2026-10-05';
+
+        $leaveRequest = LeaveRequest::query()->create([
+            'user_id' => $user->id,
+            'start_date' => $date,
+            'end_date' => $date,
+            'start_portion' => LeaveRequest::PORTION_MORNING,
+            'end_portion' => LeaveRequest::PORTION_AFTERNOON,
+            'type' => LeaveRequest::TYPE_AL,
+            'reason' => 'Clinic',
+            'status' => LeaveRequest::STATUS_PENDING,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('leave.approve', $leaveRequest))
+            ->assertRedirect();
+
+        $this->assertSame(4.0, (float) $user->fresh()->al_credits);
+
+        $this->actingAs($admin)
+            ->from(route('leave.approvals'))
+            ->delete(route('leave.destroy', $leaveRequest))
+            ->assertRedirect(route('leave.approvals'))
+            ->assertSessionHas('status', 'leave-deleted');
+
+        $this->assertNull(LeaveRequest::query()->find($leaveRequest->id));
+        $this->assertSame(5.0, (float) $user->fresh()->al_credits);
+    }
+
+    public function test_regular_user_cannot_delete_an_approved_leave(): void
+    {
+        $user = $this->regularUser();
+        $leaveRequest = LeaveRequest::query()->create([
+            'user_id' => $user->id,
+            'start_date' => '2026-10-05',
+            'end_date' => '2026-10-05',
+            'type' => LeaveRequest::TYPE_AL,
+            'reason' => 'Personal',
+            'status' => LeaveRequest::STATUS_APPROVED,
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('leave.destroy', $leaveRequest))
+            ->assertForbidden();
+
+        $this->assertNotNull(LeaveRequest::query()->find($leaveRequest->id));
+    }
+
+    public function test_pending_leave_cannot_be_deleted_from_the_approved_leave_action(): void
+    {
+        $user = $this->regularUser();
+        $admin = $this->adminUser();
+        $leaveRequest = LeaveRequest::query()->create([
+            'user_id' => $user->id,
+            'start_date' => '2026-10-05',
+            'end_date' => '2026-10-05',
+            'type' => LeaveRequest::TYPE_AL,
+            'reason' => 'Waiting',
+            'status' => LeaveRequest::STATUS_PENDING,
+        ]);
+
+        $this->actingAs($admin)
+            ->from(route('leave.approvals'))
+            ->delete(route('leave.destroy', $leaveRequest))
+            ->assertRedirect(route('leave.approvals'))
+            ->assertSessionHas('status', 'leave-not-editable');
+
+        $this->assertNotNull(LeaveRequest::query()->find($leaveRequest->id));
+        $this->assertSame(5.0, (float) $user->fresh()->al_credits);
     }
 
     private function regularUser(): User

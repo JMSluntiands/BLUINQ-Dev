@@ -1,3 +1,4 @@
+import FileDropzone from '@/Components/FileDropzone';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import Modal from '@/Components/Modal';
@@ -396,18 +397,15 @@ export default function LeaveRequestModal({
                     {needsMedicalCertificate && (
                         <div>
                             <InputLabel htmlFor="attachment" value="Attachment" />
-                            <input
+                            <FileDropzone
                                 id="attachment"
-                                type="file"
                                 accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
-                                onChange={(event) =>
-                                    setData(
-                                        'medical_certificate',
-                                        event.target.files?.[0] ?? null,
-                                    )
-                                }
-                                className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-sky-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-sky-700 hover:file:bg-sky-100 dark:text-slate-200 dark:file:bg-sky-500/20 dark:file:text-sky-300"
+                                className="mt-1"
                                 required
+                                value={data.medical_certificate}
+                                onChange={(file) =>
+                                    setData('medical_certificate', file)
+                                }
                             />
                             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                                 Upload PDF, JPG, or PNG. Maximum 10 MB.
@@ -422,17 +420,14 @@ export default function LeaveRequestModal({
                     {!needsMedicalCertificate && (
                         <div>
                             <InputLabel htmlFor="attachment" value="Attachment" />
-                            <input
+                            <FileDropzone
                                 id="attachment"
-                                type="file"
                                 accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
-                                onChange={(event) =>
-                                    setData(
-                                        'medical_certificate',
-                                        event.target.files?.[0] ?? null,
-                                    )
+                                className="mt-1"
+                                value={data.medical_certificate}
+                                onChange={(file) =>
+                                    setData('medical_certificate', file)
                                 }
-                                className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-sky-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-sky-700 hover:file:bg-sky-100 dark:text-slate-200 dark:file:bg-sky-500/20 dark:file:text-sky-300"
                             />
                             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                                 Optional supporting file or image. PDF, JPG, or PNG only.

@@ -1,5 +1,6 @@
 import DraftingFileActions from '@/Components/Drafting/DraftingFileActions';
 import DangerButton from '@/Components/DangerButton';
+import FileDropzone from '@/Components/FileDropzone';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import Modal from '@/Components/Modal';
@@ -86,20 +87,31 @@ function FileRow({ file, onRequestDelete, deleting }) {
     );
 }
 
-function UploadField({ id, label, hint, multiple, accept, onChange, error }) {
+function UploadField({
+    id,
+    label,
+    hint,
+    multiple,
+    accept,
+    value,
+    onChange,
+    error,
+    disabled,
+}) {
     return (
         <div>
             <InputLabel htmlFor={id} value={label} />
             {hint ? (
                 <p className="mt-0.5 text-xs text-[#676879]">{hint}</p>
             ) : null}
-            <input
+            <FileDropzone
                 id={id}
-                type="file"
+                className="mt-2"
                 multiple={multiple}
                 accept={accept}
+                value={value}
                 onChange={onChange}
-                className="mt-2 block w-full text-sm text-[#323338] file:mr-3 file:rounded-md file:border-0 file:bg-[#0073ea] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-[#0060c4]"
+                disabled={disabled}
             />
             <InputError className="mt-2" message={error} />
         </div>
@@ -129,9 +141,9 @@ function FacadeSection({ files, form, onRequestDelete, deleting }) {
                     label="Replace or add facade"
                     hint="Uploading replaces any existing facade file."
                     accept="image/*,.pdf"
-                    onChange={(e) =>
-                        form.setData('facade', e.target.files?.[0] ?? null)
-                    }
+                    value={form.data.facade}
+                    disabled={deleting}
+                    onChange={(file) => form.setData('facade', file)}
                     error={form.errors.facade}
                 />
             </div>
@@ -140,8 +152,6 @@ function FacadeSection({ files, form, onRequestDelete, deleting }) {
 }
 
 function DocumentsSection({ files, form, onRequestDelete, deleting }) {
-    const selectedCount = form.data.documents?.length ?? 0;
-
     return (
         <>
             {files.length > 0 ? (
@@ -166,22 +176,15 @@ function DocumentsSection({ files, form, onRequestDelete, deleting }) {
                     id="edit-documents"
                     label="Add documents"
                     multiple
-                    onChange={(e) =>
-                        form.setData(
-                            'documents',
-                            Array.from(e.target.files ?? []),
-                        )
+                    value={form.data.documents}
+                    disabled={deleting}
+                    onChange={(selected) =>
+                        form.setData('documents', selected)
                     }
                     error={
                         form.errors.documents ?? form.errors['documents.0']
                     }
                 />
-                {selectedCount > 0 ? (
-                    <p className="mt-1 text-xs text-[#676879]">
-                        {selectedCount} file{selectedCount === 1 ? '' : 's'}{' '}
-                        selected
-                    </p>
-                ) : null}
             </div>
         </>
     );
@@ -209,11 +212,10 @@ function TeamSection({ files, form, onRequestDelete, deleting }) {
                     id="edit-team-files"
                     label="Add team files"
                     multiple
-                    onChange={(e) =>
-                        form.setData(
-                            'team_files',
-                            Array.from(e.target.files ?? []),
-                        )
+                    value={form.data.team_files}
+                    disabled={deleting}
+                    onChange={(selected) =>
+                        form.setData('team_files', selected)
                     }
                     error={
                         form.errors.team_files ?? form.errors['team_files.0']

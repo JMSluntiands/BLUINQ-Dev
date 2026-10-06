@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasSelectableStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 
 class WorkflowStatus extends Model
 {
+    use HasSelectableStatus;
     public const KIND_ARCHI = 'archi';
 
     public const KIND_ACCOUNTS = 'accounts';
@@ -70,8 +72,7 @@ class WorkflowStatus extends Model
         }
 
         return static::query()
-            ->active()
-            ->where('status', 'active')
+            ->selectable()
             ->kind($kind)
             ->orderBy('id')
             ->get(['code', 'name'])

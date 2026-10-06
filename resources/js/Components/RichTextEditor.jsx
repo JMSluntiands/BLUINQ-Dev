@@ -64,6 +64,7 @@ export default function RichTextEditor({
     const [showPlaceholder, setShowPlaceholder] = useState(true);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [imageDragActive, setImageDragActive] = useState(false);
 
     const updateActiveState = useCallback(() => {
         if (!editorRef.current || disabled) {
@@ -230,6 +231,52 @@ export default function RichTextEditor({
         [insertImageAtCursor, uploadImage],
     );
 
+    const dragHasFiles = (event) =>
+        Array.from(event.dataTransfer?.types ?? []).includes('Files');
+
+    const handleImageDragEnter = (event) => {
+        if (!allowImages || disabled || !dragHasFiles(event)) {
+            return;
+        }
+
+        event.preventDefault();
+        setImageDragActive(true);
+    };
+
+    const handleImageDragOver = (event) => {
+        if (!allowImages || disabled || !dragHasFiles(event)) {
+            return;
+        }
+
+        event.preventDefault();
+        setImageDragActive(true);
+    };
+
+    const handleImageDragLeave = (event) => {
+        if (event.currentTarget.contains(event.relatedTarget)) {
+            return;
+        }
+
+        setImageDragActive(false);
+    };
+
+    const handleImageDrop = (event) => {
+        if (!allowImages || disabled || !dragHasFiles(event)) {
+            return;
+        }
+
+        event.preventDefault();
+        setImageDragActive(false);
+
+        const file = Array.from(event.dataTransfer?.files ?? []).find((item) =>
+            item.type.startsWith('image/'),
+        );
+
+        if (file) {
+            insertImageFile(file);
+        }
+    };
+
     const handlePaste = (event) => {
         if (!allowImages || disabled) {
             return;
@@ -332,7 +379,18 @@ export default function RichTextEditor({
                         />
                     </div>
                 ) : null}
-                <div className="relative">
+                <div
+                    className="relative"
+                    onDragEnter={handleImageDragEnter}
+                    onDragOver={handleImageDragOver}
+                    onDragLeave={handleImageDragLeave}
+                    onDrop={handleImageDrop}
+                >
+                    {imageDragActive ? (
+                        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-b-lg border-2 border-dashed border-[#0073ea] bg-[#e8f4ff]/90 text-sm font-medium text-[#0073ea] dark:border-sky-400 dark:bg-sky-500/20 dark:text-sky-300">
+                            Drop image to insert
+                        </div>
+                    ) : null}
                     {showPlaceholder ? (
                         <p
                             className="pointer-events-none absolute left-3 top-3 text-sm text-[#676879] dark:text-slate-500"

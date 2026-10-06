@@ -70,6 +70,7 @@ export default function DraftingShow({
         'drf-invoice-added': 'Invoice added.',
         'drf-quote-updated': 'Quote updated.',
         'drf-invoice-updated': 'Invoice updated.',
+        'account-comment-added': 'Quote / invoice comment added.',
         'masterlist-forwarded':
             'Project added to Archi Project Management from the masterlist.',
         'board-reopened': revisionCode
@@ -360,6 +361,35 @@ export default function DraftingShow({
                             />
                         ) : null
                     }
+                    accountCommentsPanel={
+                        viewAccounts ? (
+                            <DiscussionPanel
+                                comments={[
+                                    ...(draftingRequest.quote_comments ?? []),
+                                    ...(draftingRequest.invoice_comments ?? []),
+                                ]}
+                                commentKind="quote"
+                                kindChoices={[
+                                    { value: 'quote', label: 'Quote' },
+                                    { value: 'invoice', label: 'Invoice' },
+                                ]}
+                                hideRevision
+                                draftingRequestId={draftingRequest.id}
+                                listFilters={listFilters}
+                                readOnly={
+                                    draftingRequest.is_archived ||
+                                    !postComments
+                                }
+                                emptyLabel="No comments yet."
+                                successFlash={[
+                                    'quote-comment-added',
+                                    'invoice-comment-added',
+                                ]}
+                                successMessage="Comment added."
+                                embedded
+                            />
+                        ) : null
+                    }
                     accountActivityPanel={
                         viewAccounts && viewActivity ? (
                             <ActivityLogsSection
@@ -512,6 +542,7 @@ function DiscussionPanel({
     comments = [],
     revisions = [],
     commentKind,
+    kindChoices = null,
     draftingRequestId,
     listFilters,
     readOnly = false,
@@ -520,10 +551,14 @@ function DiscussionPanel({
     successMessage,
     hint = null,
     embedded = false,
+    hideRevision = false,
 }) {
     const { flash } = usePage().props;
     const listQs = listQueryString(listFilters);
     const editorId = `comment-${commentKind}`;
+    const successFlashes = Array.isArray(successFlash)
+        ? successFlash
+        : [successFlash];
     const latestRevisionId =
         revisions.length > 0 ? String(revisions[0].id) : '';
 
@@ -545,20 +580,28 @@ function DiscussionPanel({
     );
 
     const filteredComments = useMemo(() => {
+        const byKind = kindChoices
+            ? comments.filter((comment) => {
+                const kind = comment.kind === 'account' ? 'quote' : comment.kind;
+
+                return kind === form.data.kind;
+            })
+            : comments;
+
         if (filterRevisionId === 'all') {
-            return comments;
+            return byKind;
         }
 
         if (filterRevisionId === 'general') {
-            return comments.filter((comment) => !comment.revision_id);
+            return byKind.filter((comment) => !comment.revision_id);
         }
 
         const selectedId = Number(filterRevisionId);
 
-        return comments.filter(
+        return byKind.filter(
             (comment) => Number(comment.revision_id) === selectedId,
         );
-    }, [comments, filterRevisionId]);
+    }, [comments, filterRevisionId, form.data.kind, kindChoices]);
 
     const submit = (e) => {
         if (readOnly) {
@@ -571,9 +614,10 @@ function DiscussionPanel({
                 preserveScroll: true,
                 preserveState: false,
                 onSuccess: () => {
+                    const postedKind = form.data.kind;
                     form.reset('body');
                     form.setData({
-                        kind: commentKind,
+                        kind: kindChoices ? postedKind : commentKind,
                         drafting_request_revision_id:
                             form.data.drafting_request_revision_id ||
                             latestRevisionId,
@@ -607,13 +651,13 @@ function DiscussionPanel({
                 </div>
             ) : null}
 
-            {flash?.status === successFlash ? (
+            {successFlashes.includes(flash?.status) ? (
                 <p className="border-b border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-950/30 dark:text-emerald-300 sm:px-5">
                     {successMessage}
                 </p>
             ) : null}
 
-            {revisionOptions.length > 0 ? (
+            {!hideRevision && revisionOptions.length > 0 ? (
                 <div className="flex flex-wrap items-center gap-2 border-b border-[#e6e9ef] px-4 py-2.5 dark:border-[#2f3347] sm:px-5">
                     <label
                         htmlFor={`${editorId}-filter`}
@@ -646,8 +690,12 @@ function DiscussionPanel({
                         className="h-5 w-5 shrink-0"
                         aria-hidden
                     />
-                    {comments.length === 0
-                        ? emptyLabel
+                    {comments.length === 0 || kindChoices
+                        ? (kindChoices
+                            ? (form.data.kind === 'invoice'
+                                ? 'No invoice comments yet.'
+                                : 'No quote comments yet.')
+                            : emptyLabel)
                         : 'No comments for this revision filter.'}
                 </p>
             ) : (
@@ -674,7 +722,13 @@ function DiscussionPanel({
                                                     (you)
                                                 </span>
                                             ) : null}
-                                            {comment.revision_code ? (
+                                            {kindChoices ? (
+                                                <span className="ml-2 inline-flex rounded-md bg-[#e6f4ff] px-1.5 py-0.5 text-[10px] font-semibold text-[#0073ea] dark:bg-[#1e3a5f] dark:text-[#93c5fd]">
+                                                    {comment.kind === 'invoice'
+                                                        ? 'Invoice'
+                                                        : 'Quote'}
+                                                </span>
+                                            ) : comment.revision_code ? (
                                                 <span className="ml-2 inline-flex rounded-md bg-[#e6f4ff] px-1.5 py-0.5 text-[10px] font-semibold text-[#0073ea] dark:bg-[#1e3a5f] dark:text-[#93c5fd]">
                                                     {comment.revision_code}
                                                 </span>
@@ -704,8 +758,32 @@ function DiscussionPanel({
                 </p>
             ) : (
                 <form onSubmit={submit} className="space-y-3 p-4 sm:p-5">
-                    <input type="hidden" name="kind" value={commentKind} />
-                    {revisionOptions.length > 0 ? (
+                    <input type="hidden" name="kind" value={form.data.kind} />
+                    {kindChoices ? (
+                        <div>
+                            <label
+                                htmlFor={`${editorId}-kind`}
+                                className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-[#676879] dark:text-slate-400"
+                            >
+                                Comment for
+                            </label>
+                            <select
+                                id={`${editorId}-kind`}
+                                value={form.data.kind}
+                                onChange={(event) =>
+                                    form.setData('kind', event.target.value)
+                                }
+                                className="block w-full rounded-lg border border-[#c5c7d0] bg-white px-3 py-2 text-sm text-[#323338] focus:border-[#0073ea] focus:outline-none focus:ring-1 focus:ring-[#0073ea] dark:border-[#2f3347] dark:bg-[#151622] dark:text-slate-200"
+                            >
+                                {kindChoices.map((choice) => (
+                                    <option key={choice.value} value={choice.value}>
+                                        {choice.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    ) : null}
+                    {!hideRevision && revisionOptions.length > 0 ? (
                         <div>
                             <label
                                 htmlFor={`${editorId}-revision`}

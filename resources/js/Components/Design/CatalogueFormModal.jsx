@@ -1,3 +1,4 @@
+import FileDropzone from '@/Components/FileDropzone';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import Modal from '@/Components/Modal';
@@ -448,18 +449,15 @@ export default function CatalogueFormModal({
                                 Current file: {item.attachment_name}
                             </p>
                         ) : null}
-                        <input
+                        <FileDropzone
                             id="catalogue-pdf"
-                            type="file"
                             accept="application/pdf,.pdf"
-                            onChange={(event) =>
-                                form.setData(
-                                    'attachment',
-                                    event.target.files?.[0] ?? null,
-                                )
-                            }
-                            className="mt-2 block w-full text-sm text-[#676879] file:me-3 file:rounded-md file:border-0 file:bg-[#0073ea] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#0060c4] dark:text-slate-400"
+                            className="mt-2"
                             required={!isEditing}
+                            value={form.data.attachment}
+                            onChange={(file) =>
+                                form.setData('attachment', file)
+                            }
                         />
                         <InputError
                             message={form.errors.attachment}

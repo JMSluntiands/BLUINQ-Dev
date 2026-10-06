@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Http\Requests\StoreDraftingRequestFormRequest;
+use App\Models\Client;
+use App\Models\ClientContact;
 use App\Models\DraftingRequest;
 use App\Models\DraftingRequestActivity;
 use App\Models\DraftingRequestFile;
@@ -22,7 +24,9 @@ class DraftingRequestSubmissionService
         string $reviewStatus,
         string $workflowStage = DraftingRequest::STAGE_MASTERLIST,
     ): DraftingRequest {
-        $validated = $request->safe()->except(['documents', 'service_engaging_ids', 'sda_type_ids', 'crm_category_ids']);
+        $validated = $this->applySelectedClientSnapshot(
+            $request->safe()->except(['documents', 'service_engaging_ids', 'sda_type_ids', 'crm_category_ids']),
+        );
 
         return DB::transaction(function () use ($request, $user, $validated, $reviewStatus, $workflowStage) {
             $draftingRequest = DraftingRequest::query()->create([
@@ -93,7 +97,9 @@ class DraftingRequestSubmissionService
             abort(404);
         }
 
-        $validated = $request->safe()->except(['documents', 'service_engaging_ids', 'sda_type_ids', 'crm_category_ids']);
+        $validated = $this->applySelectedClientSnapshot(
+            $request->safe()->except(['documents', 'service_engaging_ids', 'sda_type_ids', 'crm_category_ids']),
+        );
 
         return DB::transaction(function () use ($request, $draftingRequest, $actor, $validated, $isMasterlist) {
             $previousLead = array_key_exists('lead_number', $validated)
@@ -371,7 +377,7 @@ class DraftingRequestSubmissionService
     }
 
     /**
-     * Copy job-level Date Out / Area Size onto the latest prior revision when those
+     * Copy job-level Date Out / Area Size / VO onto the latest prior revision when those
      * fields are blank. Call before Add item overwrites the job row so historical
      * revision rows keep the values that used to show via job fallback.
      */
@@ -402,9 +408,50 @@ class DraftingRequestSubmissionService
             $updates['area_size'] = $this->formatAreaSize($draftingRequest->max_building_area_sqm);
         }
 
+        if ($previous->vo_hours === null && $draftingRequest->vo_hours !== null) {
+            $updates['vo_hours'] = $draftingRequest->vo_hours;
+        }
+
         if ($updates !== []) {
             $previous->forceFill($updates)->save();
         }
+    }
+
+    /**
+     * Client name and contact email/phone follow the selected client records.
+     * A stale company name posted by the edit form must not win over the dropdown.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function applySelectedClientSnapshot(array $validated): array
+    {
+        $clientId = isset($validated['client_id']) ? (int) $validated['client_id'] : 0;
+        $contactId = isset($validated['client_contact_id']) ? (int) $validated['client_contact_id'] : 0;
+
+        if ($contactId > 0) {
+            $contact = ClientContact::query()
+                ->whereKey($contactId)
+                ->when($clientId > 0, fn ($query) => $query->where('client_id', $clientId))
+                ->first();
+
+            if ($contact !== null) {
+                $validated['client_id'] = $contact->client_id;
+                $validated['client_contact_id'] = $contact->id;
+                $validated['email'] = $contact->email;
+                $validated['phone'] = $contact->mobile;
+            }
+        }
+
+        $resolvedClientId = isset($validated['client_id']) ? (int) $validated['client_id'] : 0;
+        if ($resolvedClientId > 0) {
+            $clientName = Client::query()->whereKey($resolvedClientId)->value('name');
+            if (is_string($clientName) && $clientName !== '') {
+                $validated['company_name'] = $clientName;
+            }
+        }
+
+        return $validated;
     }
 
     private function formatAreaSize(mixed $sqm): ?string
@@ -435,8 +482,10 @@ class DraftingRequestSubmissionService
                 $existingRevision,
             );
 
-            // New revision cycle: clear board Drafting / Checking slots and hours.
+            // New revision cycle: clear board Drafting / Checking slots and hours,
+            // and reset VO (job-level) so the new entry starts at 0h.
             $draftingRequest->assignments()->delete();
+            $draftingRequest->forceFill(['vo_hours' => 0])->save();
 
             $previousStatus = $draftingRequest->status;
 

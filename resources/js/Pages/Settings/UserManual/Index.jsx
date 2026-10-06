@@ -12,7 +12,7 @@ const SECTIONS = [
         body: [
             'Sign in with your BLUINQ account email and password.',
             'After login you land on the Dashboard. Use the left sidebar to open modules. You can minimize or hide the sidebar with the controls at the top.',
-            'Open your profile from the bottom of the sidebar (or the account menu) to update your photo, password, and personal details.',
+            'Open your profile from the bottom of the sidebar (or the account menu) to view your details. Use Request password there to ask an administrator to change your password.',
             'User manual is under Other settings, directly below Activity logs.',
         ],
     },

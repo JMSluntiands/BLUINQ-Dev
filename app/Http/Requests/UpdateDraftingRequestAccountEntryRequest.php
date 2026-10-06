@@ -91,7 +91,7 @@ class UpdateDraftingRequestAccountEntryRequest extends FormRequest
     private function allowedCategoryValues(): array
     {
         return CrmCategory::query()
-            ->active()
+            ->selectable()
             ->orderBy('code')
             ->get(['code', 'name'])
             ->flatMap(fn (CrmCategory $row) => array_filter([$row->code, $row->name]))

@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { ArrowLeftIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import { Head, Link } from '@inertiajs/react';
+import PasswordChangeRequestButton from './Partials/PasswordChangeRequestButton';
 import UserProfileForm from './Partials/UserProfileForm';
 
 export default function Edit({
@@ -10,6 +11,7 @@ export default function Edit({
     status,
     backUrl = null,
     editAccountUrl = null,
+    passwordRequest = null,
 }) {
     const title = backUrl ? `${profile.name} — Profile` : 'Profile';
 
@@ -44,11 +46,22 @@ export default function Edit({
                             <PencilSquareIcon className="h-4 w-4" />
                             Edit account
                         </Link>
-                    ) : null}
+                    ) : (
+                        <PasswordChangeRequestButton
+                            passwordRequest={passwordRequest}
+                        />
+                    )}
                 </div>
             }
         >
             <Head title={title} />
+
+            {status === 'password-change-requested' ? (
+                <div className="mx-auto mb-4 max-w-6xl rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100">
+                    Password change requested. An administrator still needs to
+                    approve it.
+                </div>
+            ) : null}
 
             <div className="mx-auto max-w-6xl">
                 <UserProfileForm

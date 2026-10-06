@@ -79,6 +79,8 @@ export default function DraftingEditModals({
         site_address: draftingRequest.site_address ?? '',
         site_owner_name: draftingRequest.site_owner_name ?? '',
         ndis_sda: draftingRequest.ndis_sda ?? false,
+        is_typical: draftingRequest.is_typical ?? false,
+        typical_details: draftingRequest.typical_details ?? '',
         unit_development_count:
             draftingRequest.unit_development_count ?? 0,
         units: buildUnits(
@@ -228,6 +230,8 @@ export default function DraftingEditModals({
             site_address: draftingRequest.site_address ?? '',
             site_owner_name: draftingRequest.site_owner_name ?? '',
             ndis_sda: draftingRequest.ndis_sda ?? false,
+            is_typical: draftingRequest.is_typical ?? false,
+            typical_details: draftingRequest.typical_details ?? '',
             unit_development_count:
                 draftingRequest.unit_development_count ?? 0,
             units: buildUnits(
@@ -264,7 +268,8 @@ export default function DraftingEditModals({
     const submit = (form) => {
         form.patch(updateUrl, {
             preserveScroll: true,
-            preserveState: false,
+            // Keep modal open on validation errors; only close after success.
+            preserveState: true,
             onSuccess: () => onClose(),
         });
     };
@@ -530,6 +535,44 @@ export default function DraftingEditModals({
                                     NDIS / SDA dwelling
                                 </span>
                             </label>
+                            <label className="mt-2 flex h-10 items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-[#c5c7d0] text-[#0073ea] focus:ring-[#0073ea]"
+                                    checked={jobForm.data.is_typical}
+                                    onChange={(e) => {
+                                        const checked = e.target.checked;
+                                        jobForm.setData({
+                                            ...jobForm.data,
+                                            is_typical: checked,
+                                            typical_details: checked
+                                                ? jobForm.data.typical_details
+                                                : '',
+                                        });
+                                    }}
+                                />
+                                <span className="text-sm font-medium text-[#323338] dark:text-slate-200">
+                                    Typical
+                                </span>
+                            </label>
+                            {jobForm.data.is_typical ? (
+                                <TextInput
+                                    id="edit-typical_details"
+                                    className="mt-1 block w-full"
+                                    value={jobForm.data.typical_details}
+                                    onChange={(e) =>
+                                        jobForm.setData(
+                                            'typical_details',
+                                            e.target.value,
+                                        )
+                                    }
+                                    placeholder="Enter typical"
+                                />
+                            ) : null}
+                            <InputError
+                                className="mt-1"
+                                message={jobForm.errors.typical_details}
+                            />
                         </div>
                         <div className="sm:col-span-2">
                             <InputLabel htmlFor="edit-site_address" value="Address" />

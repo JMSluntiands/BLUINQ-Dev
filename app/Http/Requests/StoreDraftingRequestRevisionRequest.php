@@ -31,8 +31,7 @@ class StoreDraftingRequestRevisionRequest extends FormRequest
     public function rules(): array
     {
         $categoryCodes = CrmCategory::query()
-            ->active()
-            ->where('status', 'active')
+            ->selectable()
             ->orderBy('code')
             ->get(['code', 'name'])
             ->flatMap(fn (CrmCategory $row) => array_filter([

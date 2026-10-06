@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PasswordChangeRequest;
 use App\Models\User;
 use App\Services\LeaveEntitlementService;
 use App\Support\UserHrProfile;
@@ -20,6 +21,12 @@ class ProfileController extends Controller
         $user = $request->user();
         $user->loadMissing(['role', 'milestones', 'profile']);
 
+        $pendingRequest = PasswordChangeRequest::query()
+            ->where('user_id', $user->id)
+            ->pending()
+            ->latest('id')
+            ->first();
+
         return Inertia::render('Profile/Edit', [
             'profile' => self::payload($user, canViewPrivate: true),
             'canViewPrivate' => true,
@@ -27,6 +34,12 @@ class ProfileController extends Controller
             'status' => session('status'),
             'backUrl' => null,
             'editAccountUrl' => null,
+            'passwordRequest' => $pendingRequest ? [
+                'status' => $pendingRequest->status,
+                'requested_at' => $pendingRequest->created_at
+                    ?->timezone(config('app.timezone'))
+                    ->format('d M Y, h:i A'),
+            ] : null,
         ]);
     }
 

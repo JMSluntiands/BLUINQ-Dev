@@ -140,7 +140,7 @@ class MasterlistController extends Controller
             'backUrl' => route('job.masterlist'),
             'formTitle' => 'Edit masterlist entry',
             'applicant' => $this->applicantFormData($draftingRequest),
-            ...$this->formOptions($draftingRequest->client_id),
+            ...$this->formOptions($draftingRequest->client_id, $draftingRequest),
         ]);
     }
 
@@ -280,8 +280,13 @@ class MasterlistController extends Controller
      *     roofTypes: \Illuminate\Support\Collection
      * }
      */
-    private function formOptions(?int $includeClientId = null): array
+    private function formOptions(?int $includeClientId = null, ?DraftingRequest $current = null): array
     {
+        $categoryIds = $current?->crmCategories()->pluck('crm_categories.id')->all() ?? [];
+        if ($current?->crm_category_id) {
+            $categoryIds[] = $current->crm_category_id;
+        }
+
         return [
             'clients' => \App\Support\ClientFormOptions::forForms($includeClientId),
             'managerUsers' => User::query()
@@ -295,26 +300,26 @@ class MasterlistController extends Controller
                     'email' => $user->email,
                 ]),
             'categories' => CrmCategory::query()
-                ->active()
+                ->selectable($categoryIds)
                 ->orderBy('code')
                 ->orderBy('name')
                 ->get(['id', 'name', 'code']),
             'sdaTypes' => SdaType::query()
-                ->active()
+                ->selectable($current?->sdaTypes()->pluck('sda_types.id'))
                 ->orderBy('name')
                 ->get(['id', 'name', 'code']),
             'storeyLevels' => StoreyLevel::query()
-                ->active()
+                ->selectable($current?->storey_level_id)
                 ->orderBy('code')
                 ->orderBy('name')
                 ->get(['id', 'name', 'code']),
-            'buildingClasses' => BuildingClass::activeForSelect(),
+            'buildingClasses' => BuildingClass::activeForSelect($current?->building_class_id),
             'externalWallConstructions' => ExternalWallConstruction::query()
-                ->active()
+                ->selectable($current?->external_wall_construction_id)
                 ->orderBy('name')
                 ->get(['id', 'name']),
             'roofTypes' => RoofType::query()
-                ->active()
+                ->selectable($current?->roof_type_id)
                 ->orderBy('name')
                 ->get(['id', 'name']),
         ];

@@ -29,6 +29,13 @@ class PasswordChangeRequest extends Model
     ];
 
     /**
+     * @var list<string>
+     */
+    protected $hidden = [
+        'password',
+    ];
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array

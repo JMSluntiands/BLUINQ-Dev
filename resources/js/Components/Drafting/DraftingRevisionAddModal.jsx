@@ -129,9 +129,11 @@ export default function DraftingRevisionAddModal({
         .map((revision) => String(revision?.code ?? '').trim())
         .filter(Boolean)
         .join('|');
-    const effectiveStatus = draftingRequestId
-        ? defaultJobStatus || 'new'
-        : (selectedProject?.status ?? defaultJobStatus) || 'new';
+    const effectiveStatus = isForwardMode
+        ? 'new'
+        : draftingRequestId
+          ? defaultJobStatus || 'new'
+          : (selectedProject?.status ?? defaultJobStatus) || 'new';
 
     const projectSelectOptions = useMemo(
         () =>
@@ -228,8 +230,9 @@ export default function DraftingRevisionAddModal({
         form.setData('code', nextCode);
         form.setData('status', effectiveStatus || 'new');
 
-        // Prefill Date Out / Areas only when the project selection changes,
-        // so user edits are not overwritten by later effect runs.
+        // Prefill Areas when the project selection changes (keep prior area size).
+        // Date Out always starts blank for a new Add item / reopen cycle.
+        // Status is forced to New above via effectiveStatus in forward mode.
         const projectKey = String(selectedProjectId || '');
         if (
             isForwardMode &&
@@ -237,12 +240,7 @@ export default function DraftingRevisionAddModal({
             projectKey !== lastPrefillProjectId.current
         ) {
             lastPrefillProjectId.current = projectKey;
-            form.setData(
-                'date_out',
-                selectedProject?.date_out
-                    ? String(selectedProject.date_out).slice(0, 10)
-                    : '',
-            );
+            form.setData('date_out', '');
             form.setData(
                 'max_building_area_sqm',
                 selectedProject?.max_building_area_sqm != null &&
@@ -585,6 +583,21 @@ export default function DraftingRevisionAddModal({
                                             }
                                             className="mt-1"
                                         />
+                                    </div>
+
+                                    <div>
+                                        <InputLabel value="Last VO" />
+                                        <p className="mt-1 flex h-10 items-center rounded-md border border-[#c5c7d0] bg-[#fafbfc] px-3 text-sm tabular-nums text-[#323338] dark:border-[#2f3347] dark:bg-[#151622] dark:text-slate-200">
+                                            {selectedProject?.vo_hours !=
+                                                null &&
+                                            selectedProject.vo_hours !== ''
+                                                ? `${selectedProject.vo_hours} h`
+                                                : '—'}
+                                        </p>
+                                        <p className="mt-1 text-[11px] text-[#676879] dark:text-slate-400">
+                                            Prior cycle VO (resets to 0h on Add
+                                            item).
+                                        </p>
                                     </div>
                                 </>
                             ) : null}

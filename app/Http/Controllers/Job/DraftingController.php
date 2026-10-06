@@ -235,6 +235,8 @@ class DraftingController extends Controller
                         : $draftingRequest->buildingClass->name)
                     : null,
                 'ndis_sda' => $draftingRequest->ndis_sda,
+                'is_typical' => (bool) $draftingRequest->is_typical,
+                'typical_details' => $draftingRequest->typical_details,
                 'sda_types' => $draftingRequest->sdaTypes
                     ->map(fn ($row) => $row->code ? "{$row->code} — {$row->name}" : $row->name)
                     ->values()
@@ -289,6 +291,23 @@ class DraftingController extends Controller
                     DraftingRequestComment::KIND_COMMENT,
                     $tz,
                 ),
+                'quote_comments' => $capabilities['viewAccounts']
+                    ? $this->formatCommentsByKinds(
+                        $draftingRequest->comments,
+                        [
+                            DraftingRequestComment::KIND_QUOTE,
+                            DraftingRequestComment::KIND_ACCOUNT,
+                        ],
+                        $tz,
+                    )
+                    : [],
+                'invoice_comments' => $capabilities['viewAccounts']
+                    ? $this->formatCommentsByKind(
+                        $draftingRequest->comments,
+                        DraftingRequestComment::KIND_INVOICE,
+                        $tz,
+                    )
+                    : [],
                 'run_comments' => $user->isAdmin()
                     ? $this->formatCommentsByKind(
                         $draftingRequest->comments,
@@ -318,10 +337,10 @@ class DraftingController extends Controller
             'canUseRunComments' => $user->isAdmin(),
             'formOptions' => $capabilities['editJobDetails'] ? [
                 'clients' => \App\Support\ClientFormOptions::forForms($draftingRequest->client_id),
-                'categories' => CrmCategory::query()->active()->orderBy('code')->orderBy('name')->get(['id', 'name', 'code']),
-                'storeyLevels' => StoreyLevel::query()->active()->orderBy('code')->orderBy('name')->get(['id', 'name', 'code']),
-                'externalWallConstructions' => ExternalWallConstruction::query()->active()->orderBy('name')->get(['id', 'name']),
-                'roofTypes' => RoofType::query()->active()->orderBy('name')->get(['id', 'name']),
+                'categories' => CrmCategory::query()->selectable($draftingRequest->crmCategories()->pluck('crm_categories.id')->push($draftingRequest->crm_category_id))->orderBy('code')->orderBy('name')->get(['id', 'name', 'code']),
+                'storeyLevels' => StoreyLevel::query()->selectable($draftingRequest->storey_level_id)->orderBy('code')->orderBy('name')->get(['id', 'name', 'code']),
+                'externalWallConstructions' => ExternalWallConstruction::query()->selectable($draftingRequest->external_wall_construction_id)->orderBy('name')->get(['id', 'name']),
+                'roofTypes' => RoofType::query()->selectable($draftingRequest->roof_type_id)->orderBy('name')->get(['id', 'name']),
                 'managerUsers' => User::query()
                     ->active()
                     ->whereHas('role', fn ($query) => $query->whereIn('slug', ['admin', 'project-manager']))
@@ -358,8 +377,7 @@ class DraftingController extends Controller
                 'invoice' => DraftingRequestAccountEntry::invoiceStatusOptions(),
             ],
             'categoryOptions' => CrmCategory::query()
-                ->active()
-                ->where('status', 'active')
+                ->selectable()
                 ->orderBy('code')
                 ->get(['id', 'code', 'name'])
                 ->map(fn (CrmCategory $row) => [
@@ -653,6 +671,15 @@ class DraftingController extends Controller
         }
 
         $draftingRequest->update($validated);
+
+        if ($section === 'client' && $draftingRequest->client_contact_id) {
+            ClientContact::query()
+                ->whereKey($draftingRequest->client_contact_id)
+                ->update([
+                    'name' => $validated['your_name'] ?? '',
+                    'email' => $validated['email'] ?? null,
+                ]);
+        }
 
         if ($previousLead !== null) {
             $newLead = trim((string) $validated['lead_number']);
@@ -1182,15 +1209,24 @@ class DraftingController extends Controller
         }
 
         $kind = $request->validated('kind');
+        $isQuote = $kind === DraftingRequestComment::KIND_QUOTE
+            || $kind === DraftingRequestComment::KIND_ACCOUNT;
+        $isInvoice = $kind === DraftingRequestComment::KIND_INVOICE;
+        $isAccount = $isQuote || $isInvoice;
+        $capabilities = $this->jobCapabilities($request->user(), $draftingRequest);
 
         if ($kind === DraftingRequestComment::KIND_RUN) {
             $this->authorizeRunComments($request, $draftingRequest);
+        } elseif ($isAccount) {
+            if (! $capabilities['viewAccounts'] || ! $capabilities['postComments']) {
+                abort(403);
+            }
         } elseif (! $request->user()->hasPermission('job.drafting.comments.post')) {
             abort(403);
         }
 
         $body = $request->sanitizedBody();
-        $revisionId = $request->revisionId();
+        $revisionId = $isAccount ? null : $request->revisionId();
 
         DraftingRequestComment::query()->create([
             'drafting_request_id' => $draftingRequest->id,
@@ -1211,13 +1247,24 @@ class DraftingController extends Controller
         DraftingRequestActivity::record(
             $draftingRequest,
             $request->user(),
-            $isRun
-                ? DraftingRequestActivity::ACTION_RUN_COMMENT_POSTED
-                : DraftingRequestActivity::ACTION_COMMENT_POSTED,
-            $this->commentActivityDescription($body, $isRun, $revisionCode),
+            match (true) {
+                $isRun => DraftingRequestActivity::ACTION_RUN_COMMENT_POSTED,
+                $isAccount => DraftingRequestActivity::ACTION_ACCOUNT_COMMENT_POSTED,
+                default => DraftingRequestActivity::ACTION_COMMENT_POSTED,
+            },
+            $isQuote
+                ? 'Quote: '.$this->commentActivityDescription($body)
+                : ($isInvoice
+                    ? 'Invoice: '.$this->commentActivityDescription($body)
+                    : $this->commentActivityDescription($body, $isRun, $revisionCode)),
         );
 
-        return back()->with('status', $isRun ? 'run-comment-added' : 'comment-added');
+        return back()->with('status', match (true) {
+            $isRun => 'run-comment-added',
+            $isQuote => 'quote-comment-added',
+            $isInvoice => 'invoice-comment-added',
+            default => 'comment-added',
+        });
     }
 
     public function boardComments(
@@ -1470,8 +1517,7 @@ class DraftingController extends Controller
         }
 
         $category = CrmCategory::query()
-            ->active()
-            ->where('status', 'active')
+            ->selectable()
             ->where(function ($query) use ($categoryValue) {
                 $query->where('code', $categoryValue)
                     ->orWhere('name', $categoryValue);
@@ -1757,6 +1803,7 @@ class DraftingController extends Controller
     {
         return [
             'id' => $comment->id,
+            'kind' => $comment->kind,
             'body' => $comment->body,
             'author_name' => $comment->user?->name ?? 'Unknown',
             'author_initials' => $comment->user?->badgeInitials(),
@@ -1812,6 +1859,7 @@ class DraftingController extends Controller
                 DraftingRequestActivity::ACTION_RETURNED_TO_MASTERLIST => 'Returned to masterlist',
                 DraftingRequestActivity::ACTION_COMMENT_POSTED => 'Posted a comment',
                 DraftingRequestActivity::ACTION_RUN_COMMENT_POSTED => 'Posted a run comment',
+                DraftingRequestActivity::ACTION_ACCOUNT_COMMENT_POSTED => 'Posted a quote or invoice comment',
                 DraftingRequestActivity::ACTION_ARCHIVED => 'Archived drafting request',
                 DraftingRequestActivity::ACTION_RESTORED => 'Restored drafting request',
                 DraftingRequestActivity::ACTION_STATUS_CHANGED => 'Changed status',
@@ -1844,8 +1892,18 @@ class DraftingController extends Controller
      */
     private function formatCommentsByKind($comments, string $kind, string $tz): array
     {
+        return $this->formatCommentsByKinds($comments, [$kind], $tz);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, DraftingRequestComment>  $comments
+     * @param  list<string>  $kinds
+     * @return list<array<string, mixed>>
+     */
+    private function formatCommentsByKinds($comments, array $kinds, string $tz): array
+    {
         return $comments
-            ->where('kind', $kind)
+            ->whereIn('kind', $kinds)
             ->map(fn (DraftingRequestComment $comment) => $this->formatComment($comment, $tz))
             ->values()
             ->all();

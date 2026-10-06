@@ -147,13 +147,14 @@ class JobBoardController extends Controller
                     ->all()
                 : [],
             'assignableUsers' => $this->board->assignableUsers(),
+            'draftingSlotCount' => $this->board->draftingSlotCount(),
+            'checkingSlotCount' => $this->board->checkingSlotCount(),
             'statusOptions' => $this->formatStatusOptionList(
                 DraftingRequest::jobBoardStatusOptions(),
             ),
             'statusGroupOptions' => $statusGroupOptions,
             'categoryOptions' => CrmCategory::query()
-                ->active()
-                ->where('status', 'active')
+                ->selectable()
                 ->orderBy('code')
                 ->get(['id', 'code', 'name'])
                 ->map(fn (CrmCategory $row) => [
@@ -381,6 +382,9 @@ class JobBoardController extends Controller
                     'max_building_area_sqm' => $row->max_building_area_sqm !== null
                         ? rtrim(rtrim((string) $row->max_building_area_sqm, '0'), '.')
                         : null,
+                    'vo_hours' => $row->vo_hours !== null
+                        ? rtrim(rtrim((string) $row->vo_hours, '0'), '.')
+                        : null,
                 ];
             })
             ->values()
@@ -478,7 +482,7 @@ class JobBoardController extends Controller
         ]);
 
         $categoryCodes = \App\Models\CrmCategory::query()
-            ->active()
+            ->selectable()
             ->orderBy('code')
             ->get(['code', 'name'])
             ->flatMap(fn ($row) => array_filter([$row->code, $row->name]))
@@ -524,6 +528,8 @@ class JobBoardController extends Controller
                 ? Carbon::parse($validated['date_out'], config('app.timezone'))->toDateString()
                 : null,
             'area_size' => $areaSize,
+            // New cycle starts at 0h so Revisions VO matches the board after Add item.
+            'vo_hours' => 0,
         ]);
 
         // Board Date In / Date Out columns come from the job row, not the revision.
@@ -544,6 +550,8 @@ class JobBoardController extends Controller
             'requested_at' => $requestedAt,
             'date_out' => $dateOut,
             'max_building_area_sqm' => $validated['max_building_area_sqm'] ?? null,
+            // New Add item revision: start VO at 0h (not carry prior cycle).
+            'vo_hours' => 0,
         ])->save();
 
         $result = $this->submission->addOrReopenOnBoard(
@@ -584,7 +592,7 @@ class JobBoardController extends Controller
             'formTitle' => 'Review before adding to board',
             'submitLabel' => 'Save & add to board',
             'applicant' => $this->applicantFormData($draftingRequest),
-            ...$this->formOptions($draftingRequest->client_id),
+            ...$this->formOptions($draftingRequest->client_id, $draftingRequest),
         ]);
     }
 
@@ -773,31 +781,36 @@ class JobBoardController extends Controller
      *     roofTypes: \Illuminate\Support\Collection
      * }
      */
-    private function formOptions(?int $includeClientId = null): array
+    private function formOptions(?int $includeClientId = null, ?DraftingRequest $current = null): array
     {
+        $categoryIds = $current?->crmCategories()->pluck('crm_categories.id')->all() ?? [];
+        if ($current?->crm_category_id) {
+            $categoryIds[] = $current->crm_category_id;
+        }
+
         return [
             'clients' => ClientFormOptions::forForms($includeClientId),
             'categories' => CrmCategory::query()
-                ->active()
+                ->selectable($categoryIds)
                 ->orderBy('code')
                 ->orderBy('name')
                 ->get(['id', 'name', 'code']),
             'sdaTypes' => SdaType::query()
-                ->active()
+                ->selectable($current?->sdaTypes()->pluck('sda_types.id'))
                 ->orderBy('name')
                 ->get(['id', 'name', 'code']),
             'storeyLevels' => StoreyLevel::query()
-                ->active()
+                ->selectable($current?->storey_level_id)
                 ->orderBy('code')
                 ->orderBy('name')
                 ->get(['id', 'name', 'code']),
-            'buildingClasses' => BuildingClass::activeForSelect(),
+            'buildingClasses' => BuildingClass::activeForSelect($current?->building_class_id),
             'externalWallConstructions' => ExternalWallConstruction::query()
-                ->active()
+                ->selectable($current?->external_wall_construction_id)
                 ->orderBy('name')
                 ->get(['id', 'name']),
             'roofTypes' => RoofType::query()
-                ->active()
+                ->selectable($current?->roof_type_id)
                 ->orderBy('name')
                 ->get(['id', 'name']),
         ];
@@ -1008,11 +1021,17 @@ class JobBoardController extends Controller
 
         if (array_key_exists('date_out', $validated)) {
             $tz = config('app.timezone');
+            $dateOut = filled($validated['date_out'])
+                ? Carbon::parse($validated['date_out'], $tz)->toDateString()
+                : null;
             $draftingRequest->update([
-                'date_out' => filled($validated['date_out'])
-                    ? Carbon::parse($validated['date_out'], $tz)->toDateString()
-                    : null,
+                'date_out' => $dateOut,
             ]);
+            // Keep latest revision Date Out in sync with the board (Add item / cell edit).
+            $latestRevision = $draftingRequest->revisions()->orderByDesc('id')->first();
+            if ($latestRevision !== null) {
+                $latestRevision->forceFill(['submitted_date' => $dateOut])->save();
+            }
         }
 
         if (array_key_exists('eta', $validated)) {
@@ -1046,6 +1065,13 @@ class JobBoardController extends Controller
             $draftingRequest->update([
                 'max_building_area_sqm' => $validated['max_building_area_sqm'],
             ]);
+            // Keep latest revision Area Size in sync with board Areas edits.
+            $latestRevision = $draftingRequest->revisions()->orderByDesc('id')->first();
+            if ($latestRevision !== null) {
+                $latestRevision->forceFill([
+                    'area_size' => $this->formatRevisionAreaSize($validated['max_building_area_sqm']),
+                ])->save();
+            }
         }
 
         return back();
