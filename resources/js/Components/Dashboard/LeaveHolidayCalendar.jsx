@@ -293,7 +293,18 @@ function DayCell({
         <div
             role={canAddEvent ? 'button' : undefined}
             tabIndex={canAddEvent ? 0 : undefined}
-            onClick={canAddEvent ? () => onAddEvent?.(day.key) : undefined}
+            onClick={
+                canAddEvent
+                    ? (clickEvent) => {
+                          if (leaveMenu || eventMenu) {
+                              clickEvent.stopPropagation();
+                              return;
+                          }
+
+                          onAddEvent?.(day.key);
+                      }
+                    : undefined
+            }
             onKeyDown={
                 canAddEvent
                     ? (event) => {
@@ -445,7 +456,13 @@ function DayCell({
                                 type="button"
                                 className="fixed inset-0 z-40 cursor-default"
                                 aria-label="Close event list"
-                                onClick={() => setEventMenu(null)}
+                                onMouseDown={(clickEvent) =>
+                                    clickEvent.stopPropagation()
+                                }
+                                onClick={(clickEvent) => {
+                                    clickEvent.stopPropagation();
+                                    setEventMenu(null);
+                                }}
                             />
                             <div
                                 className="fixed z-50 max-h-60 w-60 space-y-1 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-600 dark:bg-slate-900"
@@ -537,7 +554,13 @@ function DayCell({
                                 type="button"
                                 className="fixed inset-0 z-40 cursor-default"
                                 aria-label="Close leave list"
-                                onClick={() => setLeaveMenu(null)}
+                                onMouseDown={(clickEvent) =>
+                                    clickEvent.stopPropagation()
+                                }
+                                onClick={(clickEvent) => {
+                                    clickEvent.stopPropagation();
+                                    setLeaveMenu(null);
+                                }}
                             />
                             <div
                                 className="fixed z-50 max-h-60 w-60 space-y-1 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-600 dark:bg-slate-900"
