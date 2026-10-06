@@ -16,12 +16,13 @@ class DraftingJobShowService
     {
         $latestRevisionId = $draftingRequest->revisions()->max('id');
 
+        $statusOptions = DraftingRequest::statusLabels();
+
         return $draftingRequest->revisions()
             ->with(['drafter:id,name,initials', 'checker:id,name,initials'])
             ->get()
-            ->map(function (DraftingRequestRevision $revision) use ($draftingRequest, $latestRevisionId) {
+            ->map(function (DraftingRequestRevision $revision) use ($draftingRequest, $latestRevisionId, $statusOptions) {
                 $status = $revision->status;
-                $statusOptions = DraftingRequest::statusLabels();
                 $isLatest = (int) $revision->id === (int) $latestRevisionId;
 
                 // Per-revision Date Out only — never fall back to the job date_out,

@@ -3,7 +3,6 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use App\Support\StoredUpload;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -305,13 +304,13 @@ class User extends Authenticatable
     protected function profileImageUrl(): Attribute
     {
         return Attribute::get(function (): ?string {
-            if (! StoredUpload::exists($this->profile_image)) {
+            if (! filled($this->profile_image)) {
                 return null;
             }
 
             return route('profile.image', [
                 'user' => $this->id,
-                'v' => StoredUpload::mtime($this->profile_image) ?? time(),
+                'v' => $this->updated_at?->getTimestamp(),
             ]);
         });
     }
