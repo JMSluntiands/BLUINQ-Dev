@@ -1251,11 +1251,11 @@ export default function DraftingJobShowLayout({
     ) : null;
 
     const commentsSection = commentsBlock ? (
-        <section aria-label="Comments" className="flex h-full flex-col">
+        <section aria-label="Comments">
             <p className={sectionLabelClass}>
                 {isMasterlist ? 'Comments' : '4. Comments'}
             </p>
-            <div className="flex flex-1 flex-col">{commentsBlock}</div>
+            {commentsBlock}
         </section>
     ) : null;
 
@@ -1285,14 +1285,6 @@ export default function DraftingJobShowLayout({
                     ) : null}
                 </div>
             ) : null}
-        </div>
-    ) : null;
-
-    const bottomComments = commentsSection ? (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-            <div className="lg:col-span-8 lg:col-start-5">
-                {commentsSection}
-            </div>
         </div>
     ) : null;
 
@@ -1334,9 +1326,9 @@ export default function DraftingJobShowLayout({
                             <p className={sectionLabelClass}>Drawing status</p>
                             {drawingPanel}
                         </section>
+                        {commentsSection}
                     </div>
                 </div>
-                {bottomComments}
             </div>
         );
     }
@@ -1385,9 +1377,9 @@ export default function DraftingJobShowLayout({
                         <p className={sectionLabelClass}>3. Drawing status</p>
                         {drawingPanel}
                     </section>
+                    {commentsSection}
                 </div>
             </div>
-            {bottomComments}
         </div>
     );
 }
