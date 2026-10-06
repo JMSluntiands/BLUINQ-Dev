@@ -1,3 +1,4 @@
+import FileDropzone from '@/Components/FileDropzone';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -6,7 +7,6 @@ import TextInput from '@/Components/TextInput';
 import UploadProgressBar from '@/Components/UploadProgressBar';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { uploadAnnouncementInlineImage } from '@/lib/uploadAnnouncementInlineImage';
-import { PhotoIcon } from '@heroicons/react/24/outline';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
@@ -94,30 +94,13 @@ export default function Create() {
                                     className="h-40 w-full rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700"
                                 />
                             )}
-                            <label
-                                className={
-                                    'inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-sky-500 hover:text-sky-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-sky-500 dark:hover:text-sky-400 ' +
-                                    (form.processing
-                                        ? 'pointer-events-none opacity-60'
-                                        : '')
-                                }
-                            >
-                                <PhotoIcon className="h-4 w-4" />
-                                {imagePreview ? 'Change image' : 'Upload image'}
-                                <input
-                                    id="image"
-                                    type="file"
-                                    accept="image/*"
-                                    className="sr-only"
-                                    disabled={form.processing}
-                                    onChange={(e) =>
-                                        form.setData(
-                                            'image',
-                                            e.target.files?.[0] ?? null,
-                                        )
-                                    }
-                                />
-                            </label>
+                            <FileDropzone
+                                id="image"
+                                accept="image/*"
+                                value={form.data.image}
+                                disabled={form.processing}
+                                onChange={(file) => form.setData('image', file)}
+                            />
                             {coverUploadPercent !== null ? (
                                 <UploadProgressBar
                                     percent={coverUploadPercent}

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CrmCategory;
 use App\Models\DraftingRequest;
+use App\Models\DraftingRequestComment;
 use App\Models\DraftingRequestAssignment;
 use App\Models\DraftingRequestRevision;
 use App\Models\User;
@@ -36,7 +37,13 @@ class DraftingRequestBoardService
                     ->orderByDesc('log_date')
                     ->orderByDesc('id'),
             ])
-            ->withCount(['files', 'comments'])
+            ->withCount([
+                'files',
+                'comments' => fn ($query) => $query->where(
+                    'kind',
+                    DraftingRequestComment::KIND_COMMENT,
+                ),
+            ])
             ->active()
             ->reviewAccepted()
             ->whereHas('revisions');
@@ -56,6 +63,7 @@ class DraftingRequestBoardService
             'revision_code',
             'company_name',
             'requested_at',
+            'date_out',
             'is_priority',
         ];
     }

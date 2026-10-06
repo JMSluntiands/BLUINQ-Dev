@@ -36,8 +36,29 @@ class LeaveService
         $startKey = $rangeStart->toDateString();
         $endKey = $rangeEnd->toDateString();
 
+        $requests = LeaveRequest::query()
+            ->with('user:id,name')
+            ->approved()
+            ->overlapping($startKey, $endKey)
+            ->orderBy('start_date')
+            ->orderBy('id')
+            ->get();
+
+        $requestUserIds = $requests
+            ->pluck('user_id')
+            ->unique()
+            ->filter()
+            ->values()
+            ->all();
+
         $users = User::query()
-            ->active()
+            ->where(function ($query) use ($requestUserIds) {
+                $query->whereNull('archived_at');
+
+                if ($requestUserIds !== []) {
+                    $query->orWhereIn('id', $requestUserIds);
+                }
+            })
             ->orderBy('name')
             ->get([
                 'id',
@@ -56,12 +77,6 @@ class LeaveService
                 'medical_days_used',
                 'leave_balance_year',
             ]);
-
-        $requests = LeaveRequest::query()
-            ->with('user:id,name')
-            ->approved()
-            ->overlapping($startKey, $endKey)
-            ->get();
 
         $requestsByUser = $requests->groupBy('user_id');
 
@@ -213,8 +228,43 @@ class LeaveService
         });
     }
 
-    public function deductCreditsForApprovedLeave(LeaveRequest $leaveRequest, User $actor): void
+    public function restoreCreditsForApprovedLeave(LeaveRequest $leaveRequest, User $actor): bool
     {
+        if ($leaveRequest->status !== LeaveRequest::STATUS_APPROVED) {
+            return false;
+        }
+
+        $type = LeaveRequest::normalizeType($leaveRequest->type);
+        $deduct = config("leave.types.{$type}.deduct");
+
+        if ($deduct === null || ! $this->overlapsCurrentBalanceYear($leaveRequest)) {
+            return false;
+        }
+
+        $days = $leaveRequest->dayCount();
+        if ($days <= 0) {
+            return false;
+        }
+
+        $employee = $leaveRequest->user()->lockForUpdate()->firstOrFail();
+        $this->entitlements->ensureYearInitialized($employee);
+        $employee->refresh();
+
+        match ($deduct) {
+            'al' => $this->restoreAnnualLeave($employee, $days, $actor, $leaveRequest),
+            'sl' => $this->restoreSickLeave($employee, $days, $actor, $leaveRequest),
+            'hl' => $this->restoreHospitalizationLeave($employee, $days, $actor, $leaveRequest),
+            default => null,
+        };
+
+        return true;
+    }
+
+    public function deductCreditsForApprovedLeave(
+        LeaveRequest $leaveRequest,
+        User $actor,
+        bool $requireEntitlement = true,
+    ): void {
         $type = LeaveRequest::normalizeType($leaveRequest->type);
         $deduct = config("leave.types.{$type}.deduct");
 
@@ -228,7 +278,7 @@ class LeaveService
         $this->entitlements->ensureYearInitialized($employee);
         $employee->refresh();
 
-        if (! $this->entitlements->isEntitled($employee)) {
+        if ($requireEntitlement && ! $this->entitlements->isEntitled($employee)) {
             throw new RuntimeException(
                 "{$employee->name} is on probation/training and is not entitled to {$type} leave credits.",
             );
@@ -240,6 +290,83 @@ class LeaveService
             'hl' => $this->deductHospitalizationLeave($employee, $days, $actor, $leaveRequest),
             default => null,
         };
+    }
+
+    public function overlapsCurrentBalanceYear(LeaveRequest $leaveRequest): bool
+    {
+        $leaveRequest->loadMissing('user');
+        $employee = $leaveRequest->user;
+        if ($employee === null) {
+            return false;
+        }
+
+        $this->entitlements->ensureYearInitialized($employee);
+        $employee->refresh();
+        $year = (int) $employee->leave_balance_year;
+
+        return (int) $leaveRequest->start_date->year <= $year
+            && (int) $leaveRequest->end_date->year >= $year;
+    }
+
+    private function restoreAnnualLeave(
+        User $employee,
+        float $days,
+        User $actor,
+        LeaveRequest $leaveRequest,
+    ): void {
+        $employee->forceFill([
+            'al_credits' => (float) $employee->al_credits + $days,
+        ])->save();
+
+        $this->entitlements->syncLegacyLeaveCredits($employee->fresh());
+        $employee->refresh();
+
+        $this->logCreditChange(
+            employee: $employee,
+            actor: $actor,
+            amount: $days,
+            action: 'leave_restored',
+            leaveRequest: $leaveRequest,
+        );
+    }
+
+    private function restoreSickLeave(
+        User $employee,
+        float $days,
+        User $actor,
+        LeaveRequest $leaveRequest,
+    ): void {
+        $employee->forceFill([
+            'sl_credits' => (float) $employee->sl_credits + $days,
+            'medical_days_used' => max(0, (float) $employee->medical_days_used - $days),
+        ])->save();
+
+        $this->logCreditChange(
+            employee: $employee,
+            actor: $actor,
+            amount: $days,
+            action: 'leave_restored',
+            leaveRequest: $leaveRequest,
+        );
+    }
+
+    private function restoreHospitalizationLeave(
+        User $employee,
+        float $days,
+        User $actor,
+        LeaveRequest $leaveRequest,
+    ): void {
+        $employee->forceFill([
+            'medical_days_used' => max(0, (float) $employee->medical_days_used - $days),
+        ])->save();
+
+        $this->logCreditChange(
+            employee: $employee,
+            actor: $actor,
+            amount: $days,
+            action: 'leave_restored',
+            leaveRequest: $leaveRequest,
+        );
     }
 
     private function deductAnnualLeave(
@@ -370,6 +497,16 @@ class LeaveService
                 $this->formatDays($balances['al_available']),
                 $this->formatDays($balances['sl_credits']),
             ),
+            'leave_restored' => sprintf(
+                'Returned %s day(s) to %s after changing approved %s #%d. AL: %s, SL: %s, medical used: %s.',
+                $this->formatDays(abs($amount)),
+                $employee->name,
+                $leaveRequest?->typeCode() ?? 'LEAVE',
+                $leaveRequest?->id ?? 0,
+                $this->formatDays($balances['al_available']),
+                $this->formatDays($balances['sl_credits']),
+                $this->formatDays($balances['medical_days_used']),
+            ),
             'leave_approved' => sprintf(
                 'Deducted %s day(s) from %s for approved %s #%d. AL: %s, SL: %s, medical used: %s.',
                 $this->formatDays(abs($amount)),
@@ -442,24 +579,51 @@ class LeaveService
         $marks = [];
 
         foreach (CarbonPeriod::create($rangeStart, $rangeEnd) as $day) {
+            $dayKey = $day->toDateString();
+            $isBirthday = false;
+
             if ($user->birthday) {
                 $birthday = $user->birthday->copy()->year($day->year);
-                if ($birthday->toDateString() === $day->toDateString()) {
-                    $marks[$day->toDateString()] = 'birthday';
-                    continue;
-                }
+                $isBirthday = $birthday->toDateString() === $dayKey;
             }
 
+            $entries = [];
+
             foreach ($requests as $request) {
-                if ($day->between($request->start_date, $request->end_date)) {
-                    $marks[$day->toDateString()] = [
-                        'kind' => 'leave',
-                        'type' => LeaveRequest::normalizeType((string) $request->type),
-                        'code' => $request->typeCode(),
-                        'label' => $request->typeLabel(),
-                    ];
-                    break;
+                $startKey = $request->start_date->toDateString();
+                $endKey = $request->end_date->toDateString();
+
+                if ($dayKey < $startKey || $dayKey > $endKey) {
+                    continue;
                 }
+
+                $entries[] = [
+                    'kind' => 'leave',
+                    'type' => LeaveRequest::normalizeType((string) $request->type),
+                    'code' => $request->typeCode(),
+                    'label' => $request->typeLabel(),
+                    'request_id' => $request->id,
+                ];
+            }
+
+            if ($entries !== []) {
+                $mark = $entries[0];
+
+                if (count($entries) > 1) {
+                    $mark['also'] = array_values(array_slice($entries, 1));
+                }
+
+                if ($isBirthday) {
+                    $mark['birthday'] = true;
+                }
+
+                $marks[$dayKey] = $mark;
+
+                continue;
+            }
+
+            if ($isBirthday) {
+                $marks[$dayKey] = 'birthday';
             }
         }
 
@@ -518,6 +682,7 @@ class LeaveService
                 'name' => $request->user->name,
                 'job_title' => $request->user->job_title,
                 'profile_image_url' => $request->user->profile_image_url,
+                'holiday_region' => $request->user->holiday_region,
                 'leave_credits' => $balances['al_available'],
                 'balances' => $balances,
             ],

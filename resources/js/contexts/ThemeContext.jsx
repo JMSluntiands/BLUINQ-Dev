@@ -1,7 +1,12 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 
-const ThemeContext = createContext(null);
 const STORAGE_KEY = 'bluinq-theme';
+
+// The production build can copy this module into more than one chunk.
+// Keep a single context object so ThemeProvider and useTheme stay connected.
+const ThemeContext =
+    globalThis.__bluinqThemeContext ??
+    (globalThis.__bluinqThemeContext = createContext(null));
 
 function readStoredTheme() {
     if (typeof window === 'undefined') {

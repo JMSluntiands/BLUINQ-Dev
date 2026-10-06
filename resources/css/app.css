@@ -514,12 +514,10 @@
 
 @keyframes login-v6-card-in {
     from {
-        opacity: 0;
-        transform: translateY(20px) scale(0.98);
+        transform: translateY(12px);
     }
     to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
+        transform: translateY(0);
     }
 }
 
@@ -538,7 +536,7 @@
 }
 
 .login-v6-card {
-    animation: login-v6-card-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: login-v6-card-in 0.55s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .login-v6-ring {

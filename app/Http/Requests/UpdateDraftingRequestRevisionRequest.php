@@ -57,8 +57,7 @@ class UpdateDraftingRequestRevisionRequest extends FormRequest
         $revision = $this->route('revision');
 
         $categoryCodes = CrmCategory::query()
-            ->active()
-            ->where('status', 'active')
+            ->selectable()
             ->orderBy('code')
             ->get(['code', 'name'])
             ->flatMap(fn (CrmCategory $row) => array_filter([

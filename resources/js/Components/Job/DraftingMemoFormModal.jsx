@@ -1,3 +1,4 @@
+import FileDropzone from '@/Components/FileDropzone';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import Modal from '@/Components/Modal';
@@ -309,17 +310,14 @@ export default function DraftingMemoFormModal({
                                 Current file: {memo.attachment_name}
                             </p>
                         )}
-                        <input
+                        <FileDropzone
                             id="memo-attachment"
-                            type="file"
                             accept="application/pdf,.pdf"
-                            onChange={(event) =>
-                                form.setData(
-                                    'attachment',
-                                    event.target.files?.[0] ?? null,
-                                )
+                            className="mt-2"
+                            value={form.data.attachment}
+                            onChange={(file) =>
+                                form.setData('attachment', file)
                             }
-                            className="mt-2 block w-full text-sm text-[#676879] file:me-3 file:rounded-md file:border-0 file:bg-[#0073ea] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#0060c4] dark:text-slate-400"
                         />
                         {memo?.has_attachment && (
                             <label className="mt-2 flex items-center gap-2 text-sm text-[#676879] dark:text-slate-400">

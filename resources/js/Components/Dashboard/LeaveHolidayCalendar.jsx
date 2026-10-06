@@ -10,7 +10,8 @@ import {
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { router } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -48,6 +49,7 @@ function leaveMarkMeta(mark) {
             type: mark.type || 'al',
             code: mark.code || 'LEAVE',
             label: mark.label || 'On leave',
+            requestId: mark.request_id ?? null,
         };
     }
 
@@ -55,7 +57,26 @@ function leaveMarkMeta(mark) {
         type: 'al',
         code: 'LEAVE',
         label: 'On leave',
+        requestId: null,
     };
+}
+
+function leaveMarksFrom(mark) {
+    if (mark === 'birthday' || !isLeaveMark(mark)) {
+        return [];
+    }
+
+    const primary = leaveMarkMeta(mark);
+    if (!primary) {
+        return [];
+    }
+
+    const extras =
+        mark && typeof mark === 'object' && Array.isArray(mark.also)
+            ? mark.also.map((entry) => leaveMarkMeta(entry)).filter(Boolean)
+            : [];
+
+    return [primary, ...extras];
 }
 
 /** Tailwind classes for leave type chips on the calendar. */
@@ -151,7 +172,7 @@ function eventContinuesOnDay(calendarEvents, dayKey, eventId) {
 
 function eventBarClasses(continuesFromPrev, continuesToNext) {
     const base =
-        'group relative z-10 flex h-[18px] items-center bg-sky-100 text-[10px] font-medium text-sky-800 dark:bg-sky-500/20 dark:text-sky-200';
+        'group relative z-10 flex h-[18px] items-center bg-orange-100 text-[10px] font-medium text-orange-900 dark:bg-orange-500/25 dark:text-orange-100';
 
     if (continuesFromPrev && continuesToNext) {
         return `${base} -mx-1.5 rounded-none px-1.5`;
@@ -188,6 +209,21 @@ function holidayBadge(country) {
     return 'SG';
 }
 
+function overflowMenuPosition(rect, itemCount) {
+    const width = 240;
+    const menuHeight = Math.min(itemCount * 44 + 40, 240);
+    const below = rect.bottom + 4;
+    const top =
+        below + menuHeight > window.innerHeight - 8
+            ? Math.max(8, rect.top - menuHeight - 4)
+            : below;
+
+    return {
+        top,
+        left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
+    };
+}
+
 function DayCell({
     day,
     todayKey,
@@ -202,13 +238,38 @@ function DayCell({
 }) {
     const isToday = day.key === todayKey;
     const isSelectedMonth = day.isCurrentMonth;
+    const [leaveMenu, setLeaveMenu] = useState(null);
+    const [eventMenu, setEventMenu] = useState(null);
     const visibleEvents = events.slice(0, 2);
-    const hiddenEventCount = Math.max(events.length - visibleEvents.length, 0);
+    const hiddenEvents = events.slice(2);
+    const hiddenEventLabel =
+        hiddenEvents.length === 1
+            ? `+1 more: ${hiddenEvents[0].title}`
+            : `+${hiddenEvents.length} more events`;
     const visibleLeave = leavePeople.slice(0, 2);
-    const hiddenLeaveCount = Math.max(
-        leavePeople.length - visibleLeave.length,
-        0,
-    );
+    const hiddenLeave = leavePeople.slice(2);
+    const hiddenLeaveLabel =
+        hiddenLeave.length === 1
+            ? `+1 more: ${hiddenLeave[0].leaveCode} · ${hiddenLeave[0].name}`
+            : `+${hiddenLeave.length} more on leave`;
+
+    useEffect(() => {
+        if (!leaveMenu && !eventMenu) {
+            return undefined;
+        }
+
+        const close = () => {
+            setLeaveMenu(null);
+            setEventMenu(null);
+        };
+        window.addEventListener('resize', close);
+        window.addEventListener('scroll', close, true);
+
+        return () => {
+            window.removeEventListener('resize', close);
+            window.removeEventListener('scroll', close, true);
+        };
+    }, [leaveMenu, eventMenu]);
 
     const handleDeleteEvent = (event) => {
         if (!canDeleteEvent?.(event)) {
@@ -232,7 +293,18 @@ function DayCell({
         <div
             role={canAddEvent ? 'button' : undefined}
             tabIndex={canAddEvent ? 0 : undefined}
-            onClick={canAddEvent ? () => onAddEvent?.(day.key) : undefined}
+            onClick={
+                canAddEvent
+                    ? (clickEvent) => {
+                          if (leaveMenu || eventMenu) {
+                              clickEvent.stopPropagation();
+                              return;
+                          }
+
+                          onAddEvent?.(day.key);
+                      }
+                    : undefined
+            }
             onKeyDown={
                 canAddEvent
                     ? (event) => {
@@ -244,7 +316,7 @@ function DayCell({
                     : undefined
             }
             className={
-                'min-h-[5.5rem] overflow-hidden border-b border-r border-slate-100 p-1.5 dark:border-slate-800 ' +
+                'min-h-[5.5rem] min-w-0 border-b border-r border-slate-100 p-1.5 dark:border-slate-800 ' +
                 (!isSelectedMonth
                     ? 'bg-slate-50/60 dark:bg-slate-900/40'
                     : day.isWeekend
@@ -271,7 +343,7 @@ function DayCell({
                 </span>
             </div>
 
-            <div className="relative mt-1 min-w-0 space-y-1 overflow-hidden">
+            <div className="relative mt-1 min-w-0 space-y-1">
                 {holidays.slice(0, 2).map((holiday) => (
                     <div
                         key={`${holiday.country}-${holiday.name}`}
@@ -341,7 +413,7 @@ function DayCell({
                                 <button
                                     type="button"
                                     onClick={() => handleDeleteEvent(event)}
-                                    className="shrink-0 rounded p-0.5 text-sky-600 opacity-0 transition hover:bg-sky-200/80 group-hover:opacity-100 dark:text-sky-300 dark:hover:bg-sky-500/30"
+                                    className="shrink-0 rounded p-0.5 text-orange-700 opacity-0 transition hover:bg-orange-200/80 group-hover:opacity-100 dark:text-orange-200 dark:hover:bg-orange-500/30"
                                     aria-label={`Remove ${event.title}`}
                                 >
                                     <XMarkIcon className="h-3 w-3" aria-hidden />
@@ -350,11 +422,84 @@ function DayCell({
                         </div>
                     );
                 })}
-                {hiddenEventCount > 0 && (
-                    <p className="px-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                        +{hiddenEventCount} more events
-                    </p>
+                {hiddenEvents.length > 0 && (
+                    <button
+                        type="button"
+                        onClick={(clickEvent) => {
+                            clickEvent.stopPropagation();
+                            if (eventMenu) {
+                                setEventMenu(null);
+                                return;
+                            }
+
+                            setLeaveMenu(null);
+                            setEventMenu(
+                                overflowMenuPosition(
+                                    clickEvent.currentTarget.getBoundingClientRect(),
+                                    hiddenEvents.length,
+                                ),
+                            );
+                        }}
+                        className="block w-full truncate px-1 text-left text-[10px] font-semibold text-orange-800 underline decoration-orange-400/80 underline-offset-2 hover:text-orange-700 dark:text-orange-200 dark:hover:text-orange-100"
+                        title={hiddenEvents
+                            .map((event) => event.title)
+                            .join(', ')}
+                        aria-expanded={eventMenu ? 'true' : 'false'}
+                    >
+                        {hiddenEventLabel}
+                    </button>
                 )}
+                {eventMenu &&
+                    createPortal(
+                        <>
+                            <button
+                                type="button"
+                                className="fixed inset-0 z-40 cursor-default"
+                                aria-label="Close event list"
+                                onMouseDown={(clickEvent) =>
+                                    clickEvent.stopPropagation()
+                                }
+                                onClick={(clickEvent) => {
+                                    clickEvent.stopPropagation();
+                                    setEventMenu(null);
+                                }}
+                            />
+                            <div
+                                className="fixed z-50 max-h-60 w-60 space-y-1 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-600 dark:bg-slate-900"
+                                style={{
+                                    top: eventMenu.top,
+                                    left: eventMenu.left,
+                                }}
+                                onClick={(clickEvent) =>
+                                    clickEvent.stopPropagation()
+                                }
+                            >
+                                <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                    More events
+                                </p>
+                                {hiddenEvents.map((event) => (
+                                    <div
+                                        key={event.id}
+                                        className="rounded-md bg-orange-100 px-1.5 py-1 text-[11px] font-medium leading-snug text-orange-950 dark:bg-orange-500/20 dark:text-orange-100"
+                                    >
+                                        <p>{event.title}</p>
+                                        {(event.category_label ||
+                                            event.description) && (
+                                            <p className="mt-0.5 text-[10px] font-normal opacity-80">
+                                                {[
+                                                    event.category_label,
+                                                    event.description,
+                                                ]
+                                                    .filter(Boolean)
+                                                    .join(' · ')}
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </>,
+                        document.body,
+                    )}
 
                 {visibleLeave.map((person) => (
                     <div
@@ -372,11 +517,83 @@ function DayCell({
                         {person.name}
                     </div>
                 ))}
-                {hiddenLeaveCount > 0 && (
-                    <p className="px-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                        +{hiddenLeaveCount} more on leave
-                    </p>
+                {hiddenLeave.length > 0 && (
+                    <button
+                        type="button"
+                        onClick={(clickEvent) => {
+                            clickEvent.stopPropagation();
+                            if (leaveMenu) {
+                                setLeaveMenu(null);
+                                return;
+                            }
+
+                            setEventMenu(null);
+                            setLeaveMenu(
+                                overflowMenuPosition(
+                                    clickEvent.currentTarget.getBoundingClientRect(),
+                                    hiddenLeave.length,
+                                ),
+                            );
+                        }}
+                        className="block w-full truncate px-1 text-left text-[10px] font-semibold text-sky-700 underline decoration-sky-400/80 underline-offset-2 hover:text-sky-600 dark:text-sky-300 dark:hover:text-sky-200"
+                        title={hiddenLeave
+                            .map(
+                                (person) =>
+                                    `${person.leaveCode} · ${person.name}`,
+                            )
+                            .join(', ')}
+                        aria-expanded={leaveMenu ? 'true' : 'false'}
+                    >
+                        {hiddenLeaveLabel}
+                    </button>
                 )}
+                {leaveMenu &&
+                    createPortal(
+                        <>
+                            <button
+                                type="button"
+                                className="fixed inset-0 z-40 cursor-default"
+                                aria-label="Close leave list"
+                                onMouseDown={(clickEvent) =>
+                                    clickEvent.stopPropagation()
+                                }
+                                onClick={(clickEvent) => {
+                                    clickEvent.stopPropagation();
+                                    setLeaveMenu(null);
+                                }}
+                            />
+                            <div
+                                className="fixed z-50 max-h-60 w-60 space-y-1 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-600 dark:bg-slate-900"
+                                style={{
+                                    top: leaveMenu.top,
+                                    left: leaveMenu.left,
+                                }}
+                                onClick={(clickEvent) =>
+                                    clickEvent.stopPropagation()
+                                }
+                            >
+                                <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                    Also on leave
+                                </p>
+                                {hiddenLeave.map((person) => (
+                                    <div
+                                        key={person.id}
+                                        className={
+                                            'rounded-md px-1.5 py-1 text-[11px] font-medium leading-snug ' +
+                                            leaveTypeChipClass(person.leaveType)
+                                        }
+                                    >
+                                        <span className="font-bold tabular-nums">
+                                            {person.leaveCode}
+                                        </span>
+                                        <span className="opacity-80"> · </span>
+                                        {person.name}
+                                    </div>
+                                ))}
+                            </div>
+                        </>,
+                        document.body,
+                    )}
             </div>
         </div>
     );
@@ -423,7 +640,7 @@ export default function LeaveHolidayCalendar({
 
         users.forEach((user) => {
             Object.entries(user.marks ?? {}).forEach(([key, mark]) => {
-                if (mark !== 'birthday') {
+                if (mark !== 'birthday' && !mark?.birthday) {
                     return;
                 }
 
@@ -446,8 +663,8 @@ export default function LeaveHolidayCalendar({
 
         users.forEach((user) => {
             Object.entries(user.marks ?? {}).forEach(([key, mark]) => {
-                const leave = leaveMarkMeta(mark);
-                if (!leave) {
+                const leaves = leaveMarksFrom(mark);
+                if (leaves.length === 0) {
                     return;
                 }
 
@@ -455,15 +672,17 @@ export default function LeaveHolidayCalendar({
                     map[key] = [];
                 }
 
-                map[key].push({
-                    id: user.id,
-                    name: user.name,
-                    initials:
-                        user.initials ||
-                        badgeInitialsFromName(user.name),
-                    leaveType: leave.type,
-                    leaveCode: leave.code,
-                    leaveLabel: leave.label,
+                leaves.forEach((leave, index) => {
+                    map[key].push({
+                        id: `${user.id}-${leave.requestId ?? `${leave.type}-${index}`}`,
+                        name: user.name,
+                        initials:
+                            user.initials ||
+                            badgeInitialsFromName(user.name),
+                        leaveType: leave.type,
+                        leaveCode: leave.code,
+                        leaveLabel: leave.label,
+                    });
                 });
             });
         });
@@ -602,7 +821,7 @@ export default function LeaveHolidayCalendar({
                             Birthday
                         </span>
                         <span className="inline-flex items-center gap-1.5">
-                            <span className="h-2 w-2 rounded-full bg-sky-500" />
+                            <span className="h-2 w-2 rounded-full bg-orange-500" />
                             Team event
                         </span>
                         <span className="inline-flex items-center gap-1.5">

@@ -37,6 +37,9 @@ class StoreDraftingRequestCommentRequest extends FormRequest
                 Rule::in([
                     DraftingRequestComment::KIND_COMMENT,
                     DraftingRequestComment::KIND_RUN,
+                    DraftingRequestComment::KIND_ACCOUNT,
+                    DraftingRequestComment::KIND_QUOTE,
+                    DraftingRequestComment::KIND_INVOICE,
                 ]),
             ],
             'drafting_request_revision_id' => [

@@ -28,28 +28,28 @@ class CrmQuoteFormController extends Controller
                 'requested_at' => $requestedAt,
             ],
             'arrivalInputFiles' => ArrivalInputFile::query()
-                ->active()
+                ->selectable()
                 ->orderBy('name')
                 ->get(['id', 'name']),
             'categories' => CrmCategory::query()
-                ->active()
+                ->selectable()
                 ->orderBy('code')
                 ->orderBy('name')
                 ->get(['id', 'code', 'name']),
             'levelsOfDifficulty' => LevelOfDifficulty::query()
-                ->active()
+                ->selectable()
                 ->orderBy('name')
                 ->get(['id', 'name']),
             'buildingTypes' => BuildingType::query()
-                ->active()
+                ->selectable()
                 ->orderBy('name')
                 ->get(['id', 'name']),
             'scopesOfWork' => ScopeOfWork::query()
-                ->active()
+                ->selectable()
                 ->orderBy('name')
                 ->get(['id', 'name']),
             'deliverables' => Deliverable::query()
-                ->active()
+                ->selectable()
                 ->orderBy('name')
                 ->get(['id', 'name']),
         ]);

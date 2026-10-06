@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasSelectableStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class SdaType extends Model
 {
+    use HasSelectableStatus;
     protected $fillable = [
         'code',
         'name',

@@ -147,6 +147,10 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('leave.approve');
     Route::post('/leave/{leaveRequest}/reject', [LeaveRequestController::class, 'reject'])
         ->name('leave.reject');
+    Route::patch('/leave/{leaveRequest}', [LeaveRequestController::class, 'update'])
+        ->name('leave.update');
+    Route::delete('/leave/{leaveRequest}', [LeaveRequestController::class, 'destroy'])
+        ->name('leave.destroy');
     Route::get('/leave/credits', [LeaveCreditsController::class, 'index'])
         ->name('leave.credits.index');
     Route::post('/leave/credits', [LeaveCreditsController::class, 'store'])
@@ -315,6 +319,8 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('crm.quotes.restore');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::post('/profile/password-request', [PasswordChangeRequestController::class, 'store'])
+        ->name('profile.password-request.store');
     Route::post('/profile/weekly-timesheet/entries', [WeeklyTimesheetController::class, 'storeEntry'])
         ->name('profile.weekly-timesheet.entries.store');
     Route::patch('/profile/weekly-timesheet/entries/{timesheetEntry}/hours', [WeeklyTimesheetController::class, 'updateHour'])

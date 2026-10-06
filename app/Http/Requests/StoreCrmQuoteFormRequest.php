@@ -2,8 +2,13 @@
 
 namespace App\Http\Requests;
 
+use App\Models\ArrivalInputFile;
+use App\Models\BuildingType;
+use App\Models\CrmCategory;
+use App\Models\Deliverable;
+use App\Models\LevelOfDifficulty;
+use App\Models\ScopeOfWork;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreCrmQuoteFormRequest extends FormRequest
 {
@@ -26,44 +31,32 @@ class StoreCrmQuoteFormRequest extends FormRequest
             'arrival_input_file_id' => [
                 'required',
                 'integer',
-                Rule::exists('arrival_input_files', 'id')->where(
-                    fn ($q) => $q->whereNull('archived_at'),
-                ),
+                ArrivalInputFile::selectableExistsRule(),
             ],
             'crm_category_id' => [
                 'required',
                 'integer',
-                Rule::exists('crm_categories', 'id')->where(
-                    fn ($q) => $q->whereNull('archived_at'),
-                ),
+                CrmCategory::selectableExistsRule(),
             ],
             'level_of_difficulty_id' => [
                 'required',
                 'integer',
-                Rule::exists('level_of_difficulties', 'id')->where(
-                    fn ($q) => $q->whereNull('archived_at'),
-                ),
+                LevelOfDifficulty::selectableExistsRule(),
             ],
             'building_type_id' => [
                 'required',
                 'integer',
-                Rule::exists('building_types', 'id')->where(
-                    fn ($q) => $q->whereNull('archived_at'),
-                ),
+                BuildingType::selectableExistsRule(),
             ],
             'scope_of_work_id' => [
                 'required',
                 'integer',
-                Rule::exists('scope_of_works', 'id')->where(
-                    fn ($q) => $q->whereNull('archived_at'),
-                ),
+                ScopeOfWork::selectableExistsRule(),
             ],
             'deliverable_id' => [
                 'required',
                 'integer',
-                Rule::exists('deliverables', 'id')->where(
-                    fn ($q) => $q->whereNull('archived_at'),
-                ),
+                Deliverable::selectableExistsRule(),
             ],
             'building_area_size' => ['required', 'string', 'max:2000'],
             'estimated_time_allocation' => ['required', 'string', 'max:255'],

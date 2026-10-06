@@ -308,6 +308,14 @@ class ClientController extends Controller
      */
     private function validateContact(Request $request, string $type): array
     {
+        $email = $request->input('email');
+        if (is_string($email)) {
+            $trimmed = trim($email);
+            $request->merge([
+                'email' => $trimmed === '' ? null : mb_strtolower($trimmed),
+            ]);
+        }
+
         return $request->validate([
             'name' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'string', 'lowercase', 'email', 'max:255'],
