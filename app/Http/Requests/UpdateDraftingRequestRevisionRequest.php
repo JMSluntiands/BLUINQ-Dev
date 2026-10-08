@@ -41,7 +41,7 @@ class UpdateDraftingRequestRevisionRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        foreach (['checker_user_id', 'drafter_user_id', 'drafting_hours', 'checking_hours', 'area_size', 'submitted_date', 'link'] as $key) {
+        foreach (['checker_user_id', 'drafter_user_id', 'drafting_hours', 'checking_hours', 'area_size', 'submitted_date', 'link', 'vo_hours'] as $key) {
             if ($this->input($key) === '') {
                 $this->merge([$key => null]);
             }
@@ -96,6 +96,7 @@ class UpdateDraftingRequestRevisionRequest extends FormRequest
             'status' => ['required', 'string', Rule::in(DraftingRequest::statusValues())],
             'area_size' => ['nullable', 'string', 'max:64'],
             'submitted_date' => ['nullable', 'date'],
+            'vo_hours' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
         ];
     }
 

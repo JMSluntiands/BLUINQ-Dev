@@ -768,4 +768,18 @@ class DraftingRequest extends Model
     {
         return self::canonicalStatus($status) === self::STATUS_FOR_CHECKING;
     }
+
+    /**
+     * Match for_checking and label spellings such as "For Checking".
+     *
+     * @param  Builder<DraftingRequest>  $query
+     * @return Builder<DraftingRequest>
+     */
+    public function scopeForChecking(Builder $query): Builder
+    {
+        return $query->whereRaw(
+            "LOWER(REPLACE(REPLACE(TRIM(status), ' ', '_'), '-', '_')) = ?",
+            [self::STATUS_FOR_CHECKING],
+        );
+    }
 }

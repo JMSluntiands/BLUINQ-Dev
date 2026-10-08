@@ -836,7 +836,7 @@ class DraftingController extends Controller
             $updates['checker_initials'] = $checker?->badgeInitials();
         }
 
-        foreach (['drafting_hours', 'checking_hours', 'submitted_date'] as $field) {
+        foreach (['drafting_hours', 'checking_hours', 'submitted_date', 'vo_hours'] as $field) {
             if (array_key_exists($field, $validated)) {
                 $updates[$field] = $validated[$field];
             }
@@ -853,6 +853,16 @@ class DraftingController extends Controller
 
         $revision->update($updates);
         $revision->refresh();
+
+        $latestRevisionId = $draftingRequest->revisions()->max('id');
+        if (
+            array_key_exists('vo_hours', $validated)
+            && (int) $latestRevisionId === (int) $revision->id
+        ) {
+            $draftingRequest->update([
+                'vo_hours' => $validated['vo_hours'],
+            ]);
+        }
 
         if (
             array_key_exists('drafter_user_id', $updates)

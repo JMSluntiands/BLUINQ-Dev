@@ -48,9 +48,9 @@ class DashboardController extends Controller
 
         return Inertia::render('Dashboard', [
             'boardPreviewJobs' => $user?->hasPermission('job.list.view')
-                ? $boardQuery
-                    ->where('status', DraftingRequest::STATUS_FOR_CHECKING)
-                    ->limit(5)
+                ? tap($boardQuery->forChecking(), function ($query) {
+                    $this->board->applyBoardSort($query, '', 'desc');
+                })
                     ->get()
                     ->map(function ($row) use ($request) {
                         $formatted = $this->board->formatBoardRow($row);

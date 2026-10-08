@@ -247,6 +247,7 @@ export default function DraftingRevisionAddModal({
         checking_hours: '',
         area_size: '',
         submitted_date: '',
+        vo_hours: '',
     });
 
     useEffect(() => {
@@ -287,6 +288,8 @@ export default function DraftingRevisionAddModal({
                         : '',
                 area_size: entry.area_size ?? '',
                 submitted_date: entry.submitted_date_value ?? '',
+                vo_hours:
+                    entry.vo_hours != null ? String(entry.vo_hours) : '',
             });
 
             return;
@@ -437,7 +440,7 @@ export default function DraftingRevisionAddModal({
                 {!isForwardMode ? (
                     <p className="mt-1 text-sm text-[#676879] dark:text-slate-400">
                         {isEditing
-                            ? 'Update revision number, link, category, dates, status, drafter, checker, hours, and area size.'
+                            ? 'Update revision number, link, category, dates, status, drafter, checker, hours, area size, and VO.'
                             : 'Add a revision. Assign drafter, checker, and hours on the Project Management board.'}
                     </p>
                 ) : null}
@@ -758,13 +761,29 @@ export default function DraftingRevisionAddModal({
                                     </div>
 
                                     <div>
-                                        <InputLabel value="VO" />
-                                        <p className="mt-1 flex h-10 items-center rounded-md border border-[#c5c7d0] bg-[#fafbfc] px-3 text-sm tabular-nums text-[#323338] dark:border-[#2f3347] dark:bg-[#151622] dark:text-slate-200">
-                                            {entry?.vo_hours != null &&
-                                            entry.vo_hours !== ''
-                                                ? `${entry.vo_hours} h`
-                                                : '—'}
-                                        </p>
+                                        <InputLabel
+                                            htmlFor="revision-vo-hours"
+                                            value="VO"
+                                        />
+                                        <TextInput
+                                            id="revision-vo-hours"
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={form.data.vo_hours}
+                                            onChange={(e) =>
+                                                form.setData(
+                                                    'vo_hours',
+                                                    e.target.value,
+                                                )
+                                            }
+                                            className="mt-1 block w-full"
+                                            placeholder="e.g. 1"
+                                        />
+                                        <InputError
+                                            message={form.errors.vo_hours}
+                                            className="mt-1"
+                                        />
                                     </div>
                                 </>
                             ) : null}

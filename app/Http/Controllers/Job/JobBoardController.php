@@ -219,10 +219,7 @@ class JobBoardController extends Controller
     private function applyStatusGroupFilter(Builder $query, string $status): void
     {
         if ($status === DraftingRequest::STATUS_FOR_CHECKING) {
-            $query->whereRaw(
-                "LOWER(REPLACE(REPLACE(TRIM(status), ' ', '_'), '-', '_')) = ?",
-                [DraftingRequest::STATUS_FOR_CHECKING],
-            );
+            $query->forChecking();
 
             return;
         }
