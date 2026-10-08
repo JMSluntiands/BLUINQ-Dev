@@ -382,6 +382,160 @@ class ApmRevisionSyncTest extends TestCase
                 ->has('paginatedStatusGroups.2.pagination.data', 1));
     }
 
+    public function test_apm_for_checking_section_includes_every_spelling_and_ignores_page_size(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $labelled = $this->createApmJob($user, $storeyLevel, $category);
+        $labelled->update([
+            'status' => 'For Checking',
+            'site_address' => 'Labelled Checking Job',
+        ]);
+        $this->addBoardRevision($labelled, $user, $category, 'For Checking');
+
+        foreach (range(1, 6) as $index) {
+            $job = $this->createApmJob($user, $storeyLevel, $category);
+            $job->update([
+                'status' => DraftingRequest::STATUS_FOR_CHECKING,
+                'site_address' => 'Checking Job '.$index,
+            ]);
+            $this->addBoardRevision(
+                $job,
+                $user,
+                $category,
+                DraftingRequest::STATUS_FOR_CHECKING,
+            );
+        }
+
+        $this->actingAs($user)
+            ->get(route('job.list', ['per_page' => 5]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->where('paginatedStatusGroups.2.status', DraftingRequest::STATUS_FOR_CHECKING)
+                ->where('paginatedStatusGroups.2.pagination.total', 7)
+                ->has('paginatedStatusGroups.2.pagination.data', 7)
+                ->where(
+                    'paginatedStatusGroups.2.pagination.data',
+                    fn ($rows) => collect($rows)->contains(
+                        fn ($row) => $row['id'] === $labelled->id
+                            && $row['status'] === DraftingRequest::STATUS_FOR_CHECKING,
+                    ),
+                ));
+    }
+
+    public function test_editing_revision_vo_saves_on_the_row_and_latest_syncs_the_job(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+        $job = $this->createApmJob($user, $storeyLevel, $category);
+        $job->forceFill(['vo_hours' => 1])->save();
+
+        $older = DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $job->id,
+            'user_id' => $user->id,
+            'code' => $job->jobNumber().'-01',
+            'log_date' => now()->toDateString(),
+            'category' => $category->code,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+            'vo_hours' => 1,
+        ]);
+        $latest = DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $job->id,
+            'user_id' => $user->id,
+            'code' => $job->jobNumber().'-02',
+            'log_date' => now()->toDateString(),
+            'category' => $category->code,
+            'status' => DraftingRequest::STATUS_NEW,
+            'vo_hours' => null,
+        ]);
+
+        $payload = [
+            'code' => $older->code,
+            'log_date' => now()->toDateString(),
+            'category' => $category->code,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+            'vo_hours' => 3.5,
+        ];
+
+        $this->actingAs($user)
+            ->patch(route('job.drafting.revisions.update', [$job, $older]), $payload)
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('3.50', (string) $older->fresh()->vo_hours);
+        $this->assertSame('1.00', (string) $job->fresh()->vo_hours);
+
+        $this->actingAs($user)
+            ->patch(route('job.drafting.revisions.update', [$job, $latest]), [
+                'code' => $latest->code,
+                'log_date' => now()->toDateString(),
+                'category' => $category->code,
+                'status' => DraftingRequest::STATUS_NEW,
+                'vo_hours' => 2,
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('2.00', (string) $latest->fresh()->vo_hours);
+        $this->assertSame('2.00', (string) $job->fresh()->vo_hours);
+        $this->assertSame('3.50', (string) $older->fresh()->vo_hours);
+    }
+
+    public function test_dashboard_for_checking_table_lists_every_job(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $labelled = $this->createApmJob($user, $storeyLevel, $category);
+        $labelled->update([
+            'status' => 'For Checking',
+            'site_address' => 'Labelled Checking Job',
+        ]);
+        $this->addBoardRevision($labelled, $user, $category, 'For Checking');
+
+        $ids = [$labelled->id];
+        foreach (range(1, 6) as $index) {
+            $job = $this->createApmJob($user, $storeyLevel, $category);
+            $job->update([
+                'status' => DraftingRequest::STATUS_FOR_CHECKING,
+                'site_address' => 'Checking Job '.$index,
+            ]);
+            $this->addBoardRevision(
+                $job,
+                $user,
+                $category,
+                DraftingRequest::STATUS_FOR_CHECKING,
+            );
+            $ids[] = $job->id;
+        }
+
+        $other = $this->createApmJob($user, $storeyLevel, $category);
+        $other->update([
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+            'site_address' => 'Submitted Job',
+        ]);
+        $this->addBoardRevision(
+            $other,
+            $user,
+            $category,
+            DraftingRequest::STATUS_SUBMITTED,
+        );
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Dashboard')
+                ->has('boardPreviewJobs', 7)
+                ->where(
+                    'boardPreviewJobs',
+                    fn ($rows) => collect($rows)->pluck('id')->sort()->values()->all()
+                        === collect($ids)->sort()->values()->all(),
+                ));
+    }
+
     public function test_member_sees_all_apm_jobs_on_board_and_can_open_them(): void
     {
         $owner = $this->adminUser();
