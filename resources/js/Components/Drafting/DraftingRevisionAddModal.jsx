@@ -76,9 +76,37 @@ export function suggestNextRevisionCode(jobNumber, revisions = []) {
     return `${base}-${String(maxSuffix + 1).padStart(2, '0')}`;
 }
 
+function personOptions(users, selectedId, selectedName) {
+    const items = (users ?? [])
+        .map((user) => {
+            const name = String(user?.name ?? '').trim();
+            const initials = String(user?.initials ?? '').trim();
+
+            return {
+                value: String(user?.id ?? ''),
+                label:
+                    name && initials
+                        ? `${name} (${initials})`
+                        : name || initials,
+            };
+        })
+        .filter((option) => option.value !== '' && option.label !== '');
+
+    const current = selectedId != null ? String(selectedId) : '';
+    if (current !== '' && !items.some((option) => option.value === current)) {
+        items.unshift({
+            value: current,
+            label: String(selectedName ?? '').trim() || `User ${current}`,
+        });
+    }
+
+    return items;
+}
+
 /**
- * Slim revision modal (APM-owned staffing fields live on the board).
- * Fields: optional Project, Revision Number, Revision Link, Category, Date In, Status.
+ * Revision modal.
+ * Add: optional Project, Revision Number, Revision Link, Category, Date In, Status.
+ * Edit also includes drafter, checker, hours, area size, and date out.
  * mode="forward" — pick a masterlist or board job before adding / reopening a revision.
  */
 export default function DraftingRevisionAddModal({
@@ -94,6 +122,7 @@ export default function DraftingRevisionAddModal({
     categoryOptions = [],
     defaultJobStatus = 'new',
     projectOptions = [],
+    drafterUsers = [],
     board = 'apm',
 }) {
     const isForwardMode = mode === 'forward';
@@ -182,6 +211,24 @@ export default function DraftingRevisionAddModal({
             })),
         [statusOptions],
     );
+    const drafterSelectOptions = useMemo(
+        () =>
+            personOptions(
+                drafterUsers,
+                entry?.drafter_user_id,
+                entry?.drafter_name,
+            ),
+        [drafterUsers, entry?.drafter_user_id, entry?.drafter_name],
+    );
+    const checkerSelectOptions = useMemo(
+        () =>
+            personOptions(
+                drafterUsers,
+                entry?.checker_user_id,
+                entry?.checker_name,
+            ),
+        [drafterUsers, entry?.checker_user_id, entry?.checker_name],
+    );
     const listQs = listQueryString(listFilters);
     const isEditing = entry != null;
 
@@ -194,6 +241,13 @@ export default function DraftingRevisionAddModal({
         board,
         date_out: '',
         max_building_area_sqm: '',
+        drafter_user_id: '',
+        checker_user_id: '',
+        drafting_hours: '',
+        checking_hours: '',
+        area_size: '',
+        submitted_date: '',
+        vo_hours: '',
     });
 
     useEffect(() => {
@@ -216,6 +270,26 @@ export default function DraftingRevisionAddModal({
                 board,
                 date_out: '',
                 max_building_area_sqm: '',
+                drafter_user_id:
+                    entry.drafter_user_id != null
+                        ? String(entry.drafter_user_id)
+                        : '',
+                checker_user_id:
+                    entry.checker_user_id != null
+                        ? String(entry.checker_user_id)
+                        : '',
+                drafting_hours:
+                    entry.drafting_hours != null
+                        ? String(entry.drafting_hours)
+                        : '',
+                checking_hours:
+                    entry.checking_hours != null
+                        ? String(entry.checking_hours)
+                        : '',
+                area_size: entry.area_size ?? '',
+                submitted_date: entry.submitted_date_value ?? '',
+                vo_hours:
+                    entry.vo_hours != null ? String(entry.vo_hours) : '',
             });
 
             return;
@@ -354,7 +428,7 @@ export default function DraftingRevisionAddModal({
     };
 
     return (
-        <Modal show={show} onClose={onClose} maxWidth="md">
+        <Modal show={show} onClose={onClose} maxWidth={isEditing ? 'lg' : 'md'}>
             <form onSubmit={submit} className="p-6">
                 <h2 className="text-lg font-semibold text-[#323338] dark:text-white">
                     {isEditing
@@ -366,7 +440,7 @@ export default function DraftingRevisionAddModal({
                 {!isForwardMode ? (
                     <p className="mt-1 text-sm text-[#676879] dark:text-slate-400">
                         {isEditing
-                            ? 'Update revision number, link, category, date in, and status. Drafter, hours, and date out are set on the board.'
+                            ? 'Update revision number, link, category, dates, status, drafter, checker, hours, area size, and VO.'
                             : 'Add a revision. Assign drafter, checker, and hours on the Project Management board.'}
                     </p>
                 ) : null}
@@ -531,6 +605,188 @@ export default function DraftingRevisionAddModal({
                                     className="mt-1"
                                 />
                             </div>
+
+                            {isEditing ? (
+                                <>
+                                    <div>
+                                        <InputLabel
+                                            htmlFor="revision-drafter"
+                                            value="Drafter"
+                                        />
+                                        <div className="mt-1 select2-field">
+                                            <Select2
+                                                id="revision-drafter"
+                                                value={form.data.drafter_user_id}
+                                                onChange={(value) =>
+                                                    form.setData(
+                                                        'drafter_user_id',
+                                                        value,
+                                                    )
+                                                }
+                                                options={drafterSelectOptions}
+                                                placeholder="Select drafter…"
+                                                allowClear
+                                                enabled={show}
+                                            />
+                                        </div>
+                                        <InputError
+                                            message={form.errors.drafter_user_id}
+                                            className="mt-1"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <InputLabel
+                                            htmlFor="revision-drafting-hours"
+                                            value="Drafting Hours"
+                                        />
+                                        <TextInput
+                                            id="revision-drafting-hours"
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={form.data.drafting_hours}
+                                            onChange={(e) =>
+                                                form.setData(
+                                                    'drafting_hours',
+                                                    e.target.value,
+                                                )
+                                            }
+                                            className="mt-1 block w-full"
+                                            placeholder="e.g. 1.5"
+                                        />
+                                        <InputError
+                                            message={form.errors.drafting_hours}
+                                            className="mt-1"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <InputLabel
+                                            htmlFor="revision-checker"
+                                            value="Checker"
+                                        />
+                                        <div className="mt-1 select2-field">
+                                            <Select2
+                                                id="revision-checker"
+                                                value={form.data.checker_user_id}
+                                                onChange={(value) =>
+                                                    form.setData(
+                                                        'checker_user_id',
+                                                        value,
+                                                    )
+                                                }
+                                                options={checkerSelectOptions}
+                                                placeholder="Select checker…"
+                                                allowClear
+                                                enabled={show}
+                                            />
+                                        </div>
+                                        <InputError
+                                            message={form.errors.checker_user_id}
+                                            className="mt-1"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <InputLabel
+                                            htmlFor="revision-checking-hours"
+                                            value="Checking Hours"
+                                        />
+                                        <TextInput
+                                            id="revision-checking-hours"
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={form.data.checking_hours}
+                                            onChange={(e) =>
+                                                form.setData(
+                                                    'checking_hours',
+                                                    e.target.value,
+                                                )
+                                            }
+                                            className="mt-1 block w-full"
+                                            placeholder="e.g. 0.5"
+                                        />
+                                        <InputError
+                                            message={form.errors.checking_hours}
+                                            className="mt-1"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <InputLabel
+                                            htmlFor="revision-area-size"
+                                            value="Area Size"
+                                        />
+                                        <TextInput
+                                            id="revision-area-size"
+                                            value={form.data.area_size}
+                                            onChange={(e) =>
+                                                form.setData(
+                                                    'area_size',
+                                                    e.target.value,
+                                                )
+                                            }
+                                            className="mt-1 block w-full"
+                                            placeholder="e.g. 220"
+                                        />
+                                        <InputError
+                                            message={form.errors.area_size}
+                                            className="mt-1"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <InputLabel
+                                            htmlFor="revision-submitted-date"
+                                            value="Date Out"
+                                        />
+                                        <TextInput
+                                            id="revision-submitted-date"
+                                            type="date"
+                                            value={form.data.submitted_date}
+                                            onChange={(e) =>
+                                                form.setData(
+                                                    'submitted_date',
+                                                    e.target.value,
+                                                )
+                                            }
+                                            className="mt-1 block w-full"
+                                        />
+                                        <InputError
+                                            message={form.errors.submitted_date}
+                                            className="mt-1"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <InputLabel
+                                            htmlFor="revision-vo-hours"
+                                            value="VO"
+                                        />
+                                        <TextInput
+                                            id="revision-vo-hours"
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={form.data.vo_hours}
+                                            onChange={(e) =>
+                                                form.setData(
+                                                    'vo_hours',
+                                                    e.target.value,
+                                                )
+                                            }
+                                            className="mt-1 block w-full"
+                                            placeholder="e.g. 1"
+                                        />
+                                        <InputError
+                                            message={form.errors.vo_hours}
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                </>
+                            ) : null}
 
                             {isForwardMode ? (
                                 <>
