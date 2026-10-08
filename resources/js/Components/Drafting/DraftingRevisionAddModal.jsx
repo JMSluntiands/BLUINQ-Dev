@@ -315,6 +315,7 @@ export default function DraftingRevisionAddModal({
         ) {
             lastPrefillProjectId.current = projectKey;
             form.setData('date_out', '');
+            form.setData('vo_hours', '');
             form.setData(
                 'max_building_area_sqm',
                 selectedProject?.max_building_area_sqm != null &&
@@ -382,6 +383,10 @@ export default function DraftingRevisionAddModal({
                     max_building_area_sqm: form.data.max_building_area_sqm
                         ? String(form.data.max_building_area_sqm)
                         : null,
+                    vo_hours:
+                        form.data.vo_hours !== '' && form.data.vo_hours != null
+                            ? String(form.data.vo_hours)
+                            : null,
                 },
                 {
                     preserveScroll: true,
@@ -842,17 +847,38 @@ export default function DraftingRevisionAddModal({
                                     </div>
 
                                     <div>
-                                        <InputLabel value="Last VO" />
-                                        <p className="mt-1 flex h-10 items-center rounded-md border border-[#c5c7d0] bg-[#fafbfc] px-3 text-sm tabular-nums text-[#323338] dark:border-[#2f3347] dark:bg-[#151622] dark:text-slate-200">
+                                        <InputLabel
+                                            htmlFor="revision-add-vo-hours"
+                                            value="VO"
+                                        />
+                                        <TextInput
+                                            id="revision-add-vo-hours"
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={form.data.vo_hours}
+                                            onChange={(e) =>
+                                                form.setData(
+                                                    'vo_hours',
+                                                    e.target.value,
+                                                )
+                                            }
+                                            className="mt-1 block w-full"
+                                            placeholder="0"
+                                        />
+                                        <InputError
+                                            message={form.errors.vo_hours}
+                                            className="mt-1"
+                                        />
+                                        <p className="mt-1 text-[11px] text-[#676879] dark:text-slate-400">
                                             {selectedProject?.vo_hours !=
                                                 null &&
                                             selectedProject.vo_hours !== ''
-                                                ? `${selectedProject.vo_hours} h`
-                                                : '—'}
-                                        </p>
-                                        <p className="mt-1 text-[11px] text-[#676879] dark:text-slate-400">
-                                            Prior cycle VO (resets to 0h on Add
-                                            item).
+                                                ? `Prior cycle was ${selectedProject.vo_hours} h. `
+                                                : ''}
+                                            Hours entered here show on the board
+                                            and in project info. Leave blank to
+                                            start at 0h.
                                         </p>
                                     </div>
                                 </>

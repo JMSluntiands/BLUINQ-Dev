@@ -7,6 +7,7 @@ use App\Http\Requests\StoreDraftingRequestFormRequest;
 use App\Models\BuildingClass;
 use App\Models\CrmCategory;
 use App\Models\DraftingRequest;
+use App\Models\DraftingRequestAccountEntry;
 use App\Models\DraftingRequestFile;
 use App\Models\ExternalWallConstruction;
 use App\Models\RoofType;
@@ -377,6 +378,7 @@ class MasterlistController extends Controller
             'company_name',
             'site_address',
             'status',
+            'accounting',
         ];
         $sort = (string) $request->input('sort', 'requested_at');
         if (! in_array($sort, $allowedSorts, true)) {
@@ -396,6 +398,36 @@ class MasterlistController extends Controller
      */
     private function applySort($query, string $sort, string $direction): void
     {
+        if ($sort === 'accounting') {
+            $query->orderBy(
+                DraftingRequestAccountEntry::query()
+                    ->select('status')
+                    ->whereColumn('drafting_request_id', 'drafting_requests.id')
+                    ->orderByDesc('id')
+                    ->limit(1),
+                $direction,
+            )->orderBy('id', $direction);
+
+            return;
+        }
+
+        if ($sort === 'status') {
+            $cases = [];
+            $bindings = [];
+            foreach (DraftingRequest::statusLabels() as $value => $label) {
+                $cases[] = 'WHEN ? THEN ?';
+                $bindings[] = $value;
+                $bindings[] = $label;
+            }
+
+            $query->orderByRaw(
+                'CASE status '.implode(' ', $cases).' ELSE status END '.$direction,
+                $bindings,
+            )->orderBy('id', $direction);
+
+            return;
+        }
+
         $query->orderBy($sort, $direction)->orderBy('id', $direction);
     }
 }

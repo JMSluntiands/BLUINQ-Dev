@@ -35,6 +35,7 @@ const MASTERLIST_SORT_OPTIONS = [
     { value: 'company_name', label: 'Client' },
     { value: 'site_address', label: 'Site address' },
     { value: 'status', label: 'Status' },
+    { value: 'accounting', label: 'Accounting' },
 ];
 
 const iconBtn =
@@ -58,6 +59,32 @@ export default function Index({ draftingRequests, filters = {} }) {
         ...filters,
         search: liveSearch.trim() || filters.search,
     });
+
+    const handleSortColumn = (column) => {
+        const currentSort = filters.sort ?? '';
+        const currentDirection = filters.direction ?? 'desc';
+        const nextDirection =
+            currentSort === column && currentDirection === 'asc'
+                ? 'desc'
+                : 'asc';
+        const search = liveSearch.trim();
+
+        router.get(
+            route('job.masterlist'),
+            {
+                ...(search ? { search } : {}),
+                per_page: filters.per_page ?? 25,
+                sort: column,
+                direction: nextDirection,
+            },
+            {
+                only: ['draftingRequests', 'filters'],
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            },
+        );
+    };
 
     const reloadList = () => {
         const search = liveSearch.trim();
@@ -122,6 +149,9 @@ export default function Index({ draftingRequests, filters = {} }) {
                 <JobBoardGrid
                     jobs={rows}
                     variant="masterlist"
+                    sortColumn={filters.sort ?? ''}
+                    sortDirection={filters.direction ?? 'desc'}
+                    onSortColumn={handleSortColumn}
                     emptyMessage={
                         hasSearch
                             ? 'No masterlist entries match your search.'

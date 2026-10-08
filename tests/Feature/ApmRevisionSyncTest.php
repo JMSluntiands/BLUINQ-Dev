@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\CrmCategory;
 use App\Models\DraftingRequest;
+use App\Models\DraftingRequestAccountEntry;
 use App\Models\DraftingRequestAssignment;
 use App\Models\DraftingRequestRevision;
 use App\Models\Role;
@@ -481,6 +482,171 @@ class ApmRevisionSyncTest extends TestCase
         $this->assertSame('2.00', (string) $latest->fresh()->vo_hours);
         $this->assertSame('2.00', (string) $job->fresh()->vo_hours);
         $this->assertSame('3.50', (string) $older->fresh()->vo_hours);
+    }
+
+    public function test_design_add_item_vo_hours_show_on_project_info(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+        $job = $this->createApmJob($user, $storeyLevel, $category);
+        $job->forceFill([
+            'workflow_stage' => DraftingRequest::STAGE_DESIGN,
+            'vo_hours' => 4.5,
+        ])->save();
+
+        $previous = DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $job->id,
+            'user_id' => $user->id,
+            'code' => $job->jobNumber().'-01',
+            'log_date' => now()->toDateString(),
+            'category' => $category->code,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+            'vo_hours' => null,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('job.board.add.quick', $job), [
+                'board' => 'design',
+                'code' => $job->jobNumber().'-02',
+                'log_date' => now()->toDateString(),
+                'category' => $category->code,
+                'status' => DraftingRequest::STATUS_NEW,
+                'vo_hours' => 6.25,
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $job->refresh();
+        $previous->refresh();
+        $latest = DraftingRequestRevision::query()
+            ->where('drafting_request_id', $job->id)
+            ->where('code', $job->jobNumber().'-02')
+            ->first();
+
+        $this->assertSame('6.25', (string) $job->vo_hours);
+        $this->assertSame('4.50', (string) $previous->vo_hours);
+        $this->assertNotNull($latest);
+        $this->assertSame('6.25', (string) $latest->vo_hours);
+
+        $rows = collect(app(\App\Services\DraftingJobShowService::class)->revisionsFor($job))
+            ->keyBy('id');
+        $this->assertSame('4.5', $rows[$previous->id]['vo_hours']);
+        $this->assertSame('6.25', $rows[$latest->id]['vo_hours']);
+    }
+
+    public function test_board_vo_edit_syncs_the_latest_revision_on_project_info(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+        $job = $this->createApmJob($user, $storeyLevel, $category);
+        $job->forceFill([
+            'workflow_stage' => DraftingRequest::STAGE_DESIGN,
+            'vo_hours' => 0,
+        ])->save();
+
+        $latest = DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $job->id,
+            'user_id' => $user->id,
+            'code' => $job->jobNumber().'-01',
+            'log_date' => now()->toDateString(),
+            'category' => $category->code,
+            'status' => DraftingRequest::STATUS_NEW,
+            'vo_hours' => 0,
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('job.drafting.board.update', $job), [
+                'vo_hours' => 3.5,
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('3.50', (string) $job->fresh()->vo_hours);
+        $this->assertSame('3.50', (string) $latest->fresh()->vo_hours);
+
+        $rows = collect(app(\App\Services\DraftingJobShowService::class)->revisionsFor($job->fresh()))
+            ->keyBy('id');
+        $this->assertSame('3.5', $rows[$latest->id]['vo_hours']);
+    }
+
+    public function test_masterlist_sorts_status_and_accounting_asc_and_desc(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $create = function (string $address, string $status, ?string $accounting) use ($user, $storeyLevel, $category) {
+            $job = DraftingRequest::query()->create([
+                'user_id' => $user->id,
+                'status' => $status,
+                'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+                'workflow_stage' => DraftingRequest::STAGE_MASTERLIST,
+                'requested_at' => now(),
+                'your_name' => 'Client',
+                'company_name' => 'Co',
+                'email' => strtolower(str_replace(' ', '', $address)).'@example.com',
+                'site_address' => $address,
+                'site_owner_name' => 'Owner',
+                'storey_level_id' => $storeyLevel->id,
+                'crm_category_id' => $category->id,
+                'ceiling_heights' => '2700',
+                'ndis_sda' => false,
+            ]);
+
+            if ($accounting !== null) {
+                DraftingRequestAccountEntry::query()->create([
+                    'drafting_request_id' => $job->id,
+                    'user_id' => $user->id,
+                    'kind' => DraftingRequestAccountEntry::KIND_INVOICE,
+                    'number' => 'INV-'.$job->id,
+                    'category' => 'WD',
+                    'status' => $accounting,
+                ]);
+            }
+
+            return $job;
+        };
+
+        $create('Submitted Paid', DraftingRequest::STATUS_SUBMITTED, 'Paid');
+        $create('New Quote', DraftingRequest::STATUS_NEW, 'For Quote');
+        $create('Query Blank', DraftingRequest::STATUS_QUERY, null);
+        $create('Wip Job', DraftingRequest::STATUS_DRAFTING_WIP, 'Revised');
+
+        $addresses = fn ($page) => collect($page['draftingRequests']['data'] ?? [])
+            ->pluck('job')
+            ->values()
+            ->all();
+
+        $this->actingAs($user)
+            ->get(route('job.masterlist', [
+                'sort' => 'status',
+                'direction' => 'asc',
+            ]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('filters.sort', 'status')
+                ->where('filters.direction', 'asc')
+                ->where('draftingRequests.data', fn ($rows) => $addresses(['draftingRequests' => ['data' => $rows]]) === [
+                    'New Quote',
+                    'Query Blank',
+                    'Submitted Paid',
+                    'Wip Job',
+                ]));
+
+        $this->actingAs($user)
+            ->get(route('job.masterlist', [
+                'sort' => 'accounting',
+                'direction' => 'desc',
+            ]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('filters.sort', 'accounting')
+                ->where('filters.direction', 'desc')
+                ->where('draftingRequests.data', fn ($rows) => $addresses(['draftingRequests' => ['data' => $rows]]) === [
+                    'Wip Job',
+                    'Submitted Paid',
+                    'New Quote',
+                    'Query Blank',
+                ]));
     }
 
     public function test_dashboard_for_checking_table_lists_every_job(): void

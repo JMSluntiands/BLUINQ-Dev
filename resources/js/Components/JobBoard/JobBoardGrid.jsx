@@ -781,6 +781,8 @@ function JobBoardTableHead({
     const sortable = variant === 'board' && typeof onSortColumn === 'function';
 
     if (variant === 'masterlist') {
+        const masterlistSortable = typeof onSortColumn === 'function';
+
         return (
             <thead className="bg-[#fafbfc] dark:bg-[#151622]">
                 <tr>
@@ -790,8 +792,28 @@ function JobBoardTableHead({
                     <th className={thClass}>Client Name</th>
                     <th className={thClass}>Storey / Levels</th>
                     <th className={thClass}>Latest Revision</th>
-                    <th className={thClass}>Status</th>
-                    <th className={thClass}>Accounting</th>
+                    {masterlistSortable ? (
+                        <SortableTh
+                            column="status"
+                            label="Status"
+                            sortColumn={sortColumn}
+                            sortDirection={sortDirection}
+                            onSortColumn={onSortColumn}
+                        />
+                    ) : (
+                        <th className={thClass}>Status</th>
+                    )}
+                    {masterlistSortable ? (
+                        <SortableTh
+                            column="accounting"
+                            label="Accounting"
+                            sortColumn={sortColumn}
+                            sortDirection={sortDirection}
+                            onSortColumn={onSortColumn}
+                        />
+                    ) : (
+                        <th className={thClass}>Accounting</th>
+                    )}
                     <th className={thClass + ' w-10'}>Priority</th>
                     {showActions && <th className={thClass}>Actions</th>}
                 </tr>

@@ -29,11 +29,10 @@ class DraftingJobShowService
                 // or every revision row would change when Add item updates the job.
                 $dateOut = $revision->submitted_date;
 
-                // Snapshotted VO on closed revisions; current cycle falls back to job VO.
+                // Closed revisions keep their snapshot. The current cycle follows the
+                // job VO (board / Add item), even when the revision row is still 0.
                 $voHours = $revision->vo_hours;
-                if ($voHours === null
-                    && $isLatest
-                    && $draftingRequest->vo_hours !== null) {
+                if ($isLatest && $draftingRequest->vo_hours !== null) {
                     $voHours = $draftingRequest->vo_hours;
                 }
 
