@@ -561,6 +561,8 @@ class LeaveService
                 'department' => $request->user->job_title ?? '',
                 'until' => $request->end_date->format('M j'),
                 'type' => $request->typeCode(),
+                'portion' => $request->portionOnDate($today),
+                'portion_label' => $request->portionOnDateLabel($today),
                 'profile_image_url' => $request->user->profile_image_url,
             ])
             ->values()
@@ -602,6 +604,8 @@ class LeaveService
                     'type' => LeaveRequest::normalizeType((string) $request->type),
                     'code' => $request->typeCode(),
                     'label' => $request->typeLabel(),
+                    'portion' => $request->portionOnDate($dayKey),
+                    'portion_label' => $request->portionOnDateLabel($dayKey),
                     'request_id' => $request->id,
                 ];
             }

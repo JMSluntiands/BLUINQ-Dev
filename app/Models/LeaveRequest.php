@@ -306,6 +306,45 @@ class LeaveRequest extends Model
         return $this->attachment_path !== null && $this->attachment_path !== '';
     }
 
+    /**
+     * Morning or afternoon when this date is only a half day of the request.
+     */
+    public function portionOnDate(string $date): ?string
+    {
+        $start = $this->start_date->toDateString();
+        $end = $this->end_date->toDateString();
+
+        if ($date < $start || $date > $end) {
+            return null;
+        }
+
+        $startPortion = self::normalizePortion($this->start_portion);
+        $endPortion = self::normalizePortion($this->end_portion);
+
+        if ($date === $start && $date === $end) {
+            return $startPortion === $endPortion ? $startPortion : null;
+        }
+
+        if ($date === $start && $startPortion === self::PORTION_AFTERNOON) {
+            return self::PORTION_AFTERNOON;
+        }
+
+        if ($date === $end && $endPortion === self::PORTION_MORNING) {
+            return self::PORTION_MORNING;
+        }
+
+        return null;
+    }
+
+    public function portionOnDateLabel(string $date): ?string
+    {
+        return match ($this->portionOnDate($date)) {
+            self::PORTION_MORNING => 'Morning',
+            self::PORTION_AFTERNOON => 'Afternoon',
+            default => null,
+        };
+    }
+
     public function startPortionLabel(): string
     {
         return $this->portionLabel($this->start_portion, true);

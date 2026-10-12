@@ -393,6 +393,53 @@ class LeaveRequestTest extends TestCase
         $this->assertSame('leave', $archivedRow['marks']['2026-09-11']['kind'] ?? null);
     }
 
+    public function test_calendar_marks_half_day_leave_as_morning_or_afternoon(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Half Day Staff',
+            'employment_status' => 'regular',
+            'leave_balance_year' => 2026,
+            'al_credits' => 5,
+            'leave_credits' => 5,
+            'sl_credits' => 15,
+        ]);
+
+        LeaveRequest::query()->create([
+            'user_id' => $user->id,
+            'start_date' => '2026-10-12',
+            'end_date' => '2026-10-12',
+            'start_portion' => LeaveRequest::PORTION_AFTERNOON,
+            'end_portion' => LeaveRequest::PORTION_AFTERNOON,
+            'type' => LeaveRequest::TYPE_AL,
+            'reason' => 'Afternoon appointment',
+            'status' => LeaveRequest::STATUS_APPROVED,
+        ]);
+
+        LeaveRequest::query()->create([
+            'user_id' => $user->id,
+            'start_date' => '2026-10-13',
+            'end_date' => '2026-10-14',
+            'start_portion' => LeaveRequest::PORTION_AFTERNOON,
+            'end_portion' => LeaveRequest::PORTION_MORNING,
+            'type' => LeaveRequest::TYPE_SL,
+            'reason' => 'Split range',
+            'status' => LeaveRequest::STATUS_APPROVED,
+        ]);
+
+        $payload = app(LeaveService::class)->calendarPayload(
+            Carbon::parse('2026-10-01'),
+            Carbon::parse('2026-10-31'),
+        );
+
+        $row = collect($payload)->firstWhere('id', $user->id);
+
+        $this->assertSame('afternoon', $row['marks']['2026-10-12']['portion']);
+        $this->assertSame('Afternoon', $row['marks']['2026-10-12']['portion_label']);
+        $this->assertSame('afternoon', $row['marks']['2026-10-13']['portion']);
+        $this->assertSame('morning', $row['marks']['2026-10-14']['portion']);
+        $this->assertSame('Morning', $row['marks']['2026-10-14']['portion_label']);
+    }
+
     public function test_admin_can_edit_an_approved_leave_and_credits_follow_the_new_length(): void
     {
         $user = $this->regularUser();

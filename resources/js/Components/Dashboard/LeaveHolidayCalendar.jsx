@@ -49,6 +49,7 @@ function leaveMarkMeta(mark) {
             type: mark.type || 'al',
             code: mark.code || 'LEAVE',
             label: mark.label || 'On leave',
+            portionLabel: mark.portion_label || null,
             requestId: mark.request_id ?? null,
         };
     }
@@ -57,8 +58,23 @@ function leaveMarkMeta(mark) {
         type: 'al',
         code: 'LEAVE',
         label: 'On leave',
+        portionLabel: null,
         requestId: null,
     };
+}
+
+function leaveChipText(person) {
+    return [person.leaveCode, person.portionLabel, person.name]
+        .filter(Boolean)
+        .join(' · ');
+}
+
+function leaveChipTitle(person) {
+    const label = [person.leaveLabel, person.portionLabel]
+        .filter(Boolean)
+        .join(' · ');
+
+    return `${label}: ${person.name}`;
 }
 
 function leaveMarksFrom(mark) {
@@ -250,7 +266,7 @@ function DayCell({
     const hiddenLeave = leavePeople.slice(2);
     const hiddenLeaveLabel =
         hiddenLeave.length === 1
-            ? `+1 more: ${hiddenLeave[0].leaveCode} · ${hiddenLeave[0].name}`
+            ? `+1 more: ${leaveChipText(hiddenLeave[0])}`
             : `+${hiddenLeave.length} more on leave`;
 
     useEffect(() => {
@@ -508,11 +524,17 @@ function DayCell({
                             'truncate rounded-md px-1.5 py-0.5 text-[10px] font-medium ' +
                             leaveTypeChipClass(person.leaveType)
                         }
-                        title={`${person.leaveLabel}: ${person.name}`}
+                        title={leaveChipTitle(person)}
                     >
                         <span className="font-bold tabular-nums">
                             {person.leaveCode}
                         </span>
+                        {person.portionLabel ? (
+                            <>
+                                <span className="opacity-80"> · </span>
+                                {person.portionLabel}
+                            </>
+                        ) : null}
                         <span className="opacity-80"> · </span>
                         {person.name}
                     </div>
@@ -539,7 +561,7 @@ function DayCell({
                         title={hiddenLeave
                             .map(
                                 (person) =>
-                                    `${person.leaveCode} · ${person.name}`,
+                                    leaveChipText(person),
                             )
                             .join(', ')}
                         aria-expanded={leaveMenu ? 'true' : 'false'}
@@ -586,6 +608,15 @@ function DayCell({
                                         <span className="font-bold tabular-nums">
                                             {person.leaveCode}
                                         </span>
+                                        {person.portionLabel ? (
+                                            <>
+                                                <span className="opacity-80">
+                                                    {' '}
+                                                    ·{' '}
+                                                </span>
+                                                {person.portionLabel}
+                                            </>
+                                        ) : null}
                                         <span className="opacity-80"> · </span>
                                         {person.name}
                                     </div>
@@ -682,6 +713,7 @@ export default function LeaveHolidayCalendar({
                         leaveType: leave.type,
                         leaveCode: leave.code,
                         leaveLabel: leave.label,
+                        portionLabel: leave.portionLabel,
                     });
                 });
             });
