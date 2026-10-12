@@ -18,6 +18,7 @@ use App\Models\ExternalWallConstruction;
 use App\Models\RoofType;
 use App\Models\StoreyLevel;
 use App\Models\DraftingRequestActivity;
+use App\Support\AppClock;
 use App\Models\DraftingRequestComment;
 use App\Models\DraftingRequestFile;
 use App\Models\DraftingRequestAccountEntry;
@@ -163,7 +164,7 @@ class DraftingController extends Controller
             'accountEntries',
         ]);
 
-        $tz = config('app.timezone');
+        $tz = AppClock::timezone();
         $listFilters = array_merge($this->listFiltersFromRequest($request), $listFilterOverrides);
         $user = $request->user();
         $capabilities = $this->jobCapabilities($user, $draftingRequest);
@@ -1168,7 +1169,7 @@ class DraftingController extends Controller
     ): JsonResponse {
         $this->authorizeView($request, $draftingRequest);
 
-        $tz = config('app.timezone');
+        $tz = AppClock::timezone();
         $draftingRequest->load([
             'comments' => fn ($query) => $query
                 ->with([
@@ -1362,7 +1363,7 @@ class DraftingController extends Controller
         return [
             'id' => $row->id,
             'reference' => $row->jobNumber(),
-            'requested_at' => $row->requested_at?->timezone(config('app.timezone'))->format('d M Y, h:i A'),
+            'requested_at' => $row->requested_at?->timezone(AppClock::timezone())->format('d M Y, h:i A'),
             'your_name' => $row->your_name,
             'company_name' => $row->company_name,
             'site_address' => $row->site_address,

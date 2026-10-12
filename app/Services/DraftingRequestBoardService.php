@@ -8,6 +8,7 @@ use App\Models\DraftingRequestComment;
 use App\Models\DraftingRequestAssignment;
 use App\Models\DraftingRequestRevision;
 use App\Models\User;
+use App\Support\AppClock;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -303,7 +304,7 @@ class DraftingRequestBoardService
      */
     public function formatBoardRow(DraftingRequest $row): array
     {
-        $tz = config('app.timezone');
+        $tz = AppClock::timezone();
         $row->loadMissing(['crmCategories', 'crmCategory', 'serviceEngagings']);
 
         $latestRevisionCategory = $row->relationLoaded('revisions')
@@ -495,7 +496,7 @@ class DraftingRequestBoardService
      */
     public function jobStatusChartPayload(Request $request, ?string $date = null): array
     {
-        $tz = config('app.timezone');
+        $tz = AppClock::timezone();
         $day = ($date !== null && $date !== '')
             ? Carbon::parse($date, $tz)->startOfDay()
             : Carbon::today($tz)->startOfDay();
@@ -551,7 +552,7 @@ class DraftingRequestBoardService
      */
     public function drafterLeaderboardPayload(Request $request, ?string $month = null): array
     {
-        $tz = config('app.timezone');
+        $tz = AppClock::timezone();
         $monthStart = ($month !== null && preg_match('/^\d{4}-\d{2}$/', $month))
             ? Carbon::createFromFormat('Y-m', $month, $tz)->startOfMonth()
             : Carbon::today($tz)->startOfMonth();
@@ -1031,7 +1032,7 @@ class DraftingRequestBoardService
             'drafting_request_id' => $draftingRequest->id,
             'user_id' => $draftingRequest->user_id,
             'code' => $draftingRequest->jobNumber().'-01',
-            'log_date' => now(config('app.timezone'))->toDateString(),
+            'log_date' => now(AppClock::timezone())->toDateString(),
             'category' => $category,
             'status' => $draftingRequest->status ?? DraftingRequest::STATUS_NEW,
         ]);

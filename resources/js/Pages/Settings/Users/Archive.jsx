@@ -5,6 +5,7 @@ import Pagination from '@/Components/Pagination';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TableSearchToolbar from '@/Components/TableSearchToolbar';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { formatPhilippineDate } from '@/utils/philippineTime';
 import { ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
 import { createColumnHelper } from '@tanstack/react-table';
 import { Head, Link, router } from '@inertiajs/react';
@@ -13,16 +14,7 @@ import { useCallback, useMemo, useState } from 'react';
 const columnHelper = createColumnHelper();
 
 function formatDate(value) {
-    if (!value) {
-        return '—';
-    }
-    try {
-        return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
-            dateStyle: 'medium',
-        });
-    } catch {
-        return value;
-    }
+    return formatPhilippineDate(value);
 }
 
 function formatArchivedAt(value) {
@@ -30,9 +22,10 @@ function formatArchivedAt(value) {
         return '—';
     }
     try {
-        return new Date(value).toLocaleString(undefined, {
+        return new Date(value).toLocaleString('en-PH', {
             dateStyle: 'medium',
             timeStyle: 'short',
+            timeZone: 'Asia/Manila',
         });
     } catch {
         return value;

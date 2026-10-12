@@ -1,5 +1,6 @@
 import SearchableSelect from '@/Components/SearchableSelect';
 import UserAvatar from '@/Components/UserAvatar';
+import { philippineNow } from '@/utils/philippineTime';
 import {
     ChevronLeftIcon,
     ChevronRightIcon,
@@ -26,7 +27,7 @@ function dateKey(date) {
 function parseMonth(value) {
     const [year, month] = (value || '').split('-').map(Number);
     if (!year || !month) {
-        return new Date();
+        return philippineNow();
     }
     return new Date(year, month - 1, 1);
 }
@@ -240,7 +241,7 @@ export default function TeamLeaveTimesheet({
     filters = {},
     showUserFilter = true,
 }) {
-    const today = new Date();
+    const today = philippineNow();
     const todayKey = dateKey(today);
     const activeMonth =
         calendarMonth ||

@@ -343,7 +343,7 @@ class MasterlistToApmWorkflowTest extends TestCase
 
         $row->refresh();
         $this->assertSame(DraftingRequest::STAGE_APM, $row->workflow_stage);
-        $this->assertSame('2026-09-01', $row->requested_at?->timezone(config('app.timezone'))->toDateString());
+        $this->assertSame('2026-09-01', $row->requested_at?->timezone(\App\Support\AppClock::timezone())->toDateString());
         $this->assertSame('2026-09-15', $row->date_out?->toDateString());
         $this->assertSame('245.50', (string) $row->max_building_area_sqm);
 

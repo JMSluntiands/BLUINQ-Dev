@@ -15,6 +15,7 @@ use App\Models\SdaType;
 use App\Models\StoreyLevel;
 use App\Models\User;
 use App\Services\DraftingRequestBoardService;
+use App\Support\AppClock;
 use App\Services\DraftingRequestSubmissionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -97,7 +98,7 @@ class MasterlistController extends Controller
             'backUrl' => route('job.masterlist'),
             'formTitle' => 'Encode project info',
             'applicant' => [
-                'requested_at' => now(config('app.timezone'))->seconds(0)->format('Y-m-d\TH:i'),
+                'requested_at' => now(AppClock::timezone())->seconds(0)->format('Y-m-d\TH:i'),
                 'your_name' => $request->user()?->name,
                 'manager_user_id' => $request->user()?->id,
                 'lead_number' => '',
@@ -152,7 +153,7 @@ class MasterlistController extends Controller
         $applicant = $this->applicantFormData($draftingRequest);
         unset($applicant['id']);
         $applicant['lead_number'] = '';
-        $applicant['requested_at'] = now(config('app.timezone'))->seconds(0)->format('Y-m-d\TH:i');
+        $applicant['requested_at'] = now(AppClock::timezone())->seconds(0)->format('Y-m-d\TH:i');
         $applicant['your_name'] = $request->user()?->name ?? $applicant['your_name'];
         $applicant['manager_user_id'] = $draftingRequest->manager_user_id ?? $request->user()?->id;
 
@@ -217,7 +218,7 @@ class MasterlistController extends Controller
      */
     private function applicantFormData(DraftingRequest $draftingRequest): array
     {
-        $tz = config('app.timezone');
+        $tz = AppClock::timezone();
         $requestedAt = $draftingRequest->requested_at
             ? $draftingRequest->requested_at->timezone($tz)->seconds(0)->format('Y-m-d\TH:i')
             : now($tz)->seconds(0)->format('Y-m-d\TH:i');

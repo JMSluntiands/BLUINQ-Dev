@@ -10,6 +10,7 @@ import {
     FunnelIcon,
     TrophyIcon,
 } from '@heroicons/react/24/outline';
+import { philippineNow } from '@/utils/philippineTime';
 import { router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import {
@@ -49,7 +50,7 @@ const EMPTY_JOB_STATUS_DATA = [
 function parseChartDate(value) {
     const [year, month, day] = (value || '').split('-').map(Number);
     if (!year || !month || !day) {
-        return new Date();
+        return philippineNow();
     }
 
     return new Date(year, month - 1, day);
@@ -81,7 +82,7 @@ function shiftChartDate(value, direction) {
 function parseLeaderboardMonth(value) {
     const [year, month] = (value || '').split('-').map(Number);
     if (!year || !month) {
-        return new Date();
+        return philippineNow();
     }
 
     return new Date(year, month - 1, 1);
@@ -249,7 +250,7 @@ function ChartPanel({ title, icon: Icon, iconClassName, children, toolbar }) {
 function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth }) {
     const chartColors = useChartColors();
     const data = drafterLeaderboard?.data ?? [];
-    const selectedMonth = drafterLeaderboard?.month ?? toMonthKey(new Date());
+    const selectedMonth = drafterLeaderboard?.month ?? toMonthKey(philippineNow());
     const monthLabel = drafterLeaderboard?.label ?? formatLeaderboardMonth(selectedMonth);
     const seriesKeys = DRAFTER_SERIES.map((series) => series.key);
     const [widgetSettings, setWidgetSettings] =
@@ -368,7 +369,7 @@ function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth }) {
                 </p>
                 <button
                     type="button"
-                    onClick={() => reloadLeaderboard(toMonthKey(new Date()))}
+                    onClick={() => reloadLeaderboard(toMonthKey(philippineNow()))}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
                     aria-label="Filter leaderboard month"
                 >
@@ -527,7 +528,7 @@ function JobStatusChart({
     const chartData = jobStatusChart?.data?.length
         ? jobStatusChart.data
         : EMPTY_JOB_STATUS_DATA;
-    const selectedDate = jobStatusChart?.date ?? toDateKey(new Date());
+    const selectedDate = jobStatusChart?.date ?? toDateKey(philippineNow());
     const dateLabel = jobStatusChart?.label ?? formatChartDate(selectedDate);
 
     const reloadChart = (nextDate) => {
@@ -600,7 +601,7 @@ function JobStatusChart({
                     />
                     <button
                         type="button"
-                        onClick={() => reloadChart(toDateKey(new Date()))}
+                        onClick={() => reloadChart(toDateKey(philippineNow()))}
                         className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
                     >
                         Today

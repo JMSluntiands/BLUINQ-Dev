@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\AppClock;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -436,8 +437,8 @@ class DraftingRequest extends Model
         $at = $this->requested_at ?? $this->created_at;
 
         $year = $at !== null
-            ? $at->timezone(config('app.timezone'))->format('y')
-            : now(config('app.timezone'))->format('y');
+            ? $at->timezone(AppClock::timezone())->format('y')
+            : now(AppClock::timezone())->format('y');
 
         return sprintf('%s%03d', $year, $this->id);
     }

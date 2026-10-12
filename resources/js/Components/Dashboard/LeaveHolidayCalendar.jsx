@@ -1,6 +1,7 @@
 import CalendarEventModal from '@/Components/Dashboard/CalendarEventModal';
 import LeaveRequestModal from '@/Components/Leave/LeaveRequestModal';
 import { badgeInitialsFromName } from '@/utils/badgeInitials';
+import { philippineNow } from '@/utils/philippineTime';
 import {
     CalendarDaysIcon,
     ChevronDownIcon,
@@ -121,7 +122,7 @@ function leaveTypeChipClass(type) {
 function parseMonth(value) {
     const [year, month] = (value || '').split('-').map(Number);
     if (!year || !month) {
-        return new Date();
+        return philippineNow();
     }
     return new Date(year, month - 1, 1);
 }
@@ -643,7 +644,7 @@ export default function LeaveHolidayCalendar({
     calendarMonth,
 }) {
     const canOpenLeaveRequest = canApplyLeave || canManageLeave;
-    const today = new Date();
+    const today = philippineNow();
     const todayKey = dateKey(today);
     const activeMonth =
         calendarMonth ||

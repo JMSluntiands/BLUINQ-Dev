@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\DraftingRequest;
+use App\Support\AppClock;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -45,7 +46,7 @@ class DraftingRequestReviewService
             'site_address' => $request->site_address,
             'building_type' => $request->buildingType?->name,
             'services' => $request->serviceEngagings->pluck('name')->join(', '),
-            'requested_at' => $request->requested_at?->timezone(config('app.timezone'))->format('M j, Y g:i A'),
+            'requested_at' => $request->requested_at?->timezone(AppClock::timezone())->format('M j, Y g:i A'),
             'files_count' => $request->files_count ?? 0,
         ];
     }

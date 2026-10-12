@@ -12,6 +12,7 @@ use App\Models\RoofType;
 use App\Models\SdaType;
 use App\Models\StoreyLevel;
 use App\Services\DraftingRequestSubmissionService;
+use App\Support\AppClock;
 use App\Support\PublicDraftingFormUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,8 +27,7 @@ class PublicDraftingRequestFormController extends Controller
 
     public function create(Request $request): Response
     {
-        $timezone = config('app.timezone') ?: 'UTC';
-        $requestedAt = now($timezone)->seconds(0)->format('Y-m-d\TH:i');
+        $requestedAt = AppClock::now()->seconds(0)->format('Y-m-d\TH:i');
 
         return Inertia::render('Job/DraftingRequestForm', [
             'standalone' => true,

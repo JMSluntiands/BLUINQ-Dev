@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\AppClock;
 use App\Services\LeaveService;
 use App\Services\WeeklyTimesheetService;
 use Carbon\Carbon;
@@ -34,7 +35,7 @@ class TimesheetController extends Controller
         $calendarMonth = $request->string('calendar_month')->toString();
         $month = preg_match('/^\d{4}-\d{2}$/', $calendarMonth)
             ? Carbon::createFromFormat('Y-m', $calendarMonth)->startOfMonth()
-            : Carbon::today()->startOfMonth();
+            : AppClock::today()->startOfMonth();
 
         [$calendarStart, $calendarEnd] = $this->leave->monthGridRange($month);
 
@@ -83,14 +84,14 @@ class TimesheetController extends Controller
         $calendarMonth = $request->string('calendar_month')->toString();
         $month = preg_match('/^\d{4}-\d{2}$/', $calendarMonth)
             ? Carbon::createFromFormat('Y-m', $calendarMonth)->startOfMonth()
-            : Carbon::today()->startOfMonth();
+            : AppClock::today()->startOfMonth();
 
         [$calendarStart, $calendarEnd] = $this->leave->monthGridRange($month);
 
         $weekParam = $request->string('week')->toString();
         $weekStart = preg_match('/^\d{4}-\d{2}-\d{2}$/', $weekParam)
             ? Carbon::parse($weekParam)->startOfWeek(Carbon::MONDAY)
-            : Carbon::today()->startOfWeek(Carbon::MONDAY);
+            : AppClock::today()->startOfWeek(Carbon::MONDAY);
 
         $connectedToDrafting = $user->isConnectedToDrafting();
 

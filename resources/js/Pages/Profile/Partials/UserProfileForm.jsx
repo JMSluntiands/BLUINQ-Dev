@@ -14,6 +14,7 @@ import {
     UserIcon,
 } from '@heroicons/react/24/outline';
 import { resolveBadgeInitials } from '@/utils/badgeInitials';
+import { formatPhilippineDate } from '@/utils/philippineTime';
 import { Link } from '@inertiajs/react';
 
 function displayValue(value) {
@@ -106,17 +107,7 @@ function ExternalLink({ href, children }) {
 }
 
 function formatDate(value) {
-    if (!value) {
-        return '—';
-    }
-
-    try {
-        return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
-            dateStyle: 'medium',
-        });
-    } catch {
-        return value;
-    }
+    return formatPhilippineDate(value);
 }
 
 function StaffPhotoBadge({ profileImageUrl, name, initials }) {

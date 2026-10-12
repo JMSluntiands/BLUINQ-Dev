@@ -28,9 +28,10 @@ function formatArchivedAt(value) {
         return '—';
     }
     try {
-        return new Date(value).toLocaleString(undefined, {
+        return new Date(value).toLocaleString('en-PH', {
             dateStyle: 'medium',
             timeStyle: 'short',
+            timeZone: 'Asia/Manila',
         });
     } catch {
         return value;

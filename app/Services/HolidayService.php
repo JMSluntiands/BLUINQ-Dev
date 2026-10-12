@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\AppClock;
 use Carbon\Carbon;
 
 class HolidayService
@@ -92,7 +93,7 @@ class HolidayService
      */
     public function upcoming(int $limit = 5, ?Carbon $from = null, ?string $region = null): array
     {
-        $from = ($from ?? Carbon::today())->startOfDay();
+        $from = ($from ?? AppClock::today())->startOfDay();
         $entries = [];
         $region = self::normalizeRegion($region);
 

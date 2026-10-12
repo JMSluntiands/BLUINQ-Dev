@@ -10,6 +10,7 @@ use App\Models\DraftingRequestActivity;
 use App\Models\DraftingRequestFile;
 use App\Models\DraftingRequestRevision;
 use App\Models\User;
+use App\Support\AppClock;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -220,7 +221,7 @@ class DraftingRequestSubmissionService
                     'drafting_request_id' => $draftingRequest->id,
                     'user_id' => $actor->id,
                     'code' => $draftingRequest->jobNumber().'-01',
-                    'log_date' => now(config('app.timezone'))->toDateString(),
+                    'log_date' => now(AppClock::timezone())->toDateString(),
                     'category' => $category,
                     'status' => DraftingRequest::STATUS_NEW,
                 ]);
@@ -515,7 +516,7 @@ class DraftingRequestSubmissionService
                     'drafting_request_id' => $draftingRequest->id,
                     'user_id' => $actor->id,
                     'code' => $code,
-                    'log_date' => now(config('app.timezone'))->toDateString(),
+                    'log_date' => now(AppClock::timezone())->toDateString(),
                     'category' => $category,
                     'status' => DraftingRequest::STATUS_NEW,
                 ]);

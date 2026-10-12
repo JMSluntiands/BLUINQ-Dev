@@ -6,6 +6,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import RichTextEditor from '@/Components/RichTextEditor';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
+import { philippineTodayInput } from '@/utils/philippineTime';
 import { useForm } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -13,11 +14,7 @@ const selectClass =
     'mt-1 block w-full rounded-md border border-[#c5c7d0] bg-white px-3 py-2 text-sm text-[#323338] shadow-sm focus:border-[#0073ea] focus:outline-none focus:ring-1 focus:ring-[#0073ea] dark:border-[#2f3347] dark:bg-[#151622] dark:text-slate-200';
 
 function todayInputValue() {
-    const now = new Date();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-
-    return `${now.getFullYear()}-${month}-${day}`;
+    return philippineTodayInput();
 }
 
 function filterQueryString(filters = {}) {
