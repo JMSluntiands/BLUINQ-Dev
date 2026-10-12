@@ -516,7 +516,11 @@ export default function Dashboard() {
                                             key={employee.id}
                                             employee={employee}
                                             status="leave"
-                                            detail={`Until ${employee.until}`}
+                                            detail={
+                                                employee.portion_label
+                                                    ? `Until ${employee.until} · ${employee.portion_label}`
+                                                    : `Until ${employee.until}`
+                                            }
                                         />
                                     ))
                                 )}
