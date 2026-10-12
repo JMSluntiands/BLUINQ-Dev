@@ -381,9 +381,9 @@ class MasterlistController extends Controller
             'status',
             'accounting',
         ];
-        $sort = (string) $request->input('sort', 'requested_at');
+        $sort = (string) $request->input('sort', 'lead_number');
         if (! in_array($sort, $allowedSorts, true)) {
-            $sort = 'requested_at';
+            $sort = 'lead_number';
         }
 
         $direction = strtolower((string) $request->input('direction', 'desc'));

@@ -186,17 +186,7 @@ class LeaveRequest extends Model
             return [];
         }
 
-        $matches = [];
-
-        foreach ((array) config("holidays.{$region}", []) as $yearHolidays) {
-            foreach ((array) $yearHolidays as $date => $name) {
-                if ($date >= $startDate && $date <= $endDate) {
-                    $matches[$date] = true;
-                }
-            }
-        }
-
-        return $matches;
+        return app(HolidayService::class)->datesInRange($startDate, $endDate, $region);
     }
 
     public static function medicalCertificateThreshold(): int

@@ -61,6 +61,67 @@ class MasterlistToApmWorkflowTest extends TestCase
                 ->where('masterlistCandidates.0.source', 'masterlist'));
     }
 
+    public function test_masterlist_defaults_to_lead_number_descending(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category, $client, $buildingClass] = $this->seedLookups();
+
+        $older = $this->validPayload(
+            $storeyLevel->id,
+            $category->id,
+            $client,
+            $buildingClass,
+        );
+        $older['lead_number'] = '26001';
+        $newer = $older;
+        $newer['lead_number'] = '26130';
+        $newer['email'] = 'newer@acme.test';
+
+        $this->actingAs($user)->post(route('job.masterlist.store'), $older);
+        $this->actingAs($user)->post(route('job.masterlist.store'), $newer);
+
+        $this->actingAs($user)
+            ->get(route('job.masterlist'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Masterlist/Index')
+                ->where('filters.sort', 'lead_number')
+                ->where('filters.direction', 'desc')
+                ->where('draftingRequests.data.0.job_no', '26130')
+                ->where('draftingRequests.data.1.job_no', '26001'));
+    }
+
+    public function test_masterlist_lists_every_category_on_the_job(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category, $client, $buildingClass] = $this->seedLookups();
+        $second = CrmCategory::query()->create([
+            'code' => 'ID',
+            'name' => 'Interior Design',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($user)->post(route('job.masterlist.store'), [
+            ...$this->validPayload(
+                $storeyLevel->id,
+                $category->id,
+                $client,
+                $buildingClass,
+            ),
+            'crm_category_ids' => [$category->id, $second->id],
+        ])->assertRedirect(route('job.masterlist'));
+
+        $this->actingAs($user)
+            ->get(route('job.masterlist'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Masterlist/Index')
+                ->where('draftingRequests.data.0.categories', [
+                    'Interior Design',
+                    'Working Drawings',
+                ]));
+    }
+
     public function test_forward_moves_to_apm_and_seeds_revision_code(): void
     {
         $user = $this->adminUser();

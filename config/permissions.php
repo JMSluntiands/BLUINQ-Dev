@@ -12,6 +12,8 @@ return [
         'dashboard.clock-out' => 'dashboard.view',
         'calendar-events.store' => 'dashboard.view',
         'calendar-events.destroy' => 'dashboard.view',
+        'public-holidays.store' => 'dashboard.view',
+        'public-holidays.destroy' => 'dashboard.view',
         'announcements.index' => 'announcements.view',
         'announcements.show' => 'announcements.view',
         'announcements.like' => 'announcements.view',

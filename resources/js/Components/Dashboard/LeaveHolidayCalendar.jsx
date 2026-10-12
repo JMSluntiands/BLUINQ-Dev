@@ -1,4 +1,5 @@
 import CalendarEventModal from '@/Components/Dashboard/CalendarEventModal';
+import PublicHolidayModal from '@/Components/Dashboard/PublicHolidayModal';
 import LeaveRequestModal from '@/Components/Leave/LeaveRequestModal';
 import { badgeInitialsFromName } from '@/utils/badgeInitials';
 import { philippineNow } from '@/utils/philippineTime';
@@ -250,8 +251,10 @@ function DayCell({
     events = [],
     calendarEvents = {},
     canAddEvent = false,
+    canManageHolidays = false,
     canDeleteEvent,
     onAddEvent,
+    onDeleteHoliday,
 }) {
     const isToday = day.key === todayKey;
     const isSelectedMonth = day.isCurrentMonth;
@@ -363,14 +366,29 @@ function DayCell({
             <div className="relative mt-1 min-w-0 space-y-1">
                 {holidays.slice(0, 2).map((holiday) => (
                     <div
-                        key={`${holiday.country}-${holiday.name}`}
-                        className={`truncate rounded-md px-1.5 py-0.5 text-[10px] font-medium ${holidayStyles(holiday.country)}`}
+                        key={`${holiday.id ?? 'listed'}-${holiday.country}-${holiday.name}`}
+                        className={`flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${holidayStyles(holiday.country)}`}
                         title={`${holiday.country_label}: ${holiday.name}`}
                     >
-                        <span className="font-bold">
-                            {holidayBadge(holiday.country)}
-                        </span>{' '}
-                        {holiday.name}
+                        <span className="min-w-0 flex-1 truncate">
+                            <span className="font-bold">
+                                {holidayBadge(holiday.country)}
+                            </span>{' '}
+                            {holiday.name}
+                        </span>
+                        {canManageHolidays && holiday.manual && holiday.id && (
+                            <button
+                                type="button"
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    onDeleteHoliday?.(holiday);
+                                }}
+                                className="shrink-0 rounded p-0.5 hover:bg-black/10 dark:hover:bg-white/10"
+                                aria-label={`Remove ${holiday.name}`}
+                            >
+                                <XMarkIcon className="h-3 w-3" aria-hidden />
+                            </button>
+                        )}
                     </div>
                 ))}
                 {holidays.length > 2 && (
@@ -639,6 +657,8 @@ export default function LeaveHolidayCalendar({
     canManageLeave = false,
     leaveRequestUsers = [],
     canAddCalendarEvent = false,
+    canManageHolidays = false,
+    holidayRegions = [],
     currentUserId = null,
     canDeleteAnyEvent = false,
     calendarMonth,
@@ -652,7 +672,9 @@ export default function LeaveHolidayCalendar({
 
     const [showLeaveModal, setShowLeaveModal] = useState(false);
     const [showEventModal, setShowEventModal] = useState(false);
+    const [showHolidayModal, setShowHolidayModal] = useState(false);
     const [eventDefaultDate, setEventDefaultDate] = useState('');
+    const [holidayDefaultDate, setHolidayDefaultDate] = useState('');
 
     const weeks = useMemo(
         () => buildMonthWeeks(activeMonth),
@@ -665,6 +687,21 @@ export default function LeaveHolidayCalendar({
     const openEventModal = (date = '') => {
         setEventDefaultDate(date);
         setShowEventModal(true);
+    };
+
+    const openHolidayModal = (date = '') => {
+        setHolidayDefaultDate(date);
+        setShowHolidayModal(true);
+    };
+
+    const deleteHoliday = (holiday) => {
+        if (!holiday?.id) {
+            return;
+        }
+
+        router.delete(route('public-holidays.destroy', holiday.id), {
+            preserveScroll: true,
+        });
     };
 
     const dayBirthdays = useMemo(() => {
@@ -762,6 +799,17 @@ export default function LeaveHolidayCalendar({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
+                        {canManageHolidays && (
+                            <button
+                                type="button"
+                                onClick={() => openHolidayModal('')}
+                                className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-100 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200 dark:hover:bg-amber-500/20"
+                            >
+                                <CalendarDaysIcon className="h-4 w-4" aria-hidden />
+                                Add holiday
+                            </button>
+                        )}
+
                         {canAddCalendarEvent && (
                             <button
                                 type="button"
@@ -822,8 +870,10 @@ export default function LeaveHolidayCalendar({
                                         events={calendarEvents[day.key] ?? []}
                                         calendarEvents={calendarEvents}
                                         canAddEvent={canAddCalendarEvent}
+                                        canManageHolidays={canManageHolidays}
                                         canDeleteEvent={canDeleteEvent}
                                         onAddEvent={openEventModal}
+                                        onDeleteHoliday={deleteHoliday}
                                     />
                                 ))}
                             </div>
@@ -847,7 +897,7 @@ export default function LeaveHolidayCalendar({
                             <span className="rounded px-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
                                 WA
                             </span>
-                            Western Australia holiday
+                            Australia (WA) holiday
                         </span>
                         <span className="inline-flex items-center gap-1.5">
                             <span className="h-2 w-2 rounded-full bg-pink-500" />
@@ -916,6 +966,19 @@ export default function LeaveHolidayCalendar({
                     canManageLeave={canManageLeave}
                     leaveRequestUsers={leaveRequestUsers}
                     currentUserId={currentUserId}
+                />
+            )}
+
+            {canManageHolidays && (
+                <PublicHolidayModal
+                    key={holidayDefaultDate || 'new-holiday'}
+                    show={showHolidayModal}
+                    defaultDate={holidayDefaultDate}
+                    holidayRegions={holidayRegions}
+                    onClose={() => {
+                        setShowHolidayModal(false);
+                        setHolidayDefaultDate('');
+                    }}
                 />
             )}
 

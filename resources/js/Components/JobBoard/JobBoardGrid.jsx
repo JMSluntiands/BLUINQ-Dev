@@ -74,6 +74,22 @@ function staffColumnLabel(count, label) {
  * }} JobBoardRow
  */
 
+function CategoryList({ categories = [] }) {
+    if (!categories.length) {
+        return <span className="text-[#676879] dark:text-slate-400">—</span>;
+    }
+
+    return (
+        <div className="flex flex-wrap gap-1">
+            {categories.map((name) => (
+                <TagPill key={name} title={name}>
+                    {name}
+                </TagPill>
+            ))}
+        </div>
+    );
+}
+
 function TagPill({ children, title }) {
     return (
         <span className={TAG_PILL_CLASS} title={title ?? children}>
@@ -790,6 +806,7 @@ function JobBoardTableHead({
                     <th className={thClass + ' w-10'} />
                     <th className={thClass}>Lead No.</th>
                     <th className={thClass}>Client Name</th>
+                    <th className={thClass}>Category</th>
                     <th className={thClass}>Storey / Levels</th>
                     <th className={thClass}>Latest Revision</th>
                     {masterlistSortable ? (
@@ -969,7 +986,7 @@ function JobBoardTableBody({
         });
     };
 
-    const masterlistColSpan = renderActions ? 10 : 9;
+    const masterlistColSpan = renderActions ? 11 : 10;
     const boardColSpan =
         14 +
         draftingSlotCount +
@@ -1084,6 +1101,9 @@ function JobBoardTableBody({
                             </td>
                             {isMasterlist ? (
                                 <>
+                                    <td className={tdClass}>
+                                        <CategoryList categories={job.categories} />
+                                    </td>
                                     <td className={tdClass}>
                                         <TagPill title={job.storey_level}>
                                             {job.storey_level}
@@ -1282,6 +1302,7 @@ function JobBoardTableBody({
                                                 <td className={tdClass}>—</td>
                                                 <td className={tdClass}>—</td>
                                                 <td className={tdClass}>—</td>
+                                                <td className={tdClass}>—</td>
                                                 <td
                                                     className={
                                                         tdClass +
@@ -1441,7 +1462,7 @@ function JobBoardStatusSection({
                                 (fitWidth
                                     ? 'table-fixed'
                                     : variant === 'masterlist'
-                                      ? 'min-w-[64rem]'
+                                      ? 'min-w-[72rem]'
                                       : 'min-w-[108rem]')
                             }
                         >
@@ -1609,7 +1630,7 @@ export default function JobBoardGrid({
     const tableMinWidth = fitWidth
         ? 'table-fixed'
         : variant === 'masterlist'
-          ? 'min-w-[64rem]'
+          ? 'min-w-[72rem]'
           : 'min-w-[108rem]';
     const tableOverflowClass = fitWidth
         ? 'overflow-x-hidden'

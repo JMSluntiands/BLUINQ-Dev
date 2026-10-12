@@ -28,7 +28,7 @@ const SECTIONS = [
             'Choose an activity. If the activity is drafting or checking, select a project (searchable). Add an optional note, then save.',
             'While clocked in you can start/stop break, log more activities, and clock out when done.',
             'Leave: use + Leave request on the calendar. Managers approve under HR → Approvals (if you have access).',
-            'Calendar: view leave/holidays and add personal events with Add event.',
+            'Calendar: view leave and holidays. Admins add PH, SG, and Australia holidays with Add holiday. Add event is for team events.',
         ],
     },
     {

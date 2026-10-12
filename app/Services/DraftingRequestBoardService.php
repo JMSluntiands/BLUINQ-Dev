@@ -366,6 +366,21 @@ class DraftingRequestBoardService
             $category = mb_substr($category, 0, 25).'...';
         }
 
+        $allCategories = $row->crmCategories
+            ->sortBy(fn ($item) => mb_strtolower((string) ($item->name ?: $item->code)))
+            ->values();
+
+        if ($row->crmCategory && ! $allCategories->contains('id', $row->crmCategory->id)) {
+            $allCategories->prepend($row->crmCategory);
+        }
+
+        $categoryNames = $allCategories
+            ->map(fn ($item) => trim((string) ($item->name ?: $item->code)))
+            ->filter(fn ($name) => $name !== '')
+            ->unique()
+            ->values()
+            ->all();
+
         $area = null;
         if ($row->max_building_area_sqm !== null && $row->max_building_area_sqm !== '') {
             $areaValue = rtrim(rtrim((string) $row->max_building_area_sqm, '0'), '.');
@@ -456,6 +471,7 @@ class DraftingRequestBoardService
             'builder' => $row->company_name ?: ($row->your_name ?: '—'),
             'category' => $category,
             'category_full' => $categoryFull !== '' ? $categoryFull : '—',
+            'categories' => $categoryNames,
             'storey_level' => $row->storeyLevel?->name ?? '—',
             'latest_revision' => $latestRevision ?: '—',
             'accounting' => $accounting ?: '—',

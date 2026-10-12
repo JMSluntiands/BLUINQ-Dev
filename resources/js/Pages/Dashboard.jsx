@@ -19,6 +19,8 @@ const FLASH_MESSAGES = {
         'Leave request submitted. Waiting for admin approval.',
     'calendar-event-created': 'Calendar event added successfully.',
     'calendar-event-deleted': 'Calendar event removed.',
+    'public-holiday-created': 'Public holiday added.',
+    'public-holiday-deleted': 'Public holiday removed.',
 };
 
 const ANNOUNCEMENT_PREVIEW_LENGTH = 140;
@@ -307,6 +309,7 @@ export default function Dashboard() {
         leaveRequestUsers = [],
         leaveCalendar = [],
         holidays = {},
+        holidayRegions = [],
         calendarEvents = {},
         upcomingHolidays = [],
         upcomingBirthdays = [],
@@ -663,6 +666,8 @@ export default function Dashboard() {
                 canManageLeave={canManageLeave}
                 leaveRequestUsers={leaveRequestUsers}
                 canAddCalendarEvent
+                canManageHolidays={auth.user?.role === 'admin'}
+                holidayRegions={holidayRegions}
                 currentUserId={auth.user?.id ?? null}
                 canDeleteAnyEvent={auth.user?.role === 'admin'}
                 calendarMonth={calendarMonth}
