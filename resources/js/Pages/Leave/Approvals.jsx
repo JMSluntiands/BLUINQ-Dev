@@ -40,6 +40,20 @@ function formatDayLabel(value) {
     return `${value} day${value === '1' ? '' : 's'}`;
 }
 
+function leavePortionSummary(request) {
+    const sameDay = request.start_date === request.end_date;
+    const halfDay =
+        sameDay &&
+        request.start_portion &&
+        request.start_portion === request.end_portion;
+
+    if (halfDay) {
+        return request.start_portion === 'afternoon' ? 'Afternoon' : 'Morning';
+    }
+
+    return `${request.start_portion_label} to ${request.end_portion_label}`;
+}
+
 function StatusBadge({ status }) {
     const styles = {
         pending:
@@ -93,7 +107,7 @@ function ReviewModal({ request, action, onClose }) {
                     {formatDayLabel(request.days_display)})
                 </p>
                 <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                    {request.start_portion_label} to {request.end_portion_label}
+                    {leavePortionSummary(request)}
                 </p>
                 {request.reason && (
                     <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
@@ -573,8 +587,7 @@ export default function Approvals({
                                         {formatDayLabel(request.days_display)}
                                     </p>
                                     <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                                        {request.start_portion_label} to{' '}
-                                        {request.end_portion_label}
+                                        {leavePortionSummary(request)}
                                     </p>
                                     {request.reason && (
                                         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">

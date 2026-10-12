@@ -111,7 +111,12 @@ function resolveDayMark(user, dayKey) {
             type: 'leave',
             leaveType: mark.type || 'al',
             code: [mark.code || 'LEAVE', ...extraCodes].join('/'),
-            title: [mark.label || 'Approved leave', mark.birthday ? 'Birthday' : null]
+            portionLabel: mark.portion_label || null,
+            title: [
+                mark.label || 'Approved leave',
+                mark.portion_label || null,
+                mark.birthday ? 'Birthday' : null,
+            ]
                 .filter(Boolean)
                 .join(' · '),
         };
@@ -169,11 +174,16 @@ function MarkBadge({ mark }) {
         return (
             <span
                 className={
-                    'inline-flex h-7 min-w-8 items-center justify-center rounded-md px-1 text-[10px] font-bold ' +
+                    'inline-flex min-h-7 min-w-8 flex-col items-center justify-center rounded-md px-0.5 py-0.5 text-[10px] font-bold leading-none ' +
                     leaveTypeBadgeClass(mark.leaveType)
                 }
             >
-                {mark.code || 'LEAVE'}
+                <span>{mark.code || 'LEAVE'}</span>
+                {mark.portionLabel ? (
+                    <span className="mt-0.5 text-[8px] font-semibold">
+                        {mark.portionLabel}
+                    </span>
+                ) : null}
             </span>
         );
     }
@@ -193,7 +203,7 @@ function CalendarCell({ day, mark, highlight }) {
     return (
         <div
             className={
-                'flex h-14 min-w-[2.75rem] shrink-0 flex-col items-center justify-start border-r border-slate-100 px-1 pt-1.5 dark:border-slate-800 ' +
+                'flex h-14 min-w-[3.5rem] shrink-0 flex-col items-center justify-start border-r border-slate-100 px-1 pt-1.5 dark:border-slate-800 ' +
                 (!day.isCurrentMonth
                     ? 'bg-slate-50/40 dark:bg-slate-900/30'
                     : day.isWeekend
@@ -367,7 +377,7 @@ export default function TeamLeaveTimesheet({
                             <div
                                 key={`head-${day.key}`}
                                 className={
-                                    'flex min-w-[2.75rem] shrink-0 flex-col items-center justify-center border-r border-slate-100 px-1 py-2 dark:border-slate-800 ' +
+                                    'flex min-w-[3.5rem] shrink-0 flex-col items-center justify-center border-r border-slate-100 px-1 py-2 dark:border-slate-800 ' +
                                     (!day.isCurrentMonth
                                         ? 'bg-slate-50/40 dark:bg-slate-900/30'
                                         : day.isWeekend
