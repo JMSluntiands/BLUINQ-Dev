@@ -775,8 +775,8 @@ function JobBoardTableHead({
     sortColumn = '',
     sortDirection = 'asc',
     onSortColumn = null,
-    draftingSlotCount = 2,
-    checkingSlotCount = 2,
+    draftingSlotCount = 1,
+    checkingSlotCount = 1,
 }) {
     const sortable = variant === 'board' && typeof onSortColumn === 'function';
 
@@ -951,8 +951,8 @@ function JobBoardTableBody({
     assignableUsers = [],
     statusOptions = [],
     onOpenAssignment = null,
-    draftingSlotCount = 2,
-    checkingSlotCount = 2,
+    draftingSlotCount = 1,
+    checkingSlotCount = 1,
 }) {
     const isMasterlist = variant === 'masterlist';
     const [expandedIds, setExpandedIds] = useState(() => new Set());
@@ -1389,8 +1389,8 @@ function JobBoardStatusSection({
     sortColumn = '',
     sortDirection = 'asc',
     onSortColumn = null,
-    draftingSlotCount = 2,
-    checkingSlotCount = 2,
+    draftingSlotCount = 1,
+    checkingSlotCount = 1,
 }) {
     const sectionId = `job-board-status-${status}`;
 
@@ -1525,8 +1525,8 @@ export default function JobBoardGrid({
     sortColumn = '',
     sortDirection = 'asc',
     onSortColumn = null,
-    draftingSlotCount = 2,
-    checkingSlotCount = 2,
+    draftingSlotCount = 1,
+    checkingSlotCount = 1,
 }) {
     const [commentJob, setCommentJob] = useState(null);
     const [assignmentTarget, setAssignmentTarget] = useState(null);

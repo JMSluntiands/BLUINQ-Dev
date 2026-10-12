@@ -649,6 +649,27 @@ class ApmRevisionSyncTest extends TestCase
                 ]));
     }
 
+    public function test_apm_and_dpm_boards_show_one_drafting_and_checking_column(): void
+    {
+        $user = $this->adminUser();
+
+        $this->actingAs($user)
+            ->get(route('job.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->where('draftingSlotCount', 1)
+                ->where('checkingSlotCount', 1));
+
+        $this->actingAs($user)
+            ->get(route('design.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Board')
+                ->where('draftingSlotCount', 1)
+                ->where('checkingSlotCount', 1));
+    }
+
     public function test_dashboard_for_checking_table_lists_every_job(): void
     {
         $user = $this->adminUser();

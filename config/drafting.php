@@ -18,9 +18,9 @@ return [
 
     'xero_invoice_base_url' => env('DRAFTING_XERO_INVOICE_BASE_URL', ''),
 
-    'drafting_slots' => 2,
+    'drafting_slots' => 1,
 
-    'checking_slots' => 2,
+    'checking_slots' => 1,
 
     'board_drafting_categories' => ['DRAFTING'],
 
