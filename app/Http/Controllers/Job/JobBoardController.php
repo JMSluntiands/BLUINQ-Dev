@@ -507,6 +507,8 @@ class JobBoardController extends Controller
             'max_building_area_sqm' => filled($request->input('max_building_area_sqm'))
                 ? $request->input('max_building_area_sqm')
                 : null,
+            // Blank VO starts the new cycle at 0h. A typed value is kept.
+            'vo_hours' => filled($request->input('vo_hours')) ? $request->input('vo_hours') : 0,
         ]);
 
         $categoryCodes = \App\Models\CrmCategory::query()
@@ -531,6 +533,7 @@ class JobBoardController extends Controller
             'status'   => ['required', 'string', \Illuminate\Validation\Rule::in($allowedStatuses)],
             'date_out' => ['nullable', 'date'],
             'max_building_area_sqm' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'vo_hours' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
         ]);
 
         // Before creating a new revision / overwriting job Date Out & Area, keep those
@@ -556,8 +559,7 @@ class JobBoardController extends Controller
                 ? Carbon::parse($validated['date_out'], config('app.timezone'))->toDateString()
                 : null,
             'area_size' => $areaSize,
-            // New cycle starts at 0h so Revisions VO matches the board after Add item.
-            'vo_hours' => 0,
+            'vo_hours' => $validated['vo_hours'] ?? 0,
         ]);
 
         // Board Date In / Date Out columns come from the job row, not the revision.
@@ -578,8 +580,7 @@ class JobBoardController extends Controller
             'requested_at' => $requestedAt,
             'date_out' => $dateOut,
             'max_building_area_sqm' => $validated['max_building_area_sqm'] ?? null,
-            // New Add item revision: start VO at 0h (not carry prior cycle).
-            'vo_hours' => 0,
+            'vo_hours' => $validated['vo_hours'] ?? 0,
         ])->save();
 
         $result = $this->submission->addOrReopenOnBoard(
@@ -588,6 +589,14 @@ class JobBoardController extends Controller
             $board,
             $revision,
         );
+
+        // Reopen saves vo_hours = 0 on its own model instance. Refresh first so
+        // this write is not skipped when the in-memory value already matches.
+        $voHours = $validated['vo_hours'] ?? 0;
+        $draftingRequest->refresh();
+        $draftingRequest->forceFill(['vo_hours' => $voHours])->save();
+        $revision->refresh();
+        $revision->forceFill(['vo_hours' => $voHours])->save();
 
         return $this->redirectAfterBoardAdd($draftingRequest, $result, $board);
     }
@@ -1087,6 +1096,13 @@ class JobBoardController extends Controller
             $draftingRequest->update([
                 'vo_hours' => $validated['vo_hours'],
             ]);
+            // Project info reads the latest revision. Keep that row with the board VO.
+            $latestRevision = $draftingRequest->revisions()->orderByDesc('id')->first();
+            if ($latestRevision !== null) {
+                $latestRevision->forceFill([
+                    'vo_hours' => $validated['vo_hours'],
+                ])->save();
+            }
         }
 
         if (array_key_exists('max_building_area_sqm', $validated)) {
