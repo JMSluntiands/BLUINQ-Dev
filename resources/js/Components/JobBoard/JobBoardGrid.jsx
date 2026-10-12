@@ -775,12 +775,14 @@ function JobBoardTableHead({
     sortColumn = '',
     sortDirection = 'asc',
     onSortColumn = null,
-    draftingSlotCount = 2,
-    checkingSlotCount = 2,
+    draftingSlotCount = 1,
+    checkingSlotCount = 1,
 }) {
     const sortable = variant === 'board' && typeof onSortColumn === 'function';
 
     if (variant === 'masterlist') {
+        const masterlistSortable = typeof onSortColumn === 'function';
+
         return (
             <thead className="bg-[#fafbfc] dark:bg-[#151622]">
                 <tr>
@@ -790,8 +792,28 @@ function JobBoardTableHead({
                     <th className={thClass}>Client Name</th>
                     <th className={thClass}>Storey / Levels</th>
                     <th className={thClass}>Latest Revision</th>
-                    <th className={thClass}>Status</th>
-                    <th className={thClass}>Accounting</th>
+                    {masterlistSortable ? (
+                        <SortableTh
+                            column="status"
+                            label="Status"
+                            sortColumn={sortColumn}
+                            sortDirection={sortDirection}
+                            onSortColumn={onSortColumn}
+                        />
+                    ) : (
+                        <th className={thClass}>Status</th>
+                    )}
+                    {masterlistSortable ? (
+                        <SortableTh
+                            column="accounting"
+                            label="Accounting"
+                            sortColumn={sortColumn}
+                            sortDirection={sortDirection}
+                            onSortColumn={onSortColumn}
+                        />
+                    ) : (
+                        <th className={thClass}>Accounting</th>
+                    )}
                     <th className={thClass + ' w-10'}>Priority</th>
                     {showActions && <th className={thClass}>Actions</th>}
                 </tr>
@@ -929,8 +951,8 @@ function JobBoardTableBody({
     assignableUsers = [],
     statusOptions = [],
     onOpenAssignment = null,
-    draftingSlotCount = 2,
-    checkingSlotCount = 2,
+    draftingSlotCount = 1,
+    checkingSlotCount = 1,
 }) {
     const isMasterlist = variant === 'masterlist';
     const [expandedIds, setExpandedIds] = useState(() => new Set());
@@ -1367,8 +1389,8 @@ function JobBoardStatusSection({
     sortColumn = '',
     sortDirection = 'asc',
     onSortColumn = null,
-    draftingSlotCount = 2,
-    checkingSlotCount = 2,
+    draftingSlotCount = 1,
+    checkingSlotCount = 1,
 }) {
     const sectionId = `job-board-status-${status}`;
 
@@ -1503,8 +1525,8 @@ export default function JobBoardGrid({
     sortColumn = '',
     sortDirection = 'asc',
     onSortColumn = null,
-    draftingSlotCount = 2,
-    checkingSlotCount = 2,
+    draftingSlotCount = 1,
+    checkingSlotCount = 1,
 }) {
     const [commentJob, setCommentJob] = useState(null);
     const [assignmentTarget, setAssignmentTarget] = useState(null);
