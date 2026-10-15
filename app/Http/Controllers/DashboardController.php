@@ -7,6 +7,7 @@ use App\Http\Requests\StoreDashboardActivityRequest;
 use App\Models\DraftingRequest;
 use App\Models\User;
 use App\Services\AttendanceService;
+use App\Support\AppClock;
 use App\Services\CalendarEventService;
 use App\Services\DraftingRequestBoardService;
 use App\Services\HolidayService;
@@ -37,14 +38,14 @@ class DashboardController extends Controller
         $calendarMonth = $request->string('calendar_month')->toString();
         $month = preg_match('/^\d{4}-\d{2}$/', $calendarMonth)
             ? Carbon::createFromFormat('Y-m', $calendarMonth)->startOfMonth()
-            : Carbon::today()->startOfMonth();
+            : AppClock::today()->startOfMonth();
         [$calendarStart, $calendarEnd] = $this->leave->monthGridRange($month);
         $holidayRegion = $user?->holiday_region;
 
         $leaderboardMonth = $request->string('leaderboard_month')->toString();
         $leaderboardMonth = preg_match('/^\d{4}-\d{2}$/', $leaderboardMonth)
             ? $leaderboardMonth
-            : Carbon::today(config('app.timezone'))->format('Y-m');
+            : AppClock::today()->format('Y-m');
 
         return Inertia::render('Dashboard', [
             'boardPreviewJobs' => $user?->hasPermission('job.list.view')
@@ -98,14 +99,13 @@ class DashboardController extends Controller
                     ->values()
                     ->all()
                 : [],
-            'leaveHolidayConfig' => config('holidays', []),
+            'leaveHolidayConfig' => $this->holidays->clientConfig(),
             'leaveCalendar' => $user
                 ? $this->leave->calendarPayload($calendarStart, $calendarEnd)
                 : [],
             'holidays' => $this->holidays->forRange(
                 $calendarStart,
                 $calendarEnd,
-                $holidayRegion,
             ),
             'calendarEvents' => $this->calendarEvents->forRange($calendarStart, $calendarEnd),
             'upcomingHolidays' => $this->holidays->upcoming(region: $holidayRegion),

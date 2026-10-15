@@ -230,6 +230,7 @@ export default function AuthenticatedLayout({ header, children }) {
     const isJobStatusChart = route().current('job.status-chart');
     const isTimesheet = route().current('timesheet.index');
     const isLeaveApprovals = route().current('leave.approvals');
+    const isPublicHolidays = route().current('public-holidays.index');
     const isLeaveCredits = route().current('leave.credits.index');
     const isAttendanceHistory = route().current('attendance.history');
     const isUserMilestones =
@@ -785,6 +786,23 @@ export default function AuthenticatedLayout({ header, children }) {
                                     >
                                         HR
                                     </p>
+                                    {canManageLeave && (
+                                        <NavItem
+                                            href={route('public-holidays.index')}
+                                            active={isPublicHolidays}
+                                            onNavigate={closeSidebar}
+                                            collapsed={isMinimized}
+                                            label="Holidays"
+                                            icon={
+                                                <CalendarDaysIcon
+                                                    className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-slate-500"
+                                                    aria-hidden
+                                                />
+                                            }
+                                        >
+                                            Holidays
+                                        </NavItem>
+                                    )}
                                     {canManageLeave && (
                                         <NavItem
                                             href={route('leave.approvals')}

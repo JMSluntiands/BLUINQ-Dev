@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CalendarEventController;
+use App\Http\Controllers\PublicHolidayController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AnnouncementImageController;
 use App\Http\Controllers\AnnouncementInlineImageController;
@@ -106,6 +107,12 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('calendar-events.store');
     Route::delete('/calendar-events/{calendarEvent}', [CalendarEventController::class, 'destroy'])
         ->name('calendar-events.destroy');
+    Route::get('/leave/holidays', [PublicHolidayController::class, 'index'])
+        ->name('public-holidays.index');
+    Route::post('/public-holidays', [PublicHolidayController::class, 'store'])
+        ->name('public-holidays.store');
+    Route::delete('/public-holidays/{publicHoliday}', [PublicHolidayController::class, 'destroy'])
+        ->name('public-holidays.destroy');
 
     Route::get('/announcements', [AnnouncementController::class, 'index'])
         ->name('announcements.index');

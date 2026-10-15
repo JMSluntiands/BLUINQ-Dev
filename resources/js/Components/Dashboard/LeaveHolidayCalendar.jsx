@@ -1,6 +1,7 @@
 import CalendarEventModal from '@/Components/Dashboard/CalendarEventModal';
 import LeaveRequestModal from '@/Components/Leave/LeaveRequestModal';
 import { badgeInitialsFromName } from '@/utils/badgeInitials';
+import { philippineNow } from '@/utils/philippineTime';
 import {
     CalendarDaysIcon,
     ChevronDownIcon,
@@ -121,7 +122,7 @@ function leaveTypeChipClass(type) {
 function parseMonth(value) {
     const [year, month] = (value || '').split('-').map(Number);
     if (!year || !month) {
-        return new Date();
+        return philippineNow();
     }
     return new Date(year, month - 1, 1);
 }
@@ -362,7 +363,7 @@ function DayCell({
             <div className="relative mt-1 min-w-0 space-y-1">
                 {holidays.slice(0, 2).map((holiday) => (
                     <div
-                        key={`${holiday.country}-${holiday.name}`}
+                        key={`${holiday.id ?? 'listed'}-${holiday.country}-${holiday.name}`}
                         className={`truncate rounded-md px-1.5 py-0.5 text-[10px] font-medium ${holidayStyles(holiday.country)}`}
                         title={`${holiday.country_label}: ${holiday.name}`}
                     >
@@ -643,7 +644,7 @@ export default function LeaveHolidayCalendar({
     calendarMonth,
 }) {
     const canOpenLeaveRequest = canApplyLeave || canManageLeave;
-    const today = new Date();
+    const today = philippineNow();
     const todayKey = dateKey(today);
     const activeMonth =
         calendarMonth ||
@@ -846,7 +847,7 @@ export default function LeaveHolidayCalendar({
                             <span className="rounded px-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
                                 WA
                             </span>
-                            Western Australia holiday
+                            Australia (WA) holiday
                         </span>
                         <span className="inline-flex items-center gap-1.5">
                             <span className="h-2 w-2 rounded-full bg-pink-500" />

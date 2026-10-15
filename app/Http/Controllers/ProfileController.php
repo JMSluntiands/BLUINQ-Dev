@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PasswordChangeRequest;
 use App\Models\User;
 use App\Services\LeaveEntitlementService;
+use App\Support\AppClock;
 use App\Support\UserHrProfile;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\Request;
@@ -37,7 +38,7 @@ class ProfileController extends Controller
             'passwordRequest' => $pendingRequest ? [
                 'status' => $pendingRequest->status,
                 'requested_at' => $pendingRequest->created_at
-                    ?->timezone(config('app.timezone'))
+                    ?->timezone(AppClock::timezone())
                     ->format('d M Y, h:i A'),
             ] : null,
         ]);

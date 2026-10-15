@@ -7,6 +7,7 @@ use App\Http\Requests\StoreCrmQuoteCommentRequest;
 use App\Models\CrmQuote;
 use App\Models\CrmQuoteActivity;
 use App\Models\CrmQuoteComment;
+use App\Support\AppClock;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -82,7 +83,7 @@ class CrmQuoteController extends Controller
                 ->orderBy('created_at'),
         ]);
 
-        $tz = config('app.timezone');
+        $tz = AppClock::timezone();
         $listFilters = $this->listFiltersFromRequest($request);
 
         $comments = $crmQuote->comments;
@@ -232,7 +233,7 @@ class CrmQuoteController extends Controller
         return [
             'id' => $row->id,
             'requested_at' => $row->requested_at
-                ?->timezone(config('app.timezone'))
+                ?->timezone(AppClock::timezone())
                 ->format('d M Y, h:i A'),
             'client_company_name' => $row->client_company_name,
             'project_job_number' => $row->project_job_number,

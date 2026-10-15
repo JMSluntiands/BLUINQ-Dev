@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Models\Client;
+use App\Support\AppClock;
 use App\Models\ClientContact;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -237,7 +238,7 @@ class ClientController extends Controller
                     'id' => $row->id,
                     'name' => $row->name,
                     'status' => $row->status,
-                    'archived_at' => $row->archived_at?->timezone(config('app.timezone'))?->format('M j, Y g:i A'),
+                    'archived_at' => $row->archived_at?->timezone(AppClock::timezone())?->format('M j, Y g:i A'),
                 ])
                 ->withQueryString(),
             'filters' => [

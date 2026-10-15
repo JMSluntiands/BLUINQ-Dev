@@ -12,6 +12,7 @@ use App\Models\CrmQuoteActivity;
 use App\Models\Deliverable;
 use App\Models\LevelOfDifficulty;
 use App\Models\ScopeOfWork;
+use App\Support\AppClock;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -21,7 +22,7 @@ class CrmQuoteFormController extends Controller
 {
     public function create(Request $request): Response
     {
-        $requestedAt = now(config('app.timezone'))->seconds(0)->format('Y-m-d\TH:i');
+        $requestedAt = AppClock::now()->seconds(0)->format('Y-m-d\TH:i');
 
         return Inertia::render('Crm/QuoteDetailsForm', [
             'defaults' => [

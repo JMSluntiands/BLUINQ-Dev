@@ -1,4 +1,5 @@
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { philippineNow } from '@/utils/philippineTime';
 import { Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -256,7 +257,7 @@ export default function WeeklyTimesheet({ weeklyTimesheet, canApprove = false })
     const saveTimers = useRef({});
 
     const weekStart = useMemo(
-        () => parseIsoDate(weeklyTimesheet?.week_start ?? toIsoDate(startOfWeek(new Date()))),
+        () => parseIsoDate(weeklyTimesheet?.week_start ?? toIsoDate(startOfWeek(philippineNow()))),
         [weeklyTimesheet?.week_start],
     );
     const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart]);
