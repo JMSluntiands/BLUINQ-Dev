@@ -100,13 +100,6 @@ class DashboardController extends Controller
                     ->all()
                 : [],
             'leaveHolidayConfig' => $this->holidays->clientConfig(),
-            'holidayRegions' => collect(HolidayService::regionOptions())
-                ->map(fn (string $label, string $value) => [
-                    'value' => $value,
-                    'label' => $value === 'western_australia' ? 'Australia (WA)' : $label,
-                ])
-                ->values()
-                ->all(),
             'leaveCalendar' => $user
                 ? $this->leave->calendarPayload($calendarStart, $calendarEnd)
                 : [],

@@ -13,6 +13,105 @@ class PublicHolidayTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_repeat_yearly_holiday_appears_on_later_years(): void
+    {
+        $admin = $this->adminUser();
+
+        $this->actingAs($admin)
+            ->post(route('public-holidays.store'), [
+                'region' => 'philippines',
+                'holiday_date' => '2026-10-15',
+                'name' => 'Foundation Day',
+                'repeats_yearly' => true,
+            ])
+            ->assertRedirect(route('public-holidays.index', ['year' => 2026]));
+
+        $this->assertDatabaseHas('public_holidays', [
+            'region' => 'philippines',
+            'name' => 'Foundation Day',
+            'repeats_yearly' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('public-holidays.index', ['year' => 2028]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('holidays', function ($rows) {
+                    $row = collect($rows)->firstWhere('name', 'Foundation Day');
+
+                    return $row !== null
+                        && $row['date'] === '2028-10-15'
+                        && $row['repeats_yearly'] === true
+                        && $row['manual'] === true;
+                }));
+
+        $this->assertArrayHasKey(
+            '2028-10-15',
+            app(\App\Services\HolidayService::class)->datesInRange('2028-10-01', '2028-10-31', 'philippines'),
+        );
+    }
+
+    public function test_admin_can_add_several_holiday_rows_at_once(): void
+    {
+        $admin = $this->adminUser();
+
+        $this->actingAs($admin)
+            ->post(route('public-holidays.store'), [
+                'holidays' => [
+                    [
+                        'region' => 'philippines',
+                        'holiday_date' => '2026-10-15',
+                        'name' => 'Foundation Day',
+                        'repeats_yearly' => false,
+                    ],
+                    [
+                        'region' => 'singapore',
+                        'holiday_date' => '2026-10-16',
+                        'name' => 'Company Day',
+                        'repeats_yearly' => true,
+                    ],
+                ],
+            ])
+            ->assertRedirect(route('public-holidays.index', ['year' => 2026]));
+
+        $this->assertDatabaseHas('public_holidays', [
+            'region' => 'philippines',
+            'name' => 'Foundation Day',
+            'repeats_yearly' => false,
+        ]);
+        $this->assertDatabaseHas('public_holidays', [
+            'region' => 'singapore',
+            'name' => 'Company Day',
+            'repeats_yearly' => true,
+        ]);
+    }
+
+    public function test_hr_holidays_page_lists_a_manual_holiday_beside_the_built_in_ones(): void
+    {
+        $admin = $this->adminUser();
+
+        PublicHoliday::query()->create([
+            'region' => 'philippines',
+            'holiday_date' => '2026-10-15',
+            'name' => 'Foundation Day',
+            'user_id' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('public-holidays.index', ['year' => 2026]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Leave/Holidays/Index')
+                ->where('holidays', function ($rows) {
+                    $names = collect($rows)->pluck('name');
+
+                    return $names->contains('Foundation Day')
+                        && $names->contains('Ninoy Aquino Day')
+                        && collect($rows)->firstWhere('name', 'Foundation Day')['manual'] === true
+                        && collect($rows)->firstWhere('name', 'Ninoy Aquino Day')['manual'] === false;
+                }));
+    }
+
     public function test_admin_can_add_holidays_for_ph_sg_and_australia(): void
     {
         $admin = $this->adminUser();
@@ -149,7 +248,7 @@ class PublicHolidayTest extends TestCase
                 'name' => 'Ninoy Aquino Day',
             ])
             ->assertRedirect(route('dashboard'))
-            ->assertSessionHasErrors('name');
+            ->assertSessionHasErrors('holidays.0.name');
     }
 
     private function adminUser(): User

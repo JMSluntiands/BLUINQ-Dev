@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 class PublicHoliday extends Model
 {
@@ -11,6 +12,7 @@ class PublicHoliday extends Model
         'region',
         'holiday_date',
         'name',
+        'repeats_yearly',
         'user_id',
     ];
 
@@ -21,7 +23,20 @@ class PublicHoliday extends Model
     {
         return [
             'holiday_date' => 'date',
+            'repeats_yearly' => 'boolean',
         ];
+    }
+
+    public static function occurrenceInYear(Carbon $source, int $year): ?string
+    {
+        $month = (int) $source->format('n');
+        $day = (int) $source->format('j');
+
+        if (! checkdate($month, $day, $year)) {
+            return null;
+        }
+
+        return sprintf('%04d-%02d-%02d', $year, $month, $day);
     }
 
     public function user(): BelongsTo

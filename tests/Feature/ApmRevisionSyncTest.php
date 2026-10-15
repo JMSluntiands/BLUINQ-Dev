@@ -141,6 +141,97 @@ class ApmRevisionSyncTest extends TestCase
         $this->assertSame('AC', $row['drafting'][0]['initials'] ?? null);
     }
 
+    public function test_board_shows_latest_revision_drafter_and_checker_without_hours(): void
+    {
+        $admin = $this->adminUser();
+        $oldDrafter = User::factory()->create([
+            'role_id' => Role::query()->where('slug', 'admin')->value('id'),
+            'name' => 'Alex Maker',
+            'initials' => 'AM',
+        ]);
+        $drafter = User::factory()->create([
+            'role_id' => Role::query()->where('slug', 'admin')->value('id'),
+            'name' => 'New Drafter',
+            'initials' => 'ND',
+        ]);
+        $checker = User::factory()->create([
+            'role_id' => Role::query()->where('slug', 'admin')->value('id'),
+            'name' => 'New Checker',
+            'initials' => 'NC',
+        ]);
+        [$storeyLevel, $category] = $this->seedLookups();
+        $job = $this->createApmJob($admin, $storeyLevel, $category);
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $job->id,
+            'user_id' => $admin->id,
+            'code' => $job->jobNumber().'-01',
+            'log_date' => now()->toDateString(),
+            'category' => $category->code,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
+            'drafter_user_id' => $oldDrafter->id,
+            'drafter_initials' => 'AM',
+            'drafting_hours' => 4,
+        ]);
+        $latest = DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $job->id,
+            'user_id' => $admin->id,
+            'code' => $job->jobNumber().'-02',
+            'log_date' => now()->toDateString(),
+            'category' => $category->code,
+            'status' => DraftingRequest::STATUS_NEW,
+            'drafter_user_id' => $drafter->id,
+            'drafter_initials' => 'ND',
+            'checker_user_id' => $checker->id,
+            'checker_initials' => 'NC',
+        ]);
+
+        DraftingRequestAssignment::query()->create([
+            'drafting_request_id' => $job->id,
+            'role' => DraftingRequestAssignment::ROLE_DRAFTING,
+            'slot' => 0,
+            'user_id' => $oldDrafter->id,
+            'hours' => 4,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('job.drafting.revisions.update', [$job, $latest]), [
+                'code' => $latest->code,
+                'log_date' => now()->toDateString(),
+                'category' => $category->code,
+                'status' => DraftingRequest::STATUS_NEW,
+                'drafter_user_id' => $drafter->id,
+                'checker_user_id' => $checker->id,
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $assignment = DraftingRequestAssignment::query()
+            ->where('drafting_request_id', $job->id)
+            ->where('role', DraftingRequestAssignment::ROLE_DRAFTING)
+            ->where('slot', 0)
+            ->first();
+        $checking = DraftingRequestAssignment::query()
+            ->where('drafting_request_id', $job->id)
+            ->where('role', DraftingRequestAssignment::ROLE_CHECKING)
+            ->where('slot', 0)
+            ->first();
+
+        $this->assertSame($drafter->id, $assignment?->user_id);
+        $this->assertSame($checker->id, $checking?->user_id);
+
+        $job->load([
+            'assignments.user:id,name,initials',
+            'revisions.drafter:id,name,initials',
+            'revisions.checker:id,name,initials',
+        ]);
+
+        $row = app(\App\Services\DraftingRequestBoardService::class)->formatBoardRow($job);
+
+        $this->assertSame('ND', $row['drafting'][0]['initials'] ?? null);
+        $this->assertSame('NC', $row['checking'][0]['initials'] ?? null);
+    }
+
     public function test_board_assign_creates_primary_revision_when_missing(): void
     {
         $user = $this->adminUser();

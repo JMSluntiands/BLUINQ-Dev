@@ -44,6 +44,20 @@ class HolidayService
             ->all();
     }
 
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    public static function regionChoices(): array
+    {
+        return collect(self::regionOptions())
+            ->map(fn (string $label, string $value) => [
+                'value' => $value,
+                'label' => $value === 'western_australia' ? 'Australia (WA)' : $label,
+            ])
+            ->values()
+            ->all();
+    }
+
     public static function normalizeRegion(?string $region): ?string
     {
         return in_array($region, self::regionKeys(), true) ? $region : null;
@@ -78,20 +92,25 @@ class HolidayService
         }
 
         $manual = PublicHoliday::query()
-            ->whereBetween('holiday_date', [$startKey, $endKey])
             ->when($region !== null, fn ($query) => $query->where('region', $region))
+            ->where(function ($query) use ($startKey, $endKey) {
+                $query->whereBetween('holiday_date', [$startKey, $endKey])
+                    ->orWhere('repeats_yearly', true);
+            })
             ->orderBy('holiday_date')
             ->orderBy('name')
             ->get();
 
         foreach ($manual as $holiday) {
-            $this->appendHoliday(
-                $holidays,
-                $holiday->holiday_date->toDateString(),
-                $holiday->name,
-                $this->countryMeta($holiday->region),
-                $holiday->id,
-            );
+            foreach ($this->datesForHoliday($holiday, $startKey, $endKey) as $date) {
+                $this->appendHoliday(
+                    $holidays,
+                    $date,
+                    $holiday->name,
+                    $this->countryMeta($holiday->region),
+                    $holiday->id,
+                );
+            }
         }
 
         ksort($holidays);
@@ -119,15 +138,18 @@ class HolidayService
             }
         }
 
-        $manualDates = PublicHoliday::query()
+        $manual = PublicHoliday::query()
             ->where('region', $region)
-            ->whereBetween('holiday_date', [$startDate, $endDate])
-            ->pluck('holiday_date');
+            ->where(function ($query) use ($startDate, $endDate) {
+                $query->whereBetween('holiday_date', [$startDate, $endDate])
+                    ->orWhere('repeats_yearly', true);
+            })
+            ->get();
 
-        foreach ($manualDates as $date) {
-            $key = $date instanceof Carbon ? $date->toDateString() : (string) $date;
-
-            $matches[$key] = true;
+        foreach ($manual as $holiday) {
+            foreach ($this->datesForHoliday($holiday, $startDate, $endDate) as $date) {
+                $matches[$date] = true;
+            }
         }
 
         return $matches;
@@ -141,14 +163,169 @@ class HolidayService
     public function clientConfig(): array
     {
         $config = config('holidays', []);
+        $years = [];
+
+        foreach ($config as $countryYears) {
+            foreach (array_keys((array) $countryYears) as $configuredYear) {
+                $years[(int) $configuredYear] = true;
+            }
+        }
+
+        $todayYear = (int) AppClock::today()->format('Y');
+        for ($year = $todayYear - 1; $year <= $todayYear + 5; $year++) {
+            $years[$year] = true;
+        }
 
         foreach (PublicHoliday::query()->orderBy('holiday_date')->get() as $holiday) {
-            $date = $holiday->holiday_date->toDateString();
-            $year = (int) $holiday->holiday_date->format('Y');
-            $config[$holiday->region][$year][$date] = $holiday->name;
+            if (! $holiday->repeats_yearly) {
+                $date = $holiday->holiday_date->toDateString();
+                $year = (int) $holiday->holiday_date->format('Y');
+                $config[$holiday->region][$year][$date] = $holiday->name;
+
+                continue;
+            }
+
+            foreach (array_keys($years) as $year) {
+                $date = PublicHoliday::occurrenceInYear($holiday->holiday_date, (int) $year);
+                if ($date === null) {
+                    continue;
+                }
+
+                $config[$holiday->region][$year][$date] = $holiday->name;
+            }
         }
 
         return $config;
+    }
+
+    /**
+     * Built-in holidays plus ones added from HR, for one year.
+     *
+     * @return list<array{key: string, id: int|null, region: string, country: string, country_label: string, date: string, display_date: string, name: string, manual: bool}>
+     */
+    public function manageList(int $year): array
+    {
+        $rows = [];
+        $start = sprintf('%04d-01-01', $year);
+        $end = sprintf('%04d-12-31', $year);
+
+        foreach (config('holidays', []) as $country => $years) {
+            $meta = $this->countryMeta((string) $country);
+
+            foreach ((array) ($years[$year] ?? []) as $date => $name) {
+                $rows[] = $this->manageRow(
+                    'listed-'.$meta['code'].'-'.$date.'-'.$name,
+                    null,
+                    (string) $country,
+                    $meta,
+                    (string) $date,
+                    (string) $name,
+                    false,
+                    false,
+                );
+            }
+        }
+
+        $manual = PublicHoliday::query()
+            ->where(function ($query) use ($start, $end) {
+                $query->whereBetween('holiday_date', [$start, $end])
+                    ->orWhere('repeats_yearly', true);
+            })
+            ->orderBy('holiday_date')
+            ->orderBy('name')
+            ->get();
+
+        foreach ($manual as $holiday) {
+            $date = $holiday->repeats_yearly
+                ? PublicHoliday::occurrenceInYear($holiday->holiday_date, $year)
+                : $holiday->holiday_date->toDateString();
+
+            if ($date === null || $date < $start || $date > $end) {
+                continue;
+            }
+
+            $alreadyListed = collect($rows)->contains(
+                fn (array $row) => $row['region'] === $holiday->region
+                    && $row['date'] === $date
+                    && strcasecmp($row['name'], $holiday->name) === 0,
+            );
+
+            if ($alreadyListed) {
+                continue;
+            }
+
+            $rows[] = $this->manageRow(
+                'manual-'.$holiday->id.'-'.$year,
+                $holiday->id,
+                $holiday->region,
+                $this->countryMeta($holiday->region),
+                $date,
+                $holiday->name,
+                true,
+                $holiday->repeats_yearly,
+            );
+        }
+
+        usort(
+            $rows,
+            fn (array $a, array $b) => [$a['date'], $a['country_label'], $a['name']]
+                <=> [$b['date'], $b['country_label'], $b['name']],
+        );
+
+        return $rows;
+    }
+
+    /**
+     * @param  array{code: string, label: string}  $meta
+     * @return array{key: string, id: int|null, region: string, country: string, country_label: string, date: string, display_date: string, name: string, manual: bool, repeats_yearly: bool}
+     */
+    private function manageRow(
+        string $key,
+        ?int $id,
+        string $region,
+        array $meta,
+        string $date,
+        string $name,
+        bool $manual,
+        bool $repeatsYearly,
+    ): array {
+        return [
+            'key' => $key,
+            'id' => $id,
+            'region' => $region,
+            'country' => $meta['code'],
+            'country_label' => $region === 'western_australia' ? 'Australia (WA)' : $meta['label'],
+            'date' => $date,
+            'display_date' => Carbon::parse($date)->format('M j, Y'),
+            'name' => $name,
+            'manual' => $manual,
+            'repeats_yearly' => $repeatsYearly,
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function datesForHoliday(PublicHoliday $holiday, string $start, string $end): array
+    {
+        if (! $holiday->repeats_yearly) {
+            $date = $holiday->holiday_date->toDateString();
+
+            return ($date >= $start && $date <= $end) ? [$date] : [];
+        }
+
+        $dates = [];
+        $startYear = (int) substr($start, 0, 4);
+        $endYear = (int) substr($end, 0, 4);
+
+        for ($year = $startYear; $year <= $endYear; $year++) {
+            $date = PublicHoliday::occurrenceInYear($holiday->holiday_date, $year);
+            if ($date !== null && $date >= $start && $date <= $end) {
+                $dates[] = $date;
+            }
+        }
+
+        return $dates;
     }
 
     /**
@@ -176,15 +353,37 @@ class HolidayService
 
         $manual = PublicHoliday::query()
             ->when($region !== null, fn ($query) => $query->where('region', $region))
-            ->whereDate('holiday_date', '>=', $from->toDateString())
+            ->where(function ($query) use ($from) {
+                $query->whereDate('holiday_date', '>=', $from->toDateString())
+                    ->orWhere('repeats_yearly', true);
+            })
             ->orderBy('holiday_date')
             ->orderBy('name')
             ->get();
 
         foreach ($manual as $holiday) {
+            $date = $holiday->holiday_date->toDateString();
+
+            if ($holiday->repeats_yearly) {
+                $date = null;
+                $year = (int) $from->format('Y');
+
+                for ($offset = 0; $offset <= 8; $offset++) {
+                    $candidate = PublicHoliday::occurrenceInYear($holiday->holiday_date, $year + $offset);
+                    if ($candidate !== null && $candidate >= $from->toDateString()) {
+                        $date = $candidate;
+                        break;
+                    }
+                }
+            }
+
+            if ($date === null) {
+                continue;
+            }
+
             $this->appendUpcoming(
                 $entries,
-                $holiday->holiday_date->toDateString(),
+                $date,
                 $holiday->name,
                 $this->countryMeta($holiday->region),
                 $from,

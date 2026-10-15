@@ -309,7 +309,6 @@ export default function Dashboard() {
         leaveRequestUsers = [],
         leaveCalendar = [],
         holidays = {},
-        holidayRegions = [],
         calendarEvents = {},
         upcomingHolidays = [],
         upcomingBirthdays = [],
@@ -666,8 +665,6 @@ export default function Dashboard() {
                 canManageLeave={canManageLeave}
                 leaveRequestUsers={leaveRequestUsers}
                 canAddCalendarEvent
-                canManageHolidays={auth.user?.role === 'admin'}
-                holidayRegions={holidayRegions}
                 currentUserId={auth.user?.id ?? null}
                 canDeleteAnyEvent={auth.user?.role === 'admin'}
                 calendarMonth={calendarMonth}
