@@ -28,7 +28,7 @@ const SECTIONS = [
             'Choose an activity. If the activity is drafting or checking, select a project (searchable). Add an optional note, then save.',
             'While clocked in you can start/stop break, log more activities, and clock out when done.',
             'Leave: use + Leave request on the calendar. Managers approve under HR → Approvals (if you have access).',
-            'Calendar: view leave/holidays and add personal events with Add event.',
+            'Calendar: view leave and holidays. Add PH, SG, and Australia holidays under HR → Holidays, one date at a time. Add event is for team events.',
         ],
     },
     {
@@ -117,8 +117,9 @@ const SECTIONS = [
     },
     {
         id: 'hr',
-        title: '10. HR (Approvals, Credits, Milestones)',
+        title: '10. HR (Holidays, Approvals, Credits, Milestones)',
         body: [
+            'Holidays: add one Philippines, Singapore, or Australia holiday at a time. Listed holidays stay on the calendar.',
             'Approvals: managers review leave requests (approve/reject).',
             'Credits: view or edit leave credit balances.',
             'Milestones: manage user milestone records where enabled.',

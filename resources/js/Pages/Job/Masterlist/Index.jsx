@@ -61,7 +61,7 @@ export default function Index({ draftingRequests, filters = {} }) {
     });
 
     const handleSortColumn = (column) => {
-        const currentSort = filters.sort ?? '';
+        const currentSort = filters.sort ?? 'lead_number';
         const currentDirection = filters.direction ?? 'desc';
         const nextDirection =
             currentSort === column && currentDirection === 'asc'
@@ -142,14 +142,14 @@ export default function Index({ draftingRequests, filters = {} }) {
                     onLiveSearchChange={setLiveSearch}
                     defaultPerPage={25}
                     sortOptions={MASTERLIST_SORT_OPTIONS}
-                    defaultSort="requested_at"
+                    defaultSort="lead_number"
                     defaultDirection="desc"
                 />
 
                 <JobBoardGrid
                     jobs={rows}
                     variant="masterlist"
-                    sortColumn={filters.sort ?? ''}
+                    sortColumn={filters.sort ?? 'lead_number'}
                     sortDirection={filters.direction ?? 'desc'}
                     onSortColumn={handleSortColumn}
                     emptyMessage={

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Models\PasswordChangeRequest;
+use App\Support\AppClock;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -66,8 +67,8 @@ class PasswordChangeRequestController extends Controller
                 ->through(fn (PasswordChangeRequest $changeRequest) => [
                     'id' => $changeRequest->id,
                     'status' => $changeRequest->status,
-                    'created_at' => $changeRequest->created_at?->timezone(config('app.timezone'))->format('d M Y, h:i A'),
-                    'reviewed_at' => $changeRequest->reviewed_at?->timezone(config('app.timezone'))->format('d M Y, h:i A'),
+                    'created_at' => $changeRequest->created_at?->timezone(AppClock::timezone())->format('d M Y, h:i A'),
+                    'reviewed_at' => $changeRequest->reviewed_at?->timezone(AppClock::timezone())->format('d M Y, h:i A'),
                     'admin_notes' => $changeRequest->admin_notes,
                     'user' => [
                         'id' => $changeRequest->user?->id,

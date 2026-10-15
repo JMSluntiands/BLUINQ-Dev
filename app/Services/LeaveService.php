@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\LeaveRequest;
+use App\Support\AppClock;
 use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -115,7 +116,7 @@ class LeaveService
      */
     public function upcomingBirthdays(int $limit = 50): array
     {
-        $today = Carbon::today();
+        $today = AppClock::today();
         $month = $today->month;
 
         return User::query()
@@ -545,7 +546,7 @@ class LeaveService
      */
     public function onLeaveToday(): array
     {
-        $today = now()->toDateString();
+        $today = AppClock::today()->toDateString();
 
         return LeaveRequest::query()
             ->approved()

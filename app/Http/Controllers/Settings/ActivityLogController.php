@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
+use App\Support\AppClock;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -23,7 +24,9 @@ class ActivityLogController extends Controller
             ->paginate($perPage)
             ->through(fn (ActivityLog $log) => [
                 'id' => $log->id,
-                'created_at' => $log->created_at?->toIso8601String(),
+                'created_at' => $log->created_at
+                    ?->timezone(AppClock::timezone())
+                    ->format('M j, Y g:i A'),
                 'method' => $log->method,
                 'route_name' => $log->route_name,
                 'path' => $log->path,

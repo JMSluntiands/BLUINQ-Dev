@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\PasswordChangeRequest;
 use App\Models\Permission;
 use App\Services\DraftingRequestReviewService;
+use App\Services\HolidayService;
 use App\Services\LeaveEntitlementService;
 use App\Services\LeaveService;
 use App\Support\AppLogoFile;
@@ -62,6 +63,9 @@ class HandleInertiaRequests extends Middleware
             'leaveBalances' => $user && $user->hasPermission('leave.apply')
                 ? app(LeaveEntitlementService::class)->balancesFor($user)
                 : null,
+            'leaveHolidayConfig' => $user
+                ? app(HolidayService::class)->clientConfig()
+                : [],
             'leaveTypes' => collect(config('leave.types', []))
                 ->map(fn (array $meta, string $key) => [
                     'value' => $key,

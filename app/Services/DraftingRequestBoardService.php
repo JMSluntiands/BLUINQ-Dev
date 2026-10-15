@@ -8,6 +8,7 @@ use App\Models\DraftingRequestComment;
 use App\Models\DraftingRequestAssignment;
 use App\Models\DraftingRequestRevision;
 use App\Models\User;
+use App\Support\AppClock;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -303,7 +304,7 @@ class DraftingRequestBoardService
      */
     public function formatBoardRow(DraftingRequest $row): array
     {
-        $tz = config('app.timezone');
+        $tz = AppClock::timezone();
         $row->loadMissing(['crmCategories', 'crmCategory', 'serviceEngagings']);
 
         $latestRevisionCategory = $row->relationLoaded('revisions')
@@ -365,6 +366,21 @@ class DraftingRequestBoardService
             $category = mb_substr($category, 0, 25).'...';
         }
 
+        $allCategories = $row->crmCategories
+            ->sortBy(fn ($item) => mb_strtolower((string) ($item->name ?: $item->code)))
+            ->values();
+
+        if ($row->crmCategory && ! $allCategories->contains('id', $row->crmCategory->id)) {
+            $allCategories->prepend($row->crmCategory);
+        }
+
+        $categoryNames = $allCategories
+            ->map(fn ($item) => trim((string) ($item->name ?: $item->code)))
+            ->filter(fn ($name) => $name !== '')
+            ->unique()
+            ->values()
+            ->all();
+
         $area = null;
         if ($row->max_building_area_sqm !== null && $row->max_building_area_sqm !== '') {
             $areaValue = rtrim(rtrim((string) $row->max_building_area_sqm, '0'), '.');
@@ -377,36 +393,35 @@ class DraftingRequestBoardService
         $boardStatus = $this->mapBoardStatus($actualStatus);
         $draftingSlots = $this->draftingSlotCount();
         $checkingSlots = $this->checkingSlotCount();
-        // Board Drafting / Checking / Total Hrs reflect the latest revision only,
-        // so a newly added revision starts blank instead of carrying old hours.
-        $latestRevisionForHours = $row->revisions
-            ->sortByDesc('id')
-            ->take(1)
-            ->values();
-        $drafting = $this->mergeStaffBoardSlots(
-            $this->boardAssignmentsForRole(
+        // Board Drafting / Checking follow the latest revision's people, even
+        // when hours are still blank. Older assignment rows must not override them.
+        $latestRevision = $row->revisions->sortByDesc('id')->first();
+        $latestRevisionForHours = $latestRevision !== null
+            ? collect([$latestRevision])
+            : collect();
+        if ($latestRevision !== null) {
+            $drafting = $this->staffSlotFromRevisionPerson(
+                $latestRevision,
+                DraftingRequestAssignment::ROLE_DRAFTING,
+                $draftingSlots,
+            );
+            $checking = $this->staffSlotFromRevisionPerson(
+                $latestRevision,
+                DraftingRequestAssignment::ROLE_CHECKING,
+                $checkingSlots,
+            );
+        } else {
+            $drafting = $this->boardAssignmentsForRole(
                 $row->assignments,
                 DraftingRequestAssignment::ROLE_DRAFTING,
                 $draftingSlots,
-            ),
-            $this->staffSlotsFromRevisionHours(
-                $latestRevisionForHours,
-                'drafting_hours',
-                $draftingSlots,
-            ),
-        );
-        $checking = $this->mergeStaffBoardSlots(
-            $this->boardAssignmentsForRole(
+            );
+            $checking = $this->boardAssignmentsForRole(
                 $row->assignments,
                 DraftingRequestAssignment::ROLE_CHECKING,
                 $checkingSlots,
-            ),
-            $this->staffSlotsFromRevisionHours(
-                $latestRevisionForHours,
-                'checking_hours',
-                $checkingSlots,
-            ),
-        );
+            );
+        }
         $totalHours = $this->sumRevisionHours($latestRevisionForHours)
             ?? $this->sumAssignmentHours($row->assignments);
 
@@ -455,6 +470,7 @@ class DraftingRequestBoardService
             'builder' => $row->company_name ?: ($row->your_name ?: '—'),
             'category' => $category,
             'category_full' => $categoryFull !== '' ? $categoryFull : '—',
+            'categories' => $categoryNames,
             'storey_level' => $row->storeyLevel?->name ?? '—',
             'latest_revision' => $latestRevision ?: '—',
             'accounting' => $accounting ?: '—',
@@ -495,7 +511,7 @@ class DraftingRequestBoardService
      */
     public function jobStatusChartPayload(Request $request, ?string $date = null): array
     {
-        $tz = config('app.timezone');
+        $tz = AppClock::timezone();
         $day = ($date !== null && $date !== '')
             ? Carbon::parse($date, $tz)->startOfDay()
             : Carbon::today($tz)->startOfDay();
@@ -551,7 +567,7 @@ class DraftingRequestBoardService
      */
     public function drafterLeaderboardPayload(Request $request, ?string $month = null): array
     {
-        $tz = config('app.timezone');
+        $tz = AppClock::timezone();
         $monthStart = ($month !== null && preg_match('/^\d{4}-\d{2}$/', $month))
             ? Carbon::createFromFormat('Y-m', $month, $tz)->startOfMonth()
             : Carbon::today($tz)->startOfMonth();
@@ -899,36 +915,96 @@ class DraftingRequestBoardService
         return $this->padStaffSlots($assignments, $slots);
     }
 
+    /**
+     * Keep slot 0 aligned with the latest revision's drafter and checker,
+     * including when hours are still blank.
+     */
     public function syncRevisionHoursToAssignments(
         DraftingRequest $draftingRequest,
         DraftingRequestRevision $revision,
     ): void {
-        if (
-            $revision->drafter_user_id !== null
-            && $revision->drafting_hours !== null
-            && (float) $revision->drafting_hours > 0
-        ) {
-            $this->upsertAssignmentForRole(
-                $draftingRequest,
-                DraftingRequestAssignment::ROLE_DRAFTING,
-                $revision->drafter_user_id,
-                $revision->drafting_hours,
-            );
+        $latestId = $draftingRequest->revisions()->max('id');
+        if ($latestId === null || (int) $latestId !== (int) $revision->id) {
+            return;
         }
 
-        $checkerUserId = $revision->checker_user_id ?? $revision->drafter_user_id;
-        if (
-            $checkerUserId !== null
-            && $revision->checking_hours !== null
-            && (float) $revision->checking_hours > 0
-        ) {
-            $this->upsertAssignmentForRole(
-                $draftingRequest,
-                DraftingRequestAssignment::ROLE_CHECKING,
-                $checkerUserId,
-                $revision->checking_hours,
-            );
+        $this->replaceSlotZeroAssignment(
+            $draftingRequest,
+            DraftingRequestAssignment::ROLE_DRAFTING,
+            $revision->drafter_user_id !== null ? (int) $revision->drafter_user_id : null,
+            $revision->drafting_hours,
+        );
+        $this->replaceSlotZeroAssignment(
+            $draftingRequest,
+            DraftingRequestAssignment::ROLE_CHECKING,
+            $revision->checker_user_id !== null ? (int) $revision->checker_user_id : null,
+            $revision->checking_hours,
+        );
+    }
+
+    private function replaceSlotZeroAssignment(
+        DraftingRequest $draftingRequest,
+        string $role,
+        ?int $userId,
+        mixed $hours,
+    ): void {
+        if ($userId === null) {
+            DraftingRequestAssignment::query()
+                ->where('drafting_request_id', $draftingRequest->id)
+                ->where('role', $role)
+                ->where('slot', 0)
+                ->delete();
+
+            return;
         }
+
+        DraftingRequestAssignment::query()->updateOrCreate(
+            [
+                'drafting_request_id' => $draftingRequest->id,
+                'role' => $role,
+                'slot' => 0,
+            ],
+            [
+                'user_id' => $userId,
+                'hours' => $hours,
+            ],
+        );
+    }
+
+    /**
+     * @return list<array{user_id: int, initials: string, name: string|null, hours: string|null}|null>
+     */
+    private function staffSlotFromRevisionPerson(
+        DraftingRequestRevision $revision,
+        string $role,
+        int $slots,
+    ): array {
+        $padded = array_fill(0, $slots, null);
+        if ($slots < 1) {
+            return $padded;
+        }
+
+        $isChecking = $role === DraftingRequestAssignment::ROLE_CHECKING;
+        $userId = $isChecking ? $revision->checker_user_id : $revision->drafter_user_id;
+        if ($userId === null) {
+            return $padded;
+        }
+
+        $user = $isChecking ? $revision->checker : $revision->drafter;
+        $initials = $isChecking
+            ? $revision->resolvedCheckerInitials()
+            : $revision->resolvedDrafterInitials();
+
+        $padded[0] = [
+            'user_id' => (int) $userId,
+            'initials' => $initials ?? '?',
+            'name' => $user?->name,
+            'hours' => $this->formatRevisionHours(
+                $isChecking ? $revision->checking_hours : $revision->drafting_hours,
+            ),
+        ];
+
+        return $padded;
     }
 
     public function syncAssignmentToRevision(
@@ -1031,7 +1107,7 @@ class DraftingRequestBoardService
             'drafting_request_id' => $draftingRequest->id,
             'user_id' => $draftingRequest->user_id,
             'code' => $draftingRequest->jobNumber().'-01',
-            'log_date' => now(config('app.timezone'))->toDateString(),
+            'log_date' => now(AppClock::timezone())->toDateString(),
             'category' => $category,
             'status' => $draftingRequest->status ?? DraftingRequest::STATUS_NEW,
         ]);
@@ -1064,53 +1140,6 @@ class DraftingRequestBoardService
         $revision->update([
             $column => $hours !== null && $hours !== '' ? $hours : null,
         ]);
-    }
-
-    private function upsertAssignmentForRole(
-        DraftingRequest $draftingRequest,
-        string $role,
-        int $userId,
-        mixed $hours,
-    ): void {
-        $existing = DraftingRequestAssignment::query()
-            ->where('drafting_request_id', $draftingRequest->id)
-            ->where('role', $role)
-            ->where('user_id', $userId)
-            ->first();
-
-        if ($existing !== null) {
-            $existing->update(['hours' => $hours]);
-
-            return;
-        }
-
-        $usedSlots = DraftingRequestAssignment::query()
-            ->where('drafting_request_id', $draftingRequest->id)
-            ->where('role', $role)
-            ->pluck('slot')
-            ->map(fn ($slot) => (int) $slot)
-            ->all();
-
-        $slot = 0;
-        while (in_array($slot, $usedSlots, true) && $slot <= $this->maxSlotForRole($role)) {
-            $slot++;
-        }
-
-        if ($slot > $this->maxSlotForRole($role)) {
-            $slot = 0;
-        }
-
-        DraftingRequestAssignment::query()->updateOrCreate(
-            [
-                'drafting_request_id' => $draftingRequest->id,
-                'role' => $role,
-                'slot' => $slot,
-            ],
-            [
-                'user_id' => $userId,
-                'hours' => $hours,
-            ],
-        );
     }
 
     /**

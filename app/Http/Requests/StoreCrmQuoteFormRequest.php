@@ -8,6 +8,7 @@ use App\Models\CrmCategory;
 use App\Models\Deliverable;
 use App\Models\LevelOfDifficulty;
 use App\Models\ScopeOfWork;
+use App\Support\AppClock;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreCrmQuoteFormRequest extends FormRequest
@@ -75,7 +76,9 @@ class StoreCrmQuoteFormRequest extends FormRequest
             'deliverable_id',
         ];
 
-        $normalized = [];
+        $normalized = [
+            'requested_at' => AppClock::localToUtcString((string) $this->input('requested_at')),
+        ];
 
         foreach ($nullableIds as $key) {
             $value = $this->input($key);

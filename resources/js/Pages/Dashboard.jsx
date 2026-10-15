@@ -19,6 +19,8 @@ const FLASH_MESSAGES = {
         'Leave request submitted. Waiting for admin approval.',
     'calendar-event-created': 'Calendar event added successfully.',
     'calendar-event-deleted': 'Calendar event removed.',
+    'public-holiday-created': 'Public holiday added.',
+    'public-holiday-deleted': 'Public holiday removed.',
 };
 
 const ANNOUNCEMENT_PREVIEW_LENGTH = 140;

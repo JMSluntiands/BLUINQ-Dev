@@ -11,6 +11,7 @@ use App\Models\RoofType;
 use App\Models\SdaType;
 use App\Models\ServiceEngaging;
 use App\Models\StoreyLevel;
+use App\Support\AppClock;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -173,11 +174,9 @@ class StoreDraftingRequestFormRequest extends FormRequest
         ];
 
         $requestedAt = $this->input('requested_at');
-        if ($requestedAt === '' || $requestedAt === null) {
-            $normalized['requested_at'] = now(config('app.timezone'))
-                ->seconds(0)
-                ->format('Y-m-d H:i:s');
-        }
+        $normalized['requested_at'] = $requestedAt === '' || $requestedAt === null
+            ? AppClock::now()->utc()->format('Y-m-d H:i:s')
+            : AppClock::localToUtcString((string) $requestedAt);
 
         foreach ($nullableIds as $key) {
             $value = $this->input($key);

@@ -5,6 +5,7 @@ import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
+import { philippineTodayInput } from '@/utils/philippineTime';
 import { useForm } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -15,11 +16,7 @@ const tagPillClass =
     'inline-flex rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition';
 
 function todayInputValue() {
-    const now = new Date();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-
-    return `${now.getFullYear()}-${month}-${day}`;
+    return philippineTodayInput();
 }
 
 function filterQueryString(filters = {}) {

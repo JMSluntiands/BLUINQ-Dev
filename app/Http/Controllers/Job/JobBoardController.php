@@ -20,6 +20,7 @@ use App\Models\User;
 use App\Services\DraftingRequestBoardService;
 use App\Services\DraftingRequestReviewService;
 use App\Services\DraftingRequestSubmissionService;
+use App\Support\AppClock;
 use App\Support\ClientFormOptions;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -556,14 +557,14 @@ class JobBoardController extends Controller
             'category' => $validated['category'],
             'status'   => $validated['status'],
             'submitted_date' => filled($validated['date_out'] ?? null)
-                ? Carbon::parse($validated['date_out'], config('app.timezone'))->toDateString()
+                ? Carbon::parse($validated['date_out'], AppClock::timezone())->toDateString()
                 : null,
             'area_size' => $areaSize,
             'vo_hours' => $validated['vo_hours'] ?? 0,
         ]);
 
         // Board Date In / Date Out columns come from the job row, not the revision.
-        $tz = config('app.timezone');
+        $tz = AppClock::timezone();
         $existingRequestedAt = $draftingRequest->requested_at?->timezone($tz);
         $requestedAt = Carbon::parse($validated['log_date'], $tz)->setTime(
             $existingRequestedAt?->hour ?? 0,
@@ -755,7 +756,7 @@ class JobBoardController extends Controller
      */
     private function applicantFormData(DraftingRequest $draftingRequest): array
     {
-        $tz = config('app.timezone');
+        $tz = AppClock::timezone();
         $requestedAt = $draftingRequest->requested_at
             ? $draftingRequest->requested_at->timezone($tz)->seconds(0)->format('Y-m-d\TH:i')
             : now($tz)->seconds(0)->format('Y-m-d\TH:i');
@@ -1057,7 +1058,7 @@ class JobBoardController extends Controller
         }
 
         if (array_key_exists('date_out', $validated)) {
-            $tz = config('app.timezone');
+            $tz = AppClock::timezone();
             $dateOut = filled($validated['date_out'])
                 ? Carbon::parse($validated['date_out'], $tz)->toDateString()
                 : null;
@@ -1081,7 +1082,7 @@ class JobBoardController extends Controller
             if ($validated['date_in'] === null) {
                 $draftingRequest->update(['requested_at' => null]);
             } else {
-                $tz = config('app.timezone');
+                $tz = AppClock::timezone();
                 $existing = $draftingRequest->requested_at?->timezone($tz);
                 $next = Carbon::parse($validated['date_in'], $tz)->setTime(
                     $existing?->hour ?? 0,

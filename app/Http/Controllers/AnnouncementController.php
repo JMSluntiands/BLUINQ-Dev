@@ -6,6 +6,7 @@ use App\Http\Requests\StoreAnnouncementRequest;
 use App\Http\Requests\UpdateAnnouncementRequest;
 use App\Models\Announcement;
 use App\Support\AnnouncementHtml;
+use App\Support\AppClock;
 use App\Support\StoredUpload;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -274,7 +275,7 @@ class AnnouncementController extends Controller
 
     private function displayTimezone(): string
     {
-        return (string) config('attendance.timezone', 'Asia/Manila');
+        return AppClock::timezone();
     }
 
     /**

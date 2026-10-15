@@ -12,6 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { router, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
+import { philippineTodayInput } from '@/utils/philippineTime';
 
 const STATUS_MESSAGES = {
     'clocked-in': 'You have clocked in for the day.',
@@ -54,11 +55,7 @@ function timezoneShortLabel(timeZone) {
 }
 
 function todayKey() {
-    const now = new Date();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-
-    return `${now.getFullYear()}-${month}-${day}`;
+    return philippineTodayInput();
 }
 
 function formatElapsed(ms) {

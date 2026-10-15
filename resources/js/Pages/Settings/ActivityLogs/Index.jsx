@@ -2,21 +2,6 @@ import Pagination from '@/Components/Pagination';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 
-function formatWhen(iso) {
-    if (!iso) {
-        return '—';
-    }
-    try {
-        const d = new Date(iso);
-        return d.toLocaleString(undefined, {
-            dateStyle: 'medium',
-            timeStyle: 'short',
-        });
-    } catch {
-        return iso;
-    }
-}
-
 function methodBadgeClass(method) {
     switch (method) {
         case 'POST':
@@ -60,7 +45,8 @@ export default function ActivityLogsIndex({ logs, filters = {} }) {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm text-[#676879] dark:text-slate-400">
                         Successful saves, updates, archives, and other write
-                        actions (web and API) are recorded here.
+                        actions are recorded here. Times are Philippine time
+                        (PHT).
                     </p>
                     <label className="flex items-center gap-2 text-sm text-[#323338] dark:text-slate-200">
                         <span className="text-[#676879] dark:text-slate-400">
@@ -122,7 +108,7 @@ export default function ActivityLogsIndex({ logs, filters = {} }) {
                                             className="bg-white transition-colors hover:bg-[#fafbfc]/80 dark:bg-[#1a1b2e] dark:hover:bg-[#243044]/40"
                                         >
                                             <td className="whitespace-nowrap px-4 py-3 text-[#323338] dark:text-slate-200">
-                                                {formatWhen(row.created_at)}
+                                                {row.created_at ?? '—'}
                                             </td>
                                             <td className="px-4 py-3">
                                                 {row.user ? (
