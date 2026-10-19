@@ -126,6 +126,53 @@ class PasswordChangeRequestTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('Profile/Edit')
                 ->missing('passwordRequest')
-                ->has('editAccountUrl'));
+                ->has('editAccountUrl')
+                ->where('changePasswordUrl', route('settings.users.password.update', $member)));
+    }
+
+    public function test_admin_can_change_another_users_password(): void
+    {
+        $adminRoleId = Role::query()->where('slug', 'admin')->value('id');
+        $admin = User::factory()->create(['role_id' => $adminRoleId]);
+        $member = User::factory()->create();
+
+        $this->actingAs($member)->post(route('profile.password-request.store'), [
+            'current_password' => 'password',
+            'password' => 'requested-password',
+            'password_confirmation' => 'requested-password',
+        ])->assertRedirect();
+
+        $this->actingAs($admin)
+            ->from(route('settings.users.show', $member))
+            ->post(route('settings.users.password.update', $member), [
+                'password' => 'admin-set-password',
+                'password_confirmation' => 'admin-set-password',
+            ])
+            ->assertRedirect(route('settings.users.show', $member))
+            ->assertSessionHas('status', 'user-password-changed');
+
+        $this->assertTrue(Hash::check('admin-set-password', $member->fresh()->password));
+        $this->assertSame(
+            0,
+            PasswordChangeRequest::query()
+                ->where('user_id', $member->id)
+                ->where('status', PasswordChangeRequest::STATUS_PENDING)
+                ->count(),
+        );
+    }
+
+    public function test_regular_user_cannot_change_another_users_password(): void
+    {
+        $member = User::factory()->create();
+        $other = User::factory()->create();
+
+        $this->actingAs($member)
+            ->post(route('settings.users.password.update', $other), [
+                'password' => 'hijack-password',
+                'password_confirmation' => 'hijack-password',
+            ])
+            ->assertForbidden();
+
+        $this->assertTrue(Hash::check('password', $other->fresh()->password));
     }
 }
