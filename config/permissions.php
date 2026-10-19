@@ -239,6 +239,7 @@ return [
         'settings.users.destroy' => 'settings.user-accounts.manage',
         'settings.users.archive' => 'settings.user-accounts.manage',
         'settings.users.restore' => 'settings.user-accounts.manage',
+        'settings.users.password.update' => 'settings.user-accounts.manage',
         'settings.password-requests.index' => 'settings.user-accounts.manage',
         'settings.password-requests.approve' => 'settings.user-accounts.manage',
         'settings.password-requests.decline' => 'settings.user-accounts.manage',

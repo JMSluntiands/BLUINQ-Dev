@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { ArrowLeftIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import { Head, Link } from '@inertiajs/react';
+import AdminPasswordChangeButton from './Partials/AdminPasswordChangeButton';
 import PasswordChangeRequestButton from './Partials/PasswordChangeRequestButton';
 import UserProfileForm from './Partials/UserProfileForm';
 
@@ -11,6 +12,7 @@ export default function Edit({
     status,
     backUrl = null,
     editAccountUrl = null,
+    changePasswordUrl = null,
     passwordRequest = null,
 }) {
     const title = backUrl ? `${profile.name} — Profile` : 'Profile';
@@ -39,13 +41,21 @@ export default function Edit({
                         ) : null}
                     </div>
                     {editAccountUrl ? (
-                        <Link
-                            href={editAccountUrl}
-                            className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 text-xs font-semibold uppercase tracking-wide text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                        >
-                            <PencilSquareIcon className="h-4 w-4" />
-                            Edit account
-                        </Link>
+                        <div className="flex flex-wrap items-center gap-2">
+                            {changePasswordUrl ? (
+                                <AdminPasswordChangeButton
+                                    url={changePasswordUrl}
+                                    userName={profile.name}
+                                />
+                            ) : null}
+                            <Link
+                                href={editAccountUrl}
+                                className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 text-xs font-semibold uppercase tracking-wide text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                            >
+                                <PencilSquareIcon className="h-4 w-4" />
+                                Edit account
+                            </Link>
+                        </div>
                     ) : (
                         <PasswordChangeRequestButton
                             passwordRequest={passwordRequest}
@@ -60,6 +70,12 @@ export default function Edit({
                 <div className="mx-auto mb-4 max-w-6xl rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100">
                     Password change requested. An administrator still needs to
                     approve it.
+                </div>
+            ) : null}
+
+            {status === 'user-password-changed' ? (
+                <div className="mx-auto mb-4 max-w-6xl rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100">
+                    Password changed for {profile.name}.
                 </div>
             ) : null}
 
