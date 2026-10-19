@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\ProfileController;
+use App\Models\PasswordChangeRequest;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\HolidayService;
@@ -78,10 +79,35 @@ class UserAccountController extends Controller
             'profile' => ProfileController::payload($user, $canViewPrivate),
             'canViewPrivate' => $canViewPrivate,
             'mustVerifyEmail' => false,
-            'status' => null,
+            'status' => session('status'),
             'backUrl' => route('settings.users.index', $listQuery),
             'editAccountUrl' => $editUrl,
+            'changePasswordUrl' => route('settings.users.password.update', $user),
         ]);
+    }
+
+    public function updatePassword(Request $request, User $user): RedirectResponse
+    {
+        if ($user->archived_at !== null) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user->forceFill(['password' => $validated['password']])->save();
+
+        PasswordChangeRequest::query()
+            ->where('user_id', $user->id)
+            ->pending()
+            ->update([
+                'status' => PasswordChangeRequest::STATUS_CANCELLED,
+                'reviewed_by' => $request->user()?->id,
+                'reviewed_at' => now(),
+            ]);
+
+        return back()->with('status', 'user-password-changed');
     }
 
     public function create(): Response

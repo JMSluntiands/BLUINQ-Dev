@@ -12,6 +12,41 @@ const TOOLBAR_BUTTONS = [
 const LINK_COMMAND = 'createLink';
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
+function dragHasFiles(event) {
+    const types = Array.from(event.dataTransfer?.types ?? []);
+
+    return (
+        types.includes('Files') || types.includes('application/x-moz-file')
+    );
+}
+
+function isImageFile(file) {
+    if (!file) {
+        return false;
+    }
+
+    if (file.type?.startsWith('image/')) {
+        return true;
+    }
+
+    return /\.(png|jpe?g|gif|webp|bmp)$/i.test(file.name ?? '');
+}
+
+function pointerIsOver(element, event) {
+    if (!element) {
+        return false;
+    }
+
+    const rect = element.getBoundingClientRect();
+
+    return (
+        event.clientX >= rect.left &&
+        event.clientX <= rect.right &&
+        event.clientY >= rect.top &&
+        event.clientY <= rect.bottom
+    );
+}
+
 function exec(command, value = null) {
     document.execCommand(command, false, value);
 }
@@ -58,6 +93,7 @@ export default function RichTextEditor({
     className = '',
 }) {
     const editorRef = useRef(null);
+    const dropZoneRef = useRef(null);
     const imageInputRef = useRef(null);
     const isInternalChange = useRef(false);
     const [activeCommands, setActiveCommands] = useState({});
@@ -186,19 +222,20 @@ export default function RichTextEditor({
 
     const insertImageFile = useCallback(
         (file) => {
-            if (!file?.type?.startsWith('image/')) {
-                return;
+            if (!isImageFile(file)) {
+                return Promise.resolve();
             }
 
             if (file.size > MAX_IMAGE_BYTES) {
                 window.alert('Image is too large. Maximum size is 5 MB.');
-                return;
+                return Promise.resolve();
             }
 
             if (typeof uploadImage === 'function') {
                 setUploadingImage(true);
                 setUploadProgress(0);
-                Promise.resolve(
+
+                return Promise.resolve(
                     uploadImage(file, (percent) => {
                         setUploadProgress(percent);
                     }),
@@ -217,65 +254,71 @@ export default function RichTextEditor({
                         setUploadingImage(false);
                         setUploadProgress(0);
                     });
-                return;
             }
 
-            const reader = new FileReader();
-            reader.onload = () => {
-                if (typeof reader.result === 'string') {
-                    insertImageAtCursor(reader.result);
-                }
-            };
-            reader.readAsDataURL(file);
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    if (typeof reader.result === 'string') {
+                        insertImageAtCursor(reader.result);
+                    }
+                    resolve();
+                };
+                reader.onerror = () => resolve();
+                reader.readAsDataURL(file);
+            });
         },
         [insertImageAtCursor, uploadImage],
     );
 
-    const dragHasFiles = (event) =>
-        Array.from(event.dataTransfer?.types ?? []).includes('Files');
-
-    const handleImageDragEnter = (event) => {
-        if (!allowImages || disabled || !dragHasFiles(event)) {
-            return;
+    useEffect(() => {
+        if (!allowImages || disabled) {
+            return undefined;
         }
 
-        event.preventDefault();
-        setImageDragActive(true);
-    };
+        const onDragOver = (event) => {
+            if (!dragHasFiles(event) || !pointerIsOver(dropZoneRef.current, event)) {
+                setImageDragActive(false);
+                return;
+            }
 
-    const handleImageDragOver = (event) => {
-        if (!allowImages || disabled || !dragHasFiles(event)) {
-            return;
-        }
+            event.preventDefault();
+            if (event.dataTransfer) {
+                event.dataTransfer.dropEffect = 'copy';
+            }
+            setImageDragActive(true);
+        };
 
-        event.preventDefault();
-        setImageDragActive(true);
-    };
+        const onDrop = (event) => {
+            if (!pointerIsOver(dropZoneRef.current, event)) {
+                return;
+            }
 
-    const handleImageDragLeave = (event) => {
-        if (event.currentTarget.contains(event.relatedTarget)) {
-            return;
-        }
+            event.preventDefault();
+            setImageDragActive(false);
 
-        setImageDragActive(false);
-    };
+            const files = Array.from(event.dataTransfer?.files ?? []).filter(
+                isImageFile,
+            );
 
-    const handleImageDrop = (event) => {
-        if (!allowImages || disabled || !dragHasFiles(event)) {
-            return;
-        }
+            files.reduce(
+                (chain, file) => chain.then(() => insertImageFile(file)),
+                Promise.resolve(),
+            );
+        };
 
-        event.preventDefault();
-        setImageDragActive(false);
+        const onDragEnd = () => setImageDragActive(false);
 
-        const file = Array.from(event.dataTransfer?.files ?? []).find((item) =>
-            item.type.startsWith('image/'),
-        );
+        window.addEventListener('dragover', onDragOver, true);
+        window.addEventListener('drop', onDrop, true);
+        window.addEventListener('dragend', onDragEnd, true);
 
-        if (file) {
-            insertImageFile(file);
-        }
-    };
+        return () => {
+            window.removeEventListener('dragover', onDragOver, true);
+            window.removeEventListener('drop', onDrop, true);
+            window.removeEventListener('dragend', onDragEnd, true);
+        };
+    }, [allowImages, disabled, insertImageFile]);
 
     const handlePaste = (event) => {
         if (!allowImages || disabled) {
@@ -379,13 +422,7 @@ export default function RichTextEditor({
                         />
                     </div>
                 ) : null}
-                <div
-                    className="relative"
-                    onDragEnter={handleImageDragEnter}
-                    onDragOver={handleImageDragOver}
-                    onDragLeave={handleImageDragLeave}
-                    onDrop={handleImageDrop}
-                >
+                <div ref={dropZoneRef} className="relative">
                     {imageDragActive ? (
                         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-b-lg border-2 border-dashed border-[#0073ea] bg-[#e8f4ff]/90 text-sm font-medium text-[#0073ea] dark:border-sky-400 dark:bg-sky-500/20 dark:text-sky-300">
                             Drop image to insert

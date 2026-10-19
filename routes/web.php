@@ -577,6 +577,7 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         Route::match(['patch', 'post'], '/{user}', [UserAccountController::class, 'update'])->name('update');
         Route::delete('/{user}', [UserAccountController::class, 'destroy'])->name('destroy');
         Route::post('/{user}/restore', [UserAccountController::class, 'restore'])->name('restore');
+        Route::post('/{user}/password', [UserAccountController::class, 'updatePassword'])->name('password.update');
     });
 
     Route::get('/settings/password-requests', [PasswordChangeRequestController::class, 'index'])
