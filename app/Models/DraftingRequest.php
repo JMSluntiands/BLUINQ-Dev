@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class DraftingRequest extends Model
 {
@@ -83,11 +84,20 @@ class DraftingRequest extends Model
             self::STATUS_CANCELLED => 'Cancelled',
         ];
 
-        $fromDb = WorkflowStatus::optionsForKind(WorkflowStatus::KIND_ARCHI);
+        // Settings rows store codes as labels ("Drafting WIP"); jobs store
+        // snake_case values ("drafting_wip"). Core statuses keep their default
+        // label so the same status is never listed twice.
+        $options = $defaults;
+        foreach (WorkflowStatus::optionsForKind(WorkflowStatus::KIND_ARCHI) as $code => $label) {
+            $value = Str::snake(str_replace('-', ' ', strtolower(trim((string) $code))));
+            if ($value === '' || isset($options[$value])) {
+                continue;
+            }
 
-        // DB labels override defaults, but never drop core board statuses
-        // (e.g. Cancelled) when the settings table is only partially seeded.
-        return array_merge($defaults, $fromDb);
+            $options[$value] = $label;
+        }
+
+        return $options;
     }
 
     /**
