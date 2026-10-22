@@ -141,6 +141,34 @@ class ApmRevisionSyncTest extends TestCase
         $this->assertSame('AC', $row['drafting'][0]['initials'] ?? null);
     }
 
+    public function test_board_status_can_be_set_to_for_invoice_and_invoiced(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+        $job = $this->createApmJob($user, $storeyLevel, $category);
+        $this->addBoardRevision($job, $user, $category, DraftingRequest::STATUS_SUBMITTED);
+
+        $this->actingAs($user)
+            ->get(route('job.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('statusOptions', fn ($options) => collect($options)->pluck('value')->contains(DraftingRequest::STATUS_FOR_INVOICE)
+                    && collect($options)->pluck('value')->contains(DraftingRequest::STATUS_INVOICED)));
+
+        foreach ([DraftingRequest::STATUS_FOR_INVOICE, DraftingRequest::STATUS_INVOICED] as $status) {
+            $this->actingAs($user)
+                ->patch(route('job.drafting.board.update', $job), ['status' => $status])
+                ->assertRedirect()
+                ->assertSessionHasNoErrors();
+
+            $this->assertSame($status, $job->fresh()->status);
+
+            $row = app(\App\Services\DraftingRequestBoardService::class)
+                ->formatBoardRow($job->fresh()->load(['revisions', 'assignments']));
+            $this->assertSame($status, $row['status']);
+        }
+    }
+
     public function test_board_shows_latest_revision_drafter_and_checker_without_hours(): void
     {
         $admin = $this->adminUser();
@@ -416,6 +444,8 @@ class ApmRevisionSyncTest extends TestCase
                     ['value' => 'for_checking', 'label' => 'For Checking'],
                     ['value' => 'query', 'label' => 'Query'],
                     ['value' => 'submitted', 'label' => 'Submitted'],
+                    ['value' => 'for_invoice', 'label' => 'For Invoice'],
+                    ['value' => 'invoiced', 'label' => 'Invoiced'],
                     ['value' => 'on_hold', 'label' => 'On Hold'],
                     ['value' => 'cancelled', 'label' => 'Cancelled'],
                 ])
@@ -1050,7 +1080,7 @@ class ApmRevisionSyncTest extends TestCase
                     ['value' => 'submitted', 'label' => 'Submitted'],
                     ['value' => 'cancelled', 'label' => 'Cancelled'],
                 ])
-                ->has('statusOptions', 8)
+                ->has('statusOptions', 10)
                 ->has('jobs.data', 4)
                 ->where(
                     'jobs.data',
