@@ -47,7 +47,7 @@ function staffColumnLabel(count, label) {
  *   storey_level: string;
  *   latest_revision?: string;
  *   accounting?: string;
- *   revisions?: Array<{ id: number; code: string; status?: string | null; status_label?: string | null }>;
+ *   revisions?: Array<{ id: number; code: string; categories?: string[]; status?: string | null; status_label?: string | null }>;
  *   date_in?: string | null;
  *   date_in_label?: string | null;
  *   eta?: string | null;
@@ -1300,9 +1300,36 @@ function JobBoardTableBody({
                                                         </span>
                                                     </div>
                                                 </td>
+                                                <td
+                                                    className={
+                                                        tdClass +
+                                                        ' whitespace-nowrap tabular-nums'
+                                                    }
+                                                >
+                                                    {getJobHref ? (
+                                                        <Link
+                                                            href={getJobHref(
+                                                                job,
+                                                            )}
+                                                            className="font-semibold text-[#0073ea] transition hover:text-[#0060c4] hover:underline dark:text-[#1890ff] dark:hover:text-[#1478e0]"
+                                                        >
+                                                            {revision.code}
+                                                        </Link>
+                                                    ) : (
+                                                        <span className="font-semibold text-[#0073ea] dark:text-[#1890ff]">
+                                                            {revision.code}
+                                                        </span>
+                                                    )}
+                                                </td>
                                                 <td className={tdClass}>—</td>
-                                                <td className={tdClass}>—</td>
-                                                <td className={tdClass}>—</td>
+                                                <td className={tdClass}>
+                                                    <CategoryList
+                                                        categories={
+                                                            revision.categories ??
+                                                            []
+                                                        }
+                                                    />
+                                                </td>
                                                 <td className={tdClass}>—</td>
                                                 <td
                                                     className={

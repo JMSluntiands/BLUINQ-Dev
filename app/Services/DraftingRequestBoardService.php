@@ -17,6 +17,9 @@ use Illuminate\Support\Str;
 
 class DraftingRequestBoardService
 {
+    /** @var Collection<int, CrmCategory>|null */
+    private ?Collection $crmCategoryCache = null;
+
     /**
      * @return Builder<DraftingRequest>
      */
@@ -429,12 +432,13 @@ class DraftingRequestBoardService
         $revisions = $row->revisions
             ->sortBy('id')
             ->values()
-            ->map(function ($revision) use ($statusOptions) {
+            ->map(function ($revision) use ($statusOptions, $row) {
                 $status = $revision->status;
 
                 return [
                     'id' => $revision->id,
                     'code' => $revision->code ?: '—',
+                    'categories' => $this->revisionCategoryNames($row, $revision->category),
                     'status' => $status,
                     'status_label' => $status !== null && $status !== ''
                         ? ($statusOptions[$status] ?? ucfirst(str_replace('_', ' ', $status)))
@@ -721,6 +725,55 @@ class DraftingRequestBoardService
         }
 
         return null;
+    }
+
+    /**
+     * Revision rows store category codes or names ("FC" or "FC, WC").
+     *
+     * @return list<string>
+     */
+    private function revisionCategoryNames(DraftingRequest $row, ?string $category): array
+    {
+        $parts = collect(explode(',', (string) $category))
+            ->map(fn ($part) => trim($part))
+            ->filter(fn ($part) => $part !== '');
+
+        if ($parts->isEmpty()) {
+            return [];
+        }
+
+        $known = collect();
+        if ($row->relationLoaded('crmCategories')) {
+            $known = $known->merge($row->crmCategories);
+        }
+        if ($row->relationLoaded('crmCategory') && $row->crmCategory) {
+            $known->push($row->crmCategory);
+        }
+
+        return $parts
+            ->map(function (string $part) use ($known) {
+                $needle = mb_strtoupper($part);
+                $matched = $known->first(
+                    fn ($item) => mb_strtoupper((string) $item->code) === $needle
+                        || mb_strtoupper((string) $item->name) === $needle,
+                ) ?? $this->allCrmCategories()->first(
+                    fn ($item) => mb_strtoupper((string) $item->code) === $needle
+                        || mb_strtoupper((string) $item->name) === $needle,
+                );
+
+                return $matched ? ($matched->name ?: $matched->code) : $part;
+            })
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return Collection<int, CrmCategory>
+     */
+    private function allCrmCategories(): Collection
+    {
+        return $this->crmCategoryCache ??= CrmCategory::query()->get(['id', 'name', 'code']);
     }
 
     public function draftingSlotCount(): int
