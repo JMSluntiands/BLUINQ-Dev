@@ -122,6 +122,43 @@ class MasterlistToApmWorkflowTest extends TestCase
                 ]));
     }
 
+    public function test_masterlist_shows_category_set_on_each_revision(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category, $client, $buildingClass] = $this->seedLookups();
+        $fixUp = CrmCategory::query()->firstOrCreate(
+            ['code' => 'FX'],
+            ['name' => 'Fix-up Correction', 'status' => 'active'],
+        );
+
+        $this->actingAs($user)->post(route('job.masterlist.store'), $this->validPayload(
+            $storeyLevel->id,
+            $category->id,
+            $client,
+            $buildingClass,
+        ));
+
+        $row = DraftingRequest::query()->firstOrFail();
+        $this->actingAs($user)->post(route('job.masterlist.forward', $row));
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $row->id,
+            'user_id' => $user->id,
+            'code' => $row->jobNumber().'-02',
+            'log_date' => now()->toDateString(),
+            'category' => 'FX',
+            'status' => DraftingRequest::STATUS_NEW,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('job.masterlist'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Job/Masterlist/Index')
+                ->where('draftingRequests.data.0.revisions.0.categories', [$category->name])
+                ->where('draftingRequests.data.0.revisions.1.categories', [$fixUp->name]));
+    }
+
     public function test_forward_moves_to_apm_and_seeds_revision_code(): void
     {
         $user = $this->adminUser();
