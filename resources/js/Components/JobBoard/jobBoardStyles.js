@@ -21,6 +21,8 @@ export const JOB_STATUS_STYLES = {
         'border border-indigo-300 bg-indigo-100 !text-indigo-900 dark:border-indigo-400 dark:!bg-indigo-600 dark:!text-white',
     quote_sent:
         'border border-purple-300 bg-purple-100 !text-purple-900 dark:border-purple-400 dark:!bg-purple-600 dark:!text-white',
+    for_invoice:
+        'border border-orange-300 bg-orange-100 !text-orange-900 dark:border-orange-400 dark:!bg-orange-600 dark:!text-white',
     invoiced:
         'border border-teal-300 bg-teal-100 !text-teal-900 dark:border-teal-400 dark:!bg-teal-600 dark:!text-white',
     paid: 'border border-green-300 bg-green-100 !text-green-900 dark:border-green-400 dark:!bg-green-600 dark:!text-white',
@@ -40,6 +42,7 @@ export const JOB_STATUS_LABELS = {
     cancelled: 'Cancelled',
     for_quote: 'For Quote',
     quote_sent: 'Quote Sent',
+    for_invoice: 'For Invoice',
     invoiced: 'Invoiced',
     paid: 'Paid',
 };
@@ -57,6 +60,7 @@ export const JOB_BOARD_STATUS_ORDER = [
     'cancelled',
     'for_quote',
     'quote_sent',
+    'for_invoice',
     'invoiced',
     'paid',
 ];

@@ -37,6 +37,8 @@ class DraftingRequest extends Model
 
     public const STATUS_QUOTE_SENT = 'quote_sent';
 
+    public const STATUS_FOR_INVOICE = 'for_invoice';
+
     public const STATUS_INVOICED = 'invoiced';
 
     public const STATUS_PAID = 'paid';
@@ -80,6 +82,8 @@ class DraftingRequest extends Model
             self::STATUS_FOR_CHECKING => 'For Checking',
             self::STATUS_QUERY => 'Query',
             self::STATUS_SUBMITTED => 'Submitted',
+            self::STATUS_FOR_INVOICE => 'For Invoice',
+            self::STATUS_INVOICED => 'Invoiced',
             self::STATUS_ON_HOLD => 'On Hold',
             self::STATUS_CANCELLED => 'Cancelled',
         ];
@@ -114,6 +118,8 @@ class DraftingRequest extends Model
             self::STATUS_FOR_CHECKING => 'For Checking',
             self::STATUS_QUERY => 'Query',
             self::STATUS_SUBMITTED => 'Submitted',
+            self::STATUS_FOR_INVOICE => 'For Invoice',
+            self::STATUS_INVOICED => 'Invoiced',
             self::STATUS_ON_HOLD => 'On Hold',
             self::STATUS_CANCELLED => 'Cancelled',
         ]);
@@ -182,6 +188,7 @@ class DraftingRequest extends Model
             self::STATUS_WIP => 'Work In Progress',
             self::STATUS_FOR_QUOTE => 'For Quote',
             self::STATUS_QUOTE_SENT => 'Quote Sent',
+            self::STATUS_FOR_INVOICE => 'For Invoice',
             self::STATUS_INVOICED => 'Invoiced',
             self::STATUS_PAID => 'Paid',
         ];
@@ -206,6 +213,7 @@ class DraftingRequest extends Model
             self::STATUS_WIP,
             self::STATUS_FOR_QUOTE,
             self::STATUS_QUOTE_SENT,
+            self::STATUS_FOR_INVOICE,
             self::STATUS_INVOICED,
             self::STATUS_PAID,
         ]));
@@ -362,6 +370,7 @@ class DraftingRequest extends Model
         return [
             self::STATUS_SUBMITTED,
             self::STATUS_QUOTE_SENT,
+            self::STATUS_FOR_INVOICE,
             self::STATUS_INVOICED,
             self::STATUS_PAID,
             self::STATUS_CANCELLED,

@@ -1282,6 +1282,8 @@ class DraftingRequestBoardService
             DraftingRequest::STATUS_FOR_CHECKING => 'for_checking',
             DraftingRequest::STATUS_QUERY => 'query',
             DraftingRequest::STATUS_SUBMITTED => 'submitted',
+            DraftingRequest::STATUS_FOR_INVOICE => 'for_invoice',
+            DraftingRequest::STATUS_INVOICED => 'invoiced',
             DraftingRequest::STATUS_ON_HOLD => 'on_hold',
             DraftingRequest::STATUS_CANCELLED => 'cancelled',
             DraftingRequest::STATUS_NEW => 'new',
@@ -1298,6 +1300,8 @@ class DraftingRequestBoardService
             'for_checking' => 'For Checking',
             'query' => 'Query',
             'submitted' => 'Submitted',
+            'for_invoice' => 'For Invoice',
+            'invoiced' => 'Invoiced',
             'on_hold' => 'On Hold',
             'cancelled' => 'Cancelled',
             default => $fallback,
@@ -1310,6 +1314,7 @@ class DraftingRequestBoardService
 
         if (in_array($status, [
             DraftingRequest::STATUS_PAID,
+            DraftingRequest::STATUS_FOR_INVOICE,
             DraftingRequest::STATUS_INVOICED,
             DraftingRequest::STATUS_SUBMITTED,
         ], true)) {
