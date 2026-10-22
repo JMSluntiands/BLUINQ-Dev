@@ -154,6 +154,7 @@ const LEGACY_STATUS_TO_ARCHI = {
     wip: 'drafting_wip',
     for_quote: 'new',
     quote_sent: 'submitted',
+    for_invoice: 'submitted',
     invoiced: 'submitted',
     paid: 'submitted',
     for_quotes: 'new',

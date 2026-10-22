@@ -21,6 +21,8 @@ export const DRAFTING_STATUS_PILL_STYLES = {
         'border-indigo-200 bg-indigo-50 text-indigo-800 dark:border-indigo-400/60 dark:bg-[#1a222e] dark:text-indigo-300',
     quote_sent:
         'border-purple-200 bg-purple-50 text-purple-800 dark:border-purple-400/60 dark:bg-[#1a222e] dark:text-purple-300',
+    for_invoice:
+        'border-orange-200 bg-orange-50 text-orange-800 dark:border-orange-400/60 dark:bg-[#1a222e] dark:text-orange-300',
     invoiced:
         'border-teal-200 bg-teal-50 text-teal-800 dark:border-teal-400/60 dark:bg-[#1a222e] dark:text-teal-300',
     paid: 'border-green-200 bg-green-50 text-green-800 dark:border-green-400/60 dark:bg-[#1a222e] dark:text-green-300',
