@@ -446,6 +446,8 @@ class JobBoardController extends Controller
         $query = DraftingRequest::query()
             ->reviewAccepted()
             ->active()
+            ->whereNotNull('status')
+            ->whereNotIn('status', DraftingRequest::addItemActiveStatuses())
             ->with($this->addCandidateRevisionRelations())
             ->orderByDesc('updated_at')
             ->orderByDesc('requested_at')

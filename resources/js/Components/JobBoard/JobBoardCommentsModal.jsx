@@ -1,3 +1,4 @@
+import ManagedComment from '@/Components/Comments/ManagedComment';
 import InputError from '@/Components/InputError';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -178,7 +179,25 @@ export default function JobBoardCommentsModal({
                                                 {comment.created_at}
                                             </time>
                                         </div>
-                                        <CommentBody html={comment.body} />
+                                        <ManagedComment
+                                            comment={comment}
+                                            updateUrl={route('job.drafting.comments.update', [
+                                                job.id,
+                                                comment.id,
+                                            ])}
+                                            destroyUrl={route('job.drafting.comments.destroy', [
+                                                job.id,
+                                                comment.id,
+                                            ])}
+                                            onChanged={() => {
+                                                loadComments();
+                                                onCommentsUpdated?.();
+                                            }}
+                                            allowImages
+                                            uploadImage={uploadDraftingCommentInlineImage}
+                                        >
+                                            <CommentBody html={comment.body} />
+                                        </ManagedComment>
                                     </div>
                                 </article>
                             </li>

@@ -7,6 +7,7 @@ use App\Http\Requests\StoreDraftingRequestCommentRequest;
 use App\Http\Requests\StoreDraftingRequestFilesRequest;
 use App\Http\Requests\StoreDraftingRequestAccountEntryRequest;
 use App\Http\Requests\UpdateDraftingRequestAccountEntryRequest;
+use App\Http\Requests\UpdateDraftingRequestCommentRequest;
 use App\Http\Requests\StoreDraftingRequestRevisionRequest;
 use App\Http\Requests\UpdateDraftingRequestRevisionRequest;
 use App\Http\Requests\UpdateDraftingRequestRequest;
@@ -1163,6 +1164,81 @@ class DraftingController extends Controller
         });
     }
 
+    public function updateComment(
+        UpdateDraftingRequestCommentRequest $request,
+        DraftingRequest $draftingRequest,
+        int $comment,
+    ): JsonResponse|RedirectResponse {
+        $record = $this->manageableComment($request, $draftingRequest, $comment);
+        $body = $request->sanitizedBody();
+
+        $record->update(['body' => $body]);
+
+        DraftingRequestActivity::record(
+            $draftingRequest,
+            $request->user(),
+            DraftingRequestActivity::ACTION_COMMENT_UPDATED,
+            $this->commentActivityDescription($body),
+        );
+
+        if ($request->expectsJson() && ! $request->header('X-Inertia')) {
+            $record->load(['user:id,name,initials,profile_image', 'revision:id,drafting_request_id,code']);
+
+            return response()->json([
+                'comment' => $this->formatComment($record, AppClock::timezone()),
+            ]);
+        }
+
+        return back()->with('status', 'comment-updated');
+    }
+
+    public function destroyComment(
+        Request $request,
+        DraftingRequest $draftingRequest,
+        int $comment,
+    ): JsonResponse|RedirectResponse {
+        $record = $this->manageableComment($request, $draftingRequest, $comment);
+        $description = $this->commentActivityDescription((string) $record->body);
+
+        $record->delete();
+
+        DraftingRequestActivity::record(
+            $draftingRequest,
+            $request->user(),
+            DraftingRequestActivity::ACTION_COMMENT_DELETED,
+            $description,
+        );
+
+        if ($request->expectsJson() && ! $request->header('X-Inertia')) {
+            return response()->json(['deleted' => true]);
+        }
+
+        return back()->with('status', 'comment-deleted');
+    }
+
+    private function manageableComment(
+        Request $request,
+        DraftingRequest $draftingRequest,
+        int $commentId,
+    ): DraftingRequestComment {
+        $this->authorizeView($request, $draftingRequest);
+
+        if ($draftingRequest->isArchived()) {
+            abort(404);
+        }
+
+        $comment = DraftingRequestComment::query()
+            ->whereKey($commentId)
+            ->where('drafting_request_id', $draftingRequest->id)
+            ->firstOrFail();
+
+        if (! $comment->canBeManagedBy($request->user())) {
+            abort(403);
+        }
+
+        return $comment;
+    }
+
     public function boardComments(
         Request $request,
         DraftingRequest $draftingRequest,
@@ -1706,6 +1782,8 @@ class DraftingController extends Controller
             'author_profile_image_url' => $comment->user?->profile_image_url,
             'created_at' => $comment->created_at?->timezone($tz)->format('d M Y, h:i A'),
             'is_mine' => $comment->user_id === auth()->id(),
+            'can_manage' => $comment->canBeManagedBy(auth()->user()),
+            'is_edited' => $comment->wasEdited(),
             'revision_id' => $comment->drafting_request_revision_id,
             'revision_code' => $comment->revision?->code,
         ];
@@ -1756,6 +1834,8 @@ class DraftingController extends Controller
                 DraftingRequestActivity::ACTION_COMMENT_POSTED => 'Posted a comment',
                 DraftingRequestActivity::ACTION_RUN_COMMENT_POSTED => 'Posted a run comment',
                 DraftingRequestActivity::ACTION_ACCOUNT_COMMENT_POSTED => 'Posted a quote or invoice comment',
+                DraftingRequestActivity::ACTION_COMMENT_UPDATED => 'Edited a comment',
+                DraftingRequestActivity::ACTION_COMMENT_DELETED => 'Deleted a comment',
                 DraftingRequestActivity::ACTION_ARCHIVED => 'Archived drafting request',
                 DraftingRequestActivity::ACTION_RESTORED => 'Restored drafting request',
                 DraftingRequestActivity::ACTION_STATUS_CHANGED => 'Changed status',
