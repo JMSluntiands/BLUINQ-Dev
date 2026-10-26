@@ -27,4 +27,16 @@ class CrmQuoteComment extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function canBeManagedBy(?User $user): bool
+    {
+        return $user !== null && ($user->isAdmin() || $this->user_id === $user->id);
+    }
+
+    public function wasEdited(): bool
+    {
+        return $this->created_at !== null
+            && $this->updated_at !== null
+            && $this->updated_at->gt($this->created_at);
+    }
 }

@@ -214,6 +214,12 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('job.drafting.files.destroy');
     Route::post('/job/drafting/{draftingRequest}/comments', [DraftingController::class, 'storeComment'])
         ->name('job.drafting.comments.store');
+    Route::patch('/job/drafting/{draftingRequest}/comments/{comment}', [DraftingController::class, 'updateComment'])
+        ->whereNumber('comment')
+        ->name('job.drafting.comments.update');
+    Route::delete('/job/drafting/{draftingRequest}/comments/{comment}', [DraftingController::class, 'destroyComment'])
+        ->whereNumber('comment')
+        ->name('job.drafting.comments.destroy');
     Route::post('/job/drafting/comments/inline-images', [DraftingCommentInlineImageController::class, 'store'])
         ->name('job.drafting.comments.inline-image.store');
     Route::get('/job/drafting/comments/inline-images/{filename}', [DraftingCommentInlineImageController::class, 'show'])
@@ -320,6 +326,12 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('crm.quotes.show');
     Route::post('/crm/quotes/{crmQuote}/comments', [CrmQuoteController::class, 'storeComment'])
         ->name('crm.quotes.comments.store');
+    Route::patch('/crm/quotes/{crmQuote}/comments/{comment}', [CrmQuoteController::class, 'updateComment'])
+        ->whereNumber('comment')
+        ->name('crm.quotes.comments.update');
+    Route::delete('/crm/quotes/{crmQuote}/comments/{comment}', [CrmQuoteController::class, 'destroyComment'])
+        ->whereNumber('comment')
+        ->name('crm.quotes.comments.destroy');
     Route::delete('/crm/quotes/{crmQuote}', [CrmQuoteController::class, 'destroy'])
         ->name('crm.quotes.destroy');
     Route::post('/crm/quotes/{crmQuote}/restore', [CrmQuoteController::class, 'restore'])

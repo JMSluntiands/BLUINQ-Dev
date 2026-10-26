@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Crm;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCrmQuoteCommentRequest;
+use App\Http\Requests\UpdateCrmQuoteCommentRequest;
 use App\Models\CrmQuote;
 use App\Models\CrmQuoteActivity;
 use App\Models\CrmQuoteComment;
 use App\Support\AppClock;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -167,6 +169,82 @@ class CrmQuoteController extends Controller
         return redirect()->back()->with('status', $flash);
     }
 
+    public function updateComment(
+        UpdateCrmQuoteCommentRequest $request,
+        CrmQuote $crmQuote,
+        int $comment,
+    ): RedirectResponse|JsonResponse {
+        $record = $this->manageableComment($request, $crmQuote, $comment);
+        $body = $request->sanitizedBody();
+
+        $record->update(['body' => $body]);
+
+        CrmQuoteActivity::record(
+            $crmQuote,
+            $request->user(),
+            CrmQuoteActivity::ACTION_COMMENT_UPDATED,
+            Str::limit(trim(strip_tags($body)), 200) ?: 'Edited a comment.',
+        );
+
+        if ($request->expectsJson() && ! $request->header('X-Inertia')) {
+            $record->load('user:id,name,profile_image');
+
+            return response()->json([
+                'comment' => $this->formatComment($record, AppClock::timezone()),
+            ]);
+        }
+
+        return redirect()->back()->with('status', 'comment-updated');
+    }
+
+    public function destroyComment(
+        Request $request,
+        CrmQuote $crmQuote,
+        int $comment,
+    ): RedirectResponse|JsonResponse {
+        $record = $this->manageableComment($request, $crmQuote, $comment);
+        $description = Str::limit(trim(strip_tags((string) $record->body)), 200) ?: 'Deleted a comment.';
+
+        $record->delete();
+
+        CrmQuoteActivity::record(
+            $crmQuote,
+            $request->user(),
+            CrmQuoteActivity::ACTION_COMMENT_DELETED,
+            $description,
+        );
+
+        if ($request->expectsJson() && ! $request->header('X-Inertia')) {
+            return response()->json(['deleted' => true]);
+        }
+
+        return redirect()->back()->with('status', 'comment-deleted');
+    }
+
+    private function manageableComment(Request $request, CrmQuote $crmQuote, int $commentId): CrmQuoteComment
+    {
+        $user = $request->user();
+
+        if (! $user->isAdmin() && $crmQuote->user_id !== $user->id) {
+            abort(403);
+        }
+
+        if ($crmQuote->isArchived()) {
+            abort(404);
+        }
+
+        $comment = CrmQuoteComment::query()
+            ->whereKey($commentId)
+            ->where('crm_quote_id', $crmQuote->id)
+            ->firstOrFail();
+
+        if (! $comment->canBeManagedBy($user)) {
+            abort(403);
+        }
+
+        return $comment;
+    }
+
     public function destroy(Request $request, CrmQuote $crmQuote): RedirectResponse
     {
         $crmQuote->update(['archived_at' => now()]);
@@ -276,6 +354,8 @@ class CrmQuoteController extends Controller
             'author_profile_image_url' => $comment->user?->profile_image_url,
             'created_at' => $comment->created_at?->timezone($tz)->format('d M Y, h:i A'),
             'is_mine' => $comment->user_id === auth()->id(),
+            'can_manage' => $comment->canBeManagedBy(auth()->user()),
+            'is_edited' => $comment->wasEdited(),
         ];
     }
 
@@ -304,6 +384,8 @@ class CrmQuoteController extends Controller
                     CrmQuoteActivity::ACTION_QUOTE_SUBMITTED => 'Submitted quote',
                     CrmQuoteActivity::ACTION_COMMENT_POSTED => 'Posted a comment',
                     CrmQuoteActivity::ACTION_RUN_COMMENT_POSTED => 'Posted a run comment',
+                    CrmQuoteActivity::ACTION_COMMENT_UPDATED => 'Edited a comment',
+                    CrmQuoteActivity::ACTION_COMMENT_DELETED => 'Deleted a comment',
                     CrmQuoteActivity::ACTION_ARCHIVED => 'Archived quote',
                     CrmQuoteActivity::ACTION_RESTORED => 'Restored quote',
                     default => 'Activity',
