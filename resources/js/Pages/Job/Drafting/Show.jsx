@@ -1,3 +1,4 @@
+import ManagedComment from '@/Components/Comments/ManagedComment';
 import DangerButton from '@/Components/DangerButton';
 import DraftingFileViewModal from '@/Components/Drafting/DraftingFileViewModal';
 import DraftingJobShowLayout from '@/Components/Drafting/DraftingJobShowLayout';
@@ -615,6 +616,9 @@ function DiscussionPanel({
         );
     }, [comments, filterRevisionId, form.data.kind, kindChoices]);
 
+    const reloadComments = () =>
+        router.reload({ only: ['draftingRequest'], preserveScroll: true });
+
     const submit = (e) => {
         if (readOnly) {
             return;
@@ -754,7 +758,23 @@ function DiscussionPanel({
                                             {comment.created_at}
                                         </time>
                                     </div>
-                                    <CommentBody html={comment.body} />
+                                    <ManagedComment
+                                        comment={comment}
+                                        updateUrl={route('job.drafting.comments.update', [
+                                            draftingRequestId,
+                                            comment.id,
+                                        ])}
+                                        destroyUrl={route('job.drafting.comments.destroy', [
+                                            draftingRequestId,
+                                            comment.id,
+                                        ])}
+                                        onChanged={reloadComments}
+                                        disabled={readOnly}
+                                        allowImages
+                                        uploadImage={uploadDraftingCommentInlineImage}
+                                    >
+                                        <CommentBody html={comment.body} />
+                                    </ManagedComment>
                                 </div>
                             </article>
                         </li>

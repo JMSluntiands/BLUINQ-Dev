@@ -1028,7 +1028,7 @@ class MasterlistToApmWorkflowTest extends TestCase
         $this->assertSame(DraftingRequest::STATUS_NEW, $row->status);
     }
 
-    public function test_add_item_includes_active_board_jobs_for_new_revision(): void
+    public function test_add_item_hides_board_jobs_that_are_still_active(): void
     {
         $user = $this->adminUser();
         [$storeyLevel, $category] = $this->seedLookups();
@@ -1100,15 +1100,26 @@ class MasterlistToApmWorkflowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Job/Board')
-                ->has('masterlistCandidates', 3)
-                ->where('masterlistCandidates', fn ($candidates) => collect($candidates)
-                    ->pluck('id')
-                    ->sort()
-                    ->values()
-                    ->all() === collect([$newJob->id, $wipJob->id, $masterlist->id])
-                    ->sort()
-                    ->values()
-                    ->all()));
+                ->has('masterlistCandidates', 1)
+                ->where('masterlistCandidates.0.id', $masterlist->id));
+
+        $activeStatuses = [
+            DraftingRequest::STATUS_ASSIGNED,
+            DraftingRequest::STATUS_FOR_CHECKING,
+            DraftingRequest::STATUS_QUERY,
+            DraftingRequest::STATUS_ON_HOLD,
+        ];
+
+        foreach ($activeStatuses as $status) {
+            $newJob->forceFill(['status' => $status])->save();
+
+            $this->actingAs($user)
+                ->get(route('job.list'))
+                ->assertOk()
+                ->assertInertia(fn ($page) => $page
+                    ->has('masterlistCandidates', 1)
+                    ->where('masterlistCandidates.0.id', $masterlist->id));
+        }
     }
 
     public function test_add_item_includes_board_jobs_with_revisions_for_next_revision(): void
@@ -1118,7 +1129,7 @@ class MasterlistToApmWorkflowTest extends TestCase
 
         $row = DraftingRequest::query()->create([
             'user_id' => $user->id,
-            'status' => DraftingRequest::STATUS_DESIGN_WIP,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
             'review_status' => DraftingRequest::REVIEW_ACCEPTED,
             'workflow_stage' => DraftingRequest::STAGE_APM,
             'requested_at' => now(),

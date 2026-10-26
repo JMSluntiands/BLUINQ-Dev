@@ -1,3 +1,4 @@
+import ManagedComment from '@/Components/Comments/ManagedComment';
 import DangerButton from '@/Components/DangerButton';
 import DraftingStatusBadge from '@/Components/DraftingStatusBadge';
 import FlashNoticeModal from '@/Components/FlashNoticeModal';
@@ -560,7 +561,26 @@ function DiscussionPanel({
                                             {comment.created_at}
                                         </time>
                                     </div>
-                                    <CommentBody html={comment.body} />
+                                    <ManagedComment
+                                        comment={comment}
+                                        updateUrl={route('crm.quotes.comments.update', [
+                                            quoteId,
+                                            comment.id,
+                                        ])}
+                                        destroyUrl={route('crm.quotes.comments.destroy', [
+                                            quoteId,
+                                            comment.id,
+                                        ])}
+                                        onChanged={() =>
+                                            router.reload({
+                                                only: ['quote'],
+                                                preserveScroll: true,
+                                            })
+                                        }
+                                        disabled={readOnly}
+                                    >
+                                        <CommentBody html={comment.body} />
+                                    </ManagedComment>
                                 </div>
                             </article>
                         </li>

@@ -26,12 +26,40 @@ class AttendanceService
 
     public function todayForUser(User $user): AttendanceClock
     {
-        return AttendanceClock::query()->firstOrCreate(
-            [
-                'user_id' => $user->id,
-                'work_date' => $this->nowInAttendanceTimezone()->toDateString(),
-            ],
-        );
+        $now = $this->nowInAttendanceTimezone();
+        $today = $now->toDateString();
+
+        $todayRecord = AttendanceClock::query()
+            ->where('user_id', $user->id)
+            ->whereDate('work_date', $today)
+            ->first();
+
+        if ($todayRecord?->clock_in_at !== null) {
+            return $todayRecord;
+        }
+
+        // A shift that started before midnight stays open until the user clocks out.
+        $openShift = AttendanceClock::query()
+            ->where('user_id', $user->id)
+            ->whereDate('work_date', $now->copy()->subDay()->toDateString())
+            ->whereNotNull('clock_in_at')
+            ->whereNull('clock_out_at')
+            ->where('clock_in_at', '>=', now('UTC')->subHours($this->openShiftHours()))
+            ->first();
+
+        if ($openShift !== null) {
+            return $openShift;
+        }
+
+        return $todayRecord ?? AttendanceClock::query()->create([
+            'user_id' => $user->id,
+            'work_date' => $today,
+        ]);
+    }
+
+    public function openShiftHours(): int
+    {
+        return max(1, (int) config('attendance.open_shift_hours', 16));
     }
 
     public function isAbsentCutoffReached(): bool

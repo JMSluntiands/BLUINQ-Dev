@@ -21,6 +21,10 @@ class DraftingRequestActivity extends Model
 
     public const ACTION_ACCOUNT_COMMENT_POSTED = 'account_comment_posted';
 
+    public const ACTION_COMMENT_UPDATED = 'comment_updated';
+
+    public const ACTION_COMMENT_DELETED = 'comment_deleted';
+
     public const ACTION_ARCHIVED = 'archived';
 
     public const ACTION_RESTORED = 'restored';

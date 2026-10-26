@@ -378,6 +378,25 @@ class DraftingRequest extends Model
     }
 
     /**
+     * Board jobs still being worked on; Add item hides them.
+     *
+     * @return list<string>
+     */
+    public static function addItemActiveStatuses(): array
+    {
+        return [
+            self::STATUS_NEW,
+            self::STATUS_ASSIGNED,
+            self::STATUS_DRAFTING_WIP,
+            self::STATUS_DESIGN_WIP,
+            self::STATUS_WIP,
+            self::STATUS_FOR_CHECKING,
+            self::STATUS_QUERY,
+            self::STATUS_ON_HOLD,
+        ];
+    }
+
+    /**
      * @param  Builder<static>  $query
      * @return Builder<static>
      */

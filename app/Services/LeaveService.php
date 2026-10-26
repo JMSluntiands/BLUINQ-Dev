@@ -144,9 +144,9 @@ class LeaveService
             ->all();
     }
 
-    public function creditsForUser(User $user): int
+    public function creditsForUser(User $user): float
     {
-        return $this->entitlements->balancesFor($user)['al_available'];
+        return (float) $this->entitlements->balancesFor($user)['al_available'];
     }
 
     /**
