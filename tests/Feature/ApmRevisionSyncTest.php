@@ -8,6 +8,7 @@ use App\Models\DraftingRequestAccountEntry;
 use App\Models\DraftingRequestAssignment;
 use App\Models\DraftingRequestRevision;
 use App\Models\Role;
+use App\Models\SdaType;
 use App\Models\ServiceEngaging;
 use App\Models\StoreyLevel;
 use App\Models\User;
@@ -547,6 +548,45 @@ class ApmRevisionSyncTest extends TestCase
                 ));
     }
 
+    public function test_area_size_edit_on_older_revision_saves_without_touching_job_status(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+        $job = $this->createApmJob($user, $storeyLevel, $category);
+        $job->forceFill(['status' => DraftingRequest::STATUS_ASSIGNED])->save();
+
+        $older = DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $job->id,
+            'user_id' => $user->id,
+            'code' => $job->jobNumber().'-01',
+            'log_date' => now()->subMonth()->toDateString(),
+            'category' => 'Legacy category',
+            'status' => 'Submitted',
+            'area_size' => '203.74',
+        ]);
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $job->id,
+            'user_id' => $user->id,
+            'code' => $job->jobNumber().'-02',
+            'log_date' => now()->toDateString(),
+            'category' => $category->code,
+            'status' => DraftingRequest::STATUS_ASSIGNED,
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('job.drafting.show', $job))
+            ->patch(route('job.drafting.revisions.update', [$job, $older]), [
+                'area_size' => '210.5',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $older->refresh();
+        $this->assertSame('210.5', $older->area_size);
+        $this->assertSame('Submitted', $older->status);
+        $this->assertSame(DraftingRequest::STATUS_ASSIGNED, $job->fresh()->status);
+    }
+
     public function test_editing_revision_vo_saves_on_the_row_and_latest_syncs_the_job(): void
     {
         $user = $this->adminUser();
@@ -612,6 +652,7 @@ class ApmRevisionSyncTest extends TestCase
         $job = $this->createApmJob($user, $storeyLevel, $category);
         $job->forceFill([
             'workflow_stage' => DraftingRequest::STAGE_DESIGN,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
             'vo_hours' => 4.5,
         ])->save();
 
@@ -1008,6 +1049,47 @@ class ApmRevisionSyncTest extends TestCase
             ->all();
 
         $this->assertSame(['27000-01', '27000-02'], $codes);
+    }
+
+    public function test_project_info_edit_syncs_sda_types_and_ndis_flag(): void
+    {
+        $user = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+        $job = $this->createApmJob($user, $storeyLevel, $category);
+        $job->crmCategories()->sync([$category->id]);
+
+        $hpd = SdaType::query()->create(['code' => 'HPD', 'name' => 'High Physical Support', 'status' => 'active']);
+        $ia = SdaType::query()->create(['code' => 'IA', 'name' => 'Improved Liveability', 'status' => 'active']);
+
+        $payload = [
+            'section' => 'job',
+            'lead_number' => $job->jobNumber(),
+            'status' => $job->status,
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_ids' => [$category->id],
+            'crm_category_id' => $category->id,
+            'site_address' => $job->site_address,
+            'site_owner_name' => $job->site_owner_name,
+            'ceiling_heights' => $job->ceiling_heights,
+        ];
+
+        $this->actingAs($user)
+            ->from(route('job.drafting.show', $job))
+            ->patch(route('job.drafting.update', $job), $payload + ['sda_type_ids' => [$hpd->id, $ia->id]])
+            ->assertSessionHasNoErrors();
+
+        $job->refresh();
+        $this->assertTrue((bool) $job->ndis_sda);
+        $this->assertEqualsCanonicalizing([$hpd->id, $ia->id], $job->sdaTypes()->pluck('sda_types.id')->all());
+
+        $this->actingAs($user)
+            ->from(route('job.drafting.show', $job))
+            ->patch(route('job.drafting.update', $job), $payload + ['sda_type_ids' => []])
+            ->assertSessionHasNoErrors();
+
+        $job->refresh();
+        $this->assertFalse((bool) $job->ndis_sda);
+        $this->assertSame([], $job->sdaTypes()->pluck('sda_types.id')->all());
     }
 
     public function test_design_project_management_shows_only_design_stage_jobs(): void

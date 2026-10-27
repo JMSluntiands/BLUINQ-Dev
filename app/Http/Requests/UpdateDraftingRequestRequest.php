@@ -7,6 +7,7 @@ use App\Models\CrmCategory;
 use App\Models\DraftingRequest;
 use App\Models\ExternalWallConstruction;
 use App\Models\RoofType;
+use App\Models\SdaType;
 use App\Models\ServiceEngaging;
 use App\Models\StoreyLevel;
 use Illuminate\Contracts\Validation\Validator;
@@ -138,6 +139,13 @@ class UpdateDraftingRequestRequest extends FormRequest
                     ),
                 ],
                 'ndis_sda' => ['sometimes', 'boolean'],
+                'sda_type_ids' => ['sometimes', 'nullable', 'array'],
+                'sda_type_ids.*' => [
+                    'integer',
+                    SdaType::selectableExistsRule(
+                        $current?->sdaTypes()->pluck('sda_types.id')->all(),
+                    ),
+                ],
                 'is_typical' => ['sometimes', 'boolean'],
                 'typical_details' => ['nullable', 'string', 'max:255'],
                 'unit_development_count' => ['nullable', 'integer', 'min:0', 'max:50'],
@@ -266,6 +274,17 @@ class UpdateDraftingRequestRequest extends FormRequest
                 'is_typical' => $isTypical,
                 'typical_details' => $isTypical && $typicalDetails !== '' ? $typicalDetails : null,
             ]);
+
+            if ($this->has('sda_type_ids')) {
+                $sdaTypeIds = array_values(array_filter(
+                    (array) $this->input('sda_type_ids', []),
+                    fn ($id) => $id !== '' && $id !== null,
+                ));
+                $this->merge([
+                    'sda_type_ids' => $sdaTypeIds,
+                    'ndis_sda' => $sdaTypeIds !== [],
+                ]);
+            }
 
             if ($this->has('unit_development_count')) {
                 $count = $this->input('unit_development_count');

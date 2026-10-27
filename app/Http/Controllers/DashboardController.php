@@ -125,13 +125,15 @@ class DashboardController extends Controller
         $user = $request->user();
         $record = $this->attendance->todayForUser($user);
 
-        if ($record->clock_in_at !== null) {
+        if ($record->clock_in_at !== null && $record->clock_out_at === null) {
             return back()->with('status', 'already-clocked-in');
         }
 
-        $record->update([
-            'clock_in_at' => now('UTC'),
-        ]);
+        // Clocking in again after a clock-out reopens the day: first time in
+        // is kept and the next clock-out replaces the earlier one.
+        $record->update($record->clock_in_at === null
+            ? ['clock_in_at' => now('UTC')]
+            : ['clock_out_at' => null]);
 
         return back()->with('status', 'clocked-in');
     }

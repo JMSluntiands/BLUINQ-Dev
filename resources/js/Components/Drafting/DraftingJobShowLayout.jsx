@@ -258,26 +258,21 @@ function RevisionAreaSizeCell({
 
     const submit = (e) => {
         e.preventDefault();
-        // Only patch area_size (+ required identity fields). Sending blank
-        // submitted_date / staff fields was clearing Add item Date Out sync.
-        form
-            .transform((data) => ({
-                code: row.code ?? '',
-                log_date: row.log_date_value ?? '',
-                category: row.category ?? '',
-                status: row.status ?? 'new',
-                area_size: data.area_size,
-            }))
-            .patch(
-                route('job.drafting.revisions.update', [
-                    draftingRequestId,
-                    row.id,
-                ]),
-                {
-                    preserveScroll: true,
-                    onSuccess: () => setEditing(false),
-                },
-            );
+        // Area only: sending the row's status/category would also overwrite
+        // the job's status and category.
+        form.transform((data) => ({
+            area_size: data.area_size,
+        }));
+        form.patch(
+            route('job.drafting.revisions.update', [
+                draftingRequestId,
+                row.id,
+            ]),
+            {
+                preserveScroll: true,
+                onSuccess: () => setEditing(false),
+            },
+        );
     };
 
     return (
@@ -311,7 +306,12 @@ function RevisionAreaSizeCell({
                     Cancel
                 </button>
             </div>
-            <InputError message={form.errors.area_size} className="!mt-0" />
+            <InputError
+                message={
+                    form.errors.area_size ?? Object.values(form.errors)[0]
+                }
+                className="!mt-0"
+            />
         </form>
     );
 }
@@ -677,8 +677,6 @@ export default function DraftingJobShowLayout({
         .filter(Boolean)
         .join(' ');
 
-    const units = draftingRequest.units ?? [];
-    const unitCount = Number(draftingRequest.unit_development_count ?? 0);
 
     const revisionColumns = [
         {
@@ -1080,63 +1078,6 @@ export default function DraftingJobShowLayout({
                     label="First floor slab"
                     value={draftingRequest.first_floor_slab}
                 />
-                <JobDetailField label="Unit development">
-                    {unitCount > 0 ? (
-                        <div className="space-y-2">
-                            <p className="text-sm font-medium">
-                                {unitCount} unit
-                                {unitCount === 1 ? '' : 's'}
-                            </p>
-                            <div className="overflow-x-auto rounded-lg border border-[#e6e9ef] dark:border-[#2f3347]">
-                                <table className="w-full min-w-[20rem] border-collapse text-left">
-                                    <thead>
-                                        <tr>
-                                            <th className={thClass}>Unit</th>
-                                            <th className={thClass}>
-                                                House type
-                                            </th>
-                                            <th className={thClass}>Area</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {Array.from(
-                                            { length: unitCount },
-                                            (_, i) => {
-                                                const n = i + 1;
-                                                const unit =
-                                                    units.find(
-                                                        (u) =>
-                                                            Number(
-                                                                u.unit_number,
-                                                            ) === n,
-                                                    ) ?? {};
-
-                                                return (
-                                                    <tr key={n}>
-                                                        <td className={tdClass}>
-                                                            Unit {n}
-                                                        </td>
-                                                        <td className={tdClass}>
-                                                            {unit.house_type ||
-                                                                '—'}
-                                                        </td>
-                                                        <td className={tdClass}>
-                                                            {unit.area_sqm
-                                                                ? `${unit.area_sqm} SQM`
-                                                                : '—'}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            },
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    ) : (
-                        '0'
-                    )}
-                </JobDetailField>
                 {(draftingRequest.design_requirements ||
                     draftingRequest.additional_inclusions) && (
                     <JobDetailField

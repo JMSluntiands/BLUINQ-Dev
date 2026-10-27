@@ -12,6 +12,12 @@ import { PencilSquareIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
+function formatCredits(value) {
+    const number = Number(value ?? 0);
+
+    return Number.isFinite(number) ? number.toFixed(2) : '0.00';
+}
+
 const FLASH_MESSAGES = {
     'leave-credits-added': 'Leave credits added successfully.',
     'leave-credits-updated': 'Leave balances updated successfully.',
@@ -50,11 +56,13 @@ function AddCreditsModal({ employee, onClose }) {
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     {employee.name} · AL:{' '}
                     <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                        {balances.al_available ?? employee.leave_credits}
+                        {formatCredits(
+                            balances.al_available ?? employee.leave_credits,
+                        )}
                     </span>
                     {' · '}SL:{' '}
                     <span className="font-semibold text-sky-600 dark:text-sky-400">
-                        {balances.sl_credits ?? 0}
+                        {formatCredits(balances.sl_credits)}
                     </span>
                 </p>
 
@@ -126,15 +134,15 @@ function AddCreditsModal({ employee, onClose }) {
 function EditCreditsModal({ employee, onClose }) {
     const balances = employee.balances ?? {};
     const { data, setData, patch, processing, errors, reset } = useForm({
-        al_credits: String(balances.al_credits ?? 0),
-        sl_credits: String(balances.sl_credits ?? 0),
+        al_credits: formatCredits(balances.al_credits),
+        sl_credits: formatCredits(balances.sl_credits),
         notes: '',
     });
 
     useEffect(() => {
         setData({
-            al_credits: String(balances.al_credits ?? 0),
-            sl_credits: String(balances.sl_credits ?? 0),
+            al_credits: formatCredits(balances.al_credits),
+            sl_credits: formatCredits(balances.sl_credits),
             notes: '',
         });
     }, [employee.id, balances.al_credits, balances.sl_credits, setData]);
@@ -311,8 +319,10 @@ export default function Index({ employees, filters = {}, canEdit = false }) {
                                             AL
                                         </p>
                                         <p className="text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
-                                            {employee.balances?.al_available ??
-                                                employee.leave_credits}
+                                            {formatCredits(
+                                                employee.balances?.al_available ??
+                                                    employee.leave_credits,
+                                            )}
                                         </p>
                                     </div>
                                     <div>
@@ -320,7 +330,9 @@ export default function Index({ employees, filters = {}, canEdit = false }) {
                                             SL
                                         </p>
                                         <p className="text-xl font-bold tabular-nums text-sky-600 dark:text-sky-400">
-                                            {employee.balances?.sl_credits ?? 0}
+                                            {formatCredits(
+                                                employee.balances?.sl_credits,
+                                            )}
                                         </p>
                                     </div>
                                     <div>
@@ -328,8 +340,10 @@ export default function Index({ employees, filters = {}, canEdit = false }) {
                                             Medical
                                         </p>
                                         <p className="text-xl font-bold tabular-nums text-violet-600 dark:text-violet-400">
-                                            {employee.balances
-                                                ?.medical_remaining ?? 0}
+                                            {formatCredits(
+                                                employee.balances
+                                                    ?.medical_remaining,
+                                            )}
                                         </p>
                                     </div>
                                 </div>

@@ -17,6 +17,7 @@ use App\Models\CrmCategory;
 use App\Models\DraftingRequest;
 use App\Models\ExternalWallConstruction;
 use App\Models\RoofType;
+use App\Models\SdaType;
 use App\Models\StoreyLevel;
 use App\Models\DraftingRequestActivity;
 use App\Support\AppClock;
@@ -243,6 +244,7 @@ class DraftingController extends Controller
                     ->map(fn ($row) => $row->code ? "{$row->code} — {$row->name}" : $row->name)
                     ->values()
                     ->all(),
+                'sda_type_ids' => $draftingRequest->sdaTypes->pluck('id')->values()->all(),
                 'unit_development_count' => (int) ($draftingRequest->unit_development_count ?? 0),
                 'units' => $draftingRequest->units
                     ->map(fn (DraftingRequestUnit $unit) => [
@@ -343,6 +345,7 @@ class DraftingController extends Controller
                 'storeyLevels' => StoreyLevel::query()->selectable($draftingRequest->storey_level_id)->orderBy('code')->orderBy('name')->get(['id', 'name', 'code']),
                 'externalWallConstructions' => ExternalWallConstruction::query()->selectable($draftingRequest->external_wall_construction_id)->orderBy('name')->get(['id', 'name']),
                 'roofTypes' => RoofType::query()->selectable($draftingRequest->roof_type_id)->orderBy('name')->get(['id', 'name']),
+                'sdaTypes' => SdaType::query()->selectable($draftingRequest->sdaTypes->pluck('id')->all())->orderBy('code')->orderBy('name')->get(['id', 'name', 'code']),
                 'managerUsers' => User::query()
                     ->active()
                     ->whereHas('role', fn ($query) => $query->whereIn('slug', ['admin', 'project-manager']))
@@ -502,6 +505,11 @@ class DraftingController extends Controller
         $units = $validated['units'] ?? null;
         unset($validated['units']);
 
+        $sdaTypeIds = array_key_exists('sda_type_ids', $validated)
+            ? array_map('intval', $validated['sda_type_ids'] ?? [])
+            : null;
+        unset($validated['sda_type_ids']);
+
         $clientId = array_key_exists('client_id', $validated)
             ? (int) ($validated['client_id'] ?: 0)
             : null;
@@ -581,6 +589,10 @@ class DraftingController extends Controller
 
         if ($crmCategoryIds !== null) {
             $draftingRequest->crmCategories()->sync($crmCategoryIds);
+        }
+
+        if ($section === 'job' && $sdaTypeIds !== null) {
+            $draftingRequest->sdaTypes()->sync($sdaTypeIds);
         }
 
         if ($section === 'job' && $units !== null) {
@@ -800,15 +812,26 @@ class DraftingController extends Controller
     ): RedirectResponse {
         $validated = $request->validated();
 
-        $updates = [
-            'code' => $this->normalizeRevisionCode(
+        $updates = [];
+
+        if (array_key_exists('code', $validated)) {
+            $updates['code'] = $this->normalizeRevisionCode(
                 $draftingRequest,
                 trim($validated['code']),
-            ),
-            'log_date' => $validated['log_date'],
-            'category' => trim($validated['category']),
-            'status' => $validated['status'],
-        ];
+            );
+        }
+
+        if (array_key_exists('log_date', $validated)) {
+            $updates['log_date'] = $validated['log_date'];
+        }
+
+        if (array_key_exists('category', $validated)) {
+            $updates['category'] = trim($validated['category']);
+        }
+
+        if (array_key_exists('status', $validated)) {
+            $updates['status'] = $validated['status'];
+        }
 
         if (array_key_exists('link', $validated)) {
             $updates['link'] = $validated['link'] !== null && $validated['link'] !== ''
@@ -926,15 +949,20 @@ class DraftingController extends Controller
             $description,
         );
 
-        $this->syncJobStatusFromRevision(
-            $draftingRequest,
-            $request->user(),
-            $validated['status'],
-        );
-        $this->syncJobCategoryFromSelection(
-            $draftingRequest,
-            $revision->category,
-        );
+        if (array_key_exists('status', $validated)) {
+            $this->syncJobStatusFromRevision(
+                $draftingRequest,
+                $request->user(),
+                $validated['status'],
+            );
+        }
+
+        if (array_key_exists('category', $validated)) {
+            $this->syncJobCategoryFromSelection(
+                $draftingRequest,
+                $revision->category,
+            );
+        }
 
         $this->board->syncRevisionHoursToAssignments($draftingRequest, $revision->fresh());
         $this->timesheetSync->syncRevisionToTimesheet($revision->fresh());

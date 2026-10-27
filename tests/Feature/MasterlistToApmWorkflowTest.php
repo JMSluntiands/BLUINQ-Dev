@@ -309,7 +309,7 @@ class MasterlistToApmWorkflowTest extends TestCase
 
         $row = DraftingRequest::query()->create([
             'user_id' => $user->id,
-            'status' => DraftingRequest::STATUS_DESIGN_WIP,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
             'review_status' => DraftingRequest::REVIEW_ACCEPTED,
             'workflow_stage' => DraftingRequest::STAGE_APM,
             'requested_at' => now(),
@@ -482,7 +482,7 @@ class MasterlistToApmWorkflowTest extends TestCase
 
         $row = DraftingRequest::query()->create([
             'user_id' => $user->id,
-            'status' => DraftingRequest::STATUS_NEW,
+            'status' => DraftingRequest::STATUS_SUBMITTED,
             'review_status' => DraftingRequest::REVIEW_ACCEPTED,
             'workflow_stage' => DraftingRequest::STAGE_APM,
             'requested_at' => now()->subDays(10),
@@ -1108,6 +1108,9 @@ class MasterlistToApmWorkflowTest extends TestCase
             DraftingRequest::STATUS_FOR_CHECKING,
             DraftingRequest::STATUS_QUERY,
             DraftingRequest::STATUS_ON_HOLD,
+            'For Checking',
+            'On Hold',
+            DraftingRequest::STATUS_FOR_QUOTE,
         ];
 
         foreach ($activeStatuses as $status) {
@@ -1120,6 +1123,15 @@ class MasterlistToApmWorkflowTest extends TestCase
                     ->has('masterlistCandidates', 1)
                     ->where('masterlistCandidates.0.id', $masterlist->id));
         }
+
+        $revisionCount = $wipJob->revisions()->count();
+
+        $this->actingAs($user)
+            ->from(route('job.list'))
+            ->post(route('job.board.add', $wipJob))
+            ->assertSessionHasErrors('drafting_request_id');
+
+        $this->assertSame($revisionCount, $wipJob->revisions()->count());
     }
 
     public function test_add_item_includes_board_jobs_with_revisions_for_next_revision(): void

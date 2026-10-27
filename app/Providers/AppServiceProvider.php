@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\LeaveCreditColumns;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
@@ -35,6 +36,10 @@ class AppServiceProvider extends ServiceProvider
 
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
+        }
+
+        if (! $this->app->runningInConsole()) {
+            LeaveCreditColumns::ensureTwoDecimals();
         }
     }
 }

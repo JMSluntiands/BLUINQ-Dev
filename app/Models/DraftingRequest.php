@@ -393,7 +393,36 @@ class DraftingRequest extends Model
             self::STATUS_FOR_CHECKING,
             self::STATUS_QUERY,
             self::STATUS_ON_HOLD,
+            self::STATUS_FOR_QUOTE,
+            'for_quotes',
         ];
+    }
+
+    /**
+     * Legacy rows may store labels ("For Checking") instead of snake_case values.
+     */
+    public function isAddItemActive(): bool
+    {
+        $status = Str::snake(str_replace('-', ' ', strtolower(trim((string) $this->status))));
+
+        return in_array($status, self::addItemActiveStatuses(), true);
+    }
+
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeWithoutAddItemActive(Builder $query): Builder
+    {
+        $statuses = self::addItemActiveStatuses();
+        $placeholders = implode(', ', array_fill(0, count($statuses), '?'));
+
+        return $query
+            ->whereNotNull('status')
+            ->whereRaw(
+                "LOWER(REPLACE(REPLACE(TRIM(status), ' ', '_'), '-', '_')) NOT IN ({$placeholders})",
+                $statuses,
+            );
     }
 
     /**

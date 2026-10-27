@@ -45,6 +45,37 @@ class AttendanceMidnightShiftTest extends TestCase
         $this->assertNotNull($record->clock_out_at);
     }
 
+    public function test_user_can_clock_in_again_after_clocking_out_the_same_day(): void
+    {
+        $user = User::factory()->create();
+
+        Carbon::setTestNow(Carbon::parse('2026-10-27 07:56', 'Asia/Manila'));
+        $this->actingAs($user)->post(route('dashboard.clock-in'));
+
+        Carbon::setTestNow(Carbon::parse('2026-10-27 15:11', 'Asia/Manila'));
+        $this->actingAs($user)->post(route('dashboard.clock-out'));
+
+        $firstShift = AttendanceClock::query()->sole();
+
+        Carbon::setTestNow(Carbon::parse('2026-10-27 15:20', 'Asia/Manila'));
+        $this->actingAs($user)
+            ->post(route('dashboard.clock-in'))
+            ->assertSessionHas('status', 'clocked-in');
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page
+                ->where('clock.clocked_in', true)
+                ->where('clock.clocked_out', false));
+
+        Carbon::setTestNow(Carbon::parse('2026-10-27 17:05', 'Asia/Manila'));
+        $this->actingAs($user)->post(route('dashboard.clock-out'));
+
+        $record = AttendanceClock::query()->sole();
+        $this->assertTrue($record->clock_in_at->equalTo($firstShift->clock_in_at));
+        $this->assertTrue($record->clock_out_at->greaterThan($firstShift->clock_out_at));
+    }
+
     public function test_forgotten_clock_out_from_yesterday_does_not_block_todays_clock_in(): void
     {
         $user = User::factory()->create();
