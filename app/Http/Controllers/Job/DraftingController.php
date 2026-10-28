@@ -1123,6 +1123,40 @@ class DraftingController extends Controller
             ->with('status', $isQuote ? 'drf-quote-updated' : 'drf-invoice-updated');
     }
 
+    public function destroyAccountEntry(
+        Request $request,
+        DraftingRequest $draftingRequest,
+        DraftingRequestAccountEntry $accountEntry,
+    ): RedirectResponse {
+        $this->authorizeView($request, $draftingRequest);
+
+        abort_unless($request->user()?->hasPermission('job.drafting.accounts.add'), 403);
+
+        if ($draftingRequest->isArchived()
+            || (int) $accountEntry->drafting_request_id !== (int) $draftingRequest->id) {
+            abort(404);
+        }
+
+        $isQuote = $accountEntry->kind === DraftingRequestAccountEntry::KIND_QUOTE;
+        $number = $accountEntry->number;
+        $category = $accountEntry->category;
+
+        $accountEntry->delete();
+
+        DraftingRequestActivity::record(
+            $draftingRequest,
+            $request->user(),
+            $isQuote
+                ? DraftingRequestActivity::ACTION_QUOTE_DELETED
+                : DraftingRequestActivity::ACTION_INVOICE_DELETED,
+            sprintf('Deleted %s %s (%s).', $isQuote ? 'quote' : 'invoice', $number, $category),
+        );
+
+        return redirect()
+            ->route($this->jobShowRouteName($request), $this->jobShowRouteParams($draftingRequest, $request))
+            ->with('status', $isQuote ? 'drf-quote-deleted' : 'drf-invoice-deleted');
+    }
+
     public function storeComment(
         StoreDraftingRequestCommentRequest $request,
         DraftingRequest $draftingRequest,
@@ -1876,6 +1910,8 @@ class DraftingController extends Controller
                 DraftingRequestActivity::ACTION_QUOTE_UPDATED => 'Updated quote',
                 DraftingRequestActivity::ACTION_INVOICE_ADDED => 'Added invoice',
                 DraftingRequestActivity::ACTION_INVOICE_UPDATED => 'Updated invoice',
+                DraftingRequestActivity::ACTION_QUOTE_DELETED => 'Deleted quote',
+                DraftingRequestActivity::ACTION_INVOICE_DELETED => 'Deleted invoice',
                 DraftingRequestActivity::ACTION_DRAWING_CHECKLIST_UPDATED => 'Updated drawing status',
                 DraftingRequestActivity::ACTION_DRAWING_CHECKLIST_RESET => 'Reset drawing status',
                 DraftingRequestActivity::ACTION_ASSIGNMENT_CHANGED => 'Changed assignment',

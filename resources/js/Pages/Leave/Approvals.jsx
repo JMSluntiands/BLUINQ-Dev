@@ -469,7 +469,7 @@ export default function Approvals({
 
     const deleteApprovedLeave = (request) => {
         const confirmed = window.confirm(
-            `Delete the approved ${request.type_label} for ${request.user.name} (${request.start_display} – ${request.end_display})? Credits deducted for the current leave year will be returned.`,
+            `Are you sure you want to delete the approved ${request.type_label} for ${request.user.name} (${request.start_display} – ${request.end_display})? Credits deducted for the current leave year will be returned.`,
         );
         if (!confirmed) {
             return;

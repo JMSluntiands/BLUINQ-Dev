@@ -646,6 +646,7 @@ export default function DraftingJobShowLayout({
     canAddAccount = false,
     onEditQuote,
     onEditInvoice,
+    onDeleteAccount,
     onAddQuote,
     onAddInvoice,
     canViewRevision = true,
@@ -830,7 +831,7 @@ export default function DraftingJobShowLayout({
             : []),
     ];
 
-    const accountColumns = (linkBase, numberKey, onEdit) => {
+    const accountColumns = (linkBase, numberKey, onEdit, entryLabel) => {
         const columns = [
             {
                 key: 'number',
@@ -869,18 +870,31 @@ export default function DraftingJobShowLayout({
             },
         ];
 
-        if (canAddAccount && onEdit) {
+        if (canAddAccount && (onEdit || onDeleteAccount)) {
             columns.push({
                 key: 'actions',
                 label: 'Action',
                 render: (row) => (
-                    <button
-                        type="button"
-                        onClick={() => onEdit(row)}
-                        className="text-[11px] font-semibold text-[#0073ea] underline underline-offset-2 hover:text-[#0060c4] dark:text-[#60a5fa]"
-                    >
-                        Edit
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                        {onEdit ? (
+                            <button
+                                type="button"
+                                onClick={() => onEdit(row)}
+                                className="text-[11px] font-semibold text-[#0073ea] underline underline-offset-2 hover:text-[#0060c4] dark:text-[#60a5fa]"
+                            >
+                                Edit
+                            </button>
+                        ) : null}
+                        {onDeleteAccount ? (
+                            <button
+                                type="button"
+                                onClick={() => onDeleteAccount(row, entryLabel)}
+                                className="text-[11px] font-semibold text-rose-600 underline underline-offset-2 hover:text-rose-500 dark:text-rose-400"
+                            >
+                                Delete
+                            </button>
+                        ) : null}
+                    </div>
                 ),
             });
         }
@@ -1133,6 +1147,7 @@ export default function DraftingJobShowLayout({
                         integrationUrls.xero_quote,
                         'Quote #',
                         onEditQuote,
+                        'quote',
                     )}
                     rows={quotes}
                     emptyMessage="No quotes linked yet."
@@ -1164,6 +1179,7 @@ export default function DraftingJobShowLayout({
                         integrationUrls.xero_invoice,
                         'Invoice #',
                         onEditInvoice,
+                        'invoice',
                     )}
                     rows={invoices}
                     emptyMessage="No invoices linked yet."

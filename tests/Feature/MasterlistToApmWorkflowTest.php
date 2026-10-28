@@ -240,7 +240,7 @@ class MasterlistToApmWorkflowTest extends TestCase
             'status' => DraftingRequest::STATUS_SUBMITTED,
         ]);
 
-        $row->forceFill(['vo_hours' => 12.5])->save();
+        $row->forceFill(['vo_hours' => 12.5, 'start_date' => '2026-09-23'])->save();
 
         $response = $this->actingAs($user)->post(route('job.board.add', $row));
 
@@ -252,6 +252,7 @@ class MasterlistToApmWorkflowTest extends TestCase
         $this->assertSame(DraftingRequest::STATUS_NEW, $row->status);
         $this->assertSame(DraftingRequest::STAGE_APM, $row->workflow_stage);
         $this->assertSame('0.00', (string) $row->vo_hours);
+        $this->assertNull($row->start_date);
 
         $previousRevision = DraftingRequestRevision::query()
             ->where('drafting_request_id', $row->id)
@@ -1715,6 +1716,56 @@ class MasterlistToApmWorkflowTest extends TestCase
         $request = Request::create('/job/list', 'GET');
         $ids = app(DraftingRequestBoardService::class)->baseQuery($request)->pluck('id');
         $this->assertFalse($ids->contains($job->id));
+    }
+
+    public function test_drafter_leaderboard_uses_revision_categories_and_hours(): void
+    {
+        $user = $this->adminUser();
+        $drafter = User::factory()->create(['initials' => 'CC']);
+        [$storeyLevel, $category] = $this->seedLookups();
+        CrmCategory::query()->create(['code' => 'FX', 'name' => 'Fix-up Correction', 'status' => 'active']);
+
+        $job = DraftingRequest::query()->create([
+            'user_id' => $user->id,
+            'status' => DraftingRequest::STATUS_NEW,
+            'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+            'workflow_stage' => DraftingRequest::STAGE_APM,
+            'requested_at' => now(),
+            'your_name' => 'Leader',
+            'company_name' => 'Leader Co',
+            'email' => 'leader@example.com',
+            'site_address' => '1 Leader St',
+            'site_owner_name' => 'Owner',
+            'storey_level_id' => $storeyLevel->id,
+            'crm_category_id' => $category->id,
+            'ceiling_heights' => '2700',
+            'ndis_sda' => false,
+        ]);
+
+        foreach ([['FX', 3.5, '2026-10-05'], ['FX, VO', 2, '2026-10-06'], ['WD', 8, '2026-09-30']] as $i => [$code, $hours, $logDate]) {
+            DraftingRequestRevision::query()->create([
+                'drafting_request_id' => $job->id,
+                'user_id' => $user->id,
+                'code' => $job->jobNumber().'-0'.($i + 1),
+                'log_date' => $logDate,
+                'submitted_date' => $code === 'WD' ? '2026-10-02' : null,
+                'category' => $code,
+                'status' => DraftingRequest::STATUS_NEW,
+                'drafter_user_id' => $drafter->id,
+                'drafting_hours' => $hours,
+            ]);
+        }
+
+        $request = Request::create('/dashboard', 'GET');
+        $request->setUserResolver(fn () => $user);
+        $payload = app(DraftingRequestBoardService::class)->drafterLeaderboardPayload($request, '2026-10');
+
+        $this->assertSame(['WD', 'FX'], array_column($payload['series'], 'key'));
+        $this->assertCount(3, $payload['entries']);
+        $this->assertSame(
+            [['CC', 'WD', 8.0], ['CC', 'FX', 3.5], ['CC', 'FX', 2.0]],
+            array_map(fn ($e) => [$e['drafter'], $e['category'], $e['hours']], $payload['entries']),
+        );
     }
 
     private function adminUser(): User

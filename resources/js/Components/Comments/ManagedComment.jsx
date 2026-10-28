@@ -66,7 +66,7 @@ export default function ManagedComment({
     };
 
     const remove = async () => {
-        if (!window.confirm('Delete this comment?')) {
+        if (!window.confirm('Are you sure you want to delete this comment?')) {
             return;
         }
         setBusy(true);

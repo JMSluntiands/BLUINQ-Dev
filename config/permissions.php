@@ -100,6 +100,7 @@ return [
         'job.drafting.revisions.destroy' => 'job.drafting.revision.add',
         'job.drafting.accounts.store' => 'job.drafting.accounts.add',
         'job.drafting.accounts.update' => 'job.drafting.accounts.add',
+        'job.drafting.accounts.destroy' => 'job.drafting.accounts.add',
         'job.drafting-request-form' => 'job.drafting-request.view',
         'job.drafting-request-form.store' => 'job.drafting-request.view',
         'job.masterlist' => 'job.drafting-request.view',
