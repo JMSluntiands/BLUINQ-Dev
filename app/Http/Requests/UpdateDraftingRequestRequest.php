@@ -130,6 +130,7 @@ class UpdateDraftingRequestRequest extends FormRequest
                 ],
                 'zoning' => ['nullable', 'string', 'max:255'],
                 'site_address' => ['required', 'string', 'max:2000'],
+                'council_shire' => ['nullable', 'string', 'max:255'],
                 'site_owner_name' => ['nullable', 'string', 'max:255'],
                 'service_engaging_ids' => ['nullable', 'array'],
                 'service_engaging_ids.*' => [

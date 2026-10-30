@@ -10,6 +10,7 @@ import {
     PlusIcon,
     XMarkIcon,
 } from '@heroicons/react/24/outline';
+import { refreshSession } from '@/lib/csrf';
 import { router, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import { philippineTodayInput } from '@/utils/philippineTime';
@@ -459,6 +460,7 @@ export default function ClockInOutPanel({
     );
 
     const openClockInModal = () => {
+        refreshSession({ force: true });
         setClockInForm(emptyClockInForm());
         setNowMs(Date.now());
         setClockInOpen(true);
@@ -492,19 +494,21 @@ export default function ClockInOutPanel({
 
         setClockInSaving(true);
 
-        router.post(
-            route('dashboard.clock-in'),
-            {},
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    closeClockInModal();
+        refreshSession().then(() =>
+            router.post(
+                route('dashboard.clock-in'),
+                {},
+                {
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        closeClockInModal();
+                    },
+                    onError: () => {
+                        window.alert('Could not clock in.');
+                    },
+                    onFinish: () => setClockInSaving(false),
                 },
-                onError: () => {
-                    window.alert('Could not clock in.');
-                },
-                onFinish: () => setClockInSaving(false),
-            },
+            ),
         );
     };
 
@@ -515,7 +519,13 @@ export default function ClockInOutPanel({
         if (onBreak) {
             endBreak();
         }
-        router.post(route('dashboard.clock-out'), {}, { preserveScroll: true });
+        refreshSession({ force: true }).then(() =>
+            router.post(
+                route('dashboard.clock-out'),
+                {},
+                { preserveScroll: true },
+            ),
+        );
     };
 
     const endBreak = () => {

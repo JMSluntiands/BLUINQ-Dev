@@ -29,6 +29,7 @@ class DraftingProjectInfoEditTest extends TestCase
                 'storey_level_id' => $storeyLevel->id,
                 'crm_category_ids' => [$category->id],
                 'site_address' => 'Updated Site Address',
+                'council_shire' => 'City of Stirling',
                 'ceiling_heights' => '2700',
                 'site_owner_name' => 'Owner',
             ])
@@ -37,6 +38,7 @@ class DraftingProjectInfoEditTest extends TestCase
 
         $job->refresh();
         $this->assertSame('Updated Site Address', $job->site_address);
+        $this->assertSame('City of Stirling', $job->council_shire);
     }
 
     public function test_admin_can_save_typical_details_on_project_info(): void

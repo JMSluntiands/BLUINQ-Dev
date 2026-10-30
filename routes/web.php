@@ -92,6 +92,10 @@ Route::get('/public/drafting-request', function () {
 Route::post('/public/drafting-request', [PublicDraftingRequestFormController::class, 'store']);
 
 Route::middleware(['auth', 'permission.route'])->group(function () {
+    // Refreshes the session and XSRF-TOKEN cookie before an action on a long-open page.
+    Route::get('/session/ping', fn () => response()->noContent())
+        ->name('session.ping');
+
     Route::get('/search', GlobalSearchController::class)
         ->name('search');
 

@@ -59,6 +59,7 @@ export default function DraftingEditModals({
         ).map(String),
         zoning: draftingRequest.zoning ?? '',
         site_address: draftingRequest.site_address ?? '',
+        council_shire: draftingRequest.council_shire ?? '',
         site_owner_name: draftingRequest.site_owner_name ?? '',
         sda_type_ids: (draftingRequest.sda_type_ids ?? []).map(String),
         is_typical: draftingRequest.is_typical ?? false,
@@ -213,6 +214,7 @@ export default function DraftingEditModals({
             ).map(String),
             zoning: draftingRequest.zoning ?? '',
             site_address: draftingRequest.site_address ?? '',
+            council_shire: draftingRequest.council_shire ?? '',
             site_owner_name: draftingRequest.site_owner_name ?? '',
             sda_type_ids: (draftingRequest.sda_type_ids ?? []).map(String),
             is_typical: draftingRequest.is_typical ?? false,
@@ -580,6 +582,28 @@ export default function DraftingEditModals({
                             <InputError
                                 className="mt-2"
                                 message={jobForm.errors.site_address}
+                            />
+                        </div>
+                        <div className="sm:col-span-2">
+                            <InputLabel
+                                htmlFor="edit-council_shire"
+                                value="Council / Shire"
+                            />
+                            <TextInput
+                                id="edit-council_shire"
+                                className="mt-1 block w-full"
+                                value={jobForm.data.council_shire}
+                                onChange={(e) =>
+                                    jobForm.setData(
+                                        'council_shire',
+                                        e.target.value,
+                                    )
+                                }
+                                placeholder="Enter council or shire"
+                            />
+                            <InputError
+                                className="mt-1"
+                                message={jobForm.errors.council_shire}
                             />
                         </div>
                         <div className="sm:col-span-2">
