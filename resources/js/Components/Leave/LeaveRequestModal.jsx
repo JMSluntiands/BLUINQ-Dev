@@ -5,80 +5,8 @@ import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
+import { countLeaveDays, formatLeaveCredits } from '@/utils/leaveDays';
 import { useForm, usePage } from '@inertiajs/react';
-
-function businessDayCount(startDate, endDate, holidayDates = []) {
-    if (!startDate || !endDate) {
-        return 0;
-    }
-
-    const start = new Date(`${startDate}T00:00:00`);
-    const end = new Date(`${endDate}T00:00:00`);
-
-    if (
-        Number.isNaN(start.getTime()) ||
-        Number.isNaN(end.getTime()) ||
-        end < start
-    ) {
-        return 0;
-    }
-
-    const holidaySet = new Set(holidayDates);
-    let total = 0;
-
-    for (const cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
-        const day = cursor.getDay();
-        const dateKey = cursor.toISOString().slice(0, 10);
-        if (day === 0 || day === 6) {
-            continue;
-        }
-        if (holidaySet.has(dateKey)) {
-            continue;
-        }
-        total += 1;
-    }
-
-    return total;
-}
-
-function calculateRequestedDays(
-    startDate,
-    endDate,
-    startPortion,
-    endPortion,
-    holidayDates = [],
-) {
-    const baseDays = businessDayCount(startDate, endDate, holidayDates);
-
-    if (!baseDays) {
-        return 0;
-    }
-
-    let total = baseDays;
-    const holidaySet = new Set(holidayDates);
-    const startDay = startDate ? new Date(`${startDate}T00:00:00`).getDay() : null;
-    const endDay = endDate ? new Date(`${endDate}T00:00:00`).getDay() : null;
-    const startIsWorkingDay =
-        startDate &&
-        startDay !== 0 &&
-        startDay !== 6 &&
-        !holidaySet.has(startDate);
-    const endIsWorkingDay =
-        endDate &&
-        endDay !== 0 &&
-        endDay !== 6 &&
-        !holidaySet.has(endDate);
-
-    if (startPortion === 'afternoon' && startIsWorkingDay) {
-        total -= 0.5;
-    }
-
-    if (endPortion === 'morning' && endIsWorkingDay) {
-        total -= 0.5;
-    }
-
-    return Math.max(0.5, total);
-}
 
 function formatDays(days) {
     if (!days) {
@@ -162,7 +90,7 @@ export default function LeaveRequestModal({
     const medicalCertificateAfterDays =
         types.find((type) => type.value === 'sl')
             ?.medical_certificate_after_days ?? 2;
-    const dayCount = calculateRequestedDays(
+    const dayCount = countLeaveDays(
         data.start_date,
         data.end_date,
         data.start_portion,
@@ -235,19 +163,19 @@ export default function LeaveRequestModal({
                         <div>
                             <p className="text-slate-500 dark:text-slate-400">AL</p>
                             <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                                {leaveBalances.al_available}
+                                {formatLeaveCredits(leaveBalances.al_available)}
                             </p>
                         </div>
                         <div>
                             <p className="text-slate-500 dark:text-slate-400">SL</p>
                             <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                                {leaveBalances.sl_credits}
+                                {formatLeaveCredits(leaveBalances.sl_credits)}
                             </p>
                         </div>
                         <div>
                             <p className="text-slate-500 dark:text-slate-400">Medical left</p>
                             <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                                {leaveBalances.medical_remaining}
+                                {formatLeaveCredits(leaveBalances.medical_remaining)}
                             </p>
                         </div>
                         <div>

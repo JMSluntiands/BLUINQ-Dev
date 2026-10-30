@@ -484,9 +484,13 @@ class DraftingRequestSubmissionService
             );
 
             // New revision cycle: clear board Drafting / Checking slots and hours,
-            // and reset VO (job-level) so the new entry starts at 0h.
+            // reset VO (job-level) so the new entry starts at 0h, and clear the
+            // previous revision's Start Date.
             $draftingRequest->assignments()->delete();
-            $draftingRequest->forceFill(['vo_hours' => 0])->save();
+            $draftingRequest->forceFill([
+                'vo_hours' => 0,
+                'start_date' => null,
+            ])->save();
 
             $previousStatus = $draftingRequest->status;
 

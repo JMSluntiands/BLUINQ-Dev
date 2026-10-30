@@ -49,6 +49,10 @@ class DraftingRequestActivity extends Model
 
     public const ACTION_INVOICE_UPDATED = 'invoice_updated';
 
+    public const ACTION_QUOTE_DELETED = 'quote_deleted';
+
+    public const ACTION_INVOICE_DELETED = 'invoice_deleted';
+
     public const ACTION_DRAWING_CHECKLIST_UPDATED = 'drawing_checklist_updated';
 
     public const ACTION_DRAWING_CHECKLIST_RESET = 'drawing_checklist_reset';
@@ -65,6 +69,8 @@ class DraftingRequestActivity extends Model
             self::ACTION_QUOTE_UPDATED,
             self::ACTION_INVOICE_ADDED,
             self::ACTION_INVOICE_UPDATED,
+            self::ACTION_QUOTE_DELETED,
+            self::ACTION_INVOICE_DELETED,
             self::ACTION_ACCOUNT_COMMENT_POSTED,
         ];
     }

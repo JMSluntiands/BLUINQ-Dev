@@ -14,6 +14,7 @@ import {
     UserIcon,
 } from '@heroicons/react/24/outline';
 import { resolveBadgeInitials } from '@/utils/badgeInitials';
+import { formatLeaveCredits } from '@/utils/leaveDays';
 import { formatPhilippineDate } from '@/utils/philippineTime';
 import { Link } from '@inertiajs/react';
 
@@ -220,19 +221,20 @@ function EmploymentSection({ profile }) {
             <ProfileDetailItem label="Branch" value={profile.branch} />
             <ProfileDetailItem
                 label="Annual Leave (AL)"
-                value={String(
+                value={formatLeaveCredits(
                     profile.leave_balances?.al_available ??
-                        profile.leave_credits ??
-                        0,
+                        profile.leave_credits,
                 )}
             />
             <ProfileDetailItem
                 label="Sick Leave (SL)"
-                value={String(profile.leave_balances?.sl_credits ?? 0)}
+                value={formatLeaveCredits(profile.leave_balances?.sl_credits)}
             />
             <ProfileDetailItem
                 label="Medical remaining (SL+HL)"
-                value={String(profile.leave_balances?.medical_remaining ?? 0)}
+                value={formatLeaveCredits(
+                    profile.leave_balances?.medical_remaining,
+                )}
             />
         </ProfileDetailsSection>
     );

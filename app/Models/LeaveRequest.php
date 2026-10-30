@@ -222,18 +222,22 @@ class LeaveRequest extends Model
         $end = Carbon::parse($endDate)->startOfDay();
         $holidayLookup = self::holidayDateLookup($startDate, $endDate, $region);
         $workDates = [];
+        $allDates = [];
 
         for ($cursor = $start->copy(); $cursor->lte($end); $cursor->addDay()) {
-            if ($cursor->isWeekend()) {
-                continue;
-            }
-
             $dateKey = $cursor->toDateString();
-            if (isset($holidayLookup[$dateKey])) {
+            $allDates[] = $dateKey;
+
+            if ($cursor->isWeekend() || isset($holidayLookup[$dateKey])) {
                 continue;
             }
 
             $workDates[] = $dateKey;
+        }
+
+        // Leave filed only on weekends / public holidays counts those calendar days.
+        if ($workDates === []) {
+            $workDates = $allDates;
         }
 
         $days = (float) count($workDates);

@@ -59,6 +59,19 @@ class LeaveEntitlementAccrualTest extends TestCase
         $this->assertSame(2, DB::table('activity_logs')->where('route_name', 'monthly_accrual')->count());
     }
 
+    public function test_balance_at_or_above_entitlement_still_accrues_monthly(): void
+    {
+        $employee = $this->employee('Dana Reyes', 'regular', 12, '2026-09');
+
+        $this->artisan('leave:process-entitlements', [
+            '--date' => '2026-10-01',
+        ])->assertSuccessful();
+
+        $employee->refresh();
+        $this->assertSame(13.0, (float) $employee->al_credits);
+        $this->assertSame('2026-10', $employee->al_last_accrual_month);
+    }
+
     private function employee(string $name, string $status, float $alCredits, ?string $lastAccrual): User
     {
         return User::factory()->create([

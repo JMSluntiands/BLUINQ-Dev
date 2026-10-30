@@ -286,6 +286,8 @@ Route::middleware(['auth', 'permission.route'])->group(function () {
         ->name('job.drafting.accounts.store');
     Route::patch('/job/drafting/{draftingRequest}/accounts/{accountEntry}', [DraftingController::class, 'updateAccountEntry'])
         ->name('job.drafting.accounts.update');
+    Route::delete('/job/drafting/{draftingRequest}/accounts/{accountEntry}', [DraftingController::class, 'destroyAccountEntry'])
+        ->name('job.drafting.accounts.destroy');
 
     Route::get('/job/masterlist', [MasterlistController::class, 'index'])
         ->name('job.masterlist');

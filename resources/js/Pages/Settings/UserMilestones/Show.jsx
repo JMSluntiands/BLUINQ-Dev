@@ -170,7 +170,7 @@ export default function Show({ user, milestones }) {
     const destroyMilestone = (milestone) => {
         if (
             !window.confirm(
-                'Delete this milestone? This action cannot be undone.',
+                'Are you sure you want to delete this milestone? This action cannot be undone.',
             )
         ) {
             return;

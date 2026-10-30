@@ -412,7 +412,7 @@ export default function ClockInOutPanel({
 
     const clockedIn = Boolean(clock.clocked_in);
     const clockedOut = Boolean(clock.clocked_out);
-    const canClockIn = !clockedIn;
+    const canClockIn = !clockedIn || clockedOut;
     const canClockOut = clockedIn && !clockedOut;
     const shiftActionsEnabled = clockedIn && !clockedOut;
     const onBreak = Boolean(breakStartedAt);
@@ -509,6 +509,9 @@ export default function ClockInOutPanel({
     };
 
     const clockOut = () => {
+        if (!window.confirm('Clock out now?')) {
+            return;
+        }
         if (onBreak) {
             endBreak();
         }

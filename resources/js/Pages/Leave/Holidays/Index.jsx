@@ -93,6 +93,13 @@ export default function Index({
     };
 
     const removeHoliday = (holiday) => {
+        if (
+            !window.confirm(
+                `Are you sure you want to delete the holiday "${holiday.name}"? This cannot be undone.`,
+            )
+        ) {
+            return;
+        }
         router.delete(route('public-holidays.destroy', holiday.id), {
             preserveScroll: true,
         });

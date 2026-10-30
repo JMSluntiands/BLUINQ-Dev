@@ -555,17 +555,20 @@ class DraftingRequestBoardService
     }
 
     /**
+     * One entry per revision with a drafter whose Date In (log_date) or Date Out
+     * (submitted_date) falls inside the month. The dashboard widget aggregates
+     * these by the chosen measure (count / drafting hours) and date basis.
+     *
      * @return array{
      *     month: string,
      *     label: string,
-     *     data: list<array{
+     *     series: list<array{key: string, label: string, color: string}>,
+     *     entries: list<array{
      *         drafter: string,
-     *         da_planning: int,
-     *         prestart: int,
-     *         schematic_design: int,
-     *         siting: int,
-     *         variation: int,
-     *         working_drawings: int
+     *         category: string,
+     *         hours: float,
+     *         date_in: string|null,
+     *         date_out: string|null
      *     }>
      * }
      */
@@ -576,155 +579,124 @@ class DraftingRequestBoardService
             ? Carbon::createFromFormat('Y-m', $month, $tz)->startOfMonth()
             : Carbon::today($tz)->startOfMonth();
         $monthEnd = $monthStart->copy()->endOfMonth();
+        $range = [$monthStart->toDateString(), $monthEnd->toDateString()];
 
         $requestIds = $this->baseQuery($request)->pluck('id');
-        $seriesKeys = $this->leaderboardSeriesKeys();
-        $byDrafter = [];
-
-        $requestsById = $requestIds->isEmpty()
-            ? collect()
-            : DraftingRequest::query()
-                ->with('serviceEngagings:id,name')
-                ->whereIn('id', $requestIds)
-                ->get()
-                ->keyBy('id');
+        $categories = $this->leaderboardCategoryLookup();
+        $entries = [];
+        $usedKeys = [];
 
         if ($requestIds->isNotEmpty()) {
             $revisions = DraftingRequestRevision::query()
-                ->with(['drafter:id,name,initials', 'checker:id,name,initials'])
+                ->with('drafter:id,name,initials')
                 ->whereIn('drafting_request_id', $requestIds)
-                ->whereBetween('log_date', [
-                    $monthStart->toDateString(),
-                    $monthEnd->toDateString(),
-                ])
+                ->where(function (Builder $query) use ($range) {
+                    $query->whereBetween('log_date', $range)
+                        ->orWhereBetween('submitted_date', $range);
+                })
                 ->orderBy('log_date')
                 ->orderBy('id')
                 ->get();
 
             foreach ($revisions as $revision) {
-                $seriesKey = $this->mapCategoryToLeaderboardKey($revision->category);
-                if ($seriesKey === null) {
+                $initials = $revision->resolvedDrafterInitials();
+                if ($initials === null) {
                     continue;
                 }
 
-                $initials = $revision->resolvedDrafterInitials() ?? '?';
+                $key = $this->leaderboardCategoryKey($revision->category, $categories);
+                $usedKeys[$key] = true;
 
-                $this->incrementLeaderboardEntry($byDrafter, $initials, $seriesKey, $seriesKeys);
-            }
-
-            $assignments = DraftingRequestAssignment::query()
-                ->with('user:id,name,initials')
-                ->whereIn('drafting_request_id', $requestIds)
-                ->where('role', DraftingRequestAssignment::ROLE_DRAFTING)
-                ->whereBetween('updated_at', [
-                    $monthStart->copy()->utc(),
-                    $monthEnd->copy()->endOfDay()->utc(),
-                ])
-                ->get();
-
-            foreach ($assignments as $assignment) {
-                $draftingRequest = $requestsById->get($assignment->drafting_request_id);
-                if ($draftingRequest === null) {
-                    continue;
-                }
-
-                $seriesKey = $this->mapRequestToLeaderboardKey($draftingRequest);
-                if ($seriesKey === null) {
-                    continue;
-                }
-
-                $initials = $assignment->user?->badgeInitials() ?? '?';
-                $weight = $assignment->hours !== null && (float) $assignment->hours > 0
-                    ? max(1, (int) round((float) $assignment->hours))
-                    : 1;
-
-                $this->incrementLeaderboardEntry(
-                    $byDrafter,
-                    $initials,
-                    $seriesKey,
-                    $seriesKeys,
-                    $weight,
-                );
+                $entries[] = [
+                    'drafter' => $initials,
+                    'category' => $key,
+                    'hours' => round((float) ($revision->drafting_hours ?? 0), 2),
+                    'date_in' => $revision->log_date?->format('Y-m-d'),
+                    'date_out' => $revision->submitted_date?->format('Y-m-d'),
+                ];
             }
         }
 
-        ksort($byDrafter);
+        $series = [];
+        foreach ($categories['ordered'] as $index => $category) {
+            if (isset($usedKeys[$category['key']])) {
+                $series[] = [
+                    'key' => $category['key'],
+                    'label' => $category['label'],
+                    'color' => self::LEADERBOARD_COLORS[$index % count(self::LEADERBOARD_COLORS)],
+                ];
+            }
+        }
+        if (isset($usedKeys[self::LEADERBOARD_UNCATEGORIZED])) {
+            $series[] = [
+                'key' => self::LEADERBOARD_UNCATEGORIZED,
+                'label' => 'Uncategorized',
+                'color' => '#94a3b8',
+            ];
+        }
 
         return [
             'month' => $monthStart->format('Y-m'),
             'label' => $monthStart->format('F Y'),
-            'data' => array_values($byDrafter),
+            'series' => $series,
+            'entries' => $entries,
         ];
     }
 
+    private const LEADERBOARD_UNCATEGORIZED = '_uncategorized';
+
+    private const LEADERBOARD_COLORS = [
+        '#38bdf8', '#f97316', '#8b5cf6', '#22c55e', '#ef4444', '#eab308',
+        '#1e40af', '#ec4899', '#14b8a6', '#a16207', '#6366f1', '#84cc16',
+        '#0e7490', '#be123c', '#7c3aed', '#059669', '#d97706', '#475569',
+    ];
+
     /**
-     * @param  array<string, array<string, int|string>>  $byDrafter
-     * @param  list<string>  $seriesKeys
+     * @return array{ordered: list<array{key: string, label: string}>, byToken: array<string, string>}
      */
-    private function incrementLeaderboardEntry(
-        array &$byDrafter,
-        string $initials,
-        string $seriesKey,
-        array $seriesKeys,
-        int $weight = 1,
-    ): void {
-        if (! isset($byDrafter[$initials])) {
-            $byDrafter[$initials] = array_fill_keys($seriesKeys, 0);
-            $byDrafter[$initials]['drafter'] = $initials;
-        }
-
-        $byDrafter[$initials][$seriesKey] += $weight;
-    }
-
-    public function mapRequestToLeaderboardKey(DraftingRequest $request): ?string
+    private function leaderboardCategoryLookup(): array
     {
-        foreach ($request->serviceEngagings as $service) {
-            $seriesKey = $this->mapCategoryToLeaderboardKey($service->name);
-            if ($seriesKey !== null) {
-                return $seriesKey;
+        $ordered = [];
+        $byToken = [];
+
+        foreach (CrmCategory::query()->orderBy('id')->get(['id', 'code', 'name']) as $category) {
+            $code = trim((string) $category->code);
+            $name = trim((string) $category->name);
+            $key = $code !== '' ? $code : $name;
+            if ($key === '') {
+                continue;
+            }
+
+            $ordered[] = [
+                'key' => $key,
+                'label' => $code !== '' && $name !== '' ? "{$code} – {$name}" : $key,
+            ];
+            foreach ([$code, $name] as $token) {
+                if ($token !== '') {
+                    $byToken[mb_strtoupper($token)] = $key;
+                }
             }
         }
 
-        return 'working_drawings';
+        return ['ordered' => $ordered, 'byToken' => $byToken];
     }
 
     /**
-     * @return list<string>
+     * Revision category is a code or name, possibly comma-separated ("FX, VO").
+     * The first listed category is the one the revision counts under.
+     *
+     * @param  array{byToken: array<string, string>}  $categories
      */
-    public function leaderboardSeriesKeys(): array
+    private function leaderboardCategoryKey(?string $category, array $categories): string
     {
-        return [
-            'da_planning',
-            'prestart',
-            'schematic_design',
-            'siting',
-            'variation',
-            'working_drawings',
-        ];
-    }
-
-    public function mapCategoryToLeaderboardKey(?string $category): ?string
-    {
-        $normalized = mb_strtoupper(trim($category ?? ''));
-
-        if ($normalized === '') {
-            return null;
-        }
-
-        /** @var array<string, string> $keys */
-        $keys = config('drafting.leaderboard_category_keys', []);
-
-        if (isset($keys[$normalized])) {
-            return $keys[$normalized];
-        }
-
-        foreach ($keys as $label => $key) {
-            if (str_contains($label, $normalized) || str_contains($normalized, $label)) {
-                return $key;
+        foreach (explode(',', (string) $category) as $part) {
+            $token = mb_strtoupper(trim($part));
+            if ($token !== '') {
+                return $categories['byToken'][$token] ?? self::LEADERBOARD_UNCATEGORIZED;
             }
         }
 
-        return null;
+        return self::LEADERBOARD_UNCATEGORIZED;
     }
 
     /**

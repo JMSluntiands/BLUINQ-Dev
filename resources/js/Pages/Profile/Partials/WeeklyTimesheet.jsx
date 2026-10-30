@@ -332,7 +332,7 @@ export default function WeeklyTimesheet({ weeklyTimesheet, canApprove = false })
     };
 
     const removeRow = (rowId) => {
-        if (!window.confirm('Remove this task row from the timesheet?')) {
+        if (!window.confirm('Are you sure you want to remove this task row from the timesheet?')) {
             return;
         }
 

@@ -73,10 +73,10 @@ class UpdateDraftingRequestRevisionRequest extends FormRequest
         $categoryCodes = array_values(array_unique($categoryCodes));
 
         return [
-            'code' => ['required', 'string', 'max:64', 'regex:/^.+-\d{2}$/'],
+            'code' => ['sometimes', 'required', 'string', 'max:64', 'regex:/^.+-\d{2}$/'],
             'link' => ['nullable', 'string', 'max:2048', 'url'],
-            'log_date' => ['required', 'date'],
-            'category' => ['required', 'string', 'max:255', Rule::in($categoryCodes)],
+            'log_date' => ['sometimes', 'required', 'date'],
+            'category' => ['sometimes', 'required', 'string', 'max:255', Rule::in($categoryCodes)],
             'drafter_user_id' => [
                 'nullable',
                 'integer',
@@ -93,7 +93,7 @@ class UpdateDraftingRequestRevisionRequest extends FormRequest
             ],
             'drafting_hours' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
             'checking_hours' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
-            'status' => ['required', 'string', Rule::in(DraftingRequest::statusValues())],
+            'status' => ['sometimes', 'required', 'string', Rule::in(DraftingRequest::statusValues())],
             'area_size' => ['nullable', 'string', 'max:64'],
             'submitted_date' => ['nullable', 'date'],
             'vo_hours' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],

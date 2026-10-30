@@ -26,6 +26,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -446,8 +447,7 @@ class JobBoardController extends Controller
         $query = DraftingRequest::query()
             ->reviewAccepted()
             ->active()
-            ->whereNotNull('status')
-            ->whereNotIn('status', DraftingRequest::addItemActiveStatuses())
+            ->withoutAddItemActive()
             ->with($this->addCandidateRevisionRelations())
             ->orderByDesc('updated_at')
             ->orderByDesc('requested_at')
@@ -682,6 +682,12 @@ class JobBoardController extends Controller
         }
 
         if ($draftingRequest->isOnProjectBoard()) {
+            if ($draftingRequest->isAddItemActive()) {
+                throw ValidationException::withMessages([
+                    'drafting_request_id' => 'This job is still active on the board (New, WIP, Assigned, For Checking, Query or On Hold). Finish or submit it before adding another revision.',
+                ]);
+            }
+
             return;
         }
 
