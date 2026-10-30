@@ -12,11 +12,11 @@ import {
     ArrowDownTrayIcon,
     CheckCircleIcon,
     PencilSquareIcon,
-    TrashIcon,
     XCircleIcon,
 } from '@heroicons/react/24/outline';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import { countLeaveDays, formatLeaveCredits } from '@/utils/leaveDays';
 
 const STATUS_TABS = [
     { key: 'pending', label: 'Pending' },
@@ -28,6 +28,8 @@ const STATUS_TABS = [
 const FLASH_MESSAGES = {
     'leave-approved': 'Leave request approved.',
     'leave-rejected': 'Leave request rejected.',
+    'leave-approved-rejected':
+        'Approved leave rejected. Current-year credits were returned.',
     'leave-updated': 'Approved leave updated.',
     'leave-deleted': 'Approved leave deleted. Current-year credits were returned.',
     'leave-not-editable': 'Only approved leave can be edited or deleted.',
@@ -109,6 +111,13 @@ function ReviewModal({ request, action, onClose }) {
                 <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                     {leavePortionSummary(request)}
                 </p>
+                {!isApprove && request.status === 'approved' && (
+                    <p className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+                        Are you sure? This leave is already approved. Rejecting
+                        it returns the credits deducted for the current leave
+                        year.
+                    </p>
+                )}
                 {request.reason && (
                     <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                         {request.reason}
@@ -172,73 +181,6 @@ function holidayDatesForRegion(leaveHolidayConfig, region) {
     );
 }
 
-function businessDayCount(startDate, endDate, holidayDates = []) {
-    if (!startDate || !endDate) {
-        return 0;
-    }
-
-    const start = new Date(`${startDate}T00:00:00`);
-    const end = new Date(`${endDate}T00:00:00`);
-
-    if (
-        Number.isNaN(start.getTime()) ||
-        Number.isNaN(end.getTime()) ||
-        end < start
-    ) {
-        return 0;
-    }
-
-    const holidaySet = new Set(holidayDates);
-    let total = 0;
-
-    for (
-        const cursor = new Date(start);
-        cursor <= end;
-        cursor.setDate(cursor.getDate() + 1)
-    ) {
-        const day = cursor.getDay();
-        const dateKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
-        if (day === 0 || day === 6 || holidaySet.has(dateKey)) {
-            continue;
-        }
-        total += 1;
-    }
-
-    return total;
-}
-
-function requestedDayCount(startDate, endDate, startPortion, endPortion, holidayDates) {
-    const baseDays = businessDayCount(startDate, endDate, holidayDates);
-    if (!baseDays) {
-        return 0;
-    }
-
-    let total = baseDays;
-    const holidaySet = new Set(holidayDates);
-    const start = startDate ? new Date(`${startDate}T00:00:00`) : null;
-    const end = endDate ? new Date(`${endDate}T00:00:00`) : null;
-    const startIsWorkingDay =
-        start &&
-        start.getDay() !== 0 &&
-        start.getDay() !== 6 &&
-        !holidaySet.has(startDate);
-    const endIsWorkingDay =
-        end &&
-        end.getDay() !== 0 &&
-        end.getDay() !== 6 &&
-        !holidaySet.has(endDate);
-
-    if (startPortion === 'afternoon' && startIsWorkingDay) {
-        total -= 0.5;
-    }
-
-    if (endPortion === 'morning' && endIsWorkingDay) {
-        total -= 0.5;
-    }
-
-    return Math.max(0.5, total);
-}
-
 function EditApprovedLeaveModal({ request, onClose }) {
     const { leaveTypes = [], leaveHolidayConfig = {} } = usePage().props;
     const types =
@@ -258,7 +200,7 @@ function EditApprovedLeaveModal({ request, onClose }) {
         leaveHolidayConfig,
         request.user?.holiday_region,
     );
-    const dayCount = requestedDayCount(
+    const dayCount = countLeaveDays(
         data.start_date,
         data.end_date,
         data.start_portion,
@@ -467,19 +409,6 @@ export default function Approvals({
     const [reviewTarget, setReviewTarget] = useState(null);
     const [editTarget, setEditTarget] = useState(null);
 
-    const deleteApprovedLeave = (request) => {
-        const confirmed = window.confirm(
-            `Are you sure you want to delete the approved ${request.type_label} for ${request.user.name} (${request.start_display} – ${request.end_display})? Credits deducted for the current leave year will be returned.`,
-        );
-        if (!confirmed) {
-            return;
-        }
-
-        router.delete(route('leave.destroy', request.id), {
-            preserveScroll: true,
-        });
-    };
-
     const setStatusFilter = (status) => {
         router.get(
             route('leave.approvals'),
@@ -615,18 +544,26 @@ export default function Approvals({
                                                 }
                                             >
                                                 {request.type_code}: AL{' '}
-                                                {request.user.balances
-                                                    ?.al_available ??
-                                                    request.user
-                                                        .leave_credits}{' '}
+                                                {formatLeaveCredits(
+                                                    request.user.balances
+                                                        ?.al_available ??
+                                                        request.user
+                                                            .leave_credits,
+                                                )}{' '}
                                                 · SL{' '}
-                                                {request.user.balances
-                                                    ?.sl_credits ?? 0}{' '}
+                                                {formatLeaveCredits(
+                                                    request.user.balances
+                                                        ?.sl_credits,
+                                                )}{' '}
                                                 · Medical{' '}
-                                                {request.user.balances
-                                                    ?.medical_remaining ?? 0}{' '}
+                                                {formatLeaveCredits(
+                                                    request.user.balances
+                                                        ?.medical_remaining,
+                                                )}{' '}
                                                 · Needs{' '}
-                                                {request.credits_required}
+                                                {formatLeaveCredits(
+                                                    request.credits_required,
+                                                )}
                                                 {request.has_enough_credits
                                                     ? ''
                                                     : ' (insufficient)'}
@@ -686,11 +623,16 @@ export default function Approvals({
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => deleteApprovedLeave(request)}
+                                            onClick={() =>
+                                                setReviewTarget({
+                                                    request,
+                                                    action: 'reject',
+                                                })
+                                            }
                                             className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-sm font-medium text-rose-600 transition hover:bg-rose-50 dark:border-rose-500/40 dark:text-rose-400 dark:hover:bg-rose-500/10"
                                         >
-                                            <TrashIcon className="h-4 w-4" />
-                                            Delete
+                                            <XCircleIcon className="h-4 w-4" />
+                                            Reject
                                         </button>
                                     </div>
                                 )}

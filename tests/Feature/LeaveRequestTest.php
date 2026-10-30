@@ -19,8 +19,8 @@ class LeaveRequestTest extends TestCase
     public function test_sick_leave_up_to_two_days_does_not_require_a_medical_certificate(): void
     {
         $user = $this->regularUser();
-        $start = now()->addDay()->toDateString();
-        $end = now()->addDays(2)->toDateString();
+        $start = now()->next('Monday')->toDateString();
+        $end = now()->next('Monday')->addDay()->toDateString();
 
         $this->actingAs($user)
             ->from(route('dashboard'))
@@ -49,8 +49,8 @@ class LeaveRequestTest extends TestCase
         $this->actingAs($user)
             ->from(route('dashboard'))
             ->post(route('leave.store'), [
-                'start_date' => now()->addDay()->toDateString(),
-                'end_date' => now()->addDays(3)->toDateString(),
+                'start_date' => now()->next('Monday')->toDateString(),
+                'end_date' => now()->next('Monday')->addDays(2)->toDateString(),
                 'type' => LeaveRequest::TYPE_SL,
                 'reason' => 'Extended illness',
             ])
@@ -514,6 +514,65 @@ class LeaveRequestTest extends TestCase
             ->assertSessionHas('status', 'leave-deleted');
 
         $this->assertNull(LeaveRequest::query()->find($leaveRequest->id));
+        $this->assertSame(5.0, (float) $user->fresh()->al_credits);
+    }
+
+    public function test_weekend_only_leave_counts_calendar_days(): void
+    {
+        // 2026-10-31 is a Saturday, 2026-11-01 a Sunday.
+        $this->assertSame(2.0, LeaveRequest::calculateRequestedDays(
+            '2026-10-31',
+            '2026-11-01',
+            LeaveRequest::PORTION_MORNING,
+            LeaveRequest::PORTION_AFTERNOON,
+        ));
+        $this->assertSame(0.5, LeaveRequest::calculateRequestedDays(
+            '2026-10-31',
+            '2026-10-31',
+            LeaveRequest::PORTION_AFTERNOON,
+            LeaveRequest::PORTION_AFTERNOON,
+        ));
+        // A range with working days still skips the weekend.
+        $this->assertSame(2.0, LeaveRequest::calculateRequestedDays(
+            '2026-10-30',
+            '2026-11-02',
+            LeaveRequest::PORTION_MORNING,
+            LeaveRequest::PORTION_AFTERNOON,
+        ));
+    }
+
+    public function test_admin_can_reject_an_approved_leave_and_credits_are_returned(): void
+    {
+        $user = $this->regularUser();
+        $admin = $this->adminUser();
+        $date = '2026-10-05';
+
+        $leaveRequest = LeaveRequest::query()->create([
+            'user_id' => $user->id,
+            'start_date' => $date,
+            'end_date' => $date,
+            'start_portion' => LeaveRequest::PORTION_MORNING,
+            'end_portion' => LeaveRequest::PORTION_AFTERNOON,
+            'type' => LeaveRequest::TYPE_AL,
+            'reason' => 'Clinic',
+            'status' => LeaveRequest::STATUS_PENDING,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('leave.approve', $leaveRequest))
+            ->assertRedirect();
+
+        $this->assertSame(4.0, (float) $user->fresh()->al_credits);
+
+        $this->actingAs($admin)
+            ->from(route('leave.approvals'))
+            ->post(route('leave.reject', $leaveRequest), ['admin_notes' => 'Cancelled'])
+            ->assertRedirect(route('leave.approvals'))
+            ->assertSessionHas('status', 'leave-approved-rejected');
+
+        $leaveRequest->refresh();
+        $this->assertSame(LeaveRequest::STATUS_REJECTED, $leaveRequest->status);
+        $this->assertSame('Cancelled', $leaveRequest->admin_notes);
         $this->assertSame(5.0, (float) $user->fresh()->al_credits);
     }
 

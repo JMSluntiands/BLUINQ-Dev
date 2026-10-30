@@ -10,13 +10,8 @@ import UserAvatar from '@/Components/UserAvatar';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { PencilSquareIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { Head, router, useForm } from '@inertiajs/react';
+import { formatLeaveCredits as formatCredits } from '@/utils/leaveDays';
 import { useEffect, useState } from 'react';
-
-function formatCredits(value) {
-    const number = Number(value ?? 0);
-
-    return Number.isFinite(number) ? number.toFixed(2) : '0.00';
-}
 
 const FLASH_MESSAGES = {
     'leave-credits-added': 'Leave credits added successfully.',
@@ -167,7 +162,7 @@ function EditCreditsModal({ employee, onClose }) {
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     {employee.name}
                     {balances.al_carried_over > 0
-                        ? ` · includes ${balances.al_carried_over} carried-over AL (not edited here)`
+                        ? ` · includes ${formatCredits(balances.al_carried_over)} carried-over AL (not edited here)`
                         : ''}
                 </p>
 

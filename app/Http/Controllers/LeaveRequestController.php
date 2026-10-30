@@ -130,7 +130,9 @@ class LeaveRequestController extends Controller
     {
         abort_unless($request->user()?->hasPermission('leave.manage'), 403);
 
-        if ($leaveRequest->status !== LeaveRequest::STATUS_PENDING) {
+        $wasApproved = $leaveRequest->status === LeaveRequest::STATUS_APPROVED;
+
+        if (! $wasApproved && $leaveRequest->status !== LeaveRequest::STATUS_PENDING) {
             return back()->with('status', 'leave-already-reviewed');
         }
 
@@ -138,14 +140,27 @@ class LeaveRequestController extends Controller
             'admin_notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $leaveRequest->update([
-            'status' => LeaveRequest::STATUS_REJECTED,
-            'reviewed_by' => $request->user()->id,
-            'reviewed_at' => now('UTC'),
-            'admin_notes' => $request->input('admin_notes'),
-        ]);
+        DB::transaction(function () use ($request, $leaveRequest, $wasApproved): void {
+            if ($wasApproved) {
+                $leaveRequest->loadMissing('user');
+                $this->leave->restoreCreditsForApprovedLeave(
+                    $leaveRequest,
+                    $request->user(),
+                );
+            }
 
-        return back()->with('status', 'leave-rejected');
+            $leaveRequest->update([
+                'status' => LeaveRequest::STATUS_REJECTED,
+                'reviewed_by' => $request->user()->id,
+                'reviewed_at' => now('UTC'),
+                'admin_notes' => $request->input('admin_notes'),
+            ]);
+        });
+
+        return back()->with(
+            'status',
+            $wasApproved ? 'leave-approved-rejected' : 'leave-rejected',
+        );
     }
 
     public function update(UpdateLeaveRequestRequest $request, LeaveRequest $leaveRequest): RedirectResponse

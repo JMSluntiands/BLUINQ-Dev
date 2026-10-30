@@ -47,6 +47,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\EnsureUserIsNotArchived::class,
             \App\Http\Middleware\LogSuccessfulWrites::class,
             \App\Http\Middleware\PreventPageCache::class,
+            \App\Http\Middleware\ProcessDailyLeaveEntitlements::class,
         ]);
 
         $middleware->api(append: [
