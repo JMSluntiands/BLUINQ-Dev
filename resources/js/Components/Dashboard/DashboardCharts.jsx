@@ -26,14 +26,10 @@ import {
     YAxis,
 } from 'recharts';
 
-const DRAFTER_SERIES = [
-    { key: 'da_planning', label: 'DA/Planning', color: '#1e40af' },
-    { key: 'prestart', label: 'Prestart', color: '#eab308' },
-    { key: 'schematic_design', label: 'Schematic Design', color: '#8b5cf6' },
-    { key: 'siting', label: 'Siting', color: '#ef4444' },
-    { key: 'variation', label: 'Variation', color: '#22c55e' },
-    { key: 'working_drawings', label: 'Working Drawings', color: '#38bdf8' },
-];
+const LEADERBOARD_MEASURE_LABELS = {
+    count: 'Revisions',
+    hours: 'Drafting hours',
+};
 
 const EMPTY_JOB_STATUS_DATA = [
     { status: 'New', count: 0, color: '#94a3b8' },
@@ -249,12 +245,39 @@ function ChartPanel({ title, icon: Icon, iconClassName, children, toolbar }) {
 
 function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth }) {
     const chartColors = useChartColors();
-    const data = drafterLeaderboard?.data ?? [];
     const selectedMonth = drafterLeaderboard?.month ?? toMonthKey(philippineNow());
     const monthLabel = drafterLeaderboard?.label ?? formatLeaderboardMonth(selectedMonth);
-    const seriesKeys = DRAFTER_SERIES.map((series) => series.key);
-    const [widgetSettings, setWidgetSettings] =
-        useLeaderboardWidgetSettings(seriesKeys);
+    const series = useMemo(
+        () => drafterLeaderboard?.series ?? [],
+        [drafterLeaderboard?.series],
+    );
+    const [widgetSettings, setWidgetSettings] = useLeaderboardWidgetSettings();
+    const { measure, basis } = widgetSettings;
+
+    const data = useMemo(() => {
+        const dateKey = basis === 'date_out' ? 'date_out' : 'date_in';
+        const byDrafter = {};
+
+        (drafterLeaderboard?.entries ?? []).forEach((entry) => {
+            if (!entry[dateKey]?.startsWith(selectedMonth)) {
+                return;
+            }
+            const row = (byDrafter[entry.drafter] ??= { drafter: entry.drafter });
+            const amount = measure === 'hours' ? Number(entry.hours) || 0 : 1;
+            row[entry.category] = (row[entry.category] ?? 0) + amount;
+        });
+
+        return Object.values(byDrafter)
+            .map((row) => {
+                Object.keys(row).forEach((key) => {
+                    if (key !== 'drafter') {
+                        row[key] = Math.round(row[key] * 100) / 100;
+                    }
+                });
+                return row;
+            })
+            .sort((a, b) => a.drafter.localeCompare(b.drafter));
+    }, [drafterLeaderboard?.entries, selectedMonth, measure, basis]);
 
     const drafters = useMemo(
         () => data.map((entry) => entry.drafter),
@@ -263,10 +286,12 @@ function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth }) {
 
     const activeSeries = useMemo(
         () =>
-            DRAFTER_SERIES.filter((series) =>
-                widgetSettings.visibleSeries.includes(series.key),
+            series.filter(
+                (item) =>
+                    !widgetSettings.hiddenSeries.includes(item.key) &&
+                    data.some((row) => (row[item.key] ?? 0) > 0),
             ),
-        [widgetSettings.visibleSeries],
+        [series, widgetSettings.hiddenSeries, data],
     );
 
     const chartData = useMemo(() => {
@@ -281,10 +306,13 @@ function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth }) {
         // receives the label value (not the old value/name/props signature).
         return filtered.map((entry) => ({
             ...entry,
-            _stackTotal: activeSeries.reduce(
-                (sum, series) => sum + (Number(entry[series.key]) || 0),
-                0,
-            ),
+            _stackTotal:
+                Math.round(
+                    activeSeries.reduce(
+                        (sum, item) => sum + (Number(entry[item.key]) || 0),
+                        0,
+                    ) * 100,
+                ) / 100,
         }));
     }, [data, widgetSettings.selectedDrafters, activeSeries]);
 
@@ -364,9 +392,18 @@ function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth }) {
             >
                 <div className="min-w-0 flex-1">
             <div className="mb-4 flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                    {monthLabel}
-                </p>
+                <div>
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                        {monthLabel}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {measure === 'hours'
+                            ? 'Sum of drafting hours per revision'
+                            : 'Number of revisions'}{' '}
+                        by drafter, dated by{' '}
+                        {basis === 'date_out' ? 'Date Out' : 'Date In'}
+                    </p>
+                </div>
                 <button
                     type="button"
                     onClick={() => reloadLeaderboard(toMonthKey(philippineNow()))}
@@ -406,7 +443,7 @@ function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth }) {
                                 tickLine={false}
                             />
                             <YAxis
-                                allowDecimals={false}
+                                allowDecimals={measure === 'hours'}
                                 tick={{
                                     fill: chartColors.axis,
                                     fontSize: 11,
@@ -414,7 +451,7 @@ function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth }) {
                                 axisLine={false}
                                 tickLine={false}
                                 label={{
-                                    value: 'Count',
+                                    value: LEADERBOARD_MEASURE_LABELS[measure],
                                     angle: -90,
                                     position: 'insideLeft',
                                     fill: chartColors.axis,
@@ -508,7 +545,7 @@ function DrafterLeaderboardChart({ drafterLeaderboard, calendarMonth }) {
                             }))
                         }
                         drafters={drafters}
-                        series={DRAFTER_SERIES}
+                        series={series}
                     />
                 </div>
             )}

@@ -153,6 +153,13 @@ function ContactEditor({
         if (!canDelete) {
             return;
         }
+        if (
+            !window.confirm(
+                'Are you sure you want to remove this contact? This cannot be undone.',
+            )
+        ) {
+            return;
+        }
         router.delete(
             route('settings.client.contacts.destroy', [clientId, contact.id]),
             { preserveScroll: true },

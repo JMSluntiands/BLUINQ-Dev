@@ -17,6 +17,7 @@ use App\Models\CrmCategory;
 use App\Models\DraftingRequest;
 use App\Models\ExternalWallConstruction;
 use App\Models\RoofType;
+use App\Models\SdaType;
 use App\Models\StoreyLevel;
 use App\Models\DraftingRequestActivity;
 use App\Support\AppClock;
@@ -243,6 +244,7 @@ class DraftingController extends Controller
                     ->map(fn ($row) => $row->code ? "{$row->code} — {$row->name}" : $row->name)
                     ->values()
                     ->all(),
+                'sda_type_ids' => $draftingRequest->sdaTypes->pluck('id')->values()->all(),
                 'unit_development_count' => (int) ($draftingRequest->unit_development_count ?? 0),
                 'units' => $draftingRequest->units
                     ->map(fn (DraftingRequestUnit $unit) => [
@@ -343,6 +345,7 @@ class DraftingController extends Controller
                 'storeyLevels' => StoreyLevel::query()->selectable($draftingRequest->storey_level_id)->orderBy('code')->orderBy('name')->get(['id', 'name', 'code']),
                 'externalWallConstructions' => ExternalWallConstruction::query()->selectable($draftingRequest->external_wall_construction_id)->orderBy('name')->get(['id', 'name']),
                 'roofTypes' => RoofType::query()->selectable($draftingRequest->roof_type_id)->orderBy('name')->get(['id', 'name']),
+                'sdaTypes' => SdaType::query()->selectable($draftingRequest->sdaTypes->pluck('id')->all())->orderBy('code')->orderBy('name')->get(['id', 'name', 'code']),
                 'managerUsers' => User::query()
                     ->active()
                     ->whereHas('role', fn ($query) => $query->whereIn('slug', ['admin', 'project-manager']))
@@ -502,6 +505,11 @@ class DraftingController extends Controller
         $units = $validated['units'] ?? null;
         unset($validated['units']);
 
+        $sdaTypeIds = array_key_exists('sda_type_ids', $validated)
+            ? array_map('intval', $validated['sda_type_ids'] ?? [])
+            : null;
+        unset($validated['sda_type_ids']);
+
         $clientId = array_key_exists('client_id', $validated)
             ? (int) ($validated['client_id'] ?: 0)
             : null;
@@ -581,6 +589,10 @@ class DraftingController extends Controller
 
         if ($crmCategoryIds !== null) {
             $draftingRequest->crmCategories()->sync($crmCategoryIds);
+        }
+
+        if ($section === 'job' && $sdaTypeIds !== null) {
+            $draftingRequest->sdaTypes()->sync($sdaTypeIds);
         }
 
         if ($section === 'job' && $units !== null) {
@@ -800,15 +812,26 @@ class DraftingController extends Controller
     ): RedirectResponse {
         $validated = $request->validated();
 
-        $updates = [
-            'code' => $this->normalizeRevisionCode(
+        $updates = [];
+
+        if (array_key_exists('code', $validated)) {
+            $updates['code'] = $this->normalizeRevisionCode(
                 $draftingRequest,
                 trim($validated['code']),
-            ),
-            'log_date' => $validated['log_date'],
-            'category' => trim($validated['category']),
-            'status' => $validated['status'],
-        ];
+            );
+        }
+
+        if (array_key_exists('log_date', $validated)) {
+            $updates['log_date'] = $validated['log_date'];
+        }
+
+        if (array_key_exists('category', $validated)) {
+            $updates['category'] = trim($validated['category']);
+        }
+
+        if (array_key_exists('status', $validated)) {
+            $updates['status'] = $validated['status'];
+        }
 
         if (array_key_exists('link', $validated)) {
             $updates['link'] = $validated['link'] !== null && $validated['link'] !== ''
@@ -926,15 +949,20 @@ class DraftingController extends Controller
             $description,
         );
 
-        $this->syncJobStatusFromRevision(
-            $draftingRequest,
-            $request->user(),
-            $validated['status'],
-        );
-        $this->syncJobCategoryFromSelection(
-            $draftingRequest,
-            $revision->category,
-        );
+        if (array_key_exists('status', $validated)) {
+            $this->syncJobStatusFromRevision(
+                $draftingRequest,
+                $request->user(),
+                $validated['status'],
+            );
+        }
+
+        if (array_key_exists('category', $validated)) {
+            $this->syncJobCategoryFromSelection(
+                $draftingRequest,
+                $revision->category,
+            );
+        }
 
         $this->board->syncRevisionHoursToAssignments($draftingRequest, $revision->fresh());
         $this->timesheetSync->syncRevisionToTimesheet($revision->fresh());
@@ -1093,6 +1121,40 @@ class DraftingController extends Controller
         return redirect()
             ->route($this->jobShowRouteName($request), $this->jobShowRouteParams($draftingRequest, $request))
             ->with('status', $isQuote ? 'drf-quote-updated' : 'drf-invoice-updated');
+    }
+
+    public function destroyAccountEntry(
+        Request $request,
+        DraftingRequest $draftingRequest,
+        DraftingRequestAccountEntry $accountEntry,
+    ): RedirectResponse {
+        $this->authorizeView($request, $draftingRequest);
+
+        abort_unless($request->user()?->hasPermission('job.drafting.accounts.add'), 403);
+
+        if ($draftingRequest->isArchived()
+            || (int) $accountEntry->drafting_request_id !== (int) $draftingRequest->id) {
+            abort(404);
+        }
+
+        $isQuote = $accountEntry->kind === DraftingRequestAccountEntry::KIND_QUOTE;
+        $number = $accountEntry->number;
+        $category = $accountEntry->category;
+
+        $accountEntry->delete();
+
+        DraftingRequestActivity::record(
+            $draftingRequest,
+            $request->user(),
+            $isQuote
+                ? DraftingRequestActivity::ACTION_QUOTE_DELETED
+                : DraftingRequestActivity::ACTION_INVOICE_DELETED,
+            sprintf('Deleted %s %s (%s).', $isQuote ? 'quote' : 'invoice', $number, $category),
+        );
+
+        return redirect()
+            ->route($this->jobShowRouteName($request), $this->jobShowRouteParams($draftingRequest, $request))
+            ->with('status', $isQuote ? 'drf-quote-deleted' : 'drf-invoice-deleted');
     }
 
     public function storeComment(
@@ -1848,6 +1910,8 @@ class DraftingController extends Controller
                 DraftingRequestActivity::ACTION_QUOTE_UPDATED => 'Updated quote',
                 DraftingRequestActivity::ACTION_INVOICE_ADDED => 'Added invoice',
                 DraftingRequestActivity::ACTION_INVOICE_UPDATED => 'Updated invoice',
+                DraftingRequestActivity::ACTION_QUOTE_DELETED => 'Deleted quote',
+                DraftingRequestActivity::ACTION_INVOICE_DELETED => 'Deleted invoice',
                 DraftingRequestActivity::ACTION_DRAWING_CHECKLIST_UPDATED => 'Updated drawing status',
                 DraftingRequestActivity::ACTION_DRAWING_CHECKLIST_RESET => 'Reset drawing status',
                 DraftingRequestActivity::ACTION_ASSIGNMENT_CHANGED => 'Changed assignment',

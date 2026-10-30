@@ -9,8 +9,10 @@ const STORAGE_KEY = 'bluinq-leaderboard-widget-settings';
 
 export const DEFAULT_LEADERBOARD_WIDGET_SETTINGS = {
     chartType: 'stacked',
+    measure: 'count',
+    basis: 'date_in',
     selectedDrafters: [],
-    visibleSeries: [],
+    hiddenSeries: [],
     showLegend: true,
     showGrid: true,
     showBarLabels: true,
@@ -58,45 +60,37 @@ export function saveLeaderboardWidgetSettings(settings) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
 }
 
-export function loadLeaderboardWidgetSettings(seriesKeys) {
+export function loadLeaderboardWidgetSettings() {
     if (typeof window === 'undefined') {
-        return {
-            ...DEFAULT_LEADERBOARD_WIDGET_SETTINGS,
-            visibleSeries: seriesKeys,
-        };
+        return { ...DEFAULT_LEADERBOARD_WIDGET_SETTINGS };
     }
 
     try {
         const raw = window.localStorage.getItem(STORAGE_KEY);
         if (!raw) {
-            return {
-                ...DEFAULT_LEADERBOARD_WIDGET_SETTINGS,
-                visibleSeries: seriesKeys,
-            };
+            return { ...DEFAULT_LEADERBOARD_WIDGET_SETTINGS };
         }
 
         const parsed = JSON.parse(raw);
 
         return {
             ...DEFAULT_LEADERBOARD_WIDGET_SETTINGS,
-            ...parsed,
+            chartType: parsed.chartType === 'grouped' ? 'grouped' : 'stacked',
+            measure: parsed.measure === 'hours' ? 'hours' : 'count',
+            basis: parsed.basis === 'date_out' ? 'date_out' : 'date_in',
+            showLegend: parsed.showLegend ?? true,
+            showGrid: parsed.showGrid ?? true,
+            showBarLabels: parsed.showBarLabels ?? true,
             panelOpen: true,
-            visibleSeries:
-                Array.isArray(parsed.visibleSeries) &&
-                parsed.visibleSeries.length > 0
-                    ? parsed.visibleSeries.filter((key) =>
-                          seriesKeys.includes(key),
-                      )
-                    : seriesKeys,
+            hiddenSeries: Array.isArray(parsed.hiddenSeries)
+                ? parsed.hiddenSeries
+                : [],
             selectedDrafters: Array.isArray(parsed.selectedDrafters)
                 ? parsed.selectedDrafters
                 : [],
         };
     } catch {
-        return {
-            ...DEFAULT_LEADERBOARD_WIDGET_SETTINGS,
-            visibleSeries: seriesKeys,
-        };
+        return { ...DEFAULT_LEADERBOARD_WIDGET_SETTINGS };
     }
 }
 
@@ -114,8 +108,9 @@ export default function LeaderboardWidgetSettings({
     const allDraftersSelected =
         settings.selectedDrafters.length === 0 ||
         settings.selectedDrafters.length === drafters.length;
-    const allSeriesSelected =
-        settings.visibleSeries.length === series.length;
+    const allSeriesSelected = !series.some((item) =>
+        settings.hiddenSeries.includes(item.key),
+    );
 
     const toggleDrafter = (drafter) => {
         const active =
@@ -133,15 +128,15 @@ export default function LeaderboardWidgetSettings({
     };
 
     const toggleSeries = (key) => {
-        const next = settings.visibleSeries.includes(key)
-            ? settings.visibleSeries.filter((item) => item !== key)
-            : [...settings.visibleSeries, key];
+        const next = settings.hiddenSeries.includes(key)
+            ? settings.hiddenSeries.filter((item) => item !== key)
+            : [...settings.hiddenSeries, key];
 
-        if (next.length === 0) {
+        if (series.every((item) => next.includes(item.key))) {
             return;
         }
 
-        update({ visibleSeries: next });
+        update({ hiddenSeries: next });
     };
 
     return (
@@ -233,7 +228,26 @@ export default function LeaderboardWidgetSettings({
 
                 <SettingsSection title="Stack by">
                     <FieldLabel>Category</FieldLabel>
+                    <div className="flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            onClick={() => update({ hiddenSeries: [] })}
+                            className={
+                                'rounded-full px-2.5 py-1 text-xs font-medium transition ' +
+                                (allSeriesSelected
+                                    ? 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300'
+                                    : 'bg-white text-slate-600 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-600')
+                            }
+                        >
+                            All categories
+                        </button>
+                    </div>
                     <div className="space-y-1.5">
+                        {series.length === 0 && (
+                            <p className="px-1 py-2 text-xs text-slate-500 dark:text-slate-400">
+                                No categories for this month.
+                            </p>
+                        )}
                         {series.map((item) => (
                             <label
                                 key={item.key}
@@ -241,9 +255,11 @@ export default function LeaderboardWidgetSettings({
                             >
                                 <input
                                     type="checkbox"
-                                    checked={settings.visibleSeries.includes(
-                                        item.key,
-                                    )}
+                                    checked={
+                                        !settings.hiddenSeries.includes(
+                                            item.key,
+                                        )
+                                    }
                                     onChange={() => toggleSeries(item.key)}
                                     className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-600"
                                 />
@@ -260,12 +276,33 @@ export default function LeaderboardWidgetSettings({
                 <SettingsSection title="Y-axis">
                     <FieldLabel>Measure</FieldLabel>
                     <select
-                        value="count"
-                        disabled
-                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                        value={settings.measure}
+                        onChange={(event) =>
+                            update({ measure: event.target.value })
+                        }
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
                     >
-                        <option value="count">Count</option>
+                        <option value="count">Number of revisions</option>
+                        <option value="hours">Drafting hours</option>
                     </select>
+                    <FieldLabel>Month is based on</FieldLabel>
+                    <select
+                        value={settings.basis}
+                        onChange={(event) =>
+                            update({ basis: event.target.value })
+                        }
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                    >
+                        <option value="date_in">Date In (revision log date)</option>
+                        <option value="date_out">Date Out (submitted date)</option>
+                    </select>
+                    <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                        Each revision with a drafter counts once under its
+                        first category.{' '}
+                        {settings.measure === 'hours'
+                            ? 'Drafting hours adds up the revision\u2019s drafting hours instead.'
+                            : 'Switch to Drafting hours to add up hours instead.'}
+                    </p>
                 </SettingsSection>
 
                 <SettingsSection title="Customize">
@@ -305,55 +342,14 @@ export default function LeaderboardWidgetSettings({
                         />
                     </label>
                 </SettingsSection>
-
-                <SettingsSection title="Choose which columns to show">
-                    <div className="flex flex-wrap gap-2">
-                        <button
-                            type="button"
-                            onClick={() =>
-                                update({
-                                    visibleSeries: series.map(
-                                        (item) => item.key,
-                                    ),
-                                })
-                            }
-                            className={
-                                'rounded-full px-2.5 py-1 text-xs font-medium transition ' +
-                                (allSeriesSelected
-                                    ? 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300'
-                                    : 'bg-white text-slate-600 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-600')
-                            }
-                        >
-                            All categories
-                        </button>
-                    </div>
-                    <div className="space-y-1.5">
-                        {series.map((item) => (
-                            <label
-                                key={`column-${item.key}`}
-                                className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-1 text-sm text-slate-700 dark:text-slate-200"
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={settings.visibleSeries.includes(
-                                        item.key,
-                                    )}
-                                    onChange={() => toggleSeries(item.key)}
-                                    className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-600"
-                                />
-                                <span>{item.label}</span>
-                            </label>
-                        ))}
-                    </div>
-                </SettingsSection>
             </div>
         </aside>
     );
 }
 
-export function useLeaderboardWidgetSettings(seriesKeys) {
+export function useLeaderboardWidgetSettings() {
     const [settings, setSettings] = useState(() =>
-        loadLeaderboardWidgetSettings(seriesKeys),
+        loadLeaderboardWidgetSettings(),
     );
 
     useEffect(() => {

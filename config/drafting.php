@@ -28,29 +28,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Drafter leaderboard category mapping
-    |--------------------------------------------------------------------------
-    |
-    | Maps revision category values to dashboard chart series keys.
-    |
-    */
-
-    'leaderboard_category_keys' => [
-        'DA/PLANNING' => 'da_planning',
-        'DA PLANNING' => 'da_planning',
-        'DA-PLANNING' => 'da_planning',
-        'PRESTART' => 'prestart',
-        'SCHEMATIC DESIGN' => 'schematic_design',
-        'SCHEMATIC' => 'schematic_design',
-        'SITING' => 'siting',
-        'VARIATION' => 'variation',
-        'WORKING DRAWINGS' => 'working_drawings',
-        'WORKING DRAWING' => 'working_drawings',
-        'WD' => 'working_drawings',
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
     | Job list section labels (sidebar Job list page)
     |--------------------------------------------------------------------------
     */

@@ -294,7 +294,7 @@ function DayCell({
         }
 
         if (
-            !window.confirm(`Remove "${event.title}" from the calendar?`)
+            !window.confirm(`Are you sure you want to remove "${event.title}" from the calendar?`)
         ) {
             return;
         }

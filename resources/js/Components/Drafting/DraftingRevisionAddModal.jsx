@@ -449,10 +449,14 @@ export default function DraftingRevisionAddModal({
                             : 'Add a revision. Assign drafter, checker, and hours on the Project Management board.'}
                     </p>
                 ) : null}
-                {form.errors.board || form.errors.workflow_stage ? (
+                {form.errors.board ||
+                form.errors.workflow_stage ||
+                form.errors.drafting_request_id ? (
                     <InputError
                         message={
-                            form.errors.board || form.errors.workflow_stage
+                            form.errors.board ||
+                            form.errors.workflow_stage ||
+                            form.errors.drafting_request_id
                         }
                         className="mt-3"
                     />

@@ -72,6 +72,8 @@ export default function DraftingShow({
         'drf-invoice-added': 'Invoice added.',
         'drf-quote-updated': 'Quote updated.',
         'drf-invoice-updated': 'Invoice updated.',
+        'drf-quote-deleted': 'Quote deleted.',
+        'drf-invoice-deleted': 'Invoice deleted.',
         'account-comment-added': 'Quote / invoice comment added.',
         'masterlist-forwarded':
             'Project added to Archi Project Management from the masterlist.',
@@ -309,6 +311,22 @@ export default function DraftingShow({
                     onAddInvoice={() => setInvoiceModalOpen(true)}
                     onEditQuote={(row) => setEditingQuote(row)}
                     onEditInvoice={(row) => setEditingInvoice(row)}
+                    onDeleteAccount={(row, label) => {
+                        if (
+                            !window.confirm(
+                                `Are you sure you want to delete ${label} ${row.number ?? ''}? This cannot be undone.`,
+                            )
+                        ) {
+                            return;
+                        }
+                        router.delete(
+                            route('job.drafting.accounts.destroy', [
+                                draftingRequest.id,
+                                row.id,
+                            ]) + listQs,
+                            { preserveScroll: true },
+                        );
+                    }}
                     canViewRevision={viewRevision}
                     canDeleteRevision={deleteRevision}
                     onEditRevision={

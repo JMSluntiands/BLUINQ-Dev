@@ -222,12 +222,8 @@ class LeaveEntitlementService
         $base = (int) config('leave.al.base_days', 12);
         $current = (float) $user->al_credits;
 
-        if ($current >= $entitlement) {
-            $user->forceFill(['al_last_accrual_month' => $monthKey])->save();
-
-            return false;
-        }
-
+        // The yearly cap comes from accruing once per month, not from the balance:
+        // staff whose balance was set manually at or above the entitlement still get +1.
         $add = $monthly;
 
         // First accrual of the year: grant longevity extras (entitlement - 12) immediately.
@@ -236,14 +232,6 @@ class LeaveEntitlementService
 
         if ($isFirstAccrualThisYear) {
             $add += max(0, $entitlement - $base);
-        }
-
-        $add = min($add, $entitlement - $current);
-
-        if ($add <= 0) {
-            $user->forceFill(['al_last_accrual_month' => $monthKey])->save();
-
-            return false;
         }
 
         DB::transaction(function () use ($user, $current, $add, $monthKey, $asOf, $monthly): void {
