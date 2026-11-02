@@ -1768,6 +1768,60 @@ class MasterlistToApmWorkflowTest extends TestCase
         );
     }
 
+    public function test_drafter_leaderboard_counts_design_board_and_archived_jobs(): void
+    {
+        $user = $this->adminUser();
+        $drafter = User::factory()->create(['initials' => 'DD']);
+        [$storeyLevel, $category] = $this->seedLookups();
+
+        $jobs = [
+            ['stage' => DraftingRequest::STAGE_APM, 'archived_at' => null],
+            ['stage' => DraftingRequest::STAGE_DESIGN, 'archived_at' => null],
+            ['stage' => DraftingRequest::STAGE_APM, 'archived_at' => now()],
+            ['stage' => DraftingRequest::STAGE_MASTERLIST, 'archived_at' => null],
+        ];
+
+        foreach ($jobs as $i => $row) {
+            $job = DraftingRequest::query()->create([
+                'user_id' => $user->id,
+                'status' => DraftingRequest::STATUS_NEW,
+                'review_status' => DraftingRequest::REVIEW_ACCEPTED,
+                'workflow_stage' => $row['stage'],
+                'archived_at' => $row['archived_at'],
+                'requested_at' => now(),
+                'your_name' => 'Leader',
+                'company_name' => 'Leader Co',
+                'email' => 'leader@example.com',
+                'site_address' => ($i + 1).' Leader St',
+                'site_owner_name' => 'Owner',
+                'storey_level_id' => $storeyLevel->id,
+                'crm_category_id' => $category->id,
+                'ceiling_heights' => '2700',
+                'ndis_sda' => false,
+            ]);
+
+            DraftingRequestRevision::query()->create([
+                'drafting_request_id' => $job->id,
+                'user_id' => $user->id,
+                'code' => $job->jobNumber().'-01',
+                'log_date' => '2026-10-0'.($i + 1),
+                'category' => 'WD',
+                'status' => DraftingRequest::STATUS_NEW,
+                'drafter_user_id' => $drafter->id,
+                'drafting_hours' => 1,
+            ]);
+        }
+
+        $request = Request::create('/dashboard', 'GET');
+        $request->setUserResolver(fn () => $user);
+        $payload = app(DraftingRequestBoardService::class)->drafterLeaderboardPayload($request, '2026-10');
+
+        $this->assertSame(
+            ['2026-10-01', '2026-10-02', '2026-10-03'],
+            array_column($payload['entries'], 'date_in'),
+        );
+    }
+
     private function adminUser(): User
     {
         $adminRoleId = Role::query()->where('slug', 'admin')->value('id');

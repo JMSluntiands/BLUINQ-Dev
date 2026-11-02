@@ -1,10 +1,10 @@
+import DateRangePicker from '@/Components/DateRangePicker';
 import FileDropzone from '@/Components/FileDropzone';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
-import TextInput from '@/Components/TextInput';
 import { countLeaveDays, formatLeaveCredits } from '@/utils/leaveDays';
 import { useForm, usePage } from '@inertiajs/react';
 
@@ -124,7 +124,7 @@ export default function LeaveRequestModal({
     };
 
     return (
-        <Modal show={show} onClose={handleClose} maxWidth="lg">
+        <Modal show={show} onClose={handleClose} maxWidth="2xl">
             <form onSubmit={submit} className="p-6">
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                     Create leave request
@@ -134,29 +134,6 @@ export default function LeaveRequestModal({
                         ? 'Create a leave request for yourself or another user. It will appear on the team calendar once approved.'
                         : 'Submit your request for admin approval. It will appear on the team calendar once approved.'}
                 </p>
-
-                {canManageLeave && (
-                    <div className="mt-4">
-                        <InputLabel htmlFor="leave_user_id" value="User" />
-                        <select
-                            id="leave_user_id"
-                            value={data.user_id}
-                            onChange={(event) =>
-                                setData('user_id', event.target.value)
-                            }
-                            className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                        >
-                            {leaveRequestUsers.map((user) => (
-                                <option key={user.id} value={String(user.id)}>
-                                    {user.email
-                                        ? `${user.name} (${user.email})`
-                                        : user.name}
-                                </option>
-                            ))}
-                        </select>
-                        <InputError message={errors.user_id} className="mt-1" />
-                    </div>
-                )}
 
                 {leaveBalances && requestingForSelf && (
                     <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs dark:border-slate-700 dark:bg-slate-800/60 sm:grid-cols-4">
@@ -194,8 +171,31 @@ export default function LeaveRequestModal({
                     </p>
                 )}
 
-                <div className="mt-6 space-y-4">
-                    <div>
+                <div className="mt-5 grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                    {canManageLeave && (
+                        <div>
+                            <InputLabel htmlFor="leave_user_id" value="User" />
+                            <select
+                                id="leave_user_id"
+                                value={data.user_id}
+                                onChange={(event) =>
+                                    setData('user_id', event.target.value)
+                                }
+                                className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                            >
+                                {leaveRequestUsers.map((user) => (
+                                    <option key={user.id} value={String(user.id)}>
+                                        {user.email
+                                            ? `${user.name} (${user.email})`
+                                            : user.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <InputError message={errors.user_id} className="mt-1" />
+                        </div>
+                    )}
+
+                    <div className={canManageLeave ? '' : 'sm:col-span-2'}>
                         <InputLabel htmlFor="leave_type" value="Type" />
                         <select
                             id="leave_type"
@@ -214,44 +214,25 @@ export default function LeaveRequestModal({
                         <InputError message={errors.type} className="mt-1" />
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div>
-                            <InputLabel
-                                htmlFor="start_date"
-                                value="Start date"
-                            />
-                            <TextInput
-                                id="start_date"
-                                type="date"
-                                value={data.start_date}
-                                onChange={(event) =>
-                                    setData('start_date', event.target.value)
-                                }
-                                className="mt-1 block w-full"
-                                required
-                            />
-                            <InputError
-                                message={errors.start_date}
-                                className="mt-1"
-                            />
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="end_date" value="End date" />
-                            <TextInput
-                                id="end_date"
-                                type="date"
-                                value={data.end_date}
-                                onChange={(event) =>
-                                    setData('end_date', event.target.value)
-                                }
-                                className="mt-1 block w-full"
-                                required
-                            />
-                            <InputError
-                                message={errors.end_date}
-                                className="mt-1"
-                            />
-                        </div>
+                    <div>
+                        <InputLabel htmlFor="leave_dates" value="Leave dates" />
+                        <DateRangePicker
+                            id="leave_dates"
+                            className="mt-1"
+                            startDate={data.start_date}
+                            endDate={data.end_date}
+                            holidayDates={holidayDates}
+                            placeholder="Select start and end date"
+                            onChange={({ start, end }) =>
+                                setData((prev) => ({
+                                    ...prev,
+                                    start_date: start,
+                                    end_date: end,
+                                }))
+                            }
+                        />
+                        <InputError message={errors.start_date} className="mt-1" />
+                        <InputError message={errors.end_date} className="mt-1" />
                     </div>
 
                     <div>
@@ -282,29 +263,26 @@ export default function LeaveRequestModal({
                                 </label>
                             ))}
                         </div>
-                        <InputError message={errors.start_portion} className="mt-1" />
-                        <InputError message={errors.end_portion} className="mt-1" />
-                    </div>
-
-                    {data.day_type === 'half' && (
-                        <div>
-                            <InputLabel htmlFor="half_day_portion" value="Which half?" />
+                        {data.day_type === 'half' && (
                             <select
                                 id="half_day_portion"
+                                aria-label="Which half?"
                                 value={data.half_day_portion}
                                 onChange={(event) =>
                                     handleHalfDayPortionChange(event.target.value)
                                 }
-                                className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                                className="mt-2 block w-full rounded-lg border-slate-300 py-1.5 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                             >
                                 <option value="morning">Morning</option>
                                 <option value="afternoon">Afternoon</option>
                             </select>
-                        </div>
-                    )}
+                        )}
+                        <InputError message={errors.start_portion} className="mt-1" />
+                        <InputError message={errors.end_portion} className="mt-1" />
+                    </div>
 
                     {dayCount > 0 && (
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                        <p className="text-sm text-slate-500 dark:text-slate-400 sm:col-span-2">
                             This request will use{' '}
                             <span className="font-semibold text-slate-900 dark:text-white">
                                 {formatDays(dayCount)}
@@ -315,59 +293,37 @@ export default function LeaveRequestModal({
                     )}
 
                     {data.type === 'sl' && (
-                        <p className="rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-800 dark:bg-sky-500/10 dark:text-sky-200">
+                        <p className="rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-800 dark:bg-sky-500/10 dark:text-sky-200 sm:col-span-2">
                             A medical certificate is required for more than{' '}
                             {medicalCertificateAfterDays} consecutive sick leave
                             days.
                         </p>
                     )}
 
-                    {needsMedicalCertificate && (
-                        <div>
-                            <InputLabel htmlFor="attachment" value="Attachment" />
-                            <FileDropzone
-                                id="attachment"
-                                accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
-                                className="mt-1"
-                                required
-                                value={data.medical_certificate}
-                                onChange={(file) =>
-                                    setData('medical_certificate', file)
-                                }
-                            />
-                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                Upload PDF, JPG, or PNG. Maximum 10 MB.
-                            </p>
-                            <InputError
-                                message={errors.attachment ?? errors.medical_certificate}
-                                className="mt-1"
-                            />
-                        </div>
-                    )}
-
-                    {!needsMedicalCertificate && (
-                        <div>
-                            <InputLabel htmlFor="attachment" value="Attachment" />
-                            <FileDropzone
-                                id="attachment"
-                                accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
-                                className="mt-1"
-                                value={data.medical_certificate}
-                                onChange={(file) =>
-                                    setData('medical_certificate', file)
-                                }
-                            />
-                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                Optional supporting file or image. PDF, JPG, or PNG only.
-                            </p>
-                            <InputError
-                                message={errors.attachment ?? errors.medical_certificate}
-                                className="mt-1"
-                            />
-                        </div>
-                    )}
-
                     <div>
+                        <InputLabel htmlFor="attachment" value="Attachment" />
+                        <FileDropzone
+                            id="attachment"
+                            accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                            className="mt-1"
+                            required={needsMedicalCertificate}
+                            value={data.medical_certificate}
+                            onChange={(file) =>
+                                setData('medical_certificate', file)
+                            }
+                        />
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            {needsMedicalCertificate
+                                ? 'Upload PDF, JPG, or PNG. Maximum 10 MB.'
+                                : 'Optional. PDF, JPG, or PNG only.'}
+                        </p>
+                        <InputError
+                            message={errors.attachment ?? errors.medical_certificate}
+                            className="mt-1"
+                        />
+                    </div>
+
+                    <div className="flex flex-col">
                         <InputLabel htmlFor="reason" value="Reason" />
                         <textarea
                             id="reason"
@@ -375,9 +331,9 @@ export default function LeaveRequestModal({
                             onChange={(event) =>
                                 setData('reason', event.target.value)
                             }
-                            rows={3}
+                            rows={4}
                             required
-                            className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                            className="mt-1 block w-full flex-1 rounded-lg border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                             placeholder="Brief reason for your request..."
                         />
                         <InputError message={errors.reason} className="mt-1" />

@@ -1,3 +1,4 @@
+import DateRangePicker from '@/Components/DateRangePicker';
 import FileDropzone from '@/Components/FileDropzone';
 import FlashNoticeModal from '@/Components/FlashNoticeModal';
 import InputError from '@/Components/InputError';
@@ -263,35 +264,25 @@ function EditApprovedLeaveModal({ request, onClose }) {
                         <InputError message={errors.type} className="mt-1" />
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div>
-                            <InputLabel htmlFor="edit_start_date" value="Start date" />
-                            <input
-                                id="edit_start_date"
-                                type="date"
-                                value={data.start_date}
-                                onChange={(event) =>
-                                    setData('start_date', event.target.value)
-                                }
-                                required
-                                className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                            />
-                            <InputError message={errors.start_date} className="mt-1" />
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="edit_end_date" value="End date" />
-                            <input
-                                id="edit_end_date"
-                                type="date"
-                                value={data.end_date}
-                                onChange={(event) =>
-                                    setData('end_date', event.target.value)
-                                }
-                                required
-                                className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                            />
-                            <InputError message={errors.end_date} className="mt-1" />
-                        </div>
+                    <div>
+                        <InputLabel htmlFor="edit_leave_dates" value="Leave dates" />
+                        <DateRangePicker
+                            id="edit_leave_dates"
+                            className="mt-1"
+                            startDate={data.start_date}
+                            endDate={data.end_date}
+                            holidayDates={holidayDates}
+                            placeholder="Select start and end date"
+                            onChange={({ start, end }) =>
+                                setData((prev) => ({
+                                    ...prev,
+                                    start_date: start,
+                                    end_date: end,
+                                }))
+                            }
+                        />
+                        <InputError message={errors.start_date} className="mt-1" />
+                        <InputError message={errors.end_date} className="mt-1" />
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

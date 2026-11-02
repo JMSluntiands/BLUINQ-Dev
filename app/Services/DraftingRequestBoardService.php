@@ -581,7 +581,11 @@ class DraftingRequestBoardService
         $monthEnd = $monthStart->copy()->endOfMonth();
         $range = [$monthStart->toDateString(), $monthEnd->toDateString()];
 
-        $requestIds = $this->baseQuery($request)->pluck('id');
+        // Drafting work counts on both boards, including jobs archived since.
+        $requestIds = DraftingRequest::query()
+            ->reviewAccepted()
+            ->tap(fn (Builder $query) => $this->applyEitherProjectBoardFilter($query))
+            ->pluck('id');
         $categories = $this->leaderboardCategoryLookup();
         $entries = [];
         $usedKeys = [];
