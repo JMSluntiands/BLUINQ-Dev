@@ -137,6 +137,7 @@ class DraftingRequest extends Model
             self::STATUS_DRAFTING_WIP => 'Work In Progress',
             self::STATUS_FOR_CHECKING => 'For Checking',
             self::STATUS_SUBMITTED => 'Submitted',
+            self::STATUS_FOR_INVOICE => 'For Invoice',
             self::STATUS_CANCELLED => 'Cancelled',
         ]);
     }
@@ -153,6 +154,7 @@ class DraftingRequest extends Model
             self::STATUS_DRAFTING_WIP => 'Work In Progress',
             self::STATUS_FOR_CHECKING => 'For Checking',
             self::STATUS_SUBMITTED => 'Submitted',
+            self::STATUS_FOR_INVOICE => 'For Invoice',
             self::STATUS_CANCELLED => 'Cancelled',
         ]);
     }

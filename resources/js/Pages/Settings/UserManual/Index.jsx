@@ -59,7 +59,7 @@ const SECTIONS = [
         image: '/manual/manual-apm-board.jpg',
         imageAlt: 'APM board grouped by status with Add item button',
         caption:
-            'APM board — jobs grouped by New, Work In Progress, For Checking, Submitted, and Cancelled.',
+            'APM board — jobs grouped by New, Work In Progress, For Checking, Submitted, For Invoice, and Cancelled.',
         body: [
             'Open Workflow → Archi menu → Archi Project Management.',
             'Jobs are grouped by status. Expand a group to edit board fields or open a job.',
