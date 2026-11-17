@@ -1,3 +1,5 @@
+import { xsrfHeaders } from '@/lib/csrf';
+
 /**
  * Upload an inline image for announcement rich text.
  * @param {File} file
@@ -19,11 +21,6 @@ export function uploadAnnouncementInlineImage(file, onProgress) {
  * @returns {Promise<string>}
  */
 export function uploadInlineImageWithProgress(url, file, onProgress) {
-    const csrf =
-        document
-            .querySelector('meta[name="csrf-token"]')
-            ?.getAttribute('content') ?? '';
-
     const body = new FormData();
     body.append('image', file);
 
@@ -32,9 +29,9 @@ export function uploadInlineImageWithProgress(url, file, onProgress) {
         xhr.open('POST', url);
         xhr.setRequestHeader('Accept', 'application/json');
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        if (csrf) {
-            xhr.setRequestHeader('X-CSRF-TOKEN', csrf);
-        }
+        Object.entries(xsrfHeaders()).forEach(([name, value]) =>
+            xhr.setRequestHeader(name, value),
+        );
         xhr.withCredentials = true;
 
         xhr.upload.onprogress = (event) => {

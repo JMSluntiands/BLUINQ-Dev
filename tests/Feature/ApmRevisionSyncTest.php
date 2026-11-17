@@ -455,6 +455,7 @@ class ApmRevisionSyncTest extends TestCase
                     ['value' => 'drafting_wip', 'label' => 'Work In Progress'],
                     ['value' => 'for_checking', 'label' => 'For Checking'],
                     ['value' => 'submitted', 'label' => 'Submitted'],
+                    ['value' => 'for_invoice', 'label' => 'For Invoice'],
                     ['value' => 'cancelled', 'label' => 'Cancelled'],
                 ])
                 ->where('jobs.data.0.id', $job->id)
@@ -1160,6 +1161,7 @@ class ApmRevisionSyncTest extends TestCase
                     ['value' => 'drafting_wip', 'label' => 'Work In Progress'],
                     ['value' => 'for_checking', 'label' => 'For Checking'],
                     ['value' => 'submitted', 'label' => 'Submitted'],
+                    ['value' => 'for_invoice', 'label' => 'For Invoice'],
                     ['value' => 'cancelled', 'label' => 'Cancelled'],
                 ])
                 ->has('statusOptions', 10)

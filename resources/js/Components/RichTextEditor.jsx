@@ -47,6 +47,104 @@ function pointerIsOver(element, event) {
     );
 }
 
+const PASTE_ALLOWED_TAGS = new Set([
+    'P', 'BR', 'STRONG', 'B', 'EM', 'I', 'U', 'UL', 'OL', 'LI', 'A', 'H2',
+    'H3', 'BLOCKQUOTE', 'IMG',
+]);
+const PASTE_BLOCK_AS_PARAGRAPH = new Set([
+    'DIV', 'TR', 'H1', 'H4', 'H5', 'H6', 'SECTION', 'ARTICLE', 'HEADER',
+    'FOOTER', 'PRE', 'TABLE',
+]);
+const PASTE_NESTED_BLOCK_SELECTOR =
+    'p, div, ul, ol, table, tr, blockquote, h1, h2, h3, h4, h5, h6, section, article';
+const PASTE_DROPPED_TAGS = new Set([
+    'SCRIPT', 'STYLE', 'META', 'LINK', 'TITLE', 'HEAD', 'IFRAME', 'OBJECT',
+    'EMBED', 'SVG', 'XML',
+]);
+
+function isUsableImageSrc(src) {
+    return /^(https?:)?\/|^data:image\/(png|jpe?g|gif|webp);base64,/i.test(
+        src ?? '',
+    );
+}
+
+function dataUrlToFile(dataUrl) {
+    const [header, base64] = dataUrl.split(',');
+    const mime = header.match(/^data:([^;]+)/)?.[1] ?? 'image/png';
+    const bytes = atob(base64);
+    const buffer = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i += 1) {
+        buffer[i] = bytes.charCodeAt(i);
+    }
+
+    return new File([buffer], `pasted.${mime.split('/')[1] || 'png'}`, {
+        type: mime,
+    });
+}
+
+/**
+ * Keeps only comment-safe markup from pasted HTML (Word, Outlook, browsers).
+ */
+function sanitizePastedHtml(html) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+
+    const clean = (node, target) => {
+        node.childNodes.forEach((child) => {
+            if (child.nodeType === Node.TEXT_NODE) {
+                target.appendChild(document.createTextNode(child.textContent));
+                return;
+            }
+
+            if (child.nodeType !== Node.ELEMENT_NODE) {
+                return;
+            }
+
+            const tag = child.tagName.toUpperCase();
+            if (PASTE_DROPPED_TAGS.has(tag)) {
+                return;
+            }
+
+            if (PASTE_BLOCK_AS_PARAGRAPH.has(tag)) {
+                if (child.querySelector(PASTE_NESTED_BLOCK_SELECTOR)) {
+                    clean(child, target);
+                    return;
+                }
+                const paragraph = document.createElement('p');
+                clean(child, paragraph);
+                target.appendChild(paragraph);
+                return;
+            }
+
+            if (!PASTE_ALLOWED_TAGS.has(tag)) {
+                clean(child, target);
+                if (tag === 'TD' || tag === 'TH') {
+                    target.appendChild(document.createTextNode(' '));
+                }
+                return;
+            }
+
+            const el = document.createElement(tag);
+            if (tag === 'A') {
+                const href = child.getAttribute('href') ?? '';
+                if (/^(https?:|mailto:)/i.test(href)) {
+                    el.setAttribute('href', href);
+                }
+            }
+            if (tag === 'IMG') {
+                el.setAttribute('src', child.getAttribute('src') ?? '');
+                el.setAttribute('alt', child.getAttribute('alt') || 'Image');
+            }
+            clean(child, el);
+            target.appendChild(el);
+        });
+    };
+
+    const fragment = document.createDocumentFragment();
+    clean(doc.body, fragment);
+
+    return fragment;
+}
+
 function exec(command, value = null) {
     document.execCommand(command, false, value);
 }
@@ -220,18 +318,22 @@ export default function RichTextEditor({
         [syncValue],
     );
 
-    const insertImageFile = useCallback(
+    const activeUploads = useRef(0);
+
+    /** Resolves to a usable src for the file (uploaded URL or data URL), or null. */
+    const resolveImageSrc = useCallback(
         (file) => {
             if (!isImageFile(file)) {
-                return Promise.resolve();
+                return Promise.resolve(null);
             }
 
             if (file.size > MAX_IMAGE_BYTES) {
                 window.alert('Image is too large. Maximum size is 5 MB.');
-                return Promise.resolve();
+                return Promise.resolve(null);
             }
 
             if (typeof uploadImage === 'function') {
+                activeUploads.current += 1;
                 setUploadingImage(true);
                 setUploadProgress(0);
 
@@ -242,34 +344,72 @@ export default function RichTextEditor({
                 )
                     .then((url) => {
                         if (typeof url === 'string' && url.trim() !== '') {
-                            insertImageAtCursor(url.trim());
-                        } else {
-                            window.alert('Failed to upload image.');
+                            return url.trim();
                         }
+                        window.alert('Failed to upload image.');
+                        return null;
                     })
                     .catch(() => {
                         window.alert('Failed to upload image.');
+                        return null;
                     })
                     .finally(() => {
-                        setUploadingImage(false);
-                        setUploadProgress(0);
+                        activeUploads.current -= 1;
+                        if (activeUploads.current === 0) {
+                            setUploadingImage(false);
+                            setUploadProgress(0);
+                        }
                     });
             }
 
             return new Promise((resolve) => {
                 const reader = new FileReader();
-                reader.onload = () => {
-                    if (typeof reader.result === 'string') {
-                        insertImageAtCursor(reader.result);
-                    }
-                    resolve();
-                };
-                reader.onerror = () => resolve();
+                reader.onload = () =>
+                    resolve(
+                        typeof reader.result === 'string' ? reader.result : null,
+                    );
+                reader.onerror = () => resolve(null);
                 reader.readAsDataURL(file);
             });
         },
-        [insertImageAtCursor, uploadImage],
+        [uploadImage],
     );
+
+    const insertImageFile = useCallback(
+        (file) =>
+            resolveImageSrc(file).then((src) => {
+                if (src) {
+                    insertImageAtCursor(src);
+                }
+            }),
+        [insertImageAtCursor, resolveImageSrc],
+    );
+
+    const insertNodeAtCursor = useCallback((node) => {
+        const editor = editorRef.current;
+        editor.focus();
+
+        const selection = document.getSelection();
+        const range =
+            selection && selection.rangeCount > 0
+                ? selection.getRangeAt(0)
+                : null;
+
+        if (!range || !editor.contains(range.commonAncestorContainer)) {
+            editor.appendChild(node);
+            return;
+        }
+
+        const last = node.lastChild;
+        range.deleteContents();
+        range.insertNode(node);
+        if (last) {
+            range.setStartAfter(last);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+    }, []);
 
     useEffect(() => {
         if (!allowImages || disabled) {
@@ -325,23 +465,93 @@ export default function RichTextEditor({
             return;
         }
 
-        const items = event.clipboardData?.items;
-        if (!items) {
+        const clipboard = event.clipboardData;
+        if (!clipboard) {
             return;
         }
 
-        for (const item of items) {
-            if (!item.type.startsWith('image/')) {
-                continue;
-            }
+        const files = Array.from(clipboard.items ?? [])
+            .filter((item) => item.type.startsWith('image/'))
+            .map((item) => item.getAsFile())
+            .filter(Boolean);
+        const html = clipboard.getData('text/html');
+        const fragment = html ? sanitizePastedHtml(html) : null;
+        const hasText = fragment
+            ? fragment.textContent.trim() !== ''
+            : clipboard.getData('text/plain').trim() !== '';
 
+        if (!hasText) {
+            if (files.length === 0) {
+                return;
+            }
             event.preventDefault();
-            const file = item.getAsFile();
-            if (file) {
-                insertImageFile(file);
-            }
+            files.reduce(
+                (chain, file) => chain.then(() => insertImageFile(file)),
+                Promise.resolve(),
+            );
             return;
         }
+
+        if (!fragment) {
+            if (files.length === 0) {
+                return;
+            }
+            event.preventDefault();
+            exec('insertText', clipboard.getData('text/plain'));
+            files.reduce(
+                (chain, file) => chain.then(() => insertImageFile(file)),
+                Promise.resolve(),
+            );
+            return;
+        }
+
+        event.preventDefault();
+
+        // Word/Outlook reference images as file:/cid: paths the browser cannot
+        // load; the clipboard carries those pictures as files in the same order.
+        const unusedFiles = [...files];
+        const pending = [];
+        fragment.querySelectorAll('img').forEach((img) => {
+            const src = img.getAttribute('src') ?? '';
+            let file = null;
+
+            if (src.startsWith('data:')) {
+                if (!isUsableImageSrc(src)) {
+                    img.remove();
+                    return;
+                }
+                if (typeof uploadImage === 'function') {
+                    file = dataUrlToFile(src);
+                }
+            } else if (!isUsableImageSrc(src)) {
+                file = unusedFiles.shift() ?? null;
+                if (!file) {
+                    img.remove();
+                    return;
+                }
+            }
+
+            if (file) {
+                const preview = URL.createObjectURL(file);
+                img.setAttribute('src', preview);
+                pending.push({ img, file, preview });
+            }
+        });
+
+        insertNodeAtCursor(fragment);
+        syncValue();
+
+        pending.forEach(({ img, file, preview }) => {
+            resolveImageSrc(file).then((src) => {
+                URL.revokeObjectURL(preview);
+                if (src) {
+                    img.setAttribute('src', src);
+                } else {
+                    img.remove();
+                }
+                syncValue();
+            });
+        });
     };
 
     return (
