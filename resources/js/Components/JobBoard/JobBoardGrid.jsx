@@ -1362,32 +1362,19 @@ function JobBoardTableBody({
                                                 ) : null}
                                             </>
                                         ) : (
-                                            <td
-                                                className={
-                                                    tdClass +
-                                                    ' ps-8 text-sm text-[#323338] dark:text-slate-200'
+                                            <BoardRevisionCells
+                                                revision={revision}
+                                                draftingSlotCount={
+                                                    draftingSlotCount
                                                 }
-                                                colSpan={boardColSpan}
-                                            >
-                                                <div className="flex flex-wrap items-center gap-3">
-                                                    <span className="text-[10px] text-[#c5c7d0] dark:text-slate-600">
-                                                        └
-                                                    </span>
-                                                    <span className="font-semibold tabular-nums text-[#0073ea] dark:text-[#1890ff]">
-                                                        {revision.code}
-                                                    </span>
-                                                    {revision.status ? (
-                                                        <StatusPill
-                                                            status={
-                                                                revision.status
-                                                            }
-                                                            label={
-                                                                revision.status_label
-                                                            }
-                                                        />
-                                                    ) : null}
-                                                </div>
-                                            </td>
+                                                checkingSlotCount={
+                                                    checkingSlotCount
+                                                }
+                                                hideStatus={hideStatus}
+                                                hasActions={Boolean(
+                                                    renderActions,
+                                                )}
+                                            />
                                         )}
                                     </tr>
                                 ))
@@ -1412,6 +1399,85 @@ function JobBoardTableBody({
                 );
             })}
         </tbody>
+    );
+}
+
+/** Read-only revision row aligned with the board columns: values as recorded on that revision. */
+function BoardRevisionCells({
+    revision,
+    draftingSlotCount,
+    checkingSlotCount,
+    hideStatus,
+    hasActions,
+}) {
+    const muted = 'text-[#676879] dark:text-slate-400';
+    const empty = <span className="text-[#c5c7d0] dark:text-slate-600">—</span>;
+    const text = (value) => (value ? value : empty);
+    const statusPill = revision.status ? (
+        <StatusPill status={revision.status} label={revision.status_label} />
+    ) : (
+        empty
+    );
+
+    return (
+        <>
+            <td className={tdClass} colSpan={2}>
+                <div className="flex items-center gap-2 ps-6">
+                    <span className="text-[10px] text-[#c5c7d0] dark:text-slate-600">
+                        └
+                    </span>
+                    {hideStatus ? statusPill : null}
+                </div>
+            </td>
+            <td className={tdClass + ' tabular-nums'}>
+                <span className="font-semibold text-[#0073ea] dark:text-[#1890ff]">
+                    {revision.code}
+                </span>
+            </td>
+            <td className={tdClass}>{empty}</td>
+            <td className={tdClass}>
+                {revision.categories?.length ? (
+                    <CategoryList categories={revision.categories} />
+                ) : (
+                    empty
+                )}
+            </td>
+            <td className={tdClass}>{empty}</td>
+            <td className={tdClass + ' whitespace-nowrap ' + muted}>
+                {text(revision.date_in_label)}
+            </td>
+            <td className={tdClass}>{empty}</td>
+            <td className={tdClass}>{empty}</td>
+            {Array.from({ length: draftingSlotCount }, (_, index) => (
+                <td key={`rev-draft-${index}`} className={tdClass}>
+                    {index === 0 ? (
+                        <StaffSlot assignment={revision.drafting} />
+                    ) : null}
+                </td>
+            ))}
+            {Array.from({ length: checkingSlotCount }, (_, index) => (
+                <td key={`rev-check-${index}`} className={tdClass}>
+                    {index === 0 ? (
+                        <StaffSlot assignment={revision.checking} />
+                    ) : null}
+                </td>
+            ))}
+            <td className={tdClass + ' whitespace-nowrap tabular-nums ' + muted}>
+                {revision.total_hours ? `${revision.total_hours} h` : ''}
+            </td>
+            <td className={tdClass + ' whitespace-nowrap tabular-nums ' + muted}>
+                {revision.area ? `${revision.area} m²` : empty}
+            </td>
+            <td className={tdClass + ' whitespace-nowrap ' + muted}>
+                {text(revision.date_out_label)}
+            </td>
+            {!hideStatus && <td className={tdClass}>{statusPill}</td>}
+            <td className={tdClass} />
+            <td className={tdClass + ' whitespace-nowrap tabular-nums ' + muted}>
+                {revision.vo_hours ? `${revision.vo_hours} h` : ''}
+            </td>
+            {hasActions ? <td className={tdClass} /> : null}
+        </>
     );
 }
 
