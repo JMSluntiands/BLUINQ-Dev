@@ -29,6 +29,7 @@ class DraftingProjectInfoEditTest extends TestCase
                 'storey_level_id' => $storeyLevel->id,
                 'crm_category_ids' => [$category->id],
                 'site_address' => 'Updated Site Address',
+                'council_shire' => 'City of Stirling',
                 'ceiling_heights' => '2700',
                 'site_owner_name' => 'Owner',
             ])
@@ -37,6 +38,36 @@ class DraftingProjectInfoEditTest extends TestCase
 
         $job->refresh();
         $this->assertSame('Updated Site Address', $job->site_address);
+        $this->assertSame('City of Stirling', $job->council_shire);
+    }
+
+    public function test_project_info_category_shows_first_revision_category(): void
+    {
+        $admin = $this->adminUser();
+        [$storeyLevel, $category] = $this->seedLookups();
+        $fixCategory = CrmCategory::query()->create([
+            'code' => 'FX',
+            'name' => 'Fix-up Correction',
+            'status' => 'active',
+        ]);
+        $job = $this->createApmJob($admin, $storeyLevel, $category);
+
+        DraftingRequestRevision::query()->create([
+            'drafting_request_id' => $job->id,
+            'user_id' => $admin->id,
+            'code' => '26003-03',
+            'log_date' => now()->addDay()->toDateString(),
+            'category' => 'FX',
+            'status' => DraftingRequest::STATUS_NEW,
+        ]);
+        $job->crmCategories()->sync([$fixCategory->id]);
+        $job->forceFill(['crm_category_id' => $fixCategory->id])->save();
+
+        $this->actingAs($admin)
+            ->get(route('job.drafting.show', $job))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('draftingRequest.crm_category', 'WD — Working Drawings'));
     }
 
     public function test_admin_can_save_typical_details_on_project_info(): void

@@ -434,6 +434,7 @@ class DraftingRequestBoardService
             ->values()
             ->map(function ($revision) use ($statusOptions, $row) {
                 $status = $revision->status;
+                $hours = $this->sumRevisionHours(collect([$revision]));
 
                 return [
                     'id' => $revision->id,
@@ -442,6 +443,25 @@ class DraftingRequestBoardService
                     'status' => $status,
                     'status_label' => $status !== null && $status !== ''
                         ? ($statusOptions[$status] ?? ucfirst(str_replace('_', ' ', $status)))
+                        : null,
+                    'date_in_label' => $revision->log_date?->format('M j'),
+                    'date_out_label' => $revision->submitted_date?->format('M j'),
+                    'drafting' => $this->staffSlotFromRevisionPerson(
+                        $revision,
+                        DraftingRequestAssignment::ROLE_DRAFTING,
+                        1,
+                    )[0],
+                    'checking' => $this->staffSlotFromRevisionPerson(
+                        $revision,
+                        DraftingRequestAssignment::ROLE_CHECKING,
+                        1,
+                    )[0],
+                    'total_hours' => $hours,
+                    'area' => trim((string) $revision->area_size) !== ''
+                        ? trim((string) $revision->area_size)
+                        : null,
+                    'vo_hours' => $revision->vo_hours !== null
+                        ? rtrim(rtrim((string) $revision->vo_hours, '0'), '.')
                         : null,
                 ];
             })
@@ -581,7 +601,11 @@ class DraftingRequestBoardService
         $monthEnd = $monthStart->copy()->endOfMonth();
         $range = [$monthStart->toDateString(), $monthEnd->toDateString()];
 
-        $requestIds = $this->baseQuery($request)->pluck('id');
+        // Drafting work counts on both boards, including jobs archived since.
+        $requestIds = DraftingRequest::query()
+            ->reviewAccepted()
+            ->tap(fn (Builder $query) => $this->applyEitherProjectBoardFilter($query))
+            ->pluck('id');
         $categories = $this->leaderboardCategoryLookup();
         $entries = [];
         $usedKeys = [];

@@ -223,7 +223,8 @@ class DraftingController extends Controller
                         ? "{$draftingRequest->storeyLevel->code} — {$draftingRequest->storeyLevel->name}"
                         : $draftingRequest->storeyLevel->name)
                     : null,
-                'crm_category' => $draftingRequest->crmCategories->isNotEmpty()
+                'crm_category' => $this->firstRevisionCategoryLabel($draftingRequest)
+                    ?? ($draftingRequest->crmCategories->isNotEmpty()
                     ? $draftingRequest->crmCategories
                         ->map(fn ($row) => $row->code ? "{$row->code} — {$row->name}" : $row->name)
                         ->join(', ')
@@ -231,7 +232,7 @@ class DraftingController extends Controller
                         ? ($draftingRequest->crmCategory->code
                             ? "{$draftingRequest->crmCategory->code} — {$draftingRequest->crmCategory->name}"
                             : $draftingRequest->crmCategory->name)
-                        : null),
+                        : null)),
                 'building_class' => $draftingRequest->buildingClass
                     ? ($draftingRequest->buildingClass->displayCode()
                         ? "{$draftingRequest->buildingClass->displayCode()} — {$draftingRequest->buildingClass->name}"
@@ -1536,6 +1537,51 @@ class DraftingController extends Controller
         }
 
         return $code;
+    }
+
+    /**
+     * Project info shows the category the project was first encoded with: the
+     * oldest revision's category, since later revisions overwrite the job category.
+     */
+    private function firstRevisionCategoryLabel(DraftingRequest $draftingRequest): ?string
+    {
+        $first = $draftingRequest->revisions
+            ->filter(fn ($revision) => trim((string) $revision->category) !== '')
+            ->sortBy(fn ($revision) => [
+                $revision->log_date?->format('Y-m-d') ?? '9999-12-31',
+                $revision->id,
+            ])
+            ->first();
+
+        if ($first === null) {
+            return null;
+        }
+
+        $tokens = collect(explode(',', (string) $first->category))
+            ->map(fn ($token) => trim($token))
+            ->filter()
+            ->values();
+
+        $categories = CrmCategory::query()
+            ->where(function ($query) use ($tokens) {
+                $query->whereIn('code', $tokens)->orWhereIn('name', $tokens);
+            })
+            ->get(['code', 'name']);
+
+        return $tokens
+            ->map(function (string $token) use ($categories) {
+                $match = $categories->first(
+                    fn ($row) => strcasecmp((string) $row->code, $token) === 0
+                        || strcasecmp((string) $row->name, $token) === 0,
+                );
+
+                if ($match === null) {
+                    return $token;
+                }
+
+                return $match->code ? "{$match->code} — {$match->name}" : $match->name;
+            })
+            ->join(', ');
     }
 
     /**
