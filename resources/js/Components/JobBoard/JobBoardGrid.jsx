@@ -1364,6 +1364,7 @@ function JobBoardTableBody({
                                         ) : (
                                             <BoardRevisionCells
                                                 revision={revision}
+                                                storeyLevel={job.storey_level}
                                                 draftingSlotCount={
                                                     draftingSlotCount
                                                 }
@@ -1405,6 +1406,7 @@ function JobBoardTableBody({
 /** Read-only revision row aligned with the board columns: values as recorded on that revision. */
 function BoardRevisionCells({
     revision,
+    storeyLevel,
     draftingSlotCount,
     checkingSlotCount,
     hideStatus,
@@ -1442,7 +1444,13 @@ function BoardRevisionCells({
                     empty
                 )}
             </td>
-            <td className={tdClass}>{empty}</td>
+            <td className={tdClass}>
+                {storeyLevel && storeyLevel !== '—' ? (
+                    <TagPill title={storeyLevel}>{storeyLevel}</TagPill>
+                ) : (
+                    empty
+                )}
+            </td>
             <td className={tdClass + ' whitespace-nowrap ' + muted}>
                 {text(revision.date_in_label)}
             </td>
