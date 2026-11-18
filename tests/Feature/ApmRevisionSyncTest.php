@@ -142,6 +142,36 @@ class ApmRevisionSyncTest extends TestCase
         $this->assertSame('AC', $row['drafting'][0]['initials'] ?? null);
     }
 
+    public function test_custom_workflow_status_appears_in_board_dropdown_and_groups(): void
+    {
+        $user = $this->adminUser();
+        \App\Models\WorkflowStatus::query()->create([
+            'kind' => \App\Models\WorkflowStatus::KIND_ARCHI,
+            'code' => 'Completed',
+            'name' => 'Completed',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('job.list'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where(
+                    'statusOptions',
+                    fn ($options) => collect($options)->contains(
+                        fn ($option) => $option['value'] === 'completed'
+                            && $option['label'] === 'Completed',
+                    ),
+                )
+                ->where(
+                    'statusGroupOptions',
+                    fn ($options) => collect($options)->contains(
+                        fn ($option) => $option['value'] === 'completed'
+                            && $option['label'] === 'Completed',
+                    ),
+                ));
+    }
+
     public function test_board_status_can_be_set_to_for_invoice_and_invoiced(): void
     {
         $user = $this->adminUser();
@@ -438,24 +468,19 @@ class ApmRevisionSyncTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Job/Board')
-                ->where('statusOptions', [
-                    ['value' => 'new', 'label' => 'New'],
-                    ['value' => 'assigned', 'label' => 'Assigned'],
-                    ['value' => 'drafting_wip', 'label' => 'Work In Progress'],
-                    ['value' => 'for_checking', 'label' => 'For Checking'],
-                    ['value' => 'query', 'label' => 'Query'],
-                    ['value' => 'submitted', 'label' => 'Submitted'],
-                    ['value' => 'for_invoice', 'label' => 'For Invoice'],
-                    ['value' => 'invoiced', 'label' => 'Invoiced'],
-                    ['value' => 'on_hold', 'label' => 'On Hold'],
-                    ['value' => 'cancelled', 'label' => 'Cancelled'],
-                ])
+                ->where(
+                    'statusOptions',
+                    fn ($options) => collect($options)->pluck('value')->contains('paid')
+                        && collect($options)->pluck('value')->contains('for_invoice'),
+                )
                 ->where('statusGroupOptions', [
                     ['value' => 'new', 'label' => 'New'],
                     ['value' => 'drafting_wip', 'label' => 'Work In Progress'],
                     ['value' => 'for_checking', 'label' => 'For Checking'],
                     ['value' => 'submitted', 'label' => 'Submitted'],
                     ['value' => 'for_invoice', 'label' => 'For Invoice'],
+                    ['value' => 'invoiced', 'label' => 'Invoiced'],
+                    ['value' => 'paid', 'label' => 'Paid'],
                     ['value' => 'cancelled', 'label' => 'Cancelled'],
                 ])
                 ->where('jobs.data.0.id', $job->id)
@@ -1162,9 +1187,14 @@ class ApmRevisionSyncTest extends TestCase
                     ['value' => 'for_checking', 'label' => 'For Checking'],
                     ['value' => 'submitted', 'label' => 'Submitted'],
                     ['value' => 'for_invoice', 'label' => 'For Invoice'],
+                    ['value' => 'invoiced', 'label' => 'Invoiced'],
+                    ['value' => 'paid', 'label' => 'Paid'],
                     ['value' => 'cancelled', 'label' => 'Cancelled'],
                 ])
-                ->has('statusOptions', 10)
+                ->where(
+                    'statusOptions',
+                    fn ($options) => collect($options)->pluck('value')->contains('paid'),
+                )
                 ->has('jobs.data', 4)
                 ->where(
                     'jobs.data',

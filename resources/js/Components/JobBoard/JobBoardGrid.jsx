@@ -154,15 +154,13 @@ const LEGACY_STATUS_TO_ARCHI = {
     wip: 'drafting_wip',
     for_quote: 'new',
     quote_sent: 'submitted',
-    for_invoice: 'submitted',
-    invoiced: 'submitted',
-    paid: 'submitted',
     for_quotes: 'new',
     completed_projects: 'submitted',
     cancelled_jobs: 'cancelled',
-    assigned: 'design_wip',
-    on_hold: 'design_wip',
-    query: 'design_wip',
+    assigned: 'drafting_wip',
+    on_hold: 'drafting_wip',
+    query: 'drafting_wip',
+    design_wip: 'drafting_wip',
 };
 
 /**

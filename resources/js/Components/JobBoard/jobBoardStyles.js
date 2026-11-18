@@ -26,6 +26,8 @@ export const JOB_STATUS_STYLES = {
     invoiced:
         'border border-teal-300 bg-teal-100 !text-teal-900 dark:border-teal-400 dark:!bg-teal-600 dark:!text-white',
     paid: 'border border-green-300 bg-green-100 !text-green-900 dark:border-green-400 dark:!bg-green-600 dark:!text-white',
+    completed:
+        'border border-lime-300 bg-lime-100 !text-lime-900 dark:border-lime-400 dark:!bg-lime-600 dark:!text-white',
 };
 
 /** @type {Record<string, string>} */
@@ -45,6 +47,7 @@ export const JOB_STATUS_LABELS = {
     for_invoice: 'For Invoice',
     invoiced: 'Invoiced',
     paid: 'Paid',
+    completed: 'Completed',
 };
 
 /** Board column order when jobs are split into status tables. */
@@ -63,6 +66,7 @@ export const JOB_BOARD_STATUS_ORDER = [
     'for_invoice',
     'invoiced',
     'paid',
+    'completed',
 ];
 
 /** Legacy aggregated job list sections (unused by APM — kept for reference). */

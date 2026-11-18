@@ -84,6 +84,7 @@ class DraftingRequest extends Model
             self::STATUS_SUBMITTED => 'Submitted',
             self::STATUS_FOR_INVOICE => 'For Invoice',
             self::STATUS_INVOICED => 'Invoiced',
+            self::STATUS_PAID => 'Paid',
             self::STATUS_ON_HOLD => 'On Hold',
             self::STATUS_CANCELLED => 'Cancelled',
         ];
@@ -105,41 +106,25 @@ class DraftingRequest extends Model
     }
 
     /**
-     * Full Archi statuses for the job/list table dropdown.
+     * Full Archi statuses for the job/list table dropdown — every status from
+     * Workflow settings (kind=archi), including custom ones like Paid / Completed.
      *
      * @return array<string, string>
      */
     public static function jobBoardStatusOptions(): array
     {
-        return self::mergeStatusOptions([
-            self::STATUS_NEW => 'New',
-            self::STATUS_ASSIGNED => 'Assigned',
-            self::STATUS_DRAFTING_WIP => 'Work In Progress',
-            self::STATUS_FOR_CHECKING => 'For Checking',
-            self::STATUS_QUERY => 'Query',
-            self::STATUS_SUBMITTED => 'Submitted',
-            self::STATUS_FOR_INVOICE => 'For Invoice',
-            self::STATUS_INVOICED => 'Invoiced',
-            self::STATUS_ON_HOLD => 'On Hold',
-            self::STATUS_CANCELLED => 'Cancelled',
-        ]);
+        return self::statusOptions();
     }
 
     /**
-     * Status groups on job/list. Assigned, On Hold, and Query fold into Design WIP.
+     * Status groups on job/list. Assigned, On Hold, and Query fold into WIP;
+     * custom Workflow statuses get their own section.
      *
      * @return array<string, string>
      */
     public static function jobListStatusOptions(): array
     {
-        return self::mergeStatusOptions([
-            self::STATUS_NEW => 'New',
-            self::STATUS_DRAFTING_WIP => 'Work In Progress',
-            self::STATUS_FOR_CHECKING => 'For Checking',
-            self::STATUS_SUBMITTED => 'Submitted',
-            self::STATUS_FOR_INVOICE => 'For Invoice',
-            self::STATUS_CANCELLED => 'Cancelled',
-        ]);
+        return self::boardSectionStatusOptions();
     }
 
     /**
@@ -149,30 +134,64 @@ class DraftingRequest extends Model
      */
     public static function designListStatusOptions(): array
     {
-        return self::mergeStatusOptions([
+        return self::boardSectionStatusOptions();
+    }
+
+    /**
+     * Preferred board sections, then any Workflow status that is not folded into
+     * another section (so Paid / Completed / custom rows always appear).
+     *
+     * @return array<string, string>
+     */
+    private static function boardSectionStatusOptions(): array
+    {
+        $preferred = [
             self::STATUS_NEW => 'New',
             self::STATUS_DRAFTING_WIP => 'Work In Progress',
             self::STATUS_FOR_CHECKING => 'For Checking',
             self::STATUS_SUBMITTED => 'Submitted',
             self::STATUS_FOR_INVOICE => 'For Invoice',
+            self::STATUS_INVOICED => 'Invoiced',
+            self::STATUS_PAID => 'Paid',
             self::STATUS_CANCELLED => 'Cancelled',
-        ]);
-    }
+        ];
 
-    /**
-     * @param  array<string, string>  $codes
-     * @return array<string, string>
-     */
-    private static function mergeStatusOptions(array $codes): array
-    {
         $all = self::statusOptions();
-        $options = [];
-
-        foreach ($codes as $code => $fallback) {
-            $options[$code] = $all[$code] ?? $fallback;
+        $sections = [];
+        foreach ($preferred as $code => $fallback) {
+            $sections[$code] = $all[$code] ?? $fallback;
         }
 
-        return $options;
+        $folded = [
+            self::STATUS_NEW,
+            self::STATUS_FOR_QUOTE,
+            'for_quotes',
+            self::STATUS_ASSIGNED,
+            self::STATUS_DESIGN_WIP,
+            self::STATUS_DRAFTING_WIP,
+            self::STATUS_WIP,
+            self::STATUS_QUERY,
+            self::STATUS_ON_HOLD,
+            self::STATUS_FOR_CHECKING,
+            self::STATUS_SUBMITTED,
+            self::STATUS_QUOTE_SENT,
+            'completed_projects',
+            self::STATUS_FOR_INVOICE,
+            self::STATUS_INVOICED,
+            self::STATUS_PAID,
+            self::STATUS_CANCELLED,
+            'cancelled_jobs',
+        ];
+
+        foreach ($all as $value => $label) {
+            if (isset($sections[$value]) || in_array($value, $folded, true)) {
+                continue;
+            }
+
+            $sections[$value] = $label;
+        }
+
+        return $sections;
     }
 
     /**

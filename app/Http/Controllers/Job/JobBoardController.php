@@ -254,9 +254,16 @@ class JobBoardController extends Controller
             DraftingRequest::STATUS_SUBMITTED => [
                 DraftingRequest::STATUS_SUBMITTED,
                 DraftingRequest::STATUS_QUOTE_SENT,
-                DraftingRequest::STATUS_INVOICED,
-                DraftingRequest::STATUS_PAID,
                 'completed_projects',
+            ],
+            DraftingRequest::STATUS_FOR_INVOICE => [
+                DraftingRequest::STATUS_FOR_INVOICE,
+            ],
+            DraftingRequest::STATUS_INVOICED => [
+                DraftingRequest::STATUS_INVOICED,
+            ],
+            DraftingRequest::STATUS_PAID => [
+                DraftingRequest::STATUS_PAID,
             ],
             DraftingRequest::STATUS_CANCELLED => [
                 DraftingRequest::STATUS_CANCELLED,
